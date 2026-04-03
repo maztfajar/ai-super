@@ -16,3 +16,5 @@ venv/
 scripts/venv/
 *.pyc
 *.pyo
+backend/data/logs/
+backend/data/logs/
