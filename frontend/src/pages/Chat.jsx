@@ -1,0 +1,547 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
+import { api } from '../hooks/useApi'
+import { copyToClipboard } from "../utils/clipboard"
+import { useAuthStore, useChatStore, useModelsStore } from '../store'
+import toast from 'react-hot-toast'
+import {
+  Plus, Trash2, Send, Paperclip, Copy, Check,
+  Bot, User, Loader2, Square,
+} from 'lucide-react'
+import clsx from 'clsx'
+
+// ── Message bubble ────────────────────────────────────────────
+function Bubble({ msg, isStreaming, onStop }) {
+  const [copied, setCopied] = useState(false)
+  const isUser = msg.role === 'user'
+
+  const copy = () => {
+    copyToClipboard(msg.content)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className={clsx('flex gap-2.5 group animate-fade', isUser ? 'flex-row-reverse' : 'flex-row')}>
+      {/* Avatar */}
+      <div className={clsx(
+        'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5',
+        isUser
+          ? 'bg-gradient-to-br from-accent to-pink'
+          : 'bg-gradient-to-br from-accent to-accent-2'
+      )}>
+        {isUser
+          ? <User size={13} className="text-white" />
+          : <Bot size={13} className="text-white" />}
+      </div>
+
+      <div className={clsx('max-w-[78%] flex flex-col', isUser ? 'items-end' : 'items-start')}>
+        <div className={clsx(
+          'px-3.5 py-2.5 rounded-xl text-sm relative',
+          isUser
+            ? 'bg-accent text-white rounded-tr-sm'
+            : 'bg-bg-4 border border-border text-ink rounded-tl-sm'
+        )}>
+          {isUser ? (
+            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+          ) : (
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
+              {isStreaming && (
+                <span className="inline-block w-1.5 h-4 bg-accent-2 animate-pulse2 ml-0.5 align-middle" />
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Action row */}
+        <div className="flex items-center gap-2 mt-1 px-1">
+          <span className="text-[10px] text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity">
+            {new Date(msg.created_at || Date.now()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {!isUser && msg.model && (
+            <span className="text-[10px] font-mono text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity">
+              {msg.model?.split('/').pop()}
+            </span>
+          )}
+          {/* Stop button — hanya saat streaming */}
+          {isStreaming && onStop && (
+            <button
+              onClick={onStop}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-danger/15 hover:bg-danger/25 border border-danger/30 text-danger text-[10px] font-medium transition-all"
+              title="Hentikan (Esc)"
+            >
+              <Square size={9} fill="currentColor" /> Stop
+            </button>
+          )}
+          {!isUser && !isStreaming && (
+            <button
+              onClick={copy}
+              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all"
+            >
+              {copied
+                ? <Check size={10} className="text-success" />
+                : <Copy size={10} className="text-ink-3" />}
+            </button>
+          )}
+        </div>
+
+        {/* RAG sources */}
+        {!isUser && msg.rag_sources && (() => {
+          try {
+            const src = JSON.parse(msg.rag_sources)
+            if (src.length > 0) return (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {src.map((s, i) => (
+                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-success/10 text-success border border-success/20 rounded-full">
+                    📄 {s}
+                  </span>
+                ))}
+              </div>
+            )
+          } catch {}
+          return null
+        })()}
+      </div>
+    </div>
+  )
+}
+
+// ── Session item ──────────────────────────────────────────────
+function SessionItem({ session, active, onClick, onDelete }) {
+  return (
+    <div
+      onClick={onClick}
+      className={clsx(
+        'group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer mb-0.5 transition-all',
+        active ? 'bg-accent/10 border border-accent/20' : 'hover:bg-bg-4'
+      )}
+    >
+      <div className="flex-1 min-w-0">
+        <div className={clsx('text-xs truncate', active ? 'text-accent-2 font-medium' : 'text-ink-2')}>
+          {session.title || 'New Chat'}
+        </div>
+        <div className="text-[10px] text-ink-3 mt-0.5">
+          {session.model_used?.split('/').pop() || 'AI'} ·{' '}
+          {new Date(session.updated_at || session.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+        </div>
+      </div>
+      <button
+        onClick={(e) => { e.stopPropagation(); onDelete(session.id) }}
+        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-danger/10 flex-shrink-0"
+      >
+        <Trash2 size={11} className="text-danger" />
+      </button>
+    </div>
+  )
+}
+
+// ── Main Chat Page ────────────────────────────────────────────
+export default function Chat() {
+  const { id: urlSessionId } = useParams()
+  const navigate = useNavigate()
+  const { user } = useAuthStore()
+  const { models } = useModelsStore()
+
+  const {
+    sessions, setSessions,
+    currentSession, setCurrentSession,
+    messages, setMessages, addMessage,
+    streaming, setStreaming,
+    streamingText, appendStreamingText, clearStreaming,
+    selectedModel, setSelectedModel,
+  } = useChatStore()
+
+  const [input, setInput] = useState('')
+  const [useRAG, setUseRAG] = useState(true)
+  const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const messagesEndRef = useRef(null)
+  const inputRef = useRef(null)
+  const abortRef = useRef(null)
+  const fileInputRef = useRef(null)
+
+  const scrollBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
+
+  useEffect(() => { scrollBottom() }, [messages, streamingText])
+
+  // Load models + sessions
+  useEffect(() => {
+    api.listSessions().then(setSessions).catch(() => {})
+    api.listModels().then((r) => {
+      const ms = r.models || []
+      useModelsStore.setState({ models: ms })
+      if (!selectedModel && ms.length > 0) setSelectedModel(ms[0].id)
+    }).catch(() => {})
+  }, [])
+
+  // Load session from URL
+  useEffect(() => {
+    if (urlSessionId) {
+      const s = sessions.find((x) => x.id === urlSessionId)
+      if (s && s.id !== currentSession?.id) loadSession(s)
+    }
+  }, [urlSessionId, sessions])
+
+  async function loadSession(session) {
+    setCurrentSession(session)
+    setLoadingMsgs(true)
+    try {
+      const msgs = await api.getMessages(session.id)
+      setMessages(msgs)
+    } catch { toast.error('Gagal memuat pesan') }
+    finally { setLoadingMsgs(false) }
+  }
+
+  async function newSession() {
+    try {
+      const s = await api.createSession('New Chat')
+      const updated = await api.listSessions()
+      setSessions(updated)
+      setCurrentSession(s)
+      setMessages([])
+      navigate(`/chat/${s.id}`)
+    } catch { toast.error('Gagal membuat sesi baru') }
+  }
+
+  async function deleteSession(id) {
+    try {
+      await api.deleteSession(id)
+      const updated = await api.listSessions()
+      setSessions(updated)
+      if (currentSession?.id === id) {
+        setCurrentSession(null)
+        setMessages([])
+        navigate('/chat')
+      }
+    } catch { toast.error('Gagal hapus sesi') }
+  }
+
+  // ── STOP streaming ────────────────────────────────────────
+  function stopStreaming() {
+    if (abortRef.current && typeof abortRef.current === 'function') {
+      abortRef.current()
+      abortRef.current = null
+    }
+    const partial = useChatStore.getState().streamingText
+    if (partial.trim()) {
+      addMessage({
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: partial + '\n\n*[Dihentikan oleh pengguna]*',
+        model: selectedModel,
+        created_at: new Date().toISOString(),
+      })
+    }
+    clearStreaming()
+    toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
+  }
+
+  // ── SEND message ─────────────────────────────────────────
+  async function sendMessage() {
+    const text = input.trim()
+    if (!text || streaming) return
+    if (!currentSession) { await newSession(); return }
+
+    setInput('')
+    // Reset textarea height
+    if (inputRef.current) inputRef.current.style.height = 'auto'
+
+    const tempUserMsg = {
+      id: Date.now(),
+      role: 'user',
+      content: text,
+      created_at: new Date().toISOString(),
+    }
+    addMessage(tempUserMsg)
+    setStreaming(true)
+
+    const sessionId = currentSession.id
+
+    abortRef.current = api.chatStream(
+      {
+        session_id: sessionId,
+        message: text,
+        model: selectedModel,
+        use_rag: useRAG,
+      },
+      (chunk) => appendStreamingText(chunk),
+      async (done) => {
+        const fullText = useChatStore.getState().streamingText
+        clearStreaming()
+        addMessage({
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: fullText,
+          model: selectedModel,
+          rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
+          created_at: new Date().toISOString(),
+        })
+        const updated = await api.listSessions()
+        setSessions(updated)
+      },
+      () => {}
+    )
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Escape' && streaming) {
+      e.preventDefault()
+      stopStreaming()
+      return
+    }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
+
+  async function handleFileUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      toast.loading('Mengupload file ke Knowledge Base...')
+      await api.uploadDoc(file)
+      toast.dismiss()
+      toast.success(`${file.name} berhasil diupload!`)
+    } catch {
+      toast.dismiss()
+      toast.error('Upload gagal')
+    }
+    e.target.value = ''
+  }
+
+  return (
+    <div className="flex h-full">
+      {/* Sessions sidebar */}
+      <div className="w-52 flex-shrink-0 border-r border-border bg-bg-2 flex flex-col">
+        <div className="p-3 border-b border-border">
+          <button
+            onClick={newSession}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors"
+          >
+            <Plus size={13} /> New Chat
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2">
+          {sessions.length === 0 && (
+            <p className="text-xs text-ink-3 text-center py-6">
+              Belum ada sesi.<br />Buat chat pertama!
+            </p>
+          )}
+          {sessions.map((s) => (
+            <SessionItem
+              key={s.id}
+              session={s}
+              active={currentSession?.id === s.id}
+              onClick={() => { loadSession(s); navigate(`/chat/${s.id}`) }}
+              onDelete={deleteSession}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* Topbar */}
+        <div className="h-12 border-b border-border flex items-center px-4 gap-3 flex-shrink-0 bg-bg-2">
+          <span className="text-sm font-medium text-ink truncate flex-1">
+            {currentSession?.title || 'Pilih atau buat sesi chat'}
+          </span>
+
+          {/* Model select */}
+          <select
+            value={selectedModel || ''}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="bg-bg-4 border border-border-2 rounded-lg px-2.5 py-1.5 text-xs text-ink outline-none cursor-pointer"
+          >
+            {models.length === 0 && <option value="">Tidak ada model</option>}
+            {models.map((m) => (
+              <option key={m.id} value={m.id}>{m.display}</option>
+            ))}
+          </select>
+
+          {/* RAG toggle */}
+          <button
+            onClick={() => setUseRAG(!useRAG)}
+            className={clsx(
+              'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border',
+              useRAG
+                ? 'bg-success/10 border-success/30 text-success'
+                : 'bg-bg-4 border-border text-ink-3'
+            )}
+            title="Toggle RAG (Knowledge Base)"
+          >
+            📚 RAG
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+          {!currentSession && (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="text-5xl mb-4">🧠</div>
+              <h2 className="text-lg font-bold text-ink mb-2">Halo! Saya AI SUPER ASSISTANT</h2>
+              <p className="text-sm text-ink-3 mb-6 max-w-sm">
+                AI Super Assistant pribadi kamu. Bisa chat, analisa dokumen, otomasi tugas, dan integrasi ke mana saja.
+              </p>
+              <button
+                onClick={newSession}
+                className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent/80 text-white rounded-xl text-sm font-medium"
+              >
+                <Plus size={15} /> Mulai Chat Baru
+              </button>
+              {models.length === 0 && (
+                <div className="mt-6 p-3 bg-warn/10 border border-warn/20 rounded-xl text-xs text-warn max-w-sm">
+                  ⚠️ Belum ada model aktif. Buka <span className="font-mono">Integrasi</span> untuk menambahkan API key atau install Ollama.
+                </div>
+              )}
+            </div>
+          )}
+
+          {loadingMsgs && (
+            <div className="flex items-center gap-2 text-ink-3 text-sm">
+              <Loader2 size={14} className="animate-spin" /> Memuat pesan...
+            </div>
+          )}
+
+          {messages.map((msg) => (
+            <Bubble key={msg.id} msg={msg} isStreaming={false} />
+          ))}
+
+          {/* Streaming bubble dengan tombol stop */}
+          {streaming && streamingText && (
+            <Bubble
+              msg={{ role: 'assistant', content: streamingText, created_at: new Date().toISOString() }}
+              isStreaming={true}
+              onStop={stopStreaming}
+            />
+          )}
+
+          {/* Thinking indicator */}
+          {streaming && !streamingText && (
+            <div className="flex gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0">
+                <Bot size={13} className="text-white" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="px-3.5 py-3 bg-bg-4 border border-border rounded-xl rounded-tl-sm flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {[0, 1, 2].map(i => (
+                      <span
+                        key={i}
+                        className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse2"
+                        style={{ animationDelay: `${i * 0.2}s` }}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-xs text-ink-3">AI sedang berpikir...</span>
+                </div>
+                {/* Stop button di thinking state juga */}
+                <button
+                  onClick={stopStreaming}
+                  className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-xs font-medium transition-all"
+                >
+                  <Square size={11} fill="currentColor" /> Hentikan
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input area */}
+        {currentSession && (
+          <div className="p-3 border-t border-border bg-bg-2 flex-shrink-0">
+
+            {/* Streaming status bar */}
+            {streaming && (
+              <div className="flex items-center justify-between mb-2 px-1">
+                <div className="flex items-center gap-1.5 text-xs text-ink-3">
+                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse2" />
+                  AI sedang merespons...
+                  <span className="text-ink-3 font-mono">
+                    {streamingText.length} karakter
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-ink-3">
+                  <kbd className="px-1.5 py-0.5 bg-bg-4 border border-border rounded font-mono">Esc</kbd>
+                  <span>untuk stop</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2 items-end">
+              {/* Upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                accept=".pdf,.docx,.txt,.csv,.md"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={streaming}
+                className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-colors disabled:opacity-40"
+                title="Upload file ke Knowledge Base"
+              >
+                <Paperclip size={15} />
+              </button>
+
+              {/* Text input */}
+              <div className="flex-1 relative">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    streaming
+                      ? 'AI sedang merespons... (Esc untuk stop)'
+                      : 'Ketik pesan... (Enter kirim, Shift+Enter baris baru)'
+                  }
+                  disabled={streaming}
+                  rows={1}
+                  className="w-full bg-bg-4 border border-border-2 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+              </div>
+
+              {/* STOP button — saat streaming */}
+              {streaming ? (
+                <button
+                  onClick={stopStreaming}
+                  className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-danger hover:bg-danger/80 text-white transition-all shadow-lg shadow-danger/20"
+                  title="Stop (Esc)"
+                >
+                  <Square size={16} fill="white" />
+                </button>
+              ) : (
+                /* SEND button — saat tidak streaming */
+                <button
+                  onClick={sendMessage}
+                  disabled={!input.trim() || !currentSession}
+                  className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-accent hover:bg-accent/80 disabled:opacity-40 text-white transition-colors"
+                  title="Kirim (Enter)"
+                >
+                  <Send size={15} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

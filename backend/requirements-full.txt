@@ -1,0 +1,24 @@
+# AI SUPER ASSISTANT — Full Requirements (RAG + Vector DB + Embeddings)
+# Install SETELAH requirements.txt berhasil:
+#   pip install -r requirements-full.txt
+#
+# PERINGATAN: Butuh ~500MB download + 10-20 menit pertama kali
+
+# ── RAG / Vector DB ───────────────────────────────────────────
+chromadb>=0.5.0
+langchain>=0.2.6
+langchain-community>=0.2.6
+langchain-openai>=0.1.13
+langchain-anthropic>=0.1.15
+
+# ── Embeddings (lokal, ~90MB model) ──────────────────────────
+sentence-transformers>=3.0.0
+langchain-huggingface>=0.0.3
+
+# ── Google Gemini ─────────────────────────────────────────────
+google-generativeai>=0.5.4
+langchain-google-genai>=1.0.6
+
+# ── PostgreSQL (jika tidak pakai SQLite) ─────────────────────
+# asyncpg>=0.29.0
+# psycopg2-binary>=2.9.9
