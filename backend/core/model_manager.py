@@ -33,26 +33,41 @@ class ModelManager:
 
         # ── OpenAI ───────────────────────────────────────────
         if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
-            self.available_models.update({
-                "gpt-4o":       {"provider": "openai", "display": "GPT-4o",       "status": "online"},
-                "gpt-4o-mini":  {"provider": "openai", "display": "GPT-4o Mini",  "status": "online"},
-            })
+            if settings.OPENAI_AVAILABLE_MODELS:
+                for m in settings.OPENAI_AVAILABLE_MODELS.split(","):
+                    if m.strip():
+                        self.available_models[m.strip()] = {"provider": "openai", "display": f"{m.strip()}", "status": "online"}
+            else:
+                self.available_models.update({
+                    "gpt-4o":       {"provider": "openai", "display": "GPT-4o",       "status": "online"},
+                    "gpt-4o-mini":  {"provider": "openai", "display": "GPT-4o Mini",  "status": "online"},
+                })
             log.info("OpenAI models registered")
 
         # ── Anthropic ────────────────────────────────────────
         if settings.ANTHROPIC_API_KEY and not settings.ANTHROPIC_API_KEY.startswith("sk-ant-..."):
-            self.available_models.update({
-                "claude-3-5-sonnet-20241022": {"provider": "anthropic", "display": "Claude 3.5 Sonnet", "status": "online"},
-                "claude-3-haiku-20240307":    {"provider": "anthropic", "display": "Claude 3 Haiku",    "status": "online"},
-            })
+            if settings.ANTHROPIC_AVAILABLE_MODELS:
+                for m in settings.ANTHROPIC_AVAILABLE_MODELS.split(","):
+                    if m.strip():
+                        self.available_models[m.strip()] = {"provider": "anthropic", "display": f"{m.strip()}", "status": "online"}
+            else:
+                self.available_models.update({
+                    "claude-3-5-sonnet-20241022": {"provider": "anthropic", "display": "Claude 3.5 Sonnet", "status": "online"},
+                    "claude-3-haiku-20240307":    {"provider": "anthropic", "display": "Claude 3 Haiku",    "status": "online"},
+                })
             log.info("Anthropic models registered")
 
         # ── Google ───────────────────────────────────────────
         if settings.GOOGLE_API_KEY and not settings.GOOGLE_API_KEY.startswith("AIza..."):
-            self.available_models.update({
-                "gemini-1.5-pro":   {"provider": "google", "display": "Gemini 1.5 Pro",   "status": "online"},
-                "gemini-1.5-flash": {"provider": "google", "display": "Gemini 1.5 Flash", "status": "online"},
-            })
+            if settings.GOOGLE_AVAILABLE_MODELS:
+                for m in settings.GOOGLE_AVAILABLE_MODELS.split(","):
+                    if m.strip():
+                        self.available_models[m.strip()] = {"provider": "google", "display": f"{m.strip()}", "status": "online"}
+            else:
+                self.available_models.update({
+                    "gemini-1.5-pro":   {"provider": "google", "display": "Gemini 1.5 Pro",   "status": "online"},
+                    "gemini-1.5-flash": {"provider": "google", "display": "Gemini 1.5 Flash", "status": "online"},
+                })
             log.info("Google models registered")
 
         # ── Sumopod (OpenAI-compatible API) ──────────────────

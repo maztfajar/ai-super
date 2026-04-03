@@ -666,8 +666,11 @@ export default function Integrations() {
   const [restarting, setRestarting] = useState(false)
 
   const [openaiKey,      setOpenaiKey]      = useState('')
+  const [openaiModels,   setOpenaiModels]   = useState('')
   const [anthropicKey,   setAnthropicKey]   = useState('')
+  const [anthropicModels,setAnthropicModels]= useState('')
   const [googleKey,      setGoogleKey]      = useState('')
+  const [googleModels,   setGoogleModels]   = useState('')
   const [sumopodKey,     setSumopodKey]     = useState('')
   const [sumopodHost,    setSumopodHost]    = useState('')
   const [sumopodModels,  setSumopodModels]  = useState('')
@@ -690,6 +693,9 @@ export default function Integrations() {
     try {
       const s = await intApi.status()
       setStatus(s)
+      if (s.openai?.models)  setOpenaiModels(s.openai.models)
+      if (s.anthropic?.models) setAnthropicModels(s.anthropic.models)
+      if (s.google?.models)  setGoogleModels(s.google.models)
       if (s.sumopod?.host)   setSumopodHost(s.sumopod.host)
       if (s.sumopod?.models) setSumopodModels(s.sumopod.models)
       if (s.ollama?.host)    setOllamaHost(s.ollama.host)
@@ -776,25 +782,48 @@ export default function Integrations() {
         <div className={clsx("space-y-3", activeTab !== 'model_ai' && "hidden")}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Card icon="🧠" title="OpenAI" subtitle="GPT-4o, GPT-4o Mini" configured={status?.openai?.configured}>
-              <MaskedField masked={status?.openai?.key_masked} label="API Key" value={openaiKey} onChange={setOpenaiKey} onSave={() => save('openai', { OPENAI_API_KEY: openaiKey })} saving={saving.openai}/>
+              <div className="mt-3 space-y-2.5">
+                <MaskedField masked={status?.openai?.key_masked} label="API Key" value={openaiKey} onChange={setOpenaiKey} onSave={() => save('openai', { OPENAI_API_KEY: openaiKey, OPENAI_AVAILABLE_MODELS: openaiModels })} saving={saving.openai}/>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={openaiModels} onChange={setOpenaiModels} placeholder="contoh: o1, o1-mini" mono/></div>
+                  {status?.openai?.configured && <Btn label="Simpan" onClick={() => save('openai', { OPENAI_AVAILABLE_MODELS: openaiModels })} loading={saving.openai} variant="default" icon={Save}/>}
+                </div>
+              </div>
             </Card>
             <Card icon="✨" title="Anthropic Claude" subtitle="Claude 3.5" configured={status?.anthropic?.configured}>
-              <MaskedField masked={status?.anthropic?.key_masked} label="API Key" value={anthropicKey} onChange={setAnthropicKey} onSave={() => save('anthropic', { ANTHROPIC_API_KEY: anthropicKey })} saving={saving.anthropic}/>
+              <div className="mt-3 space-y-2.5">
+                <MaskedField masked={status?.anthropic?.key_masked} label="API Key" value={anthropicKey} onChange={setAnthropicKey} onSave={() => save('anthropic', { ANTHROPIC_API_KEY: anthropicKey, ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} saving={saving.anthropic}/>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={anthropicModels} onChange={setAnthropicModels} placeholder="contoh: claude-3-5-sonnet-20241022" mono/></div>
+                  {status?.anthropic?.configured && <Btn label="Simpan" onClick={() => save('anthropic', { ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} loading={saving.anthropic} variant="default" icon={Save}/>}
+                </div>
+              </div>
             </Card>
             <Card icon="💎" title="Google Gemini" subtitle="Gemini 1.5" configured={status?.google?.configured}>
-              <MaskedField masked={status?.google?.key_masked} label="API Key" value={googleKey} onChange={setGoogleKey} onSave={() => save('google', { GOOGLE_API_KEY: googleKey })} saving={saving.google}/>
+              <div className="mt-3 space-y-2.5">
+                <MaskedField masked={status?.google?.key_masked} label="API Key" value={googleKey} onChange={setGoogleKey} onSave={() => save('google', { GOOGLE_API_KEY: googleKey, GOOGLE_AVAILABLE_MODELS: googleModels })} saving={saving.google}/>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={googleModels} onChange={setGoogleModels} placeholder="contoh: gemini-2.0-flash, gemini-1.5-pro" mono/></div>
+                  {status?.google?.configured && <Btn label="Simpan" onClick={() => save('google', { GOOGLE_AVAILABLE_MODELS: googleModels })} loading={saving.google} variant="default" icon={Save}/>}
+                </div>
+              </div>
             </Card>
             <Card icon="🚀" title="Sumopod" subtitle="OpenAI-compatible" configured={status?.sumopod?.configured}>
               <div className="mt-3 space-y-2.5">
-                <MaskedField masked={status?.sumopod?.key_masked} label="API Key" value={sumopodKey} onChange={setSumopodKey} onSave={() => save('sumopod', { SUMOPOD_API_KEY: sumopodKey, SUMOPOD_HOST: sumopodHost })} saving={saving.sumopod}/>
+                <MaskedField masked={status?.sumopod?.key_masked} label="API Key" value={sumopodKey} onChange={setSumopodKey} onSave={() => save('sumopod', { SUMOPOD_API_KEY: sumopodKey, SUMOPOD_HOST: sumopodHost, SUMOPOD_AVAILABLE_MODELS: sumopodModels })} saving={saving.sumopod}/>
                 <TextInput label="API Host" value={sumopodHost} onChange={setSumopodHost} placeholder="https://ai.sumopod.com/v1" mono/>
+                <div className="flex gap-2 items-end">
+                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={sumopodModels} onChange={setSumopodModels} placeholder="contoh: meta-llama/Llama-3-70b" mono/></div>
+                  {status?.sumopod?.configured && <Btn label="Simpan" onClick={() => save('sumopod', { SUMOPOD_HOST: sumopodHost, SUMOPOD_AVAILABLE_MODELS: sumopodModels })} loading={saving.sumopod} variant="default" icon={Save}/>}
+                </div>
               </div>
             </Card>
             <Card icon="🦙" title="Ollama" subtitle="Lokal" configured={status?.ollama?.configured}>
               <div className="mt-3 space-y-2.5">
                 <TextInput label="Host" value={ollamaHost} onChange={setOllamaHost} placeholder="http://localhost:11434" mono/>
-                <div className="flex gap-2">
-                  <Btn label="Simpan" onClick={() => save('ollama', { OLLAMA_HOST: ollamaHost })} loading={saving.ollama} variant="primary" icon={Save}/>
+                <TextInput label="Model AI (opsional, pisahkan koma)" value={ollamaModels} onChange={setOllamaModels} placeholder="contoh: llama3.1, mistral" mono/>
+                <div className="flex gap-2 mt-2">
+                  <Btn label="Simpan" onClick={() => save('ollama', { OLLAMA_HOST: ollamaHost, OLLAMA_AVAILABLE_MODELS: ollamaModels })} loading={saving.ollama} variant="primary" icon={Save}/>
                   <Btn label="Test" onClick={() => testConn('ollama', intApi.testOllama)} loading={testing.ollama} variant="success" icon={Send}/>
                 </div>
               </div>

@@ -27,8 +27,13 @@ class Settings(BaseSettings):
 
     # AI APIs
     OPENAI_API_KEY: Optional[str] = None
+    OPENAI_AVAILABLE_MODELS: str = ""
+    
     ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_AVAILABLE_MODELS: str = ""
+    
     GOOGLE_API_KEY: Optional[str] = None
+    GOOGLE_AVAILABLE_MODELS: str = ""
 
     # Ollama (Local)
     OLLAMA_HOST: str = "http://localhost:11434"

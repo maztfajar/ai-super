@@ -79,9 +79,9 @@ async def integrations_status(user: User = Depends(get_current_user)):
     return {
         "telegram":  {"configured": is_set("TELEGRAM_BOT_TOKEN"),  "token_masked": mask(env.get("TELEGRAM_BOT_TOKEN", "")), "webhook_url": env.get("TELEGRAM_WEBHOOK_URL", "")},
         "whatsapp":  {"configured": is_set("WHATSAPP_ACCESS_TOKEN"), "token_masked": mask(env.get("WHATSAPP_ACCESS_TOKEN", "")), "phone_number_id": env.get("WHATSAPP_PHONE_NUMBER_ID", "") or ""},
-        "openai":    {"configured": is_set("OPENAI_API_KEY"),       "key_masked": mask(env.get("OPENAI_API_KEY", ""))},
-        "anthropic": {"configured": is_set("ANTHROPIC_API_KEY"),    "key_masked": mask(env.get("ANTHROPIC_API_KEY", ""))},
-        "google":    {"configured": is_set("GOOGLE_API_KEY"),       "key_masked": mask(env.get("GOOGLE_API_KEY", ""))},
+        "openai":    {"configured": is_set("OPENAI_API_KEY"),       "key_masked": mask(env.get("OPENAI_API_KEY", "")), "models": env.get("OPENAI_AVAILABLE_MODELS", "")},
+        "anthropic": {"configured": is_set("ANTHROPIC_API_KEY"),    "key_masked": mask(env.get("ANTHROPIC_API_KEY", "")), "models": env.get("ANTHROPIC_AVAILABLE_MODELS", "")},
+        "google":    {"configured": is_set("GOOGLE_API_KEY"),       "key_masked": mask(env.get("GOOGLE_API_KEY", "")), "models": env.get("GOOGLE_AVAILABLE_MODELS", "")},
         "sumopod":   {"configured": is_set("SUMOPOD_API_KEY"),      "key_masked": mask(env.get("SUMOPOD_API_KEY", "")),
                       "host": env.get("SUMOPOD_HOST", "https://ai.sumopod.com/v1"),
                       "models": env.get("SUMOPOD_AVAILABLE_MODELS", "")},
@@ -109,9 +109,9 @@ async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
     """Simpan API key ke file .env"""
     MODEL_PROVIDERS = ["openai", "anthropic", "google", "sumopod", "ollama"]
     ALLOWED_KEYS = {
-        "openai":    ["OPENAI_API_KEY"],
-        "anthropic": ["ANTHROPIC_API_KEY"],
-        "google":    ["GOOGLE_API_KEY"],
+        "openai":    ["OPENAI_API_KEY", "OPENAI_AVAILABLE_MODELS"],
+        "anthropic": ["ANTHROPIC_API_KEY", "ANTHROPIC_AVAILABLE_MODELS"],
+        "google":    ["GOOGLE_API_KEY", "GOOGLE_AVAILABLE_MODELS"],
         "sumopod":   ["SUMOPOD_API_KEY", "SUMOPOD_HOST", "SUMOPOD_AVAILABLE_MODELS", "SUMOPOD_DEFAULT_MODEL"],
         "ollama":    ["OLLAMA_HOST", "OLLAMA_DEFAULT_MODEL", "OLLAMA_AVAILABLE_MODELS"],
         "telegram":  ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_URL"],
