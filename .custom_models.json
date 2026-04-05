@@ -1,13 +1,13 @@
 [
   {
-    "id": "b801d9d0",
-    "name": "OpenRouter AI",
+    "id": "49a0dd45",
+    "name": "OpenRouter",
     "base_url": "https://openrouter.ai/api/v1",
-    "api_key": "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",
-    "models": "stepfun/step-3.5-flash:free",
-    "icon": "⚡",
+    "api_key": "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",
+    "models": "qwen/qwen3.6-plus:free",
+    "icon": "🔌",
     "status": "connected",
-    "created_at": "2026-03-29T08:48:36.293782",
-    "last_tested": "2026-04-02T14:01:17.539981"
+    "created_at": "2026-04-05T04:45:19.805993",
+    "last_tested": "2026-04-05T04:50:35.782301"
   }
 ]

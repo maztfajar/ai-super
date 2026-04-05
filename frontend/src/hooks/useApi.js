@@ -204,7 +204,7 @@ export const api = {
   },
 
   // ── Streaming chat via SSE ────────────────────────────────
-  chatStream: function(payload, onChunk, onDone, onSession, onPending) {
+  chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus) {
     const token      = getToken()
     const controller = new AbortController()
 
@@ -235,6 +235,7 @@ export const api = {
               else if (data.type === 'done')    onDone(data)
               else if (data.type === 'session') onSession && onSession(data)
               else if (data.type === 'pending_confirmation') onPending && onPending(data)
+              else if (data.type === 'status')  onStatus && onStatus(data.content)
             } catch(err) {}
           }
         }
@@ -285,4 +286,8 @@ export const api = {
 
     return function() { controller.abort() }
   },
+
+  // RAG / Google Drive
+  gdriveFolders:    ()  => req('GET',  '/rag/google-drive/folders'),
+  gdriveSync:       (d) => req('POST', '/rag/google-drive/sync-folder', d),
 }

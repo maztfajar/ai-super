@@ -23,6 +23,8 @@ Currently available tools:
 2. `read_file` - Read contents of a file. Arguments: `path` (string).
 3. `write_file` - Write content to a file. Arguments: `path` (string), `content` (string).
 4. `ask_model` - Ask another AI model to perform a specific sub-task or get its perspective. Arguments: `model_id` (string), `prompt` (string). Available models in the system: {model_list_str}.
+5. `upload_gdrive` - Upload a created report, code, or data to the user's Google Drive. Arguments: `filename` (string), `content` (string).
+6. `list_gdrive` - Search files in user's Google Drive. Arguments: `query` (string, optional).
 
 **TOOL USAGE RULES:**
 - If you need to use a tool, you MUST output ONLY the exact JSON tool format below and NOTHING ELSE. DO NOT output any conversational text or "thinking" before the tool call.
@@ -129,6 +131,12 @@ class AgentExecutor:
                             res = await write_file(args.get("path", ""), args.get("content", ""))
                         elif cmd == "ask_model":
                             res = await ask_model(args.get("model_id", ""), args.get("prompt", ""))
+                        elif cmd == "upload_gdrive":
+                            from agents.tools import upload_gdrive_file
+                            res = await upload_gdrive_file(args.get("filename", ""), args.get("content", ""))
+                        elif cmd == "list_gdrive":
+                            from agents.tools import list_gdrive
+                            res = await list_gdrive(args.get("query", ""))
                         else:
                             res = f"Unknown tool: {cmd}"
                             
@@ -147,6 +155,12 @@ class AgentExecutor:
                             res = await write_file(args.get("path", ""), args.get("content", ""))
                         elif cmd == "ask_model":
                             res = await ask_model(args.get("model_id", ""), args.get("prompt", ""))
+                        elif cmd == "upload_gdrive":
+                            from agents.tools import upload_gdrive_file
+                            res = await upload_gdrive_file(args.get("filename", ""), args.get("content", ""))
+                        elif cmd == "list_gdrive":
+                            from agents.tools import list_gdrive
+                            res = await list_gdrive(args.get("query", ""))
                         else:
                             res = f"Unknown tool: {cmd}"
                         

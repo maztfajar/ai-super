@@ -164,6 +164,7 @@ export default function Chat() {
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [actualModel, setActualModel] = useState(null)
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
+  const [statusText, setStatusText] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
@@ -283,6 +284,7 @@ export default function Chat() {
       })
     }
     clearStreaming()
+    setStatusText('')
     toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
   }
 
@@ -306,6 +308,7 @@ export default function Chat() {
     }
     addMessage(tempUserMsg)
     setStreaming(true)
+    setStatusText('Menghubungi AI...')
 
     const sessionId = currentSession.id
 
@@ -320,6 +323,7 @@ export default function Chat() {
       async (done) => {
         const fullText = useChatStore.getState().streamingText
         clearStreaming()
+        setStatusText('')
 
         addMessage({
           id: Date.now() + 1,
@@ -340,8 +344,10 @@ export default function Chat() {
       },
       (pendingData) => {
         clearStreaming()
+        setStatusText('')
         setPendingConfirmation(pendingData)
-      }
+      },
+      (status) => setStatusText(status)
     )
   }
 
@@ -592,7 +598,7 @@ export default function Chat() {
                       />
                     ))}
                   </div>
-                  <span className="text-xs text-ink-3">AI sedang berpikir...</span>
+                  <span className="text-xs text-ink-3">{statusText || 'AI sedang berpikir...'}</span>
                 </div>
                 {/* Stop button di thinking state juga */}
                 <button

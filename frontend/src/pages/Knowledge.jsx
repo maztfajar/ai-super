@@ -18,6 +18,11 @@ export default function Knowledge() {
   const [scrapeUrl, setScrapeUrl] = useState('')
   const [scraping, setScraping] = useState(false)
 
+  const [folders, setFolders] = useState([])
+  const [loadingFolders, setLoadingFolders] = useState(false)
+  const [selectedFolder, setSelectedFolder] = useState('')
+  const [syncingDrive, setSyncingDrive] = useState(false)
+
   const loadDocs = () => {
     setLoading(true)
     api.listDocs().then(setDocs).catch(() => {}).finally(() => setLoading(false))
@@ -74,6 +79,35 @@ export default function Knowledge() {
       setTimeout(loadDocs, 1500)
     } catch (e) { toast.error(e.message) }
     finally { setScraping(false) }
+  }
+
+  async function loadFolders() {
+    setLoadingFolders(true)
+    try {
+      const r = await api.gdriveFolders()
+      setFolders(r.folders || [])
+    } catch(e) {
+      toast.error('Gagal memuat folder Drive. Pastikan kredensial Service Account terisi.')
+    } finally {
+      setLoadingFolders(false)
+    }
+  }
+
+  async function syncGDrive() {
+    if (!selectedFolder) return
+    setSyncingDrive(true)
+    toast.loading('Menyinkronkan dokumen dari Drive...', { id: 'gdrive' })
+    try {
+      const r = await api.gdriveSync({ folder_id: selectedFolder, collection: 'default' })
+      toast.success(r.message, { id: 'gdrive' })
+      setTimeout(loadDocs, 2000)
+    } catch(e) {
+      toast.error(e.message, { id: 'gdrive' })
+    } finally {
+      setSyncingDrive(false)
+      setSelectedFolder('')
+      setFolders([]) // Reset to hide the list
+    }
   }
 
   return (
@@ -185,6 +219,51 @@ export default function Knowledge() {
             >
               <Globe size={12} /> {scraping ? 'Scraping...' : 'Scrape & Index'}
             </button>
+          </div>
+
+          {/* GDrive Import */}
+          <div className="bg-bg-3 border border-border rounded-xl p-3">
+            <h3 className="text-xs font-semibold text-ink mb-2">☁️ Import Google Drive</h3>
+            
+            {folders.length === 0 && !loadingFolders ? (
+              <button
+                onClick={loadFolders}
+                className="w-full flex items-center justify-center gap-1.5 py-2 bg-success/10 hover:bg-success/20 border border-success/20 text-success rounded-lg text-xs font-medium transition-colors"
+              >
+                Pilih Folder dari Drive
+              </button>
+            ) : null}
+
+            {loadingFolders && (
+              <div className="flex items-center gap-2 text-xs text-ink-3 py-2 justify-center">
+                <RefreshCw size={12} className="animate-spin" /> Memuat folder...
+              </div>
+            )}
+
+            {folders.length > 0 && (
+              <div className="space-y-2 mt-2 animate-fade">
+                <select
+                  value={selectedFolder}
+                  onChange={(e) => setSelectedFolder(e.target.value)}
+                  className="w-full bg-bg-4 border border-border-2 rounded-lg px-2 text-[10px] text-ink outline-none py-2 focus:border-accent"
+                >
+                  <option value="">-- Pilih Folder --</option>
+                  {folders.map(f => (
+                    <option key={f.id} value={f.id}>📁 {f.name}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={() => setFolders([])} className="flex-1 py-1.5 bg-bg-4 hover:bg-bg-5 border border-border-2 rounded-lg text-xs font-medium text-ink-3 transition-colors">Batal</button>
+                  <button
+                    onClick={syncGDrive}
+                    disabled={syncingDrive || !selectedFolder}
+                    className="flex-[2] flex items-center justify-center gap-1.5 py-1.5 bg-success/10 hover:bg-success/20 border border-success/20 text-success rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {syncingDrive ? 'Sinkronisasi...' : 'Sync ke RAG'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Tips */}

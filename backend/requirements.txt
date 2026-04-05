@@ -35,6 +35,20 @@ requests>=2.32.0
 pypdf>=4.2.0
 python-docx>=1.1.2
 beautifulsoup4>=4.12.0
+openpyxl>=3.1.0          # XLSX support
+python-pptx>=0.6.23      # PPTX support
+
+# ── RAG / Vector Store ────────────────────────────────────────
+chromadb>=0.5.0
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-openai>=0.1.0   # Untuk OpenAI & Sumopod (OpenAI-compatible)
+langchain-core>=0.2.0
+
+# ── Integrations ──────────────────────────────────────────────
+google-api-python-client>=2.0.0
+google-auth-httplib2>=0.2.0
+google-auth-oauthlib>=1.0.0
 
 # ── Task Queue ────────────────────────────────────────────────
 celery>=5.4.0

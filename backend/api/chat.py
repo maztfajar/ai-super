@@ -184,6 +184,7 @@ async def chat_send(
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': communicator_model})}\n\n"
 
         try:
+            yield f"data: {json.dumps({'type': 'status', 'content': 'Menganalisa tingkat kesulitan tugas...'})}\n\n"
             # 1. TASK CLASSIFICATION
             classification = await task_classifier.classify(req.message)
             task_type = classification["category"]
@@ -205,7 +206,10 @@ async def chat_send(
             # 3. EXECUTION
             
             if is_complex:
+                yield f"data: {json.dumps({'type': 'status', 'content': 'Mengaktifkan mode Analisa Mendalam (Multi-AI)...'})}\n\n"
                 raw_result = await voting_engine.execute_complex_task(system_prompt, req.message, history)
+                
+                yield f"data: {json.dumps({'type': 'status', 'content': 'Menyusun kesimpulan jawaban akhir...'})}\n\n"
                 
                 # 4. STRICT COMMUNICATION LAYER (Only for complex/voted tasks)
                 com_messages = [
@@ -216,6 +220,7 @@ async def chat_send(
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             else:
+                yield f"data: {json.dumps({'type': 'status', 'content': 'Merespons kueri...'})}\n\n"
                 # Directly stream through the communicator model to retain conversational flow and reduce latency
                 async for chunk in agent_executor.stream_chat(
                     base_model=communicator_model,

@@ -670,6 +670,66 @@ function WebhookSection() {
   )
 }
 
+// ── GoogleDriveCard ───────────────────────────────────────────
+function GoogleDriveCard({ status, onSave, saving }) {
+  const [creds, setCreds] = useState('')
+  const [open, setOpen] = useState(false)
+  const configured = status?.google_drive?.configured
+
+  return (
+    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden transition-all duration-200">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-bg-4 transition-colors">
+        <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-lg flex-shrink-0">☁️</div>
+        <div className="flex-1 min-w-0 text-left">
+          <div className="text-sm font-semibold text-ink">Google Drive</div>
+          <div className="text-[10px] text-ink-3">Beri akses AI untuk membuat dan menyimpan file langsung ke Google Drive</div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <StatusBadge ok={configured}/>
+          {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+        </div>
+      </button>
+
+      <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+        <div className="overflow-hidden">
+          <div className="px-4 pb-4 pt-2 border-t border-border">
+            <div className="space-y-3">
+              <Textarea 
+                label="Service Account JSON Kredensial" 
+                value={creds} 
+                onChange={setCreds} 
+                placeholder='{ "type": "service_account", "project_id": "...", ... }' 
+                hint="Tempel seluruh isi file kredensial JSON tipe Service Account dari Google Cloud"
+                rows={4}
+              />
+              <Btn label="Simpan Kredensial" onClick={() => {
+                if (!creds.trim()) { toast.error('Isi kredensial JSON'); return; }
+                if (!creds.trim().startsWith('{')) { toast.error('Harus berformat JSON valid'); return; }
+                
+                // Safe UTF-8 Base64 encoding
+                const encoded = btoa(encodeURIComponent(creds.trim()).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)))
+                onSave('google_drive', { GOOGLE_DRIVE_CREDENTIALS: encoded })
+                setCreds('')
+              }} loading={saving} variant="primary" icon={Save}/>
+              
+              <div className="bg-bg-4 rounded-xl p-3 text-[10px] space-y-1 text-ink-3 mt-2">
+                <div className="text-ink-2 font-semibold mb-1.5 flex items-center gap-1"><AlertCircle size={12}/> Cara mendapatkan JSON Google Cloud:</div>
+                <div className="pl-2 space-y-1">
+                  <div>1. Login ke <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-accent underline">Google Cloud Console</a>.</div>
+                  <div>2. Buat Project baru dan pastikan <span className="font-semibold text-ink-2">Google Drive API</span> sudah **Enabled**.</div>
+                  <div>3. Masuk ke **APIs & Services** {'>'} **Credentials**. Klik Create Credentials {'>'} **Service Account**.</div>
+                  <div>4. Buka Service Account tersebut, tab **Keys** {'>'} Add Key {'>'} Create New Key (JSON).</div>
+                  <div>5. File JSON akan terdownload. Tempel seluruh isinya di atas.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Integrations ─────────────────────────────────────────
 export default function Integrations() {
   const [status,     setStatus]     = useState(null)
@@ -699,6 +759,7 @@ export default function Integrations() {
   const TABS = [
     { id: 'messaging', label: 'Messaging', icon: '💬' },
     { id: 'model_ai',  label: 'Model AI',  icon: '🤖' },
+    { id: 'cloud_storage', label: 'Cloud Storage', icon: '☁️' },
     { id: 'webhook',   label: 'Webhook & Otomasi', icon: '🔗' },
     { id: 'api_docs',  label: 'API Endpoints', icon: '🔌' },
   ]
@@ -858,6 +919,10 @@ export default function Integrations() {
             </Card>
           </div>
           <CustomModelSection/>
+        </div>
+
+        <div className={clsx("space-y-3", activeTab !== 'cloud_storage' && "hidden")}>
+          <GoogleDriveCard status={status} onSave={save} saving={saving.google_drive}/>
         </div>
 
         <div className={clsx(activeTab !== 'webhook' && "hidden")}>

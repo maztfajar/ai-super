@@ -45,13 +45,19 @@ class Settings(BaseSettings):
     SUMOPOD_HOST: str = "https://ai.sumopod.com/v1"
     SUMOPOD_DEFAULT_MODEL: str = ""
     SUMOPOD_AVAILABLE_MODELS: str = ""
+    # Embedding via Sumopod (OpenAI-compatible endpoint)
+    SUMOPOD_EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     # Default model
     DEFAULT_MODEL: str = "ollama/llama3.1"
 
     # RAG
     CHROMA_PERSIST_DIR: str = "./data/chroma_db"
+    RAG_DOCUMENTS_DIR: str = "../rag_documents"  # Folder dokumen RAG (relative to backend/)
+    RAG_TIMEOUT_SECONDS: int = 45                # Timeout per dokumen processing
+    EMBEDDING_PROVIDER: str = "sumopod"          # options: sumopod, openai, google, local
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     # Telegram
     TELEGRAM_BOT_TOKEN: Optional[str] = None
@@ -70,7 +76,7 @@ class Settings(BaseSettings):
     # Files
     UPLOAD_DIR: str = "./data/uploads"
     MAX_UPLOAD_SIZE_MB: int = 50
-    ALLOWED_EXTENSIONS: str = "pdf,docx,txt,csv,md,json"
+    ALLOWED_EXTENSIONS: str = "pdf,docx,txt,csv,md,json,xlsx,xls,pptx,ppt"
 
     # ── Email (SMTP) ──────────────────────────────────────────
     SMTP_HOST: str = ""

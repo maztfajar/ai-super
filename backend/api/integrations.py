@@ -87,6 +87,7 @@ async def integrations_status(user: User = Depends(get_current_user)):
                       "models": env.get("SUMOPOD_AVAILABLE_MODELS", "")},
         "ollama":    {"configured": True, "host": env.get("OLLAMA_HOST", "http://localhost:11434"),
                       "models": env.get("OLLAMA_AVAILABLE_MODELS", "")},
+        "google_drive": {"configured": is_set("GOOGLE_DRIVE_CREDENTIALS")},
     }
 
 
@@ -117,6 +118,7 @@ async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
         "telegram":  ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_URL"],
         "whatsapp":  ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_VERIFY_TOKEN"],
         "admin":     ["ADMIN_USERNAME", "ADMIN_PASSWORD"],
+        "google_drive": ["GOOGLE_DRIVE_CREDENTIALS"],
     }
 
     allowed = ALLOWED_KEYS.get(req.provider, [])
