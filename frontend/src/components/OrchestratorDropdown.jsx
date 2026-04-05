@@ -113,24 +113,45 @@ export default function OrchestratorDropdown({ value, onChange }) {
             {savedWorkflows.length === 0 ? (
               <div className="px-2.5 py-2 text-xs text-ink-3 italic">Belum ada workflow</div>
             ) : (
-              savedWorkflows.map((wf) => (
-                <button
-                  key={wf.id}
-                  onClick={() => handleSelect(wf.id)}
-                  className={clsx(
-                    'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all text-sm',
-                    selected === wf.id
-                      ? 'bg-accent/10 text-accent-2'
-                      : 'text-ink hover:bg-bg-4'
-                  )}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate">{wf.name}</div>
-                    {wf.model && <div className="text-[10px] text-ink-3 truncate mt-0.5 font-mono">{wf.model}</div>}
-                  </div>
-                  {selected === wf.id && <Check size={13} className="text-accent-2" />}
-                </button>
-              ))
+              savedWorkflows.map((wf) => {
+                // Generate dynamic model label based on active models
+                let dynamicModel = wf.model
+                if (activeConfiguredModels?.length > 0) {
+                  const getName = (idx) => activeConfiguredModels[idx]?.name.replace('🧠 ', '') || ''
+                  
+                  if (wf.id === 'wf-riset-data') {
+                    dynamicModel = activeConfiguredModels.length > 1 
+                      ? `Kombinasi (${getName(0)} + ${getName(1)})` 
+                      : getName(0)
+                  } else if (wf.id === 'wf-analisis-laporan') {
+                    dynamicModel = getName(0)
+                  } else if (wf.id === 'wf-auto-reply') {
+                    const idx = activeConfiguredModels.length > 2 ? 2 : 0
+                    dynamicModel = getName(idx)
+                  }
+                } else {
+                  dynamicModel = '(Belum ada model AI terhubung)'
+                }
+
+                return (
+                  <button
+                    key={wf.id}
+                    onClick={() => handleSelect(wf.id)}
+                    className={clsx(
+                      'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all text-sm',
+                      selected === wf.id
+                        ? 'bg-accent/10 text-accent-2'
+                        : 'text-ink hover:bg-bg-4'
+                    )}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate">{wf.name}</div>
+                      <div className="text-[10px] text-ink-3 truncate mt-0.5 font-mono">{dynamicModel}</div>
+                    </div>
+                    {selected === wf.id && <Check size={13} className="text-accent-2" />}
+                  </button>
+                )
+              })
             )}
           </div>
 
