@@ -6,8 +6,42 @@ from db.models import User, Message, ChatSession, KnowledgeDoc, WorkflowRun
 from core.auth import get_current_user
 from core.model_manager import model_manager
 from datetime import datetime, timedelta
+from core.config import settings
 
 router = APIRouter()
+
+# Detect database dialect for raw SQL compatibility
+_is_postgres = 'postgresql' in settings.DATABASE_URL
+
+def _timeline_sql():
+    """Return the timeline query string appropriate for the active DB."""
+    if _is_postgres:
+        return """SELECT CAST(created_at AS DATE) as day, COUNT(*) as cnt,
+                         SUM(tokens_input + tokens_output) as tokens
+                  FROM messages WHERE user_id = :uid
+                    AND created_at >= CURRENT_DATE - INTERVAL '7 days'
+                  GROUP BY day ORDER BY day"""
+    return """SELECT DATE(created_at) as day, COUNT(*) as cnt,
+                     SUM(tokens_input + tokens_output) as tokens
+              FROM messages WHERE user_id = :uid
+                AND created_at >= DATE('now','-7 days')
+              GROUP BY day ORDER BY day"""
+
+def _timeline_full_sql():
+    """Timeline query with cost column."""
+    if _is_postgres:
+        return """SELECT CAST(created_at AS DATE) as day, COUNT(*) as cnt,
+                         SUM(tokens_input + tokens_output) as tokens,
+                         SUM(cost_usd) as cost
+                  FROM messages WHERE user_id = :uid
+                    AND created_at >= CURRENT_DATE - INTERVAL '7 days'
+                  GROUP BY day ORDER BY day"""
+    return """SELECT DATE(created_at) as day, COUNT(*) as cnt,
+                     SUM(tokens_input + tokens_output) as tokens,
+                     SUM(cost_usd) as cost
+              FROM messages WHERE user_id = :uid
+                AND created_at >= DATE('now','-7 days')
+              GROUP BY day ORDER BY day"""
 
 
 @router.get("/dashboard")
@@ -50,10 +84,7 @@ async def dashboard(db: AsyncSession = Depends(get_db), user: User = Depends(get
     # Fetch timeline data for charts (including tokens and messages)
     from sqlalchemy import text
     timeline_rows = await db.execute(
-        text("""SELECT DATE(created_at) as day, COUNT(*) as cnt, SUM(tokens_input + tokens_output) as tokens
-                FROM messages WHERE user_id = :uid
-                  AND created_at >= DATE('now','-7 days')
-                GROUP BY day ORDER BY day"""),
+        text(_timeline_sql()),
         {"uid": user.id}
     )
     res_timeline = {}
@@ -228,12 +259,7 @@ async def system_stats(user: User = Depends(get_current_user)):
 async def message_timeline(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     from sqlalchemy import text
     rows = await db.execute(
-        text("""SELECT DATE(created_at) as day, COUNT(*) as cnt,
-                       SUM(tokens_input + tokens_output) as tokens,
-                       SUM(cost_usd) as cost
-                FROM messages WHERE user_id = :uid
-                  AND created_at >= DATE('now','-7 days')
-                GROUP BY day ORDER BY day"""),
+        text(_timeline_full_sql()),
         {"uid": user.id}
     )
     result = {}
@@ -433,7 +459,10 @@ async def clean_storage(
             {"cutoff": cutoff.isoformat()}
         )
         deleted_sess = result2.rowcount
-        await db.execute(text("VACUUM"))
+        try:
+            await db.execute(text("VACUUM"))
+        except Exception:
+            pass  # VACUUM is SQLite-only, skip on PostgreSQL
         await db.commit()
         detail = f"Dihapus {deleted_sess} sesi dan {deleted_msgs} pesan (>90 hari)"
 

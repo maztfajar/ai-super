@@ -104,18 +104,41 @@ async def trigger_workflow(
     return {"run_id": run.id, "status": "started"}
 
 async def _execute_workflow(run_id: str, wf: WorkflowDef):
-    import asyncio
     from db.database import AsyncSessionLocal
-    await asyncio.sleep(1)
-    async with AsyncSessionLocal() as db:
-        run = await db.get(WorkflowRun, run_id)
-        if run:
-            run.status = "success"
-            run.output = json.dumps({"message": f"Workflow '{wf.name}' executed successfully"})
-            run.finished_at = datetime.utcnow()
-            run.duration_ms = 1000
-            db.add(run)
-            await db.commit()
+    import traceback
+    
+    try:
+        # Run workflow logic via AI Agent
+        from core.model_manager import model_manager
+        from agents.executor import agent_executor
+        
+        prompt = f"Eksekusi tugas workflow berikut secara autonomous:\nNama: {wf.name}\nDeskripsi: {wf.description or 'Tidak ada deskripsi'}\n\nLakukan analisis atau jalankan perintah yang diperlukan untuk menyelesaikan tugas ini."
+        
+        output_buffer = ""
+        # Use orchestrator seed-2-0-pro or default
+        model = "sumopod/seed-2-0-pro" if "sumopod/seed-2-0-pro" in model_manager.available_models else model_manager.get_default_model()
+        
+        async for chunk in agent_executor.stream_chat(model, [{"role": "user", "content": prompt}], include_tool_logs=True):
+            output_buffer += chunk
+            
+        async with AsyncSessionLocal() as db:
+            run = await db.get(WorkflowRun, run_id)
+            if run:
+                run.status = "success"
+                run.output = output_buffer
+                run.finished_at = datetime.utcnow()
+                run.duration_ms = int((run.finished_at - run.started_at).total_seconds() * 1000) if run.started_at else 1000
+                db.add(run)
+                await db.commit()
+    except Exception as e:
+        async with AsyncSessionLocal() as db:
+            run = await db.get(WorkflowRun, run_id)
+            if run:
+                run.status = "failed"
+                run.output = f"Error: {str(e)}\n{traceback.format_exc()}"
+                run.finished_at = datetime.utcnow()
+                db.add(run)
+                await db.commit()
 
 @router.get("/{wf_id}/runs")
 async def get_runs(

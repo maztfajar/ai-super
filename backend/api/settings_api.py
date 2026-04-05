@@ -637,8 +637,15 @@ async def restart_server(user: User = Depends(get_current_user)):
         except Exception as e:
             log.error("Touch reload failed", error=str(e))
 
-        # Last resort
-        os.kill(os.getpid(), signal.SIGTERM)
+        # Strategy 3 (Fallback): In-place process replacement
+        import sys
+        try:
+            log.info("Attempting in-place restart via os.execv")
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        except Exception as e:
+            log.error("os.execv restart failed", error=str(e))
+            # Last resort: kill the process (only safe if monitored by PM2 or similar)
+            os.kill(os.getpid(), signal.SIGTERM)
 
     asyncio.create_task(do_restart())
     return {"status": "restarting", "message": "Server restart dalam 1 detik..."}

@@ -160,6 +160,13 @@ class ModelManager:
             log.warning("Failed to load custom models", error=str(e))
         return models
 
+    async def chat_completion(self, model: str, messages: list, temperature: float = 0.7, max_tokens: int = 4096) -> str:
+        """Helper to get a full text response instead of a stream for internal logic."""
+        full = []
+        async for chunk in self.chat_stream(model, messages, temperature, max_tokens):
+            full.append(chunk)
+        return "".join(full)
+
     async def chat_stream(
         self,
         model: str,

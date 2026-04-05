@@ -97,6 +97,7 @@ export const api = {
   createSession: (title) => req('POST', '/chat/sessions', { title }),
   listSessions:  ()      => req('GET',  '/chat/sessions'),
   getMessages:   (id)    => req('GET',  '/chat/sessions/' + id + '/messages'),
+  getNewMessages:(id, afterTs) => req('GET', '/chat/sessions/' + id + '/messages/new' + (afterTs ? '?after_ts=' + encodeURIComponent(afterTs) : '')),
   deleteSession: (id)    => req('DELETE', '/chat/sessions/' + id),
 
   // ── RAG ───────────────────────────────────────────────────
@@ -203,7 +204,7 @@ export const api = {
   },
 
   // ── Streaming chat via SSE ────────────────────────────────
-  chatStream: function(payload, onChunk, onDone, onSession) {
+  chatStream: function(payload, onChunk, onDone, onSession, onPending) {
     const token      = getToken()
     const controller = new AbortController()
 
@@ -230,9 +231,50 @@ export const api = {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.slice(6))
-              if (data.type === 'chunk')   onChunk(data.content)
+              if (data.type === 'chunk')        onChunk(data.content)
               else if (data.type === 'done')    onDone(data)
               else if (data.type === 'session') onSession && onSession(data)
+              else if (data.type === 'pending_confirmation') onPending && onPending(data)
+            } catch(err) {}
+          }
+        }
+      }
+    }).catch(function(e) {
+      if (e.name !== 'AbortError') console.error('Stream error', e)
+    })
+
+    return function() { controller.abort() }
+  },
+
+  executePending: function(payload, onChunk, onDone) {
+    const token      = getToken()
+    const controller = new AbortController()
+
+    fetch(BASE + '/chat/execute_pending', {
+      method:  'POST',
+      headers: Object.assign(
+        { 'Content-Type': 'application/json' },
+        token ? { 'Authorization': 'Bearer ' + token } : {}
+      ),
+      body:   JSON.stringify(payload),
+      signal: controller.signal,
+    }).then(async function(res) {
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer    = ''
+
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) break
+        buffer += decoder.decode(chunk.value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop()
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.type === 'chunk')        onChunk(data.content)
+              else if (data.type === 'done')    onDone(data)
             } catch(err) {}
           }
         }

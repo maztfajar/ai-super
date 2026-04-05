@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useModelsStore } from '../store'
+import { useModelsStore, useOrchestratorStore } from '../store'
 import { api } from '../hooks/useApi'
 import { copyToClipboard } from "../utils/clipboard"
 import toast from 'react-hot-toast'
@@ -34,6 +34,20 @@ const intApi = {
   deleteCustomModel:    (id) => api.deleteCustomModel(id),
   testCustomModel:      (id) => api.testCustomModel(id),
   testCustomConnection: (d) => api.testCustomConnection(d),
+}
+
+/**
+ * Sync backend models (from useModelsStore) → orchestrator store (activeConfiguredModels).
+ * Converts backend format {id, provider, display, status} into orchestrator format {id, name, provider}.
+ */
+function syncModelsToOrchestrator(models) {
+  if (!models || !Array.isArray(models)) return
+  const mapped = models.map(m => ({
+    id: m.id,
+    name: `🧠 ${m.display || m.id}`,
+    provider: (m.provider || 'unknown').charAt(0).toUpperCase() + (m.provider || 'unknown').slice(1),
+  }))
+  useOrchestratorStore.getState().setActiveConfiguredModels(mapped)
 }
 
 // ── Primitives ────────────────────────────────────────────────
@@ -401,7 +415,7 @@ function CustomModelSection() {
     setActing(a => ({ ...a, save: true }))
     try {
       const r = await intApi.addCustomModel(form)
-      if (r.models) useModelsStore.setState({ models: r.models })
+      if (r.models) { useModelsStore.setState({ models: r.models }); syncModelsToOrchestrator(r.models) }
       toast.success('✅ Provider berhasil ditambahkan!')
       setShowAdd(false); setForm(emptyForm); setTestResult(null); await load()
     } catch (e) { toast.error(e.message) }
@@ -413,7 +427,7 @@ function CustomModelSection() {
     setActing(a => ({ ...a, [id + '_del']: true }))
     try {
       const r = await intApi.deleteCustomModel(id)
-      if (r.models) useModelsStore.setState({ models: r.models })
+      if (r.models) { useModelsStore.setState({ models: r.models }); syncModelsToOrchestrator(r.models) }
       toast.success('Provider dihapus'); await load()
     } catch (e) { toast.error(e.message) }
     finally { setActing(a => ({ ...a, [id + '_del']: false })) }
@@ -703,13 +717,24 @@ export default function Integrations() {
     } catch {} finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [])
+  // On mount: also fetch current models and sync to orchestrator store
+  useEffect(() => {
+    load()
+    api.listModels().then(r => {
+      const ms = r.models || []
+      useModelsStore.setState({ models: ms })
+      syncModelsToOrchestrator(ms)
+    }).catch(() => {})
+  }, [])
 
   async function save(provider, fields) {
     setSaving(s => ({ ...s, [provider]: true }))
     try { 
       const r = await intApi.saveKey(provider, fields); 
-      if (r.models) useModelsStore.setState({ models: r.models });
+      if (r.models) {
+        useModelsStore.setState({ models: r.models });
+        syncModelsToOrchestrator(r.models);
+      }
       toast.success(`✓ ${r.message}`); await load() 
     } catch (e) { toast.error(e.message) }
     finally { setSaving(s => ({ ...s, [provider]: false })) }
@@ -742,7 +767,10 @@ export default function Integrations() {
             setReloading(true)
             try { 
               const r = await intApi.reloadModels(); 
-              if (r.models) useModelsStore.setState({ models: r.models });
+              if (r.models) {
+                useModelsStore.setState({ models: r.models });
+                syncModelsToOrchestrator(r.models);
+              }
               toast.success(`✓ ${r.message}`);
             }
             catch (e) { toast.error(e.message) } finally { setReloading(false) }

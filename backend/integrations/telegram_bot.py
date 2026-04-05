@@ -102,7 +102,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         from rag.engine import rag_engine
 
         route  = smart_router.route(text)
-        model  = route.get("model", "")
+        # Default telegram bot to orchestrator (seed-2-0-pro) as requested
+        model  = "sumopod/seed-2-0-pro"
         system = await memory_manager.build_system_prompt(user_id, "tg_" + str(chat_id))
 
         # RAG context

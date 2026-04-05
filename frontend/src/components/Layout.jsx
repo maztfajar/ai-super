@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { useAuthStore, useUIStore, useThemeStore } from '../store'
+import { useAuthStore, useUIStore, useThemeStore, useOrchestratorStore } from '../store'
 import { useState, useEffect } from 'react'
 import { api } from '../hooks/useApi'
 import {
@@ -9,6 +9,8 @@ import {
   Moon, Sun,
 } from 'lucide-react'
 import clsx from 'clsx'
+import OrchestratorDropdown from './OrchestratorDropdown'
+import ChannelSelector from './ChannelSelector'
 
 const NAV_ADMIN = [
   { label: 'Dashboard',   to: '/dashboard',    icon: LayoutDashboard, section: 'Utama' },
@@ -41,14 +43,19 @@ export default function Layout() {
   const navigate  = useNavigate()
   const location  = useLocation()
 
-  const [appName, setAppName]       = useState('AI SUPER ASSISTANT')
+  const appName = useOrchestratorStore(s => s.appName)
+  const setAppName = useOrchestratorStore(s => s.setAppName)
   const [logoUrl, setLogoUrl]       = useState('')
   const [showMenu, setShowMenu]     = useState(false)
+
+  const selectedOrchestrator    = useOrchestratorStore(s => s.selectedOrchestrator)
+  const setSelectedOrchestrator = useOrchestratorStore(s => s.setSelectedOrchestrator)
 
   const { theme, toggleTheme } = useThemeStore()
   const isAdmin = user?.is_admin
   const NAV     = isAdmin ? NAV_ADMIN : NAV_SUBADMIN
 
+  // Sync app profile + models on mount
   useEffect(() => {
     const load = () => {
       api.getAppProfile().then(p => {
@@ -58,8 +65,23 @@ export default function Layout() {
     }
     load()
     window.addEventListener('ai-super-assistant:profile-updated', load)
+
+    // Fetch models and sync to orchestrator store so dropdowns have data on first load
+    const setActiveConfiguredModels = useOrchestratorStore.getState().setActiveConfiguredModels
+    api.listModels().then(r => {
+      const ms = r?.models || []
+      if (ms.length > 0) {
+        const mapped = ms.map(m => ({
+          id: m.id,
+          name: `🧠 ${m.display || m.id}`,
+          provider: (m.provider || 'unknown').charAt(0).toUpperCase() + (m.provider || 'unknown').slice(1),
+        }))
+        setActiveConfiguredModels(mapped)
+      }
+    }).catch(() => {})
+
     return () => window.removeEventListener('ai-super-assistant:profile-updated', load)
-  }, [])
+  }, [setAppName])
 
   useEffect(() => {
     if (!isAdmin) {
@@ -190,6 +212,13 @@ export default function Layout() {
             <span className="text-xs text-ink-3">{appName}</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
+            <OrchestratorDropdown
+              value={selectedOrchestrator}
+              onChange={setSelectedOrchestrator}
+            />
+            <div className="w-px h-5 bg-border" />
+            <ChannelSelector />
+            <div className="w-px h-5 bg-border" />
             <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
               className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
               {theme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}

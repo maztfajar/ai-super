@@ -322,7 +322,13 @@ function ScanningLine() {
 }
 
 function OverviewChart({ data, metric }) {
-  if (!data || data.length === 0) return <div className="h-[180px] flex items-center justify-center text-xs text-ink-3">Menunggu data...</div>
+  if (!data || data.length === 0) return (
+    <div className="h-[180px] flex flex-col items-center justify-center gap-2 text-ink-3">
+      <Clock size={20} className="opacity-30" />
+      <span className="text-xs font-medium">Belum ada data aktivitas</span>
+      <span className="text-[10px] opacity-50">Mulai chat untuk melihat statistik di sini</span>
+    </div>
+  )
   
   const getVal = (d) => {
     if (metric === 'Pesan') return d.messages
@@ -406,15 +412,21 @@ export default function Dashboard() {
   const [data, setData] = useState(null)
   const [system, setSystem] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [metric, setMetric] = useState('Pesan')
   const navigate = useNavigate()
   const scrollRef = useRef(null)
   const [cpuHistory, setCpuHistory] = useState(Array(20).fill(0))
 
   useEffect(() => {
-    const fetch = () => api.dashboard().then(setData).catch(console.error).finally(() => setLoading(false))
-    fetch()
-    const int = setInterval(fetch, 10000)
+    const fetchDashboard = () => {
+      api.dashboard()
+        .then(d => { setData(d); setError(null) })
+        .catch(e => { console.error(e); setError(e.message || 'Gagal memuat data') })
+        .finally(() => setLoading(false))
+    }
+    fetchDashboard()
+    const int = setInterval(fetchDashboard, 10000)
     return () => clearInterval(int)
   }, [])
 
@@ -452,10 +464,42 @@ export default function Dashboard() {
     </div>
   )
 
+  // Error state with retry
+  if (error && !data) return (
+    <div className="p-8 flex flex-col items-center justify-center min-h-[70vh] gap-4">
+      <AlertCircle size={48} className="text-danger opacity-60" />
+      <span className="text-sm text-ink-2 font-medium">{error}</span>
+      <button
+        onClick={() => { setLoading(true); setError(null); api.dashboard().then(d => { setData(d); setError(null) }).catch(e => setError(e.message)).finally(() => setLoading(false)) }}
+        className="px-5 py-2.5 bg-accent hover:bg-accent/80 text-white text-xs font-bold rounded-xl transition-colors"
+      >
+        Coba Lagi
+      </button>
+    </div>
+  )
+
   const stats = data?.stats || {}
   const timeline = data?.timeline || []
-  const usage = data?.usage || []
   const logs = data?.logs || []
+
+  // ── Bug #4 Fix: Merge active models into usage data ────────
+  // If backend returns active models but no usage, still display them
+  const rawUsage = data?.usage || []
+  const activeModels = data?.models || []
+  const usageMap = new Map(rawUsage.map(u => [u.model, u]))
+  // Merge active models that have no usage yet
+  for (const m of activeModels) {
+    if (!usageMap.has(m.id)) {
+      usageMap.set(m.id, {
+        model: m.id,
+        count: 0,
+        tokens: 0,
+        latency: 0,
+        error_rate: 0,
+      })
+    }
+  }
+  const usage = Array.from(usageMap.values())
 
   const chartData = timeline.map(t => ({
     label: t.day.split('-').slice(1).join('/'),
@@ -501,10 +545,10 @@ export default function Dashboard() {
 
       {/* ── StatCards Row ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
-        <StatCard label="Total Pesan" value={stats.total_messages?.toLocaleString()} subtext="+24.1% dari rata-rata" icon={MessageSquare} colorClass="bg-blue-600" glowClass="hover:shadow-blue-500/20" sparkline={<WaveSparkline/>} accentColor="#3B82F6" />
-        <StatCard label="Sesi Aktif" value={stats.total_sessions?.toLocaleString()} subtext="+102 sesi baru minggu ini" icon={Zap} colorClass="bg-emerald-600" glowClass="hover:shadow-emerald-500/20" sparkline={<HeartbeatSparkline/>} accentColor="#10B981" />
-        <StatCard label="Kapasitas RAG" value={stats.total_docs?.toLocaleString()} subtext="+12 file diunggah hari ini" icon={BookOpen} colorClass="bg-orange-600" glowClass="hover:shadow-orange-500/20" sparkline={<VectorSearchSparkline/>} accentColor="#F59E0B" />
-        <StatCard label="Workflow Run" value={stats.workflow_runs?.toLocaleString()} subtext="+1.2k jam eksekusi" icon={Repeat2} colorClass="bg-purple-600" glowClass="hover:shadow-purple-500/20" sparkline={<NodeNetworkSparkline/>} accentColor="#7C3AED" />
+        <StatCard label="Total Pesan" value={(stats.total_messages ?? 0).toLocaleString()} subtext="+24.1% dari rata-rata" icon={MessageSquare} colorClass="bg-blue-600" glowClass="hover:shadow-blue-500/20" sparkline={<WaveSparkline/>} accentColor="#3B82F6" />
+        <StatCard label="Sesi Aktif" value={(stats.total_sessions ?? 0).toLocaleString()} subtext="+102 sesi baru minggu ini" icon={Zap} colorClass="bg-emerald-600" glowClass="hover:shadow-emerald-500/20" sparkline={<HeartbeatSparkline/>} accentColor="#10B981" />
+        <StatCard label="Kapasitas RAG" value={(stats.total_docs ?? 0).toLocaleString()} subtext="+12 file diunggah hari ini" icon={BookOpen} colorClass="bg-orange-600" glowClass="hover:shadow-orange-500/20" sparkline={<VectorSearchSparkline/>} accentColor="#F59E0B" />
+        <StatCard label="Workflow Run" value={(stats.workflow_runs ?? 0).toLocaleString()} subtext="+1.2k jam eksekusi" icon={Repeat2} colorClass="bg-purple-600" glowClass="hover:shadow-purple-500/20" sparkline={<NodeNetworkSparkline/>} accentColor="#7C3AED" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">

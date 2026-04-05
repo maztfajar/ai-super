@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { useAuthStore } from './store'
+import { useAuthStore, useModelsStore, useOrchestratorStore } from './store'
+import { api } from './hooks/useApi'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -30,7 +32,43 @@ function AdminOnly({ children }) {
   return children
 }
 
+/**
+ * Centralized model detection — runs at app-level so models are always
+ * available regardless of which page is visited first.
+ * Fixes: "Belum ada model aktif" intermittent issue (Bug #1).
+ */
+function useModelSync() {
+  const token = useAuthStore(s => s.token)
+
+  useEffect(() => {
+    if (!token) return // not logged in yet
+
+    const fetchAndSync = async () => {
+      try {
+        const r = await api.listModels()
+        const ms = r.models || []
+        useModelsStore.setState({ models: ms })
+        // Sync to orchestrator store for dropdown
+        const mapped = ms.map(m => ({
+          id: m.id,
+          name: `🧠 ${m.display || m.id}`,
+          provider: (m.provider || 'unknown').charAt(0).toUpperCase() + (m.provider || 'unknown').slice(1),
+        }))
+        useOrchestratorStore.getState().setActiveConfiguredModels(mapped)
+      } catch {
+        // Silent fail — models will be retried on next interval
+      }
+    }
+
+    fetchAndSync()
+    const interval = setInterval(fetchAndSync, 60_000) // refresh every 60s
+    return () => clearInterval(interval)
+  }, [token])
+}
+
 export default function App() {
+  useModelSync()
+
   return (
     <BrowserRouter>
       <Toaster position="top-right" toastOptions={{

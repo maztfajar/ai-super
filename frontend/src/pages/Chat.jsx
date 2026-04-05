@@ -5,11 +5,12 @@ import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
 import { api } from '../hooks/useApi'
 import { copyToClipboard } from "../utils/clipboard"
-import { useAuthStore, useChatStore, useModelsStore } from '../store'
+import { useAuthStore, useChatStore, useModelsStore, useOrchestratorStore } from '../store'
+import ChannelSelector from '../components/ChannelSelector'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check,
-  Bot, User, Loader2, Square,
+  Bot, User, Loader2, Square, Sparkles, Zap, FileText,
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -102,7 +103,7 @@ function Bubble({ msg, isStreaming, onStop }) {
                 ))}
               </div>
             )
-          } catch {}
+          } catch { }
           return null
         })()}
       </div>
@@ -146,18 +147,23 @@ export default function Chat() {
   const { user } = useAuthStore()
   const { models } = useModelsStore()
 
+  // Global state
+  const appName = useOrchestratorStore(s => s.appName)
+  const selectedOrchestrator = useOrchestratorStore(s => s.selectedOrchestrator)
+
   const {
     sessions, setSessions,
     currentSession, setCurrentSession,
     messages, setMessages, addMessage,
     streaming, setStreaming,
     streamingText, appendStreamingText, clearStreaming,
-    selectedModel, setSelectedModel,
   } = useChatStore()
 
   const [input, setInput] = useState('')
   const [useRAG, setUseRAG] = useState(true)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const [actualModel, setActualModel] = useState(null)
+  const [pendingConfirmation, setPendingConfirmation] = useState(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
@@ -171,12 +177,11 @@ export default function Chat() {
 
   // Load models + sessions
   useEffect(() => {
-    api.listSessions().then(setSessions).catch(() => {})
+    api.listSessions().then(setSessions).catch(() => { })
     api.listModels().then((r) => {
-      const ms = r.models || []
-      useModelsStore.setState({ models: ms })
-      if (!selectedModel && ms.length > 0) setSelectedModel(ms[0].id)
-    }).catch(() => {})
+      api.listSessions().then(setSessions)
+      // No need to set default model, OrchestratorDropdown manages its own default.
+    }).catch(() => { })
   }, [])
 
   // Load session from URL
@@ -196,6 +201,46 @@ export default function Chat() {
     } catch { toast.error('Gagal memuat pesan') }
     finally { setLoadingMsgs(false) }
   }
+
+  // ── Real-time sync: poll for new messages every 5s ───────
+  // Enables cross-channel sync (Telegram/WhatsApp → Web)
+  useEffect(() => {
+    if (!currentSession?.id) return
+    const POLL_INTERVAL = 5000
+
+    const pollNewMessages = async () => {
+      // Don't poll while streaming — we already get our own messages
+      if (useChatStore.getState().streaming) return
+
+      const currentMsgs = useChatStore.getState().messages
+      if (currentMsgs.length === 0) return
+
+      // Get timestamp of latest known message
+      const lastMsg = currentMsgs[currentMsgs.length - 1]
+      const afterTs = lastMsg?.created_at || ''
+      if (!afterTs) return
+
+      try {
+        const newMsgs = await api.getNewMessages(currentSession.id, afterTs)
+        if (newMsgs && newMsgs.length > 0) {
+          // Merge: only add messages with IDs we don't already have
+          const existingIds = new Set(currentMsgs.map(m => m.id))
+          const uniqueNew = newMsgs.filter(m => !existingIds.has(m.id))
+          if (uniqueNew.length > 0) {
+            const merged = [...currentMsgs, ...uniqueNew]
+            useChatStore.getState().setMessages(merged)
+            // Refresh session list too (title/timestamp may have changed)
+            api.listSessions().then(setSessions).catch(() => {})
+          }
+        }
+      } catch {
+        // Silent fail — polling is best-effort
+      }
+    }
+
+    const interval = setInterval(pollNewMessages, POLL_INTERVAL)
+    return () => clearInterval(interval)
+  }, [currentSession?.id])
 
   async function newSession() {
     try {
@@ -233,7 +278,7 @@ export default function Chat() {
         id: Date.now() + 1,
         role: 'assistant',
         content: partial + '\n\n*[Dihentikan oleh pengguna]*',
-        model: selectedModel,
+        model: selectedOrchestrator,
         created_at: new Date().toISOString(),
       })
     }
@@ -248,6 +293,7 @@ export default function Chat() {
     if (!currentSession) { await newSession(); return }
 
     setInput('')
+    setActualModel(null)
     // Reset textarea height
     if (inputRef.current) inputRef.current.style.height = 'auto'
 
@@ -255,6 +301,7 @@ export default function Chat() {
       id: Date.now(),
       role: 'user',
       content: text,
+      model: selectedOrchestrator,
       created_at: new Date().toISOString(),
     }
     addMessage(tempUserMsg)
@@ -266,8 +313,47 @@ export default function Chat() {
       {
         session_id: sessionId,
         message: text,
-        model: selectedModel,
+        model: selectedOrchestrator,
         use_rag: useRAG,
+      },
+      (chunk) => appendStreamingText(chunk),
+      async (done) => {
+        const fullText = useChatStore.getState().streamingText
+        clearStreaming()
+
+        addMessage({
+          id: Date.now() + 1,
+          role: 'assistant',
+          content: fullText,
+          model: abortRef.current?.actualModel || selectedOrchestrator,
+          rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
+          created_at: new Date().toISOString(),
+        })
+        const updated = await api.listSessions()
+        setSessions(updated)
+      },
+      (sessionData) => {
+        if (sessionData && sessionData.model) {
+          setActualModel(sessionData.model)
+          if (abortRef.current) abortRef.current.actualModel = sessionData.model
+        }
+      },
+      (pendingData) => {
+        clearStreaming()
+        setPendingConfirmation(pendingData)
+      }
+    )
+  }
+
+  function approveExecution(pendingData) {
+    setPendingConfirmation(null)
+    setStreaming(true)
+
+    abortRef.current = api.executePending(
+      {
+        session_id: pendingData.session_id,
+        command: pendingData.command,
+        model: selectedOrchestrator,
       },
       (chunk) => appendStreamingText(chunk),
       async (done) => {
@@ -277,14 +363,10 @@ export default function Chat() {
           id: Date.now() + 1,
           role: 'assistant',
           content: fullText,
-          model: selectedModel,
-          rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
+          model: abortRef.current?.actualModel || selectedOrchestrator,
           created_at: new Date().toISOString(),
         })
-        const updated = await api.listSessions()
-        setSessions(updated)
-      },
-      () => {}
+      }
     )
   }
 
@@ -314,6 +396,13 @@ export default function Chat() {
     }
     e.target.value = ''
   }
+
+  // ── Quick-action cards for the welcome screen ──────────────
+  const quickActions = [
+    { icon: Sparkles, label: 'Chat Biasa', desc: 'Tanya jawab dengan AI', color: 'from-accent to-accent-2' },
+    { icon: Zap, label: 'Perintah', desc: 'Jalankan otomasi/perintah', color: 'from-amber-500 to-orange-500' },
+    { icon: FileText, label: 'Analisa Dokumen', desc: 'Upload & analisa file', color: 'from-emerald-500 to-teal-500' },
+  ]
 
   return (
     <div className="flex h-full">
@@ -355,17 +444,8 @@ export default function Chat() {
             {currentSession?.title || 'Pilih atau buat sesi chat'}
           </span>
 
-          {/* Model select */}
-          <select
-            value={selectedModel || ''}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="bg-bg-4 border border-border-2 rounded-lg px-2.5 py-1.5 text-xs text-ink outline-none cursor-pointer"
-          >
-            {models.length === 0 && <option value="">Tidak ada model</option>}
-            {models.map((m) => (
-              <option key={m.id} value={m.id}>{m.display}</option>
-            ))}
-          </select>
+          {/* Channel selector */}
+          <ChannelSelector />
 
           {/* RAG toggle */}
           <button
@@ -386,17 +466,50 @@ export default function Chat() {
         <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
           {!currentSession && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              <div className="text-5xl mb-4">🧠</div>
-              <h2 className="text-lg font-bold text-ink mb-2">Halo! Saya AI SUPER ASSISTANT</h2>
-              <p className="text-sm text-ink-3 mb-6 max-w-sm">
-                AI Super Assistant pribadi kamu. Bisa chat, analisa dokumen, otomasi tugas, dan integrasi ke mana saja.
+              {/* Animated brain icon */}
+              <div className="relative mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center shadow-2xl shadow-accent/30">
+                  <span className="text-4xl">🧠</span>
+                </div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-success border-2 border-bg flex items-center justify-center">
+                  <span className="w-2 h-2 rounded-full bg-white animate-pulse2" />
+                </div>
+              </div>
+
+              {/* Dynamic greeting using appName from global state */}
+              <h2 className="text-xl font-bold text-ink mb-2">
+                Halo! Saya <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">{appName}</span>
+              </h2>
+              <p className="text-sm text-ink-3 mb-8 max-w-md leading-relaxed">
+                Ketik pesan, berikan perintah, atau jalankan alur kerja otomatis. Saya akan mengatur model AI mana yang paling tepat untuk merespons Anda.
               </p>
+
+              {/* Quick action cards */}
+              <div className="flex gap-3 mb-8">
+                {quickActions.map(({ icon: Icon, label, desc, color }) => (
+                  <button
+                    key={label}
+                    onClick={newSession}
+                    className="flex flex-col items-center gap-2.5 px-5 py-4 bg-bg-2 border border-border rounded-xl hover:border-accent/40 hover:bg-bg-3 transition-all group w-40"
+                  >
+                    <div className={clsx('w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform', color)}>
+                      <Icon size={18} className="text-white" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-ink group-hover:text-accent-2 transition-colors">{label}</div>
+                      <div className="text-[10px] text-ink-3 mt-0.5">{desc}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
               <button
                 onClick={newSession}
-                className="flex items-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent/80 text-white rounded-xl text-sm font-medium"
+                className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent/80 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-accent/25 hover:shadow-xl hover:shadow-accent/30"
               >
                 <Plus size={15} /> Mulai Chat Baru
               </button>
+
               {models.length === 0 && (
                 <div className="mt-6 p-3 bg-warn/10 border border-warn/20 rounded-xl text-xs text-warn max-w-sm">
                   ⚠️ Belum ada model aktif. Buka <span className="font-mono">Integrasi</span> untuk menambahkan API key atau install Ollama.
@@ -418,10 +531,48 @@ export default function Chat() {
           {/* Streaming bubble dengan tombol stop */}
           {streaming && streamingText && (
             <Bubble
-              msg={{ role: 'assistant', content: streamingText, created_at: new Date().toISOString() }}
+              msg={{ role: 'assistant', content: streamingText, model: actualModel || selectedOrchestrator, created_at: new Date().toISOString() }}
               isStreaming={true}
               onStop={stopStreaming}
             />
+          )}
+
+          {/* Pending Confirmation UI */}
+          {pendingConfirmation && (
+            <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
+              <div className="flex gap-4">
+                <div className="w-8 h-8 flex-shrink-0 bg-warn/20 border border-warn/50 rounded-lg flex items-center justify-center">
+                  <span className="text-warn text-lg">⚠️</span>
+                </div>
+                <div className="flex-1 min-w-0 bg-bg-2 border border-warn/30 rounded-2xl rounded-tl-sm px-4 py-3 shadow-lg shadow-black/20">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-bold text-warn">VPS Execution Request</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warn/20 text-warn tracking-widest">{pendingConfirmation.risk} RISK</span>
+                  </div>
+                  <div className="text-xs text-ink-2 mb-3">
+                    <p className="font-semibold text-ink mb-1">Tujuan Perintah:</p>
+                    <p>{pendingConfirmation.purpose}</p>
+                  </div>
+                  <div className="bg-bg-3 p-2.5 rounded border border-border-2 font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap">
+                    {pendingConfirmation.command}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => approveExecution(pendingConfirmation)}
+                      className="flex-1 bg-success hover:bg-success/80 text-white font-medium py-2 rounded-lg text-xs shadow-md transition-all"
+                    >
+                      ✓ Setujui Eksekusi
+                    </button>
+                    <button
+                      onClick={() => setPendingConfirmation(null)}
+                      className="flex-1 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink font-medium py-2 border border-border rounded-lg text-xs transition-all"
+                    >
+                      ✗ Batalkan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Thinking indicator */}
@@ -479,7 +630,7 @@ export default function Chat() {
             )}
 
             <div className="flex gap-2 items-end">
-              {/* Upload */}
+              {/* Upload (paperclip) — left side */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -510,7 +661,7 @@ export default function Chat() {
                   placeholder={
                     streaming
                       ? 'AI sedang merespons... (Esc untuk stop)'
-                      : 'Ketik pesan... (Enter kirim, Shift+Enter baris baru)'
+                      : 'Ketik pesan, perintah, atau minta analisa data...'
                   }
                   disabled={streaming}
                   rows={1}
