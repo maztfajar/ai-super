@@ -203,10 +203,8 @@ async def chat_send(
                 return # Stop generator immediately
                 
             # 3. EXECUTION
-            yield f"data: {json.dumps({'type': 'chunk', 'content': f'*(Classified as {task_type})*\\n\\n'})}\n\n"
             
             if is_complex:
-                yield f"data: {json.dumps({'type': 'chunk', 'content': '*Initiating Multi-AI Parallel Voting Engine...*\\n\\n'})}\n\n"
                 raw_result = await voting_engine.execute_complex_task(system_prompt, req.message, history)
                 
                 # 4. STRICT COMMUNICATION LAYER (Only for complex/voted tasks)
@@ -218,7 +216,6 @@ async def chat_send(
                     full_response += chunk
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             else:
-                yield f"data: {json.dumps({'type': 'chunk', 'content': '*Initiating Fast Agent Executor...*\\n\\n'})}\n\n"
                 # Directly stream through the communicator model to retain conversational flow and reduce latency
                 async for chunk in agent_executor.stream_chat(
                     base_model=communicator_model,
