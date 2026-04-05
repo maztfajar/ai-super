@@ -177,8 +177,8 @@ async def chat_send(
 
     async def generate():
         full_response = ""
-        # The communication layer MUST be seed-2-0-pro or equivalent configured fallback
-        communicator_model = "sumopod/seed-2-0-pro" if "sumopod/seed-2-0-pro" in model_manager.available_models else model
+        # The communication layer follows the user's choice or the AI Core routed model
+        communicator_model = model
         
         # Send session info mapping exactly what user sees
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': communicator_model})}\n\n"
