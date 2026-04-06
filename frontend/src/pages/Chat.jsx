@@ -10,12 +10,14 @@ import ChannelSelector from '../components/ChannelSelector'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check,
-  Bot, User, Loader2, Square, Sparkles, Zap, FileText,
+  Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload
 } from 'lucide-react'
 import clsx from 'clsx'
 
+import DriveFolderPicker from '../components/DriveFolderPicker'
+
 // ── Message bubble ────────────────────────────────────────────
-function Bubble({ msg, isStreaming, onStop }) {
+function Bubble({ msg, isStreaming, onStop, onDriveUpload }) {
   const [copied, setCopied] = useState(false)
   const isUser = msg.role === 'user'
 
@@ -79,14 +81,23 @@ function Bubble({ msg, isStreaming, onStop }) {
             </button>
           )}
           {!isUser && !isStreaming && (
-            <button
-              onClick={copy}
-              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all"
-            >
-              {copied
-                ? <Check size={10} className="text-success" />
-                : <Copy size={10} className="text-ink-3" />}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onDriveUpload(msg)}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all"
+                title="Simpan ke Google Drive"
+              >
+                <CloudUpload size={11} className="text-accent" />
+              </button>
+              <button
+                onClick={copy}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all"
+              >
+                {copied
+                  ? <Check size={10} className="text-success" />
+                  : <Copy size={10} className="text-ink-3" />}
+              </button>
+            </div>
           )}
         </div>
 
@@ -165,6 +176,7 @@ export default function Chat() {
   const [actualModel, setActualModel] = useState(null)
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
   const [statusText, setStatusText] = useState('')
+  const [uploadingDriveMsg, setUploadingDriveMsg] = useState(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
@@ -403,6 +415,25 @@ export default function Chat() {
     e.target.value = ''
   }
 
+  // ── Handling Google Drive Upload Modal ──
+  async function handleConfirmDriveUpload(folder, format) {
+     if (!uploadingDriveMsg) return
+     const toastId = toast.loading('Menyimpan ke Drive...')
+     try {
+        const filename = `AI_Generated_${Date.now()}.${format}`
+        const res = await api.uploadGeneratedToDrive(uploadingDriveMsg.content, format, filename, folder ? folder.id : null)
+        toast.dismiss(toastId)
+        toast.success(`Berhasil disimpan!`)
+        // You could also open the link:
+        // window.open(res.link, '_blank')
+     } catch (e) {
+        toast.dismiss(toastId)
+        toast.error(e.message || 'Gagal menyimpan ke drive')
+     } finally {
+        setUploadingDriveMsg(null)
+     }
+  }
+
   // ── Quick-action cards for the welcome screen ──────────────
   const quickActions = [
     { icon: Sparkles, label: 'Chat Biasa', desc: 'Tanya jawab dengan AI', color: 'from-accent to-accent-2' },
@@ -531,7 +562,12 @@ export default function Chat() {
           )}
 
           {messages.map((msg) => (
-            <Bubble key={msg.id} msg={msg} isStreaming={false} />
+            <Bubble 
+              key={msg.id} 
+              msg={msg} 
+              isStreaming={false} 
+              onDriveUpload={setUploadingDriveMsg}
+            />
           ))}
 
           {/* Streaming bubble dengan tombol stop */}
@@ -699,6 +735,14 @@ export default function Chat() {
           </div>
         )}
       </div>
+
+      {/* Drive Modal */}
+      {uploadingDriveMsg && (
+        <DriveFolderPicker
+           onClose={() => setUploadingDriveMsg(null)}
+           onConfirm={handleConfirmDriveUpload}
+        />
+      )}
     </div>
   )
 }

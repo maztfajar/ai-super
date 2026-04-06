@@ -16,16 +16,21 @@ _bot_loop:   Optional[asyncio.AbstractEventLoop] = None
 
 
 # ── Helper kirim pesan ────────────────────────────────────────
-async def _send(token: str, chat_id: int, text: str):
+async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = False):
     """Kirim pesan Markdown, auto-split > 4000 char."""
     import httpx
     chunks = [text[i:i+4000] for i in range(0, max(len(text), 1), 4000)]
     async with httpx.AsyncClient(timeout=15) as c:
-        for chunk in chunks:
+        for idx, chunk in enumerate(chunks):
             try:
+                payload = {"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"}
+                if include_drive_btn and idx == len(chunks) - 1:
+                    payload["reply_markup"] = {
+                        "inline_keyboard": [[{"text": "📁 Simpan ke Google Drive", "callback_data": "drive_options"}]]
+                    }
                 await c.post(
                     "https://api.telegram.org/bot" + token + "/sendMessage",
-                    json={"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"},
+                    json=payload,
                 )
             except Exception as ex:
                 log.warning("Telegram send error", error=str(ex)[:80])
@@ -147,7 +152,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         if not full_response.strip():
             full_response = "Maaf, saya tidak bisa memproses permintaan itu. Coba lagi ya!"
 
-        await _send(token, chat_id, full_response)
+        await _send(token, chat_id, full_response, include_drive_btn=True)
 
         # Simpan ke memory
         await memory_manager.save_chat_to_redis("tg_" + str(chat_id), "user", text)
@@ -173,6 +178,125 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             await _send(token, chat_id, msg)
         except Exception:
             pass
+
+# ── Handle Callback Query ─────────────────────────────────────
+async def _handle_callback_query(callback_query: dict, token: str):
+    import httpx
+    from integrations.google_drive import list_drive_folders, get_drive_service
+    from memory.manager import memory_manager
+    import json
+    
+    chat_id = callback_query.get("message", {}).get("chat", {}).get("id")
+    msg_id = callback_query.get("message", {}).get("message_id")
+    data = callback_query.get("data", "")
+    callback_id = callback_query.get("id")
+    user_id = str(callback_query.get("from", {}).get("id", "unknown"))
+    
+    async def _answer(text=""):
+        async with httpx.AsyncClient() as c:
+            await c.post(f"https://api.telegram.org/bot{token}/answerCallbackQuery", json={"callback_query_id": callback_id, "text": text})
+            
+    async def _edit_markup(markup):
+        async with httpx.AsyncClient() as c:
+            await c.post(f"https://api.telegram.org/bot{token}/editMessageReplyMarkup", json={"chat_id": chat_id, "message_id": msg_id, "reply_markup": markup})
+            
+    async def _send_text(text):
+        await _send(token, chat_id, text)
+
+    try:
+        if data == "drive_options":
+            await _answer("Pilih Format")
+            markup = {"inline_keyboard": [
+                [{"text": "📄 PDF", "callback_data": "drive_format_pdf"}, {"text": "📝 Word", "callback_data": "drive_format_docx"}],
+                [{"text": "📊 Excel", "callback_data": "drive_format_xlsx"}, {"text": "🗄 CSV", "callback_data": "drive_format_csv"}]
+            ]}
+            await _edit_markup(markup)
+            
+        elif data.startswith("drive_format_"):
+            fmt = data.split("_")[-1]
+            await memory_manager.save_short_term(f"tg_fmt_{chat_id}", fmt) # store format
+            await _answer("Memuat daftar folder...")
+            
+            # Fetch root folders
+            folders = await list_drive_folders()
+            root_folders = [f for f in folders if not f.get('parents')]
+            if not root_folders:
+                root_folders = folders[:10]
+                
+            kb = []
+            for f in root_folders[:10]:
+                kb.append([{"text": f"📁 {f['name'][:30]}", "callback_data": f"drive_save_{f['id']}"}])
+            kb.append([{"text": "✅ Simpan di Root", "callback_data": "drive_save_root"}])
+            
+            await _edit_markup({"inline_keyboard": kb})
+            
+        elif data.startswith("drive_save_"):
+            folder_id = data.replace("drive_save_", "")
+            if folder_id == "root": folder_id = None
+            
+            await _edit_markup({"inline_keyboard": []}) # clear buttons
+            await _answer("Mengekspor file ke Google Drive...")
+            await _send_text("⏳ Sedang memproses dan mengunggah ke Google Drive...")
+            
+            # Reconstruct content from memory
+            history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
+            if not history:
+                await _send_text("❌ Gagal menyimpan. Konten kadaluarsa.")
+                return
+            last_ai = history[-1]['content']
+            
+            fmt = await memory_manager.get_context(f"tg_fmt_{chat_id}", user_id)
+            if not fmt: fmt = "pdf"
+            if isinstance(fmt, list) and len(fmt) > 0: fmt = fmt[0].get('content', 'pdf')
+            elif isinstance(fmt, list): fmt = "pdf"
+            
+            # Generate the file buffer (using same logic as api/drive.py)
+            filename = f"AI_Generated_{chat_id}.{fmt}"
+            import io
+            file_bytes = b""
+            
+            if fmt in ["txt", "csv", "md"]:
+                file_bytes = last_ai.encode("utf-8")
+            elif fmt == "docx":
+                from docx import Document
+                doc = Document()
+                for line in last_ai.split("\n"): doc.add_paragraph(line)
+                buf = io.BytesIO()
+                doc.save(buf)
+                file_bytes = buf.getvalue()
+            elif fmt == "xlsx":
+                from openpyxl import Workbook
+                wb = Workbook()
+                ws = wb.active
+                for row in last_ai.strip().split("\n"): ws.append(row.split(",")) 
+                buf = io.BytesIO()
+                wb.save(buf)
+                file_bytes = buf.getvalue()
+            elif fmt == "pdf":
+                from reportlab.lib.pagesizes import letter
+                from reportlab.platypus import SimpleDocTemplate, Paragraph
+                from reportlab.lib.styles import getSampleStyleSheet
+                buf = io.BytesIO()
+                doc = SimpleDocTemplate(buf, pagesize=letter)
+                styles = getSampleStyleSheet()
+                flowables = []
+                for line in last_ai.split("\n"):
+                    if line.strip():
+                        sanitized = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                        flowables.append(Paragraph(sanitized, styles["Normal"]))
+                doc.build(flowables)
+                file_bytes = buf.getvalue()
+            
+            from integrations.google_drive import upload_to_drive
+            res = await upload_to_drive(filename, file_bytes, folder_id)
+            if res.get("status") == "success":
+                await _send_text(f"✅ *File Berhasil Disimpan!*\n\n[Lihat di Google Drive]({res.get('link')})")
+            else:
+                await _send_text(f"❌ *Gagal menyimpan file:*\n{res.get('message')}")
+                
+    except Exception as e:
+        log.error("Telegram callback error", error=str(e))
+        await _answer()
 
 
 # ── Callback task selesai ─────────────────────────────────────
@@ -222,7 +346,7 @@ async def _polling_loop(token: str):
                     params={
                         "offset":          offset,
                         "timeout":         30,
-                        "allowed_updates": ["message"],
+                        "allowed_updates": ["message", "callback_query"],
                     },
                 )
 
@@ -244,6 +368,16 @@ async def _polling_loop(token: str):
 
             for update in data.get("result", []):
                 offset    = update["update_id"] + 1
+                # Process Callbacks
+                if "callback_query" in update:
+                    task = asyncio.create_task(
+                        _handle_callback_query(update["callback_query"], token),
+                        name="tg-cb-" + str(update["callback_query"]["id"]),
+                    )
+                    active_tasks.add(task)
+                    task.add_done_callback(lambda t: _task_done(t, active_tasks))
+                    continue
+
                 message   = update.get("message", {})
                 chat_id   = message.get("chat", {}).get("id")
                 text      = (message.get("text") or "").strip()

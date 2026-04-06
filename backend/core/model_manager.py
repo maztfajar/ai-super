@@ -252,7 +252,24 @@ class ModelManager:
                 if delta:
                     yield delta
         except Exception as e:
-            yield f"\n[Error OpenAI: {e}]"
+            err_str = str(e)
+            if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
+                yield "\n❌ API Key OpenAI Anda kehabisan saldo (Overdue Balance / Insufficient Quota). Silakan isi ulang saldo / ganti API Key di menu Integrations untuk melanjutkan."
+            elif "401" in err_str or "unauthorized" in err_str.lower() or "invalid_api_key" in err_str.lower():
+                yield "\n❌ API Key OpenAI Anda tidak valid (401 Unauthorized). Silakan periksa kembali API Key di menu Integrasi."
+            else:
+                # Bersihkan pesan error default agar lebih enak dibaca
+                import re
+                clean_err = re.sub(r"Error code: \d+ - ", "", err_str).strip()
+                if clean_err.startswith("{"):
+                    try:
+                        import json
+                        err_json = json.loads(clean_err.replace("'", '"'))
+                        if "error" in err_json and "message" in err_json["error"]:
+                            clean_err = err_json["error"]["message"]
+                    except:
+                        pass
+                yield f"\n❌ **Gagal menghubungi OpenAI:** {clean_err}"
 
     # ── Anthropic ─────────────────────────────────────────────
     async def _stream_anthropic(self, model, messages, temperature, max_tokens):
@@ -268,7 +285,15 @@ class ModelManager:
                 async for text in stream.text_stream:
                     yield text
         except Exception as e:
-            yield f"\n[Error Anthropic: {e}]"
+            err_str = str(e)
+            if "credit balance is too low" in err_str.lower() or "insufficient_quota" in err_str.lower():
+                 yield "\n❌ Saldo API Key Anthropic Anda tidak mencukupi. Silakan isi ulang saldo di Console Anthropic."
+            elif "401" in err_str or "unauthorized" in err_str.lower() or "invalid_api_key" in err_str.lower():
+                 yield "\n❌ API Key Anthropic Anda tidak valid (401 Unauthorized). Silakan periksa kembali API Key di menu Integrasi."
+            else:
+                 import re
+                 clean_err = re.sub(r"Error code: \d+ - ", "", err_str).strip()
+                 yield f"\n❌ **Gagal menghubungi Anthropic:** {clean_err}"
 
     # ── Google ────────────────────────────────────────────────
     async def _stream_google(self, model, messages, temperature, max_tokens):
@@ -314,7 +339,24 @@ class ModelManager:
                 if delta:
                     yield delta
         except Exception as e:
-            yield f"\n[Error {provider_name}: {e}]"
+            err_str = str(e)
+            if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
+                yield f"\n❌ API Key ({provider_name}) Anda kehabisan saldo (Overdue Balance / Insufficient Quota). Silakan isi ulang saldo / ganti API Key di menu Integrations untuk melanjutkan."
+            elif "401" in err_str or "user not found" in err_str.lower() or "unauthorized" in err_str.lower() or "invalid_api_key" in err_str.lower():
+                yield f"\n❌ API Key / Autentikasi ({provider_name}) Anda tidak valid (Akses Ditolak/401). Silakan periksa kembali API Key di menu Integrasi."
+            else:
+                import re
+                clean_err = re.sub(r"Error code: \d+ - ", "", err_str).strip()
+                # Ekstrak pesan dari dictionary string python tunggal (format AsyncOpenAI)
+                if "{'error'" in clean_err or '{"error"' in clean_err:
+                    import ast
+                    try:
+                        err_dict = ast.literal_eval(clean_err)
+                        if isinstance(err_dict, dict) and "error" in err_dict and "message" in err_dict["error"]:
+                            clean_err = err_dict["error"]["message"]
+                    except:
+                        pass
+                yield f"\n❌ **Gagal menghubungi API ({provider_name}):** {clean_err}"
 
     # ── Ollama ────────────────────────────────────────────────
     async def _stream_ollama(self, model, messages, temperature, max_tokens):

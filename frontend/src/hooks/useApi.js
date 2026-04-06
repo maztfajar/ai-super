@@ -290,4 +290,27 @@ export const api = {
   // RAG / Google Drive
   gdriveFolders:    ()  => req('GET',  '/rag/google-drive/folders'),
   gdriveSync:       (d) => req('POST', '/rag/google-drive/sync-folder', d),
+
+  // ── Drive Manual Upload ──────────────────────────────────
+  getDriveFolders: () => req('GET', '/drive/folders'),
+  createDriveFolder: (d) => req('POST', '/drive/folders', d),
+  uploadGeneratedToDrive: async function(content, format, filename, folder_id) {
+    const token = getToken()
+    const form = new FormData()
+    form.append('content', content)
+    form.append('format', format)
+    form.append('filename', filename)
+    if (folder_id) form.append('folder_id', folder_id)
+
+    const res = await fetch(BASE + '/drive/upload_generated', {
+      method: 'POST',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      body: form,
+    })
+    if (!res.ok) {
+        const e = await res.json().catch(function() { return {} })
+        throw new Error(e.detail || 'Upload failed')
+    }
+    return res.json()
+  },
 }

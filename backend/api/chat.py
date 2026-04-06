@@ -152,7 +152,8 @@ async def chat_send(
         rag_results = await rag_engine.query(req.message, user_id=user.id)
         if rag_results:
             rag_context = rag_engine.build_context(rag_results)
-            rag_sources = [r["source"] for r in rag_results]
+            # Deduplicate sources preserving order
+            rag_sources = list(dict.fromkeys(r["source"] for r in rag_results if "source" in r))
 
     if rag_context:
         system_prompt += f"\n\n{rag_context}"
@@ -184,11 +185,31 @@ async def chat_send(
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': communicator_model})}\n\n"
 
         try:
-            yield f"data: {json.dumps({'type': 'status', 'content': 'Menganalisa tingkat kesulitan tugas...'})}\n\n"
-            # 1. TASK CLASSIFICATION
-            classification = await task_classifier.classify(req.message)
-            task_type = classification["category"]
-            is_complex = classification["is_complex"]
+            is_orchestrator = not req.model or "orchestrator" in req.model.lower()
+            msg_clean = req.message.lower().strip()
+            
+            # Fast heuristic for light messages
+            is_light_msg = False
+            complex_triggers = ["buat", "bikin", "install", "cek", "cara", "kode", "code", "analisa", "hapus", "sistem", "system", "vps", "server", "file", "tulis"]
+            light_keywords = ["halo", "hai", "hi", "hello", "test", "tes", "ping", "p", "ok", "oke", "sip", "siap", "makasih", "terima", "thanks", "pagi", "siang", "sore", "malam", "ya", "tidak"]
+            
+            if len(msg_clean) < 60 and not any(c in msg_clean for c in complex_triggers):
+                first_word = msg_clean.split()[0] if msg_clean else ""
+                # Strip punctuation for the first word check
+                import string
+                first_word_clean = first_word.translate(str.maketrans('', '', string.punctuation))
+                if first_word_clean in light_keywords or len(msg_clean) < 20:
+                    is_light_msg = True
+
+            if is_orchestrator and not is_light_msg:
+                yield f"data: {json.dumps({'type': 'status', 'content': 'Menganalisa tingkat kesulitan tugas...'})}\n\n"
+                # 1. TASK CLASSIFICATION
+                classification = await task_classifier.classify(req.message)
+                task_type = classification["category"]
+                is_complex = classification["is_complex"]
+            else:
+                task_type = "GENERAL"
+                is_complex = False
             
             # 2. VPS SAFETY PROTOCOL
             if task_type in ["SYSTEM", "FILE OPERATION"]:
@@ -234,8 +255,16 @@ async def chat_send(
         except Exception as e:
             import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
-            full_response = f"Error: {e}"
+            err_str = str(e)
+            
+            # Ganti dengan pesan yang lebih pantas jika saldonya habis
+            if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
+                user_friendly_err = "❌ API Key (Sumopod/OpenAI) Anda kehabisan saldo (Overdue Balance / Insufficient Quota). Silakan isi ulang saldo / ganti API Key di menu Integrations untuk melanjutkan."
+                yield f"data: {json.dumps({'type': 'chunk', 'content': user_friendly_err})}\n\n"
+                full_response = user_friendly_err
+            else:
+                yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
+                full_response = f"Error: {err_str}"
 
         # Save assistant response
         from db.database import AsyncSessionLocal

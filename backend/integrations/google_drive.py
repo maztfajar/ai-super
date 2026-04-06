@@ -1,16 +1,30 @@
 import os
 import json
 import base64
-from typing import Optional
+from typing import Optional, Union
 import structlog
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.errors import HttpError
 import io
 
 log = structlog.get_logger()
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
+
+def get_service_account_email() -> str:
+    """Mengambil email service account dari credentials."""
+    creds_str = os.environ.get("GOOGLE_DRIVE_CREDENTIALS", "")
+    if creds_str:
+        try:
+            if creds_str.strip().startswith("{"):
+                return json.loads(creds_str).get("client_email", "Email Service Account")
+            else:
+                return json.loads(base64.b64decode(creds_str).decode("utf-8")).get("client_email", "Email Service Account")
+        except:
+            pass
+    return "Email Service Account"
 
 def get_drive_service():
     """Build and return a Google Drive API service using credentials from environment."""
@@ -42,14 +56,42 @@ def get_drive_service():
         log.error("Failed to initialize Google Drive service", error=str(e), keys=list(creds_info.keys()) if isinstance(creds_info, dict) else [])
         return None
 
-async def upload_to_drive(filename: str, content: str) -> str:
-    """Upload a text file to Google Drive. Returns the file ID or an error message."""
+async def create_drive_folder(folder_name: str, parent_id: Optional[str] = None) -> str:
+    """Create a new folder in Google Drive. Returns folder ID."""
     service = get_drive_service()
     if not service:
-        return "Error: Google Drive Authentication failed or credentials not provided. User needs to set GOOGLE_DRIVE_CREDENTIALS."
+        raise Exception("Google Drive Authentication failed or credentials not provided.")
+    
+    try:
+        file_metadata = {
+            'name': folder_name,
+            'mimeType': 'application/vnd.google-apps.folder'
+        }
+        if parent_id:
+            file_metadata['parents'] = [parent_id]
+            
+        file = service.files().create(body=file_metadata, fields='id').execute()
+        return file.get('id')
+    except HttpError as e:
+        if e.resp.status in [403, 400] and "storage quota" in str(e).lower():
+            email = get_service_account_email()
+            raise Exception(f"LIMITASI GOOGLE: Service Account tidak punya kuota Drive sendiri. SOLUSI: 1. Buat folder di akun Google Drive pribadi Anda. 2. Share/Bagikan folder tersebut ke email '{email}' (sebagai Editor). 3. Pilih folder yang sudah di-share tersebut di daftar ini.")
+        log.error("Drive create folder error", error=str(e))
+        raise Exception(f"Failed to create Google Drive folder: {str(e)}")
+    except Exception as e:
+        log.error("Drive create folder error", error=str(e))
+        raise Exception(f"Failed to create Google Drive folder: {str(e)}")
+
+async def upload_to_drive(filename: str, content: Union[str, bytes], folder_id: Optional[str] = None) -> dict:
+    """Upload a file to Google Drive. Returns a dict with status, id, and webViewLink."""
+    service = get_drive_service()
+    if not service:
+        return {"status": "error", "message": "Google Drive Authentication failed or credentials not provided."}
         
     try:
         file_metadata = {'name': filename}
+        if folder_id:
+            file_metadata['parents'] = [folder_id]
         
         # Determine mime type based on extension
         mimetype = 'text/plain'
@@ -61,9 +103,19 @@ async def upload_to_drive(filename: str, content: str) -> str:
             mimetype = 'text/csv'
         elif filename.endswith(".json"):
             mimetype = 'application/json'
+        elif filename.endswith(".pdf"):
+            mimetype = 'application/pdf'
+        elif filename.endswith(".docx"):
+            mimetype = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif filename.endswith(".xlsx"):
+            mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             
         # Write content to in-memory bytes buffer
-        fh = io.BytesIO(content.encode("utf-8"))
+        if isinstance(content, str):
+            fh = io.BytesIO(content.encode("utf-8"))
+        else:
+            fh = io.BytesIO(content)
+            
         media = MediaIoBaseUpload(fh, mimetype=mimetype, resumable=True)
         
         file = service.files().create(
@@ -73,10 +125,16 @@ async def upload_to_drive(filename: str, content: str) -> str:
         ).execute()
         
         link = file.get("webViewLink", "N/A")
-        return f"Successfully created file '{filename}'. Drive File ID: {file.get('id')}\nAccess Link: {link}"
+        return {"status": "success", "id": file.get('id'), "link": link, "message": f"Successfully created file '{filename}'"}
+    except HttpError as e:
+        if e.resp.status in [403, 400] and "storage quota" in str(e).lower():
+            email = get_service_account_email()
+            return {"status": "error", "message": f"LIMITASI GOOGLE: Service Account tidak punya kuota. SOLUSI: Buat folder di Drive pribadi Anda, Share/Bagikan ke '{email}' sebagai Editor, lalu pilih folder tersebut saat menyimpan."}
+        log.error("Drive upload error", error=str(e))
+        return {"status": "error", "message": f"Error uploading to Google Drive: {str(e)}"}
     except Exception as e:
         log.error("Drive upload error", error=str(e))
-        return f"Error uploading to Google Drive: {str(e)}"
+        return {"status": "error", "message": f"Error uploading to Google Drive: {str(e)}"}
 
 async def list_drive_files(query: str = "") -> str:
     """List recent files in Google Drive."""
@@ -118,7 +176,7 @@ async def list_drive_folders() -> list:
         results = service.files().list(
             q=q,
             pageSize=100,
-            fields="nextPageToken, files(id, name)",
+            fields="nextPageToken, files(id, name, parents)",
             orderBy="name"
         ).execute()
         return results.get('files', [])
