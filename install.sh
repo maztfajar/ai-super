@@ -159,6 +159,7 @@ PACKAGES=(
     "redis>=5.0.0"
     "fpdf2>=2.7.0"
     "openpyxl>=3.1.0"
+    "markdown>=3.6.0"
 )
 
 TOTAL=${#PACKAGES[@]}

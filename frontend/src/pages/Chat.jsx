@@ -10,7 +10,7 @@ import ChannelSelector from '../components/ChannelSelector'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
-  Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload
+  Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -112,25 +112,25 @@ function Bubble({ msg, isStreaming, onStop, onDriveUpload, onExport }) {
                 >
                   <div className="px-2.5 py-1.5 text-[9px] font-semibold text-ink-3 tracking-wider bg-bg-3 border-b border-border uppercase">Export Format</div>
                   <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("pdf") }} 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("pdf", msg.id) }} 
                     className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
                   >
                     <span>📄</span> PDF Document
                   </button>
                   <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("docx") }} 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("docx", msg.id) }} 
                     className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
                   >
                     <span>📝</span> Word (DOCX)
                   </button>
                   <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("xlsx") }} 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("xlsx", msg.id) }} 
                     className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2 border-b border-border/50"
                   >
                     <span>📊</span> Excel (XLSX)
                   </button>
                   <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("txt") }} 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("txt", msg.id) }} 
                     className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
                   >
                     <span>📜</span> Plain Text
@@ -228,6 +228,7 @@ export default function Chat() {
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
   const [statusText, setStatusText] = useState('')
   const [uploadingDriveMsg, setUploadingDriveMsg] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
@@ -486,11 +487,11 @@ export default function Chat() {
   }
 
   // ── Handler Export Chat ─────────────────────────────────────
-  const handleExportChat = async (format) => {
+  const handleExportChat = async (format, msgId) => {
     if (!currentSession?.id) return toast.error('Sesi aktif tidak ditemukan')
     const loadId = toast.loading(`Mengekspor sesi ke ${format.toUpperCase()}...`)
     try {
-      const blob = await api.exportChat(currentSession.id, format)
+      const blob = await api.exportChat(currentSession.id, format, msgId)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.style.display = 'none'
@@ -516,15 +517,34 @@ export default function Chat() {
   ]
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
+      
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div 
+          className="absolute inset-0 bg-black/50 z-40 md:hidden animate-fade"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sessions sidebar */}
-      <div className="w-52 flex-shrink-0 border-r border-border bg-bg-2 flex flex-col">
-        <div className="p-3 border-b border-border">
+      <div className={clsx(
+        "w-52 md:w-52 flex-shrink-0 border-r border-border bg-bg-2 flex-col transition-all duration-300 z-50 h-full",
+        sidebarOpen ? "flex absolute shadow-2xl" : "hidden md:flex relative"
+      )}>
+        <div className="p-3 border-b border-border flex items-center justify-between">
           <button
-            onClick={newSession}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors"
+            onClick={() => { newSession(); setSidebarOpen(false); }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors"
           >
             <Plus size={13} /> New Chat
+          </button>
+          
+          <button 
+            className="ml-2 md:hidden p-1.5 rounded-lg text-ink-3 hover:bg-bg-4"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={16} />
           </button>
         </div>
 
@@ -539,7 +559,7 @@ export default function Chat() {
               key={s.id}
               session={s}
               active={currentSession?.id === s.id}
-              onClick={() => { loadSession(s); navigate(`/chat/${s.id}`) }}
+              onClick={() => { loadSession(s); navigate(`/chat/${s.id}`); setSidebarOpen(false); }}
               onDelete={deleteSession}
             />
           ))}
@@ -551,6 +571,14 @@ export default function Chat() {
 
         {/* Topbar */}
         <div className="h-12 border-b border-border flex items-center px-4 gap-3 flex-shrink-0 bg-bg-2">
+          {/* Hamburger Menu for Mobile */}
+          <button 
+            className="md:hidden p-1.5 -ml-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-4 transition-colors"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu size={18} />
+          </button>
+          
           <span className="text-sm font-medium text-ink truncate flex-1">
             {currentSession?.title || 'Pilih atau buat sesi chat'}
           </span>

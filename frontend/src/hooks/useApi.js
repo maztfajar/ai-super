@@ -99,10 +99,13 @@ export const api = {
   getMessages:   (id)    => req('GET',  '/chat/sessions/' + id + '/messages'),
   getNewMessages:(id, afterTs) => req('GET', '/chat/sessions/' + id + '/messages/new' + (afterTs ? '?after_ts=' + encodeURIComponent(afterTs) : '')),
   deleteSession: (id)    => req('DELETE', '/chat/sessions/' + id),
-  exportChat:    async (id, format) => {
-    const token = localStorage.getItem('token')
+  exportChat:    async (id, format, msgIds) => {
+    const token = getToken()
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-    const res = await fetch(`${API_URL}/chat/sessions/${id}/export?format=${format}`, { headers })
+    const queryParams = new URLSearchParams()
+    queryParams.append('format', format)
+    if (msgIds) queryParams.append('msg_ids', msgIds)
+    const res = await fetch(`${BASE}/chat/sessions/${id}/export?${queryParams.toString()}`, { headers })
     if (!res.ok) throw new Error('Gagal download export chat')
     return res.blob()
   },
