@@ -95,10 +95,17 @@ export const api = {
 
   // ── Chat ─────────────────────────────────────────────────
   createSession: (title) => req('POST', '/chat/sessions', { title }),
-  listSessions:  ()      => req('GET',  '/chat/sessions'),
+  listSessions:  ()      => req('GET',  '/chat/sessions?t=' + Date.now()),
   getMessages:   (id)    => req('GET',  '/chat/sessions/' + id + '/messages'),
   getNewMessages:(id, afterTs) => req('GET', '/chat/sessions/' + id + '/messages/new' + (afterTs ? '?after_ts=' + encodeURIComponent(afterTs) : '')),
   deleteSession: (id)    => req('DELETE', '/chat/sessions/' + id),
+  exportChat:    async (id, format) => {
+    const token = localStorage.getItem('token')
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+    const res = await fetch(`${API_URL}/chat/sessions/${id}/export?format=${format}`, { headers })
+    if (!res.ok) throw new Error('Gagal download export chat')
+    return res.blob()
+  },
 
   // ── RAG ───────────────────────────────────────────────────
   listDocs:   ()     => req('GET',    '/rag/documents'),

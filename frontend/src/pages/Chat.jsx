@@ -9,7 +9,7 @@ import { useAuthStore, useChatStore, useModelsStore, useOrchestratorStore } from
 import ChannelSelector from '../components/ChannelSelector'
 import toast from 'react-hot-toast'
 import {
-  Plus, Trash2, Send, Paperclip, Copy, Check,
+  Plus, Trash2, Send, Paperclip, Copy, Check, Download,
   Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -17,7 +17,7 @@ import clsx from 'clsx'
 import DriveFolderPicker from '../components/DriveFolderPicker'
 
 // ── Message bubble ────────────────────────────────────────────
-function Bubble({ msg, isStreaming, onStop, onDriveUpload }) {
+function Bubble({ msg, isStreaming, onStop, onDriveUpload, onExport }) {
   const [copied, setCopied] = useState(false)
   const isUser = msg.role === 'user'
 
@@ -81,17 +81,68 @@ function Bubble({ msg, isStreaming, onStop, onDriveUpload }) {
             </button>
           )}
           {!isUser && !isStreaming && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 relative">
+              {/* Drive Upload */}
               <button
                 onClick={() => onDriveUpload(msg)}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all outline-none"
                 title="Simpan ke Google Drive"
               >
                 <CloudUpload size={11} className="text-accent" />
               </button>
+
+              {/* Export Dropdown */}
+              <div className="relative dropdown-container">
+                <button
+                  onClick={(e) => {
+                    const el = e.currentTarget.nextElementSibling;
+                    const isHidden = el.style.display === 'none' || el.style.display === '';
+                    // Close all other dropdowns
+                    document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none');
+                    if (isHidden) el.style.display = 'block';
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all outline-none"
+                  title="Download Chat (PDF/Word/Excel)"
+                >
+                  <Download size={11} className="text-accent-2" />
+                </button>
+                <div 
+                  className="export-dropdown absolute right-0 bottom-full mb-1 w-36 bg-bg-2 border border-border shadow-md rounded-lg overflow-hidden z-50 text-[11px] animate-fade"
+                  style={{ display: 'none' }}
+                >
+                  <div className="px-2.5 py-1.5 text-[9px] font-semibold text-ink-3 tracking-wider bg-bg-3 border-b border-border uppercase">Export Format</div>
+                  <button 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("pdf") }} 
+                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
+                  >
+                    <span>📄</span> PDF Document
+                  </button>
+                  <button 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("docx") }} 
+                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
+                  >
+                    <span>📝</span> Word (DOCX)
+                  </button>
+                  <button 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("xlsx") }} 
+                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2 border-b border-border/50"
+                  >
+                    <span>📊</span> Excel (XLSX)
+                  </button>
+                  <button 
+                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("txt") }} 
+                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
+                  >
+                    <span>📜</span> Plain Text
+                  </button>
+                </div>
+              </div>
+
+              {/* Copy */}
               <button
                 onClick={copy}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all outline-none"
+                title="Copy ke clipboard"
               >
                 {copied
                   ? <Check size={10} className="text-success" />
@@ -434,6 +485,29 @@ export default function Chat() {
      }
   }
 
+  // ── Handler Export Chat ─────────────────────────────────────
+  const handleExportChat = async (format) => {
+    if (!currentSession?.id) return toast.error('Sesi aktif tidak ditemukan')
+    const loadId = toast.loading(`Mengekspor sesi ke ${format.toUpperCase()}...`)
+    try {
+      const blob = await api.exportChat(currentSession.id, format)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.style.display = 'none'
+      a.href = url
+      // Backend headers content-disposition already brings filename, but downloading blob requires setting download attr if needed,
+      // it's fine just naming it natively here too.
+      a.download = `Export_Chat_${new Date().getTime()}.${format}`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      toast.success('Berhasil mendownload!', { id: loadId })
+    } catch (e) {
+      toast.error(e.message, { id: loadId })
+    }
+  }
+
   // ── Quick-action cards for the welcome screen ──────────────
   const quickActions = [
     { icon: Sparkles, label: 'Chat Biasa', desc: 'Tanya jawab dengan AI', color: 'from-accent to-accent-2' },
@@ -481,21 +555,19 @@ export default function Chat() {
             {currentSession?.title || 'Pilih atau buat sesi chat'}
           </span>
 
-          {/* Channel selector */}
-          <ChannelSelector />
-
           {/* RAG toggle */}
           <button
             onClick={() => setUseRAG(!useRAG)}
             className={clsx(
-              'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border',
+              'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border flex items-center gap-1.5',
               useRAG
-                ? 'bg-success/10 border-success/30 text-success'
-                : 'bg-bg-4 border-border text-ink-3'
+                ? 'bg-success/15 border-success/50 text-success shadow-[0_0_12px_rgba(74,222,128,0.3)]'
+                : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5'
             )}
             title="Toggle RAG (Knowledge Base)"
           >
             📚 RAG
+            {useRAG && <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"/>}
           </button>
         </div>
 
@@ -567,6 +639,7 @@ export default function Chat() {
               msg={msg} 
               isStreaming={false} 
               onDriveUpload={setUploadingDriveMsg}
+              onExport={handleExportChat}
             />
           ))}
 

@@ -4,7 +4,7 @@ node_modules/
 dist/
 build/
 .env
-backend/data/*.db
+backend/data/
 uploads/
 __pycache__/
 **/__pycache__/
@@ -16,5 +16,8 @@ venv/
 scripts/venv/
 *.pyc
 *.pyo
-backend/data/logs/
-backend/data/logs/
+.webhooks.json
+.custom_models.json
+.domains.json
+{backend/
+cloudflared*.log

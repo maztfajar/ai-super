@@ -18,6 +18,7 @@ export default function Logs() {
   const [auto,    setAuto]    = useState(false)
   const [hint,    setHint]    = useState('')
   const bottomRef = useRef()
+  const scrollContainerRef = useRef()
   const timerRef  = useRef()
 
   const load = async () => {
@@ -44,8 +45,10 @@ export default function Logs() {
   }, [auto, level])
 
   useEffect(() => {
-    if (auto) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [logs])
+    if (auto && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight
+    }
+  }, [logs, auto])
 
   const download = () => {
     const txt = logs.map(l => l.text).join('\n')
@@ -109,7 +112,7 @@ export default function Logs() {
 
       {/* Log viewer */}
       <div className="bg-bg-2 border border-border rounded-xl overflow-hidden">
-        <div className="h-[60vh] overflow-y-auto font-mono text-[11px] p-3 space-y-0.5">
+        <div ref={scrollContainerRef} className="h-[60vh] overflow-y-auto font-mono text-[11px] p-3 space-y-0.5">
           {hint && (
             <div className="flex items-center gap-2 p-3 bg-warn/8 border border-warn/20 rounded-xl text-warn text-xs mb-3">
               <AlertTriangle size={13}/>

@@ -34,6 +34,7 @@ from api.settings_api import router as settings_router
 from api.cloudflare_wizard import router as cf_wizard_router
 from api.update_server import router as update_server_router
 from api.drive import router as drive_router
+from api.export import router as export_router
 
 setup_logging()
 log = structlog.get_logger()
@@ -89,6 +90,7 @@ app.add_middleware(
 
 app.include_router(auth_router,          prefix="/api/auth",         tags=["Auth"])
 app.include_router(chat_router,          prefix="/api/chat",         tags=["Chat"])
+app.include_router(export_router,        prefix="/api/chat",         tags=["Export"])
 app.include_router(rag_router,           prefix="/api/rag",          tags=["RAG"])
 app.include_router(memory_router,        prefix="/api/memory",       tags=["Memory"])
 app.include_router(models_router,        prefix="/api/models",       tags=["Models"])

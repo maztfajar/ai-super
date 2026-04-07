@@ -157,9 +157,8 @@ PACKAGES=(
     "litellm>=1.40.0"
     "celery>=5.4.0"
     "redis>=5.0.0"
-    "torch>=2.2.0"
-    "torchvision>=0.17.0"
-    "torchaudio>=2.2.0"
+    "fpdf2>=2.7.0"
+    "openpyxl>=3.1.0"
 )
 
 TOTAL=${#PACKAGES[@]}

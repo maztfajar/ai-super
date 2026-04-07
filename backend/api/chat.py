@@ -114,8 +114,18 @@ async def delete_session(
     session = await db.get(ChatSession, session_id)
     if not session or session.user_id != user.id:
         raise HTTPException(404, "Session not found")
+        
+    # Hapus semua messages terkait session agar tidak menjadi yatim piatu
+    from sqlalchemy import delete
+    await db.execute(delete(Message).where(Message.session_id == session_id))
+    
+    # Hapus session dari database
     await db.delete(session)
     await db.commit()
+    
+    # Invalidate cache Redis untuk current session
+    await memory_manager.clear_session(session_id)
+    
     return {"status": "deleted"}
 
 
@@ -242,15 +252,27 @@ async def chat_send(
                     yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
             else:
                 yield f"data: {json.dumps({'type': 'status', 'content': 'Merespons kueri...'})}\n\n"
-                # Directly stream through the communicator model to retain conversational flow and reduce latency
-                async for chunk in agent_executor.stream_chat(
-                    base_model=communicator_model,
-                    messages=messages,
-                    temperature=req.temperature,
-                    max_tokens=req.max_tokens,
-                ):
-                    full_response += chunk
-                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+                
+                # Jika menggunakan mode manual (single model call), bypass agent_executor overhead untuk response instan
+                if not is_orchestrator:
+                    async for chunk in model_manager.chat_stream(
+                        model=communicator_model,
+                        messages=messages,
+                        temperature=req.temperature,
+                        max_tokens=req.max_tokens,
+                    ):
+                        full_response += chunk
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+                else:
+                    # Mode orchestrator tetap menggunakan agent_executor untuk akses tools
+                    async for chunk in agent_executor.stream_chat(
+                        base_model=communicator_model,
+                        messages=messages,
+                        temperature=req.temperature,
+                        max_tokens=req.max_tokens,
+                    ):
+                        full_response += chunk
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
                 
         except Exception as e:
             import traceback

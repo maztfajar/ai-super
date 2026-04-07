@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
 
+    # Google Drive
+    GDRIVE_UPLOAD_FOLDER_ID: str = ""  # Folder ID tujuan upload (Service Account butuh shared folder)
+
     # Telegram
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_WEBHOOK_URL: Optional[str] = None

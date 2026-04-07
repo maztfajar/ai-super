@@ -249,7 +249,13 @@ class RAGEngine:
             Document(page_content=chunk.page_content, metadata=chunk.metadata)
             for chunk in chunks
         ]
-        self.vectorstore.add_documents(lc_docs)
+        
+        # Split documents to ensure they fit context window before adding to ChromaDB
+        if self.text_splitter:
+            split_docs = self.text_splitter.split_documents(lc_docs)
+            self.vectorstore.add_documents(split_docs)
+        else:
+            self.vectorstore.add_documents(lc_docs)
 
     def _load_and_split(self, file_path: str, metadata: dict) -> list:
         """Fallback: LangChain community loaders."""

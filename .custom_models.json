@@ -1,24 +1,13 @@
 [
   {
-    "id": "49a0dd45",
-    "name": "OpenRouter",
-    "base_url": "https://openrouter.ai/api/v1",
-    "api_key": "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",
-    "models": "qwen/qwen3.6-plus:free",
-    "icon": "🔌",
-    "status": "error",
-    "created_at": "2026-04-05T04:45:19.805993",
-    "last_tested": "2026-04-06T00:26:52.929424"
-  },
-  {
     "id": "becebfb9",
     "name": "Open Router",
     "base_url": "https://openrouter.ai/api/v1",
     "api_key": "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",
     "models": "qwen/qwen3.6-plus:free",
     "icon": "🔌",
-    "status": "untested",
+    "status": "connected",
     "created_at": "2026-04-06T00:28:04.255869",
-    "last_tested": null
+    "last_tested": "2026-04-06T11:24:55.531372"
   }
 ]

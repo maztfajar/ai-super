@@ -31,6 +31,7 @@ const intApi = {
   // Custom model providers
   listCustomModels:     () => api.listCustomModels(),
   addCustomModel:       (d) => api.addCustomModel(d),
+  updateCustomModel:    (id,d) => api.updateCustomModel(id, d),
   deleteCustomModel:    (id) => api.deleteCustomModel(id),
   testCustomModel:      (id) => api.testCustomModel(id),
   testCustomConnection: (d) => api.testCustomConnection(d),
@@ -367,6 +368,7 @@ function CustomModelSection() {
   const [showAdd, setShowAdd]     = useState(false)
   const [acting, setActing]       = useState({})
   const [testResult, setTestResult] = useState(null)
+  const [editId, setEditId]       = useState(null)
 
   const emptyForm = { name: '', base_url: '', api_key: '', models: '', icon: '🔌' }
   const [form, setForm] = useState(emptyForm)
@@ -414,12 +416,21 @@ function CustomModelSection() {
     }
     setActing(a => ({ ...a, save: true }))
     try {
-      const r = await intApi.addCustomModel(form)
+      const r = editId 
+        ? await intApi.updateCustomModel(editId, form) 
+        : await intApi.addCustomModel(form)
       if (r.models) { useModelsStore.setState({ models: r.models }); syncModelsToOrchestrator(r.models) }
-      toast.success('✅ Provider berhasil ditambahkan!')
-      setShowAdd(false); setForm(emptyForm); setTestResult(null); await load()
+      toast.success(editId ? '✅ Provider berhasil diperbarui!' : '✅ Provider berhasil ditambahkan!')
+      setShowAdd(false); setEditId(null); setForm(emptyForm); setTestResult(null); await load()
     } catch (e) { toast.error(e.message) }
     finally { setActing(a => ({ ...a, save: false })) }
+  }
+
+  const handleEdit = (p) => {
+    setForm({ name: p.name, base_url: p.base_url, api_key: p.api_key || '', models: p.models, icon: p.icon || '🔌' })
+    setEditId(p.id)
+    setShowAdd(true)
+    setTestResult(null)
   }
 
   const handleDelete = async (id) => {
@@ -468,13 +479,13 @@ function CustomModelSection() {
         <div className="overflow-hidden">
           <div className="p-4 space-y-3 border-t border-border">
             <div className="flex justify-end mb-1">
-              <Btn label="+ Tambah Provider" onClick={() => { setShowAdd(!showAdd); setForm(emptyForm); setTestResult(null) }} variant="primary" icon={Plus} small/>
+              <Btn label="+ Tambah Provider" onClick={() => { setShowAdd(!showAdd); setEditId(null); setForm(emptyForm); setTestResult(null) }} variant="primary" icon={Plus} small/>
             </div>
             {showAdd && (
               <div className="bg-bg-4 border border-accent/25 rounded-xl p-4 space-y-3 animate-fade">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-ink">➕ Tambah Model AI Provider</span>
-                  <button onClick={() => { setShowAdd(false); setTestResult(null) }} className="text-ink-3 hover:text-ink text-xs">✕</button>
+                  <span className="text-xs font-semibold text-ink">{editId ? '✏️ Edit Model AI Provider' : '➕ Tambah Model AI Provider'}</span>
+                  <button onClick={() => { setShowAdd(false); setEditId(null); setTestResult(null) }} className="text-ink-3 hover:text-ink text-xs">✕</button>
                 </div>
                 <div>
                   <Label>Ikon</Label>
@@ -504,8 +515,8 @@ function CustomModelSection() {
                   )}
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-1">
-                  <Btn label="Batal" onClick={() => { setShowAdd(false); setTestResult(null) }} variant="default" small/>
-                  <Btn label="Simpan Provider" onClick={handleSave} loading={acting.save} variant="primary" icon={Save}/>
+                  <Btn label="Batal" onClick={() => { setShowAdd(false); setEditId(null); setTestResult(null) }} variant="default" small/>
+                  <Btn label={editId ? 'Simpan Perubahan' : 'Simpan Provider'} onClick={handleSave} loading={acting.save} variant="primary" icon={Save}/>
                 </div>
               </div>
             )}
@@ -530,7 +541,10 @@ function CustomModelSection() {
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <Btn label="Test" onClick={() => handleTest(p.id)} loading={acting[p.id+'_test']} variant="success" icon={Send} small/>
-                          <button onClick={() => handleDelete(p.id)} disabled={acting[p.id+'_del']} className="p-1.5 rounded-lg text-ink-3 hover:text-danger hover:bg-danger/10 transition-colors">
+                          <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg text-ink-3 hover:text-accent hover:bg-accent/10 transition-colors" title="Edit">
+                            <Code size={11} />
+                          </button>
+                          <button onClick={() => handleDelete(p.id)} disabled={acting[p.id+'_del']} className="p-1.5 rounded-lg text-ink-3 hover:text-danger hover:bg-danger/10 transition-colors" title="Hapus">
                             <Trash2 size={11}/>
                           </button>
                         </div>
@@ -673,8 +687,16 @@ function WebhookSection() {
 // ── GoogleDriveCard ───────────────────────────────────────────
 function GoogleDriveCard({ status, onSave, saving }) {
   const [creds, setCreds] = useState('')
+  const [folderId, setFolderId] = useState('')
   const [open, setOpen] = useState(false)
-  const configured = status?.google_drive?.configured
+  const gdrive = status?.google_drive || {}
+  const configured = gdrive.configured
+  const serviceEmail = gdrive.service_email || ''
+
+  // Pre-fill folder ID from backend status
+  useEffect(() => {
+    if (gdrive.folder_id) setFolderId(gdrive.folder_id)
+  }, [gdrive.folder_id])
 
   return (
     <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden transition-all duration-200">
@@ -694,32 +716,87 @@ function GoogleDriveCard({ status, onSave, saving }) {
         <div className="overflow-hidden">
           <div className="px-4 pb-4 pt-2 border-t border-border">
             <div className="space-y-3">
-              <Textarea 
-                label="Service Account JSON Kredensial" 
-                value={creds} 
-                onChange={setCreds} 
-                placeholder='{ "type": "service_account", "project_id": "...", ... }' 
+              {/* Service Account Email Display */}
+              {configured && serviceEmail && (
+                <div className="bg-success/8 border border-success/20 rounded-xl p-3 space-y-1.5">
+                  <div className="text-[10px] font-semibold text-success flex items-center gap-1.5">
+                    <CheckCircle2 size={12}/> Service Account Terhubung
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="text-[10px] text-ink-2 bg-bg-3 px-2 py-1 rounded-lg flex-1 truncate font-mono">{serviceEmail}</code>
+                    <button
+                      onClick={() => { copyToClipboard(serviceEmail); toast.success('Email disalin!') }}
+                      className="p-1.5 rounded-lg text-ink-3 hover:text-accent hover:bg-accent/10 transition-colors flex-shrink-0"
+                      title="Salin email"
+                    >
+                      <Copy size={11}/>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Folder ID Input — CRITICAL for Service Account */}
+              <div className="space-y-1.5">
+                <TextInput
+                  label="📂 Folder Tujuan Upload (Folder ID) *"
+                  value={folderId}
+                  onChange={setFolderId}
+                  placeholder="1A2B3C4D5E6F7G8H9I0J... (dari URL folder Drive)"
+                  mono
+                />
+                <div className="text-[9px] text-ink-3 leading-relaxed pl-0.5">
+                  Salin ID folder dari URL: <code className="text-accent bg-bg-4 px-1 rounded">drive.google.com/drive/folders/<strong>FOLDER_ID_INI</strong></code>
+                </div>
+                <Btn label="Simpan Folder ID" onClick={() => {
+                  if (!folderId.trim()) { toast.error('Isi Folder ID terlebih dahulu'); return; }
+                  onSave('google_drive', { GDRIVE_UPLOAD_FOLDER_ID: folderId.trim() })
+                }} loading={saving} variant="primary" icon={Save} small/>
+              </div>
+
+              {/* Warning jika belum set folder */}
+              {configured && !gdrive.folder_id && (
+                <div className="bg-warn/8 border border-warn/20 rounded-xl p-3 text-[10px] text-warn space-y-1">
+                  <div className="font-semibold flex items-center gap-1.5"><AlertCircle size={12}/> Folder Tujuan Belum Diset!</div>
+                  <div className="text-ink-3 leading-relaxed">
+                    Service Account <strong>tidak punya kuota Drive sendiri</strong>. Upload akan gagal jika tidak ada Folder ID.
+                    {serviceEmail && (
+                      <span> Buat folder di Drive pribadi Anda, lalu <strong>Share ke <span className="text-accent">{serviceEmail}</span></strong> sebagai <strong>Editor</strong>.</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Credentials Input */}
+              <Textarea
+                label="Service Account JSON Kredensial"
+                value={creds}
+                onChange={setCreds}
+                placeholder='{ "type": "service_account", "project_id": "...", ... }'
                 hint="Tempel seluruh isi file kredensial JSON tipe Service Account dari Google Cloud"
                 rows={4}
               />
               <Btn label="Simpan Kredensial" onClick={() => {
                 if (!creds.trim()) { toast.error('Isi kredensial JSON'); return; }
                 if (!creds.trim().startsWith('{')) { toast.error('Harus berformat JSON valid'); return; }
-                
+
                 // Safe UTF-8 Base64 encoding
                 const encoded = btoa(encodeURIComponent(creds.trim()).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)))
                 onSave('google_drive', { GOOGLE_DRIVE_CREDENTIALS: encoded })
                 setCreds('')
               }} loading={saving} variant="primary" icon={Save}/>
-              
+
               <div className="bg-bg-4 rounded-xl p-3 text-[10px] space-y-1 text-ink-3 mt-2">
-                <div className="text-ink-2 font-semibold mb-1.5 flex items-center gap-1"><AlertCircle size={12}/> Cara mendapatkan JSON Google Cloud:</div>
+                <div className="text-ink-2 font-semibold mb-1.5 flex items-center gap-1"><AlertCircle size={12}/> Panduan Setup Google Drive:</div>
                 <div className="pl-2 space-y-1">
                   <div>1. Login ke <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-accent underline">Google Cloud Console</a>.</div>
-                  <div>2. Buat Project baru dan pastikan <span className="font-semibold text-ink-2">Google Drive API</span> sudah **Enabled**.</div>
-                  <div>3. Masuk ke **APIs & Services** {'>'} **Credentials**. Klik Create Credentials {'>'} **Service Account**.</div>
-                  <div>4. Buka Service Account tersebut, tab **Keys** {'>'} Add Key {'>'} Create New Key (JSON).</div>
-                  <div>5. File JSON akan terdownload. Tempel seluruh isinya di atas.</div>
+                  <div>2. Buat Project baru dan pastikan <span className="font-semibold text-ink-2">Google Drive API</span> sudah Enabled.</div>
+                  <div>3. Masuk ke APIs & Services {'>'} Credentials. Klik Create Credentials {'>'} Service Account.</div>
+                  <div>4. Buka Service Account tersebut, tab Keys {'>'} Add Key {'>'} Create New Key (JSON).</div>
+                  <div>5. Tempel JSON di atas, lalu simpan.</div>
+                  <div className="pt-1 text-warn font-semibold">⚠️ PENTING (agar upload tidak gagal):</div>
+                  <div>6. Buat folder di <strong>Google Drive pribadi</strong> Anda.</div>
+                  <div>7. Klik kanan folder {'>'} Share/Bagikan ke email Service Account sebagai <strong>Editor</strong>.</div>
+                  <div>8. Salin <strong>Folder ID</strong> dari URL folder dan tempel di kolom "Folder Tujuan Upload" di atas.</div>
                 </div>
               </div>
             </div>

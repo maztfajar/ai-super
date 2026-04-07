@@ -9,6 +9,8 @@ from googleapiclient.http import MediaIoBaseUpload
 from googleapiclient.errors import HttpError
 import io
 
+from core.config import settings
+
 log = structlog.get_logger()
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -89,9 +91,19 @@ async def upload_to_drive(filename: str, content: Union[str, bytes], folder_id: 
         return {"status": "error", "message": "Google Drive Authentication failed or credentials not provided."}
         
     try:
+        # Gunakan folder default dari settings jika tidak ada folder_id eksplisit
+        target_folder = folder_id or settings.GDRIVE_UPLOAD_FOLDER_ID or os.environ.get("GDRIVE_UPLOAD_FOLDER_ID", "")
+        
         file_metadata = {'name': filename}
-        if folder_id:
-            file_metadata['parents'] = [folder_id]
+        if target_folder:
+            file_metadata['parents'] = [target_folder]
+        else:
+            # Service Account TIDAK punya kuota Drive sendiri
+            email = get_service_account_email()
+            log.warning(
+                "Upload tanpa folder ID — Service Account tidak punya kuota sendiri",
+                hint=f"Share folder Drive ke {email}, lalu set GDRIVE_UPLOAD_FOLDER_ID di Integrasi.",
+            )
         
         # Determine mime type based on extension
         mimetype = 'text/plain'
@@ -127,9 +139,20 @@ async def upload_to_drive(filename: str, content: Union[str, bytes], folder_id: 
         link = file.get("webViewLink", "N/A")
         return {"status": "success", "id": file.get('id'), "link": link, "message": f"Successfully created file '{filename}'"}
     except HttpError as e:
-        if e.resp.status in [403, 400] and "storage quota" in str(e).lower():
+        err_str = str(e).lower()
+        if e.resp.status in [403, 400] and ("storage quota" in err_str or "storageQuotaExceeded" in str(e)):
             email = get_service_account_email()
-            return {"status": "error", "message": f"LIMITASI GOOGLE: Service Account tidak punya kuota. SOLUSI: Buat folder di Drive pribadi Anda, Share/Bagikan ke '{email}' sebagai Editor, lalu pilih folder tersebut saat menyimpan."}
+            return {
+                "status": "error",
+                "message": (
+                    f"⚠️ LIMITASI GOOGLE: Service Account tidak punya kuota Drive sendiri.\n\n"
+                    f"SOLUSI CEPAT:\n"
+                    f"1. Buat folder di Google Drive PRIBADI Anda.\n"
+                    f"2. Klik kanan folder → Share/Bagikan ke: {email} (sebagai Editor).\n"
+                    f"3. Salin Folder ID dari URL (contoh: drive.google.com/drive/folders/XXXXX).\n"
+                    f"4. Tempel Folder ID tersebut di menu Integrasi → Google Drive → Folder Tujuan Upload."
+                ),
+            }
         log.error("Drive upload error", error=str(e))
         return {"status": "error", "message": f"Error uploading to Google Drive: {str(e)}"}
     except Exception as e:

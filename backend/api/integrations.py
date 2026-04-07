@@ -68,6 +68,21 @@ def mask(value: str) -> str:
 
 
 # ── GET status semua integrasi ────────────────────────────────
+
+def _get_sa_email(env: dict) -> str:
+    """Extract Service Account email from stored credentials."""
+    creds_str = env.get("GOOGLE_DRIVE_CREDENTIALS", "")
+    if not creds_str:
+        return ""
+    try:
+        import base64
+        if creds_str.strip().startswith("{"):
+            return json.loads(creds_str).get("client_email", "")
+        else:
+            return json.loads(base64.b64decode(creds_str).decode("utf-8")).get("client_email", "")
+    except Exception:
+        return ""
+
 @router.get("/status")
 async def integrations_status(user: User = Depends(get_current_user)):
     env = read_env()
@@ -87,7 +102,11 @@ async def integrations_status(user: User = Depends(get_current_user)):
                       "models": env.get("SUMOPOD_AVAILABLE_MODELS", "")},
         "ollama":    {"configured": True, "host": env.get("OLLAMA_HOST", "http://localhost:11434"),
                       "models": env.get("OLLAMA_AVAILABLE_MODELS", "")},
-        "google_drive": {"configured": is_set("GOOGLE_DRIVE_CREDENTIALS")},
+        "google_drive": {
+            "configured": is_set("GOOGLE_DRIVE_CREDENTIALS"),
+            "folder_id": env.get("GDRIVE_UPLOAD_FOLDER_ID", ""),
+            "service_email": _get_sa_email(env),
+        },
     }
 
 
@@ -118,7 +137,7 @@ async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
         "telegram":  ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_URL"],
         "whatsapp":  ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_VERIFY_TOKEN"],
         "admin":     ["ADMIN_USERNAME", "ADMIN_PASSWORD"],
-        "google_drive": ["GOOGLE_DRIVE_CREDENTIALS"],
+        "google_drive": ["GOOGLE_DRIVE_CREDENTIALS", "GDRIVE_UPLOAD_FOLDER_ID"],
     }
 
     allowed = ALLOWED_KEYS.get(req.provider, [])
