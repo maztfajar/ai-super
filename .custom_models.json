@@ -3,11 +3,11 @@
     "id": "becebfb9",
     "name": "Open Router",
     "base_url": "https://openrouter.ai/api/v1",
-    "api_key": "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",
+    "api_key": "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",
     "models": "qwen/qwen3.6-plus:free",
     "icon": "🔌",
     "status": "connected",
     "created_at": "2026-04-06T00:28:04.255869",
-    "last_tested": "2026-04-06T11:24:55.531372"
+    "last_tested": "2026-04-07T16:47:21.355771"
   }
 ]

@@ -222,7 +222,7 @@ export default function Chat() {
   } = useChatStore()
 
   const [input, setInput] = useState('')
-  const [useRAG, setUseRAG] = useState(true)
+  const [useRAG, setUseRAG] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [actualModel, setActualModel] = useState(null)
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
