@@ -6,8 +6,8 @@
     "api_key": "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",
     "models": "qwen/qwen3.6-plus:free",
     "icon": "🔌",
-    "status": "connected",
+    "status": "untested",
     "created_at": "2026-04-06T00:28:04.255869",
-    "last_tested": "2026-04-07T16:47:21.355771"
+    "last_tested": "2026-04-07T17:46:57.853271"
   }
 ]
