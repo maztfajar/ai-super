@@ -26,7 +26,12 @@ async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = F
                 payload = {"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"}
                 if include_drive_btn and idx == len(chunks) - 1:
                     payload["reply_markup"] = {
-                        "inline_keyboard": [[{"text": "📁 Simpan ke Google Drive", "callback_data": "drive_options"}]]
+                        "inline_keyboard": [
+                            [
+                                {"text": "📁 Simpan ke G-Drive", "callback_data": "drive_options"},
+                                {"text": "⬇️ Download File", "callback_data": "download_options"}
+                            ]
+                        ]
                     }
                 await c.post(
                     "https://api.telegram.org/bot" + token + "/sendMessage",
@@ -204,32 +209,46 @@ async def _handle_callback_query(callback_query: dict, token: str):
         await _send(token, chat_id, text)
 
     try:
-        if data == "drive_options":
+        if data == "drive_options" or data == "download_options":
+            action = "drive" if "drive" in data else "download"
             await _answer("Pilih Format")
             markup = {"inline_keyboard": [
-                [{"text": "📄 PDF", "callback_data": "drive_format_pdf"}, {"text": "📝 Word", "callback_data": "drive_format_docx"}],
-                [{"text": "📊 Excel", "callback_data": "drive_format_xlsx"}, {"text": "🗄 CSV", "callback_data": "drive_format_csv"}]
+                [{"text": "📄 PDF", "callback_data": f"{action}_format_pdf"}, {"text": "📝 Word", "callback_data": f"{action}_format_docx"}],
+                [{"text": "📊 Excel", "callback_data": f"{action}_format_xlsx"}, {"text": "🗄 TXT", "callback_data": f"{action}_format_txt"}]
             ]}
             await _edit_markup(markup)
             
-        elif data.startswith("drive_format_"):
+        elif data.startswith("drive_format_") or data.startswith("download_format_"):
+            action = "drive" if "drive" in data else "download"
             fmt = data.split("_")[-1]
             await memory_manager.save_short_term(f"tg_fmt_{chat_id}", fmt) # store format
-            await _answer("Memuat daftar folder...")
             
-            # Fetch root folders
-            folders = await list_drive_folders()
-            root_folders = [f for f in folders if not f.get('parents')]
-            if not root_folders:
-                root_folders = folders[:10]
+            if action == "drive":
+                await _answer("Memuat daftar folder...")
+                folders = await list_drive_folders()
+                root_folders = [f for f in folders if not f.get('parents')]
+                if not root_folders:
+                    root_folders = folders[:10]
+                kb = []
+                for f in root_folders[:10]:
+                    kb.append([{"text": f"📁 {f['name'][:30]}", "callback_data": f"drive_save_{f['id']}"}])
+                kb.append([{"text": "✅ Simpan di Root", "callback_data": "drive_save_root"}])
+                await _edit_markup({"inline_keyboard": kb})
+            else:
+                await _answer("Menyiapkan dokumen...")
+                await _edit_markup({"inline_keyboard": []}) # clear buttons
+                await _send_text("⏳ Sedang menyusun dokumen, mohon tunggu...")
                 
-            kb = []
-            for f in root_folders[:10]:
-                kb.append([{"text": f"📁 {f['name'][:30]}", "callback_data": f"drive_save_{f['id']}"}])
-            kb.append([{"text": "✅ Simpan di Root", "callback_data": "drive_save_root"}])
-            
-            await _edit_markup({"inline_keyboard": kb})
-            
+                # Fetch content
+                history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
+                if not history:
+                    await _send_text("❌ Gagal menyusun dokumen. Konten sudah kadaluarsa.")
+                    return
+                last_ai = history[-1]['content']
+                
+                # Generate file logic
+                await _process_and_send_file(token, chat_id, last_ai, fmt, action="download")
+                
         elif data.startswith("drive_save_"):
             folder_id = data.replace("drive_save_", "")
             if folder_id == "root": folder_id = None
@@ -238,7 +257,6 @@ async def _handle_callback_query(callback_query: dict, token: str):
             await _answer("Mengekspor file ke Google Drive...")
             await _send_text("⏳ Sedang memproses dan mengunggah ke Google Drive...")
             
-            # Reconstruct content from memory
             history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
             if not history:
                 await _send_text("❌ Gagal menyimpan. Konten kadaluarsa.")
@@ -250,53 +268,114 @@ async def _handle_callback_query(callback_query: dict, token: str):
             if isinstance(fmt, list) and len(fmt) > 0: fmt = fmt[0].get('content', 'pdf')
             elif isinstance(fmt, list): fmt = "pdf"
             
-            # Generate the file buffer (using same logic as api/drive.py)
-            filename = f"AI_Generated_{chat_id}.{fmt}"
-            import io
-            file_bytes = b""
-            
-            if fmt in ["txt", "csv", "md"]:
-                file_bytes = last_ai.encode("utf-8")
-            elif fmt == "docx":
-                from docx import Document
-                doc = Document()
-                for line in last_ai.split("\n"): doc.add_paragraph(line)
-                buf = io.BytesIO()
-                doc.save(buf)
-                file_bytes = buf.getvalue()
-            elif fmt == "xlsx":
-                from openpyxl import Workbook
-                wb = Workbook()
-                ws = wb.active
-                for row in last_ai.strip().split("\n"): ws.append(row.split(",")) 
-                buf = io.BytesIO()
-                wb.save(buf)
-                file_bytes = buf.getvalue()
-            elif fmt == "pdf":
-                from reportlab.lib.pagesizes import letter
-                from reportlab.platypus import SimpleDocTemplate, Paragraph
-                from reportlab.lib.styles import getSampleStyleSheet
-                buf = io.BytesIO()
-                doc = SimpleDocTemplate(buf, pagesize=letter)
-                styles = getSampleStyleSheet()
-                flowables = []
-                for line in last_ai.split("\n"):
-                    if line.strip():
-                        sanitized = line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                        flowables.append(Paragraph(sanitized, styles["Normal"]))
-                doc.build(flowables)
-                file_bytes = buf.getvalue()
-            
-            from integrations.google_drive import upload_to_drive
-            res = await upload_to_drive(filename, file_bytes, folder_id)
-            if res.get("status") == "success":
-                await _send_text(f"✅ *File Berhasil Disimpan!*\n\n[Lihat di Google Drive]({res.get('link')})")
-            else:
-                await _send_text(f"❌ *Gagal menyimpan file:*\n{res.get('message')}")
-                
+            await _process_and_send_file(token, chat_id, last_ai, fmt, action="drive", folder_id=folder_id)
+
     except Exception as e:
         log.error("Telegram callback error", error=str(e))
         await _answer()
+
+async def _process_and_send_file(token, chat_id, last_ai, fmt, action="download", folder_id=None):
+    from integrations.google_drive import upload_to_drive
+    import httpx
+    import io, re
+    
+    filename = f"AI_Generated_{chat_id}.{fmt}"
+    file_bytes = b""
+
+            
+    try:
+        if fmt in ["txt", "csv", "md"]:
+            file_bytes = last_ai.encode("utf-8")
+        elif fmt == "docx":
+            from docx import Document
+            doc = Document()
+            for line in last_ai.split("\n"): doc.add_paragraph(line)
+            buf = io.BytesIO()
+            doc.save(buf)
+            file_bytes = buf.getvalue()
+        elif fmt == "xlsx":
+            from openpyxl import Workbook
+            from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+            wb = Workbook()
+            ws = wb.active
+            lines = last_ai.split('\n')
+            table_rows = []
+            regular_text = []
+            for line in lines:
+                line = line.strip()
+                if line.startswith('|') and line.endswith('|'):
+                    if re.match(r'^\|[-\s\|:]+\|$', line): 
+                        continue
+                    cells = [c.strip() for c in line.split('|')[1:-1]]
+                    if cells: table_rows.append(cells)
+                else:
+                    if line: regular_text.append(line)
+            current_row = 1
+            if regular_text:
+                context = "\n".join(regular_text)
+                ws.cell(row=current_row, column=1, value="Note / Context:").font = Font(bold=True)
+                ws.merge_cells(start_row=current_row+1, start_column=1, end_row=current_row+1, end_column=10)
+                ctx_cell = ws.cell(row=current_row+1, column=1, value=context)
+                ctx_cell.alignment = Alignment(wrap_text=True, vertical='top')
+                current_row += 3
+            if table_rows:
+                header_font = Font(name="Calibri", bold=True, color="FFFFFF")
+                header_fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
+                cell_border = Border(left=Side(style='thin', color='DDDDDD'), right=Side(style='thin', color='DDDDDD'), top=Side(style='thin', color='DDDDDD'), bottom=Side(style='thin', color='DDDDDD'))
+                for c_idx, val in enumerate(table_rows[0], 1):
+                    cell = ws.cell(row=current_row, column=c_idx, value=val)
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.border = cell_border
+                    cell.alignment = Alignment(horizontal='center', vertical='center')
+                for r_idx, row_data in enumerate(table_rows[1:], 1):
+                    for c_idx, val in enumerate(row_data, 1):
+                        cell = ws.cell(row=current_row + r_idx, column=c_idx, value=val)
+                        cell.border = cell_border
+                        cell.alignment = Alignment(wrap_text=True, vertical='center')
+            buf = io.BytesIO()
+            wb.save(buf)
+            file_bytes = buf.getvalue()
+        elif fmt == "pdf":
+            from fpdf import FPDF, HTMLMixin
+            import markdown
+            class TGPDF(FPDF, HTMLMixin):
+                pass
+            pdf = TGPDF()
+            pdf.add_page()
+            pdf.set_font("Helvetica", size=10)
+            html_content = markdown.markdown((last_ai or "").strip(), extensions=['tables', 'fenced_code'])
+            html_clean = html_content.encode('latin-1', 'replace').decode('latin-1')
+            pdf.write_html(html_clean)
+            buf = io.BytesIO()
+            pdf.output(buf)
+            file_bytes = buf.getvalue()
+    except Exception as exc:
+        log.error("File generation failed", error=str(exc))
+        async with httpx.AsyncClient() as c:
+            await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": "❌ Terjadi distorsi saat menyusun file."})
+        return
+        
+    if action == "drive":
+        res = await upload_to_drive(filename, file_bytes, folder_id)
+        async with httpx.AsyncClient() as c:
+            if res.get("status") == "success":
+                await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": f"✅ *File Berhasil Disimpan!*\n\n[Lihat di Google Drive]({res.get('link')})", "parse_mode": "Markdown"})
+            else:
+                await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": f"❌ *Gagal menyimpan file:*\n{res.get('message')}", "parse_mode": "Markdown"})
+    else:
+        # Download logic
+        try:
+            async with httpx.AsyncClient(timeout=60) as c:
+                await c.post(
+                    f"https://api.telegram.org/bot{token}/sendDocument",
+                    data={'chat_id': str(chat_id)},
+                    files={'document': (filename, file_bytes)}
+                )
+        except Exception as e:
+            log.error("Telegram sendDocument error", error=str(e)[:80])
+            async with httpx.AsyncClient() as c:
+                await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": "❌ Gagal mengirim dokumen ke chat."})
 
 
 # ── Callback task selesai ─────────────────────────────────────
