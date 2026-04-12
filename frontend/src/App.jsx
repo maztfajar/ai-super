@@ -19,6 +19,7 @@ import SettingsPage from './pages/Settings'
 import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import Security2FA from './pages/Security2FA'
+import Monitoring from './pages/Monitoring'
 
 function Protected({ children }) {
   const token = useAuthStore(s => s.token)
@@ -55,7 +56,18 @@ function useModelSync() {
           provider: (m.provider || 'unknown').charAt(0).toUpperCase() + (m.provider || 'unknown').slice(1),
         }))
         useOrchestratorStore.getState().setActiveConfiguredModels(mapped)
-      } catch {
+
+        // Prevent ghost state: if the currently selected orchestrator was deleted
+        const state = useOrchestratorStore.getState()
+        const selectedId = state.selectedOrchestrator
+        if (selectedId !== 'auto-orchestrator') {
+          const inModels = mapped.some(m => m.id === selectedId)
+          const inWorkflows = state.savedWorkflows.some(w => w.id === selectedId)
+          if (!inModels && !inWorkflows) {
+            state.setSelectedOrchestrator('auto-orchestrator')
+          }
+        }
+      } catch (e) {
         // Silent fail — models will be retried on next interval
       }
     }
@@ -94,6 +106,7 @@ export default function App() {
           <Route path="logs"         element={<AdminOnly><Logs/></AdminOnly>}/>
           <Route path="settings"     element={<AdminOnly><SettingsPage/></AdminOnly>}/>
           <Route path="admin"        element={<AdminOnly><Admin/></AdminOnly>}/>
+          <Route path="monitoring"   element={<Monitoring/>}/>
           <Route path="security"     element={<Navigate to="/security2fa" replace/>}/>
         </Route>
       </Routes>

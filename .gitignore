@@ -19,5 +19,5 @@ scripts/venv/
 .webhooks.json
 .custom_models.json
 .domains.json
-{backend/
+
 cloudflared*.log

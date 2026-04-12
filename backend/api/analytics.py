@@ -1,12 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
 from db.database import get_db
 from db.models import User, Message, ChatSession, KnowledgeDoc, WorkflowRun
 from core.auth import get_current_user
 from core.model_manager import model_manager
 from datetime import datetime, timedelta
 from core.config import settings
+from pathlib import Path as _Path
+import shutil as _shutil
+import glob as _glob
+import hashlib
 
 router = APIRouter()
 
@@ -44,6 +49,53 @@ def _timeline_full_sql():
               GROUP BY day ORDER BY day"""
 
 
+# ── Log Fetcher Helper ──────────────────────────────────────
+async def _fetch_recent_logs_helper(lines: int = 100, level: str = ""):
+    """Helper function to fetch recent logs without dependency injection."""
+    try:
+        log_path = _Path(settings.LOG_FILE)
+        if not log_path.is_absolute():
+            base = _Path(__file__).parent.parent
+            log_path = base / log_path.as_posix().lstrip("./")
+        log_dir = str(log_path.parent)
+
+        log_files = sorted(_glob.glob(f"{log_dir}/*.log"), reverse=True)[:3]
+        entries = []
+
+        if not log_files:
+            return {"logs": [], "source": "no_log_file", "hint": "Log file belum ada"}
+
+        for lf in log_files:
+            try:
+                with open(lf, 'r', encoding='utf-8', errors='ignore') as f:
+                    for line in f.readlines()[-lines:]:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        lvl = "INFO"
+                        if "ERROR" in line or "error" in line.lower():
+                            lvl = "ERROR"
+                        elif "WARN" in line or "warn" in line.lower():
+                            lvl = "WARN"
+                        elif "DEBUG" in line:
+                            lvl = "DEBUG"
+
+                        if level and lvl != level.upper():
+                            continue
+
+                        entries.append({
+                            "text": line,
+                            "level": lvl,
+                            "file": _glob.os.path.basename(lf),
+                        })
+            except Exception:
+                pass
+
+        return {"logs": entries[-lines:], "total": len(entries)}
+    except Exception as e:
+        return {"logs": [], "error": str(e)}
+
+
 @router.get("/dashboard")
 async def dashboard(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
     msgs  = await db.execute(select(func.count(Message.id)).where(Message.user_id == user.id))
@@ -63,7 +115,6 @@ async def dashboard(db: AsyncSession = Depends(get_db), user: User = Depends(get
         .where(Message.user_id == user.id).group_by(Message.model)
     )
     # Mock Latency and Error Rate for high-fidelity UI (Deterministically generated for visual variety)
-    import hashlib
     def get_mock_stats(name):
         h = int(hashlib.md5(name.encode()).hexdigest(), 16)
         lat = 10 + (h % 90) # 10-100ms
@@ -82,7 +133,6 @@ async def dashboard(db: AsyncSession = Depends(get_db), user: User = Depends(get
         })
     
     # Fetch timeline data for charts (including tokens and messages)
-    from sqlalchemy import text
     timeline_rows = await db.execute(
         text(_timeline_sql()),
         {"uid": user.id}
@@ -98,7 +148,7 @@ async def dashboard(db: AsyncSession = Depends(get_db), user: User = Depends(get
             res_timeline[key]["tokens"] = int(r.tokens or 0)
             
     # Fetch recent logs for event feed
-    logs_res = await get_recent_logs(lines=5, user=user)
+    logs_res = await _fetch_recent_logs_helper(lines=5)
     
     return {
         "stats": {
@@ -529,8 +579,7 @@ async def setup_log_rotation(user: User = Depends(get_current_user)):
         return {"status": "error", "message": str(e), "config": config}
 
 
-# ── Real logs reader ─────────────────────────────────────────
-import glob as _glob
+# ── Logs Endpoint ───────────────────────────────────────────────
 
 @router.get("/logs/recent")
 async def get_recent_logs(
@@ -539,47 +588,4 @@ async def get_recent_logs(
     user: User = Depends(get_current_user),
 ):
     """Baca log terbaru dari file."""
-    from core.config import settings as _settings
-
-    base = _Path(__file__).parent.parent
-    log_path = _Path(_settings.LOG_FILE)
-    if not log_path.is_absolute():
-        log_path = base / log_path.as_posix().lstrip("./")
-    log_dir = str(log_path.parent)
-
-    log_files = sorted(_glob.glob(f"{log_dir}/*.log"), reverse=True)[:3]
-
-    entries = []
-
-    # Juga baca dari uvicorn stdout jika tidak ada log file
-    if not log_files:
-        return {"logs": [], "source": "no_log_file", "hint": "Log file belum ada. Aktifkan file logging di Pengaturan."}
-
-    for lf in log_files:
-        try:
-            with open(lf, 'r', encoding='utf-8', errors='ignore') as f:
-                for line in f.readlines()[-lines:]:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    # Detect level
-                    lvl = "INFO"
-                    if "ERROR" in line or "error" in line.lower():
-                        lvl = "ERROR"
-                    elif "WARN" in line or "warn" in line.lower():
-                        lvl = "WARN"
-                    elif "DEBUG" in line:
-                        lvl = "DEBUG"
-
-                    if level and lvl != level.upper():
-                        continue
-
-                    entries.append({
-                        "text": line,
-                        "level": lvl,
-                        "file": _glob.os.path.basename(lf),
-                    })
-        except Exception:
-            pass
-
-    return {"logs": entries[-lines:], "total": len(entries)}
+    return await _fetch_recent_logs_helper(lines=lines, level=level)

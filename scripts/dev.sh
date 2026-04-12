@@ -100,4 +100,6 @@ uvicorn main:app \
     --host 0.0.0.0 \
     --port 7860 \
     --reload \
+    --reload-include .env \
+    --reload-include .custom_models.json \
     --log-level info

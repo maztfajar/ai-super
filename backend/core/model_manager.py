@@ -381,6 +381,145 @@ class ModelManager:
         except Exception as e:
             yield f"\n[Error Ollama: {e}. Pastikan Ollama berjalan: ollama serve]"
 
+    # ── Vision: gambar → teks ────────────────────────────────
+    async def chat_with_image(
+        self,
+        image_b64: str,
+        mime_type: str,
+        text_prompt: str,
+        system_prompt: str = "",
+        history: list = None,
+        model: str = None,
+    ) -> str:
+        """
+        Kirim gambar (base64) + teks ke vision-capable model.
+        Auto-fallback: OpenAI gpt-4o → Sumopod (OpenAI-compatible) → Google Gemini.
+        """
+        history = history or []
+        model_to_use = model
+
+        # Auto-detect vision model jika tidak ditentukan
+        if not model_to_use:
+            vision_candidates = [
+                m for m in self.available_models
+                if any(v in m for v in ["gpt-4o", "gpt-4-vision", "gemini", "pixtral",
+                                         "llava", "vision", "claude-3", "qwen"])
+            ]
+            if vision_candidates:
+                model_to_use = vision_candidates[0]
+            else:
+                model_to_use = self.get_default_model()
+
+        provider = self._get_provider(model_to_use)
+        clean_model = model_to_use.replace("sumopod/", "").replace("ollama/", "")
+        image_url = f"data:{mime_type};base64,{image_b64}"
+
+        msgs = []
+        if system_prompt:
+            msgs.append({"role": "system", "content": system_prompt})
+        for h in (history or [])[-6:]:
+            msgs.append(h)
+        msgs.append({
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": image_url}},
+                {"type": "text", "text": text_prompt},
+            ],
+        })
+
+        try:
+            if provider == "openai":
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                resp = await client.chat.completions.create(
+                    model=clean_model, messages=msgs, max_tokens=2048, temperature=0.5,
+                )
+                return resp.choices[0].message.content or ""
+
+            elif provider in ("sumopod", "custom"):
+                if provider == "sumopod":
+                    base_url = settings.SUMOPOD_HOST
+                    api_key  = settings.SUMOPOD_API_KEY
+                    actual_model = clean_model
+                else:
+                    info = self.available_models.get(model_to_use, {})
+                    base_url = info.get("base_url", "")
+                    api_key  = info.get("api_key", "")
+                    actual_model = info.get("model_id", clean_model)
+                if base_url and api_key:
+                    from openai import AsyncOpenAI
+                    client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                    resp = await client.chat.completions.create(
+                        model=actual_model, messages=msgs, max_tokens=2048, temperature=0.5,
+                    )
+                    return resp.choices[0].message.content or ""
+
+            elif provider == "google":
+                import google.generativeai as genai
+                import base64 as _b64, io
+                import PIL.Image
+                genai.configure(api_key=settings.GOOGLE_API_KEY)
+                gmodel = genai.GenerativeModel(clean_model)
+                pil_img = PIL.Image.open(io.BytesIO(_b64.b64decode(image_b64)))
+                resp = gmodel.generate_content([pil_img, text_prompt])
+                return resp.text or ""
+
+        except Exception as e:
+            log.error("chat_with_image error", model=model_to_use, error=str(e))
+            return f"❌ Gagal memproses gambar via {model_to_use}: {e}"
+
+        return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini-2.5-flash, gpt-4o) di menu Integrasi."
+
+    # ── Audio: suara → teks (transcription) ──────────────────
+    async def transcribe_audio(
+        self,
+        audio_bytes: bytes,
+        filename: str = "audio.ogg",
+    ) -> str:
+        """
+        Transkrip audio ke teks menggunakan Whisper API.
+        Auto-fallback: OpenAI Whisper → Sumopod Whisper-compatible.
+        """
+        import io
+
+        # 1. Coba OpenAI Whisper
+        if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
+            try:
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                audio_file = io.BytesIO(audio_bytes)
+                audio_file.name = filename
+                transcript = await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text",
+                    language="id",
+                )
+                return str(transcript)
+            except Exception as e:
+                log.warning("OpenAI Whisper failed, trying Sumopod", error=str(e)[:80])
+
+        # 2. Coba Sumopod (jika mendukung whisper-compatible endpoint)
+        if settings.SUMOPOD_API_KEY:
+            try:
+                from openai import AsyncOpenAI
+                audio_file2 = io.BytesIO(audio_bytes)
+                audio_file2.name = filename
+                client = AsyncOpenAI(
+                    api_key=settings.SUMOPOD_API_KEY,
+                    base_url=settings.SUMOPOD_HOST,
+                )
+                transcript = await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file2,
+                    response_format="text",
+                )
+                return str(transcript)
+            except Exception as e:
+                log.warning("Sumopod Whisper failed", error=str(e)[:80])
+
+        return ""
+
     # ── Status & utils ────────────────────────────────────────
     async def get_status(self) -> list:
         return [
@@ -395,3 +534,4 @@ class ModelManager:
 
 
 model_manager = ModelManager()
+

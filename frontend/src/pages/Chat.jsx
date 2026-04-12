@@ -10,7 +10,8 @@ import ChannelSelector from '../components/ChannelSelector'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
-  Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X
+  Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
+  ImagePlus, Mic, MicOff, Camera
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -48,6 +49,14 @@ function Bubble({ msg, isStreaming, onStop, onDriveUpload, onExport }) {
             ? 'bg-accent text-white rounded-tr-sm'
             : 'bg-bg-4 border border-border text-ink rounded-tl-sm'
         )}>
+          {/* Tampilkan gambar jika ada */}
+          {isUser && msg._image_preview && (
+            <img
+              src={msg._image_preview}
+              alt="Gambar yang dikirim"
+              className="max-w-[200px] max-h-[150px] rounded-lg mb-2 object-cover border border-white/20"
+            />
+          )}
           {isUser ? (
             <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
           ) : (
@@ -229,12 +238,21 @@ export default function Chat() {
   const [statusText, setStatusText] = useState('')
   const [uploadingDriveMsg, setUploadingDriveMsg] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Multimodal state
+  const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
+  const [isRecording, setIsRecording] = useState(false)
+  const [isTranscribing, setIsTranscribing] = useState(false)
+  // Deletion guard: set of session IDs sedang dalam proses hapus
+  // Mencegah polling 5 detik mengembalikan sesi yang baru dihapus
+  const deletingIdsRef = useRef(new Set())
+  const mediaRecorderRef = useRef(null)
+  const imagePickerRef = useRef(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
   const fileInputRef = useRef(null)
-
   const scrollBottom = useCallback(() => {
+
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
@@ -243,9 +261,13 @@ export default function Chat() {
   // Load models + sessions
   useEffect(() => {
     api.listSessions().then(setSessions).catch(() => { })
-    api.listModels().then((r) => {
-      api.listSessions().then(setSessions)
-      // No need to set default model, OrchestratorDropdown manages its own default.
+    api.listModels().then(() => {
+      // Re-fetch sessions after models loaded (titles may have been updated)
+      api.listSessions().then((s) => {
+        // Filter out any sessions currently being deleted
+        const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+        setSessions(safe)
+      }).catch(() => { })
     }).catch(() => { })
   }, [])
 
@@ -294,8 +316,11 @@ export default function Chat() {
           if (uniqueNew.length > 0) {
             const merged = [...currentMsgs, ...uniqueNew]
             useChatStore.getState().setMessages(merged)
-            // Refresh session list too (title/timestamp may have changed)
-            api.listSessions().then(setSessions).catch(() => {})
+            // Refresh session list — but filter out sessions being deleted
+            api.listSessions().then((s) => {
+              const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+              setSessions(safe)
+            }).catch(() => {})
           }
         }
       } catch {
@@ -319,16 +344,56 @@ export default function Chat() {
   }
 
   async function deleteSession(id) {
+    // 1. Tandai sebagai sedang dihapus (cegah polling mengembalikannya)
+    deletingIdsRef.current.add(id)
+
+    // 2. Optimistic removal — hapus dari UI sebelum API response
+    const prevSessions = useChatStore.getState().sessions
+    const filtered = prevSessions.filter(s => s.id !== id)
+    setSessions(filtered)
+
+    // Jika session yang dihapus adalah session aktif, clear dan navigate
+    const wasActive = currentSession?.id === id
+    if (wasActive) {
+      setCurrentSession(null)
+      setMessages([])
+      navigate('/chat')
+    }
+
     try {
       await api.deleteSession(id)
+      // Setelah berhasil, refresh dari server untuk memastikan konsistensi
       const updated = await api.listSessions()
-      setSessions(updated)
-      if (currentSession?.id === id) {
-        setCurrentSession(null)
-        setMessages([])
-        navigate('/chat')
+      // Tetap filter: jangan tampilkan yang sedang dihapus
+      const safe = updated.filter(s => !deletingIdsRef.current.has(s.id))
+      setSessions(safe)
+      toast.success('Chat dihapus', { duration: 1500 })
+    } catch (err) {
+      // Rollback jika gagal
+      deletingIdsRef.current.delete(id)
+      setSessions(prevSessions) // kembalikan state sebelumnya
+      if (wasActive) {
+        setCurrentSession(prevSessions.find(s => s.id === id) || null)
       }
-    } catch { toast.error('Gagal hapus sesi') }
+      // Pesan error yang lebih informatif
+      const status = err?.status || err?.response?.status
+      if (status === 404) {
+        // Session sudah tidak ada — anggap berhasil dihapus
+        deletingIdsRef.current.add(id)
+        setSessions(filtered)
+        if (wasActive) { setCurrentSession(null); setMessages([]) }
+        return
+      } else if (status === 401 || status === 403) {
+        toast.error('Tidak punya akses untuk menghapus sesi ini')
+      } else if (!navigator.onLine) {
+        toast.error('Tidak ada koneksi internet. Chat akan dihapus saat online kembali.')
+      } else {
+        toast.error('Gagal menghapus chat. Silakan coba lagi.')
+      }
+    } finally {
+      // Setelah 10 detik, unlock dari guard agar tidak leak
+      setTimeout(() => deletingIdsRef.current.delete(id), 10000)
+    }
   }
 
   // ── STOP streaming ────────────────────────────────────────
@@ -369,8 +434,12 @@ export default function Chat() {
       content: text,
       model: selectedOrchestrator,
       created_at: new Date().toISOString(),
+      _image_preview: pendingImage?.preview || null,
     }
     addMessage(tempUserMsg)
+
+    const imageToSend = pendingImage
+    setPendingImage(null)  // clear preview
     setStreaming(true)
     setStatusText('Menghubungi AI...')
 
@@ -379,8 +448,10 @@ export default function Chat() {
     abortRef.current = api.chatStream(
       {
         session_id: sessionId,
-        message: text,
-        model: selectedOrchestrator,
+        message:    imageToSend
+          ? `[📷 Gambar dikirim] ${text}`
+          : text,
+        model:   selectedOrchestrator,
         use_rag: useRAG,
       },
       (chunk) => appendStreamingText(chunk),
@@ -397,8 +468,11 @@ export default function Chat() {
           rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
           created_at: new Date().toISOString(),
         })
-        const updated = await api.listSessions()
-        setSessions(updated)
+        // Refresh session list — tapi hati-hati jangan restore sesi yang dihapus
+        api.listSessions().then((s) => {
+          const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+          setSessions(safe)
+        }).catch(() => {})
       },
       (sessionData) => {
         if (sessionData && sessionData.model) {
@@ -449,6 +523,70 @@ export default function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
+    }
+  }
+
+  // ── Handle gambar dari picker ─────────────────────────────
+  async function handleImagePick(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      toast.loading('Menyiapkan gambar...')
+      const result = await api.uploadImage(file)
+      toast.dismiss()
+      setPendingImage({
+        base64: result.base64,
+        mime_type: result.mime_type,
+        preview: `data:${result.mime_type};base64,${result.base64}`,
+        filename: result.filename,
+      })
+      toast.success('Gambar siap dikirim!')
+    } catch (err) {
+      toast.dismiss()
+      toast.error('Gagal memuat gambar')
+    }
+    e.target.value = ''
+  }
+
+  // ── Handle voice recording ────────────────────────────────
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' })
+      const chunks = []
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
+      mr.onstop = async () => {
+        setIsRecording(false)
+        setIsTranscribing(true)
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunks, { type: 'audio/webm' })
+        try {
+          const result = await api.transcribeAudio(blob, 'voice.webm')
+          if (result.status === 'ok' && result.text) {
+            setInput(prev => prev ? prev + ' ' + result.text : result.text)
+            toast.success('🎙️ Suara ditranskrip!')
+          } else {
+            toast('Tidak ada suara yang terdeteksi', { icon: '🎤' })
+          }
+        } catch {
+          toast.error('Gagal mentranskrip suara')
+        } finally {
+          setIsTranscribing(false)
+        }
+      }
+      mr.start()
+      mediaRecorderRef.current = mr
+      setIsRecording(true)
+      toast('🔴 Merekam... Klik lagi untuk berhenti', { duration: 60000 })
+    } catch {
+      toast.error('Tidak bisa mengakses mikrofon')
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      toast.dismiss()
     }
   }
 
@@ -772,8 +910,28 @@ export default function Chat() {
               </div>
             )}
 
+            {/* Preview gambar yang akan dikirim */}
+            {pendingImage && (
+              <div className="flex items-center gap-2 mb-2 px-1 animate-fade">
+                <div className="relative">
+                  <img
+                    src={pendingImage.preview}
+                    alt="Preview gambar"
+                    className="h-14 w-14 object-cover rounded-lg border border-border-2"
+                  />
+                  <button
+                    onClick={() => setPendingImage(null)}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-danger flex items-center justify-center"
+                  >
+                    <X size={9} className="text-white" />
+                  </button>
+                </div>
+                <span className="text-[11px] text-ink-3">Gambar siap dikirim</span>
+              </div>
+            )}
+
             <div className="flex gap-2 items-end">
-              {/* Upload (paperclip) — left side */}
+              {/* Upload dokumen (paperclip) */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -781,6 +939,15 @@ export default function Chat() {
                 onChange={handleFileUpload}
                 accept=".pdf,.docx,.txt,.csv,.md"
               />
+              {/* Image picker hidden input */}
+              <input
+                ref={imagePickerRef}
+                type="file"
+                className="hidden"
+                onChange={handleImagePick}
+                accept="image/*"
+              />
+
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={streaming}
@@ -788,6 +955,38 @@ export default function Chat() {
                 title="Upload file ke Knowledge Base"
               >
                 <Paperclip size={15} />
+              </button>
+
+              {/* Kamera */}
+              <button
+                onClick={() => imagePickerRef.current?.click()}
+                disabled={streaming}
+                className={clsx(
+                  'w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-40',
+                  pendingImage
+                    ? 'border-accent bg-accent/20 text-accent'
+                    : 'border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
+                )}
+                title="Kirim gambar ke AI"
+              >
+                <ImagePlus size={15} />
+              </button>
+
+              {/* Mikrofon */}
+              <button
+                onClick={isRecording ? stopRecording : startRecording}
+                disabled={streaming || isTranscribing}
+                className={clsx(
+                  'w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-40',
+                  isRecording
+                    ? 'border-danger bg-danger/20 text-danger animate-pulse'
+                    : isTranscribing
+                      ? 'border-warn bg-warn/20 text-warn'
+                      : 'border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
+                )}
+                title={isRecording ? 'Berhenti merekam' : isTranscribing ? 'Mentranskripsi...' : 'Rekam suara'}
+              >
+                {isRecording ? <MicOff size={15} /> : isTranscribing ? <Loader2 size={15} className="animate-spin" /> : <Mic size={15} />}
               </button>
 
               {/* Text input */}

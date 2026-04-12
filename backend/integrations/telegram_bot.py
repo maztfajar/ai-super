@@ -97,10 +97,10 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
 
         # /model
         if text == "/model":
-            from core.smart_router import smart_router
-            route = smart_router.route("test")
-            model_name = route.get("model", "unknown")
-            await _send(token, chat_id, "Model aktif: `" + model_name + "`")
+            from core.model_manager import model_manager
+            default_model = model_manager.get_default_model()
+            models_list = ", ".join(list(model_manager.available_models.keys())[:5])
+            await _send(token, chat_id, f"Model default: `{default_model}`\nModel tersedia: `{models_list}`")
             return
 
         # Pesan biasa → proses AI
@@ -181,6 +181,113 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             else:
                 msg = "Maaf ada gangguan sementara. Silakan kirim ulang pesan kamu."
             await _send(token, chat_id, msg)
+        except Exception:
+            pass
+
+# ── Handle pesan FOTO ────────────────────────────────────────
+async def _handle_photo(chat_id: int, user_id: str, photo_list: list, caption: str,
+                        from_name: str, token: str):
+    """Download foto terbesar dari Telegram, kirim ke model vision."""
+    try:
+        import httpx, base64
+        # Foto terbesar = index terakhir
+        best_photo = photo_list[-1]
+        file_id = best_photo["file_id"]
+
+        await _send_typing(token, chat_id)
+
+        # 1. Get file path
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.get(f"https://api.telegram.org/bot{token}/getFile",
+                            params={"file_id": file_id})
+            file_path = r.json()["result"]["file_path"]
+
+        # 2. Download file
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(f"https://api.telegram.org/file/bot{token}/{file_path}")
+            image_bytes = r.content
+
+        # 3. Encode ke base64
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        ext = file_path.split(".")[-1].lower() if "." in file_path else "jpg"
+        mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+
+        # 4. Kirim ke vision model
+        from core.model_manager import model_manager
+        from memory.manager import memory_manager
+
+        system = await memory_manager.build_system_prompt(user_id, "tg_" + str(chat_id))
+        user_question = caption or "Deskripsikan gambar ini secara detail dalam Bahasa Indonesia."
+        history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
+
+        full_response = await model_manager.chat_with_image(
+            image_b64=image_b64,
+            mime_type=mime,
+            text_prompt=user_question,
+            system_prompt=system,
+            history=history,
+        )
+
+        if not full_response.strip():
+            full_response = "Maaf, saya tidak bisa menganalisis gambar ini. Coba kirim ulang ya!"
+
+        await _send(token, chat_id, full_response, include_drive_btn=True)
+
+        # Simpan ke memory
+        await memory_manager.save_chat_to_redis("tg_" + str(chat_id), "user", f"[Foto] {user_question}")
+        await memory_manager.save_chat_to_redis("tg_" + str(chat_id), "assistant", full_response)
+        log.info("Telegram photo handled", chat_id=chat_id, chars=len(full_response))
+
+    except Exception as e:
+        log.error("Telegram handle_photo error", error=str(e))
+        try:
+            await _send(token, chat_id, "Maaf, gagal memproses gambar. Coba kirim ulang ya!")
+        except Exception:
+            pass
+
+
+# ── Handle pesan SUARA/VOICE ──────────────────────────────────
+async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
+                        from_name: str, token: str):
+    """Download voice note dari Telegram, transkrip via Whisper, lanjutkan sebagai teks."""
+    try:
+        import httpx
+        file_id = voice_obj["file_id"]
+
+        await _send(token, chat_id, "🎙️ _Mentranskripsi pesan suara..._")
+        await _send_typing(token, chat_id)
+
+        # 1. Get file path
+        async with httpx.AsyncClient(timeout=15) as c:
+            r = await c.get(f"https://api.telegram.org/bot{token}/getFile",
+                            params={"file_id": file_id})
+            file_path = r.json()["result"]["file_path"]
+
+        # 2. Download audio
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(f"https://api.telegram.org/file/bot{token}/{file_path}")
+            audio_bytes = r.content
+
+        # 3. Transkrip via model_manager
+        from core.model_manager import model_manager
+        transcript = await model_manager.transcribe_audio(
+            audio_bytes=audio_bytes,
+            filename=file_path.split("/")[-1] or "voice.ogg",
+        )
+
+        if not transcript or not transcript.strip():
+            await _send(token, chat_id, "Maaf, tidak bisa mentranskrip suara. Kirim pesan teks ya!")
+            return
+
+        await _send(token, chat_id, f"🎙️ _Transkripsi:_ \"{transcript}\"")
+
+        # 4. Lanjutkan sebagai pesan teks biasa
+        await _handle_message(chat_id, user_id, transcript, from_name, token)
+
+    except Exception as e:
+        log.error("Telegram handle_voice error", error=str(e))
+        try:
+            await _send(token, chat_id, "Maaf, gagal memproses pesan suara. Silakan kirim ulang.")
         except Exception:
             pass
 
@@ -462,6 +569,32 @@ async def _polling_loop(token: str):
                 text      = (message.get("text") or "").strip()
                 user_id   = str(message.get("from", {}).get("id", "unknown"))
                 from_name = message.get("from", {}).get("first_name", "User")
+
+                photo     = message.get("photo")
+                voice     = message.get("voice")
+                audio     = message.get("audio")
+                
+                # Handle gambar
+                if photo:
+                    caption = (message.get("caption") or "").strip()
+                    task = asyncio.create_task(
+                        _handle_photo(chat_id, user_id, photo, caption, from_name, token),
+                        name="tg-photo-" + str(chat_id),
+                    )
+                    active_tasks.add(task)
+                    task.add_done_callback(lambda t: _task_done(t, active_tasks))
+                    continue
+
+                # Handle pesan suara
+                if voice or audio:
+                    voice_obj = voice or audio
+                    task = asyncio.create_task(
+                        _handle_voice(chat_id, user_id, voice_obj, from_name, token),
+                        name="tg-voice-" + str(chat_id),
+                    )
+                    active_tasks.add(task)
+                    task.add_done_callback(lambda t: _task_done(t, active_tasks))
+                    continue
 
                 if not chat_id or not text:
                     continue

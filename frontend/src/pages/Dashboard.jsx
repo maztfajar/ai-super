@@ -411,6 +411,7 @@ function SystemMonitor({ system }) {
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [system, setSystem] = useState(null)
+  const [savedModels, setSavedModels] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [metric, setMetric] = useState('Pesan')
@@ -428,6 +429,13 @@ export default function Dashboard() {
     fetchDashboard()
     const int = setInterval(fetchDashboard, 10000)
     return () => clearInterval(int)
+  }, [])
+
+  // Load saved models from integrations
+  useEffect(() => {
+    api.listSavedModels?.()
+      .then(r => setSavedModels(r.models || []))
+      .catch(() => setSavedModels([]))
   }, [])
 
   useEffect(() => {
@@ -482,14 +490,18 @@ export default function Dashboard() {
   const timeline = data?.timeline || []
   const logs = data?.logs || []
 
-  // ── Bug #4 Fix: Merge active models into usage data ────────
-  // If backend returns active models but no usage, still display them
+  // ── Bug Fix: Only show models that are SAVED in integrations ──
+  // Filter usage data to only include models saved in .env or .custom_models.json
   const rawUsage = data?.usage || []
   const activeModels = data?.models || []
   const usageMap = new Map(rawUsage.map(u => [u.model, u]))
-  // Merge active models that have no usage yet
+  
+  // Create a set of saved model IDs for quick lookup
+  const savedModelIds = new Set(savedModels.map(m => m.id))
+  
+  // Merge active models that have no usage yet, but ONLY if they're saved
   for (const m of activeModels) {
-    if (!usageMap.has(m.id)) {
+    if (!usageMap.has(m.id) && savedModelIds.has(m.id)) {
       usageMap.set(m.id, {
         model: m.id,
         count: 0,
@@ -499,7 +511,9 @@ export default function Dashboard() {
       })
     }
   }
-  const usage = Array.from(usageMap.values())
+  
+  // Filter to only include saved models
+  const usage = Array.from(usageMap.values()).filter(u => savedModelIds.has(u.model))
 
   const chartData = timeline.map(t => ({
     label: t.day.split('-').slice(1).join('/'),

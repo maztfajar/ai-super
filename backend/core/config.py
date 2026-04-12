@@ -1,12 +1,37 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
 from pathlib import Path
+import os
 
-# Resolve path ke .env di root project (bukan relative ke CWD)
+# Resolve path ke .env di root project
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
+
+# Load .env secara eksplisit ke os.environ saat startup agar model_manager
+# langsung mendeteksi semua credentials tanpa perlu tekan Simpan ulang.
+if _ENV_FILE.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(str(_ENV_FILE), override=False)
+    except ImportError:
+        # fallback manual parser jika python-dotenv tidak tersedia
+        for line in _ENV_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            k = k.strip()
+            v = v.strip().strip('"').strip("'")
+            if k and k.isidentifier() and k not in os.environ:
+                os.environ[k] = v
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=str(_ENV_FILE),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
     # App
     APP_NAME: str = "AI SUPER ASSISTANT"
     APP_VERSION: str = "1.0.0"
@@ -28,10 +53,10 @@ class Settings(BaseSettings):
     # AI APIs
     OPENAI_API_KEY: Optional[str] = None
     OPENAI_AVAILABLE_MODELS: str = ""
-    
+
     ANTHROPIC_API_KEY: Optional[str] = None
     ANTHROPIC_AVAILABLE_MODELS: str = ""
-    
+
     GOOGLE_API_KEY: Optional[str] = None
     GOOGLE_AVAILABLE_MODELS: str = ""
 
@@ -53,14 +78,15 @@ class Settings(BaseSettings):
 
     # RAG
     CHROMA_PERSIST_DIR: str = "./data/chroma_db"
-    RAG_DOCUMENTS_DIR: str = "../rag_documents"  # Folder dokumen RAG (relative to backend/)
-    RAG_TIMEOUT_SECONDS: int = 45                # Timeout per dokumen processing
-    EMBEDDING_PROVIDER: str = "sumopod"          # options: sumopod, openai, google, local
+    RAG_DOCUMENTS_DIR: str = "../rag_documents"
+    RAG_TIMEOUT_SECONDS: int = 45
+    EMBEDDING_PROVIDER: str = "sumopod"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     # Google Drive
-    GDRIVE_UPLOAD_FOLDER_ID: str = ""  # Folder ID tujuan upload (Service Account butuh shared folder)
+    GDRIVE_UPLOAD_FOLDER_ID: str = ""
+    GOOGLE_DRIVE_CREDENTIALS: Optional[str] = None
 
     # Telegram
     TELEGRAM_BOT_TOKEN: Optional[str] = None
@@ -86,9 +112,9 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASS: str = ""
-    SMTP_FROM: str = ""           # From address, default = SMTP_USER
-    SMTP_TLS:  bool = True         # True = STARTTLS (587), False = SSL (465)
-    APP_URL:   str = "http://localhost:7860"  # Base URL untuk link email
+    SMTP_FROM: str = ""
+    SMTP_TLS:  bool = True
+    APP_URL:   str = "http://localhost:7860"
 
     # Rate limit
     RATE_LIMIT_REQUESTS: int = 100
@@ -98,9 +124,10 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "./data/logs/ai-super-assistant.log"
 
-    class Config:
-        env_file = str(_ENV_FILE)
-        extra = "ignore"
+    # Tunnel / Cloudflare (fields diakui agar tidak crash dengan extra="ignore")
+    CLOUDFLARE_TUNNEL_ID: Optional[str] = None
+    CLOUDFLARE_TUNNEL_TOKEN: Optional[str] = None
+    CLOUDFLARE_API_TOKEN: Optional[str] = None
 
     @property
     def allowed_extensions_list(self) -> list:
@@ -122,9 +149,18 @@ class Settings(BaseSettings):
 
     def reload(self):
         """Reload configuration from .env and environment variables in-place"""
+        if _ENV_FILE.exists():
+            try:
+                from dotenv import load_dotenv
+                load_dotenv(str(_ENV_FILE), override=True)
+            except ImportError:
+                pass
         new_settings = Settings()
         for field in self.model_fields:
-            setattr(self, field, getattr(new_settings, field))
+            try:
+                setattr(self, field, getattr(new_settings, field))
+            except Exception:
+                pass
 
 
 settings = Settings()

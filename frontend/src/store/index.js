@@ -90,7 +90,17 @@ export const useOrchestratorStore = create(
       selectedOrchestrator: 'auto-orchestrator',
       setSelectedOrchestrator: (id) => set({ selectedOrchestrator: id }),
     }),
-    { name: 'ai-super-assistant-orchestrator' }
+    { 
+      name: 'ai-super-assistant-orchestrator',
+      partialize: (state) => ({
+        appName: state.appName,
+        savedWorkflows: state.savedWorkflows,
+        connectedChannels: state.connectedChannels,
+        selectedChannel: state.selectedChannel,
+        selectedOrchestrator: state.selectedOrchestrator,
+        // intentionally exclude activeConfiguredModels from persistence so it relies on live backend data
+      }),
+    }
   )
 )
 

@@ -158,3 +158,43 @@ class RecoveryToken(SQLModel, table=True):
     used: bool = False
     expires_at: datetime
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class AgentPerformance(SQLModel, table=True):
+    """Track per-agent performance metrics for the learning engine."""
+    __tablename__ = "agent_performance"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    agent_type: str = Field(index=True)      # reasoning, coding, research, writing, etc
+    model_used: str = Field(index=True)       # actual model ID (e.g. gpt-4o, claude-3-5-sonnet)
+    task_type: str = ""                       # category of task handled
+    task_id: Optional[str] = None             # link to TaskExecution
+    success: bool = True
+    confidence: float = 0.0                   # 0.0 - 1.0
+    execution_time_ms: int = 0
+    tokens_input: int = 0
+    tokens_output: int = 0
+    cost_usd: float = 0.0
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class TaskExecution(SQLModel, table=True):
+    """Track orchestrator task execution lifecycle."""
+    __tablename__ = "task_executions"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    session_id: str = Field(index=True)
+    user_id: str = Field(index=True)
+    original_request: str = ""                # user's original message
+    task_spec_json: Optional[str] = None      # JSON of TaskSpecification
+    subtasks_json: Optional[str] = None       # JSON of decomposed subtasks
+    dag_json: Optional[str] = None            # JSON of dependency graph
+    assignments_json: Optional[str] = None    # JSON of agent assignments
+    status: str = "preprocessing"             # preprocessing | decomposing | executing | validating | aggregating | completed | failed
+    result_summary: Optional[str] = None
+    total_time_ms: int = 0
+    total_tokens: int = 0
+    total_cost_usd: float = 0.0
+    agents_used: Optional[str] = None         # JSON list of agent/model combos used
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None

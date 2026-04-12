@@ -24,9 +24,12 @@ export default function Models() {
 
   const load = () => {
     setLoading(true)
+    // Load all available models
     api.listModels()
-      .then((r) => setModels(r.models || []))
-      .catch(() => {})
+      .then((r) => {
+        setModels(r.models || [])
+      })
+      .catch(() => setModels([]))
       .finally(() => setLoading(false))
   }
 
@@ -47,17 +50,12 @@ export default function Models() {
       </div>
 
       {models.length === 0 ? (
-        <div className="bg-bg-3 border border-border rounded-xl p-8 text-center">
-          <Bot size={36} className="text-ink-3 mx-auto mb-3" />
-          <h2 className="text-sm font-semibold text-ink mb-2">Belum ada model aktif</h2>
-          <p className="text-xs text-ink-3 mb-4 max-w-sm mx-auto">
-            Tambahkan API key ke file <span className="font-mono text-accent-2">.env</span>, atau install Ollama untuk model lokal gratis.
+        <div className="bg-bg-3 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center p-12 text-center hover:border-accent/40 transition-colors cursor-pointer group" onClick={() => navigate('/integrations')}>
+          <span className="text-4xl mb-4">🤖</span>
+          <h2 className="text-sm font-semibold text-ink mb-2">Belum ada model aktif terdeteksi</h2>
+          <p className="text-xs text-ink-3">
+            Sistem tidak mendeteksi model AI apapun. Buka menu <span className="font-semibold text-accent-2 group-hover:text-ink transition-colors">Integrasi</span> untuk mengonfigurasi API provider.
           </p>
-          <div className="bg-bg-4 rounded-lg p-3 text-left text-xs font-mono text-ink-3 max-w-sm mx-auto">
-            <div className="text-success mb-1"># Install Ollama (gratis)</div>
-            <div>curl -fsSL https://ollama.ai/install.sh | sh</div>
-            <div>ollama pull llama3.1</div>
-          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

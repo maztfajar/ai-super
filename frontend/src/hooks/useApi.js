@@ -117,8 +117,8 @@ export const api = {
   scrapeWeb:  (url)  => req('POST',   '/rag/scrape', { url }),
 
   // ── Models ────────────────────────────────────────────────
-  listModels: () => req('GET', '/models/'),
-
+  listModels: () => req('GET', '/models'),  listSavedModels: () => req('GET', '/models/saved'),  // Only from .env and .custom_models.json
+  reloadSavedModels: () => req('POST', '/models/reload-saved'),
   // ── Custom Model Providers ────────────────────────────────
   listCustomModels:     ()     => req('GET',    '/integrations/custom-models'),
   addCustomModel:       (d)    => req('POST',   '/integrations/custom-models', d),
@@ -150,6 +150,14 @@ export const api = {
   storageInfo:    () => req('GET', '/analytics/storage'),
   cleanStorage:   (target) => req('POST', '/analytics/storage/clean?target=' + target),
   rotateLog:      () => req('POST', '/analytics/storage/rotate-log'),
+
+  // ── Monitoring (Orchestrator) ──────────────────────────────
+  monitoringDashboard: () => req('GET', '/monitoring/dashboard'),
+  monitoringAgents:    () => req('GET', '/monitoring/agents'),
+  agentPerformance:    () => req('GET', '/monitoring/agent-performance'),
+  recentTasks:         (limit) => req('GET', '/monitoring/recent-tasks?limit=' + (limit || 50)),
+  systemHealth:        () => req('GET', '/monitoring/health'),
+  activeSessions:      () => req('GET', '/monitoring/active-sessions'),
 
   // ── Integrations ─────────────────────────────────────────
   integrationsStatus: () => req('GET', '/integrations/status'),
@@ -211,6 +219,36 @@ export const api = {
     })
     if (!res.ok) throw new Error('Upload failed')
     return res.json()
+  },
+
+  // ── Transkrip audio suara ────────────────────────────────
+  transcribeAudio: async function(audioBlob, filename) {
+    const token = getToken()
+    const form  = new FormData()
+    form.append('file', audioBlob, filename || 'voice.ogg')
+    const res = await fetch(BASE + '/media/transcribe', {
+      method:  'POST',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      body:    form,
+    })
+    if (!res.ok) throw new Error('Transcribe failed')
+    return res.json()
+  },
+
+  // ── Streaming chat multimodal (gambar/suara + teks) ────────
+  chatStreamMultimodal: function(payload, imageData, onChunk, onDone, onSession, onStatus) {
+    /**
+     * payload: { session_id, message, model, use_rag }
+     * imageData: { base64, mime_type } | null
+     * Kirim message teks biasa, tapi inject context visual di depan message jika ada gambar.
+     */
+    // Jika ada gambar, tambahkan sebagai metadata ke payload
+    const enriched = Object.assign({}, payload)
+    if (imageData) {
+      enriched._image_b64  = imageData.base64
+      enriched._image_mime = imageData.mime_type
+    }
+    return api.chatStream(enriched, onChunk, onDone, onSession, undefined, onStatus)
   },
 
   // ── Streaming chat via SSE ────────────────────────────────

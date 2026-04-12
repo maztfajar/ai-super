@@ -11,9 +11,7 @@ from db.database import get_db
 from db.models import ChatSession, Message, User
 from core.auth import get_current_user
 from core.model_manager import model_manager
-from core.smart_router import smart_router
-from core.classifier import task_classifier
-from agents.voting_engine import voting_engine
+from core.orchestrator import orchestrator
 from agents.executor import agent_executor
 from rag.engine import rag_engine
 from memory.manager import memory_manager
@@ -112,21 +110,31 @@ async def delete_session(
     user: User = Depends(get_current_user),
 ):
     session = await db.get(ChatSession, session_id)
-    if not session or session.user_id != user.id:
-        raise HTTPException(404, "Session not found")
-        
-    # Hapus semua messages terkait session agar tidak menjadi yatim piatu
+
+    # Idempotent: jika sudah tidak ada, anggap berhasil (jangan error 404)
+    if not session:
+        return {"status": "deleted", "note": "session_not_found_treated_as_deleted"}
+
+    # Pastikan hanya pemilik yang bisa hapus
+    if session.user_id != user.id:
+        raise HTTPException(403, "Tidak punya akses untuk menghapus sesi ini")
+
+    # Hapus semua messages terkait session
     from sqlalchemy import delete
     await db.execute(delete(Message).where(Message.session_id == session_id))
-    
-    # Hapus session dari database
+
+    # Hapus session
     await db.delete(session)
     await db.commit()
-    
-    # Invalidate cache Redis untuk current session
-    await memory_manager.clear_session(session_id)
-    
+
+    # Invalidate cache Redis — nonblocking, jangan gagalkan delete jika Redis error
+    try:
+        await memory_manager.clear_session(session_id)
+    except Exception:
+        pass  # Redis gagal tidak boleh batalkan penghapusan
+
     return {"status": "deleted"}
+
 
 
 @router.post("/send")
@@ -135,7 +143,7 @@ async def chat_send(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    """Chat endpoint — returns streaming response"""
+    """Chat endpoint — returns streaming response via Orchestrator pipeline"""
 
     # Get or create session
     if req.session_id:
@@ -148,147 +156,99 @@ async def chat_send(
         await db.commit()
         await db.refresh(session)
 
-    # Route to best model
-    route = smart_router.route(req.message, req.model)
-    model = route["model"]
-
-    # Build messages list
+    # Build system prompt + RAG context
     system_prompt = await memory_manager.build_system_prompt(user.id, session.id)
 
-    # RAG injection
     rag_context = ""
     rag_sources = []
     if req.use_rag:
         rag_results = await rag_engine.query(req.message, user_id=user.id)
         if rag_results:
             rag_context = rag_engine.build_context(rag_results)
-            # Deduplicate sources preserving order
             rag_sources = list(dict.fromkeys(r["source"] for r in rag_results if "source" in r))
 
     if rag_context:
         system_prompt += f"\n\n{rag_context}"
 
-    # Get previous messages from memory
-    # get_context: load dari Redis, fallback ke DB jika kosong
+    # Get conversation history from memory
     history = await memory_manager.get_context(session.id, user.id)
 
-    messages = [{"role": "system", "content": system_prompt}]
-    messages += history  # sudah dibatasi CONTEXT_WINDOW di get_context()
-    messages.append({"role": "user", "content": req.message})
-
-    # Save user message
+    # Save user message to DB
     user_msg = Message(
         session_id=session.id,
         user_id=user.id,
         role="user",
         content=req.message,
-        model=model,
+        model=req.model or "orchestrator",
     )
     db.add(user_msg)
 
     async def generate():
         full_response = ""
-        # The communication layer follows the user's choice or the AI Core routed model
-        communicator_model = model
-        
-        # Send session info mapping exactly what user sees
-        yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': communicator_model})}\n\n"
+        final_model = req.model or "orchestrator"
+
+        # Send session info
+        yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': final_model})}\n\n"
 
         try:
-            is_orchestrator = not req.model or "orchestrator" in req.model.lower()
-            msg_clean = req.message.lower().strip()
-            
-            # Fast heuristic for light messages
-            is_light_msg = False
-            complex_triggers = ["buat", "bikin", "install", "cek", "cara", "kode", "code", "analisa", "hapus", "sistem", "system", "vps", "server", "file", "tulis"]
-            light_keywords = ["halo", "hai", "hi", "hello", "test", "tes", "ping", "p", "ok", "oke", "sip", "siap", "makasih", "terima", "thanks", "pagi", "siang", "sore", "malam", "ya", "tidak"]
-            
-            if len(msg_clean) < 60 and not any(c in msg_clean for c in complex_triggers):
-                first_word = msg_clean.split()[0] if msg_clean else ""
-                # Strip punctuation for the first word check
-                import string
-                first_word_clean = first_word.translate(str.maketrans('', '', string.punctuation))
-                if first_word_clean in light_keywords or len(msg_clean) < 20:
-                    is_light_msg = True
+            # ═══════════════════════════════════════════════════════
+            # DELEGATE TO ORCHESTRATOR — all intelligence lives there
+            # ═══════════════════════════════════════════════════════
+            async for event in orchestrator.process(
+                message=req.message,
+                user_id=user.id,
+                session_id=session.id,
+                user_model_choice=req.model,
+                system_prompt=system_prompt,
+                history=history,
+                temperature=req.temperature,
+                max_tokens=req.max_tokens,
+                use_rag=req.use_rag,
+            ):
+                if event.type == "chunk":
+                    full_response += event.content
+                    yield event.to_sse()
 
-            if is_orchestrator and not is_light_msg:
-                yield f"data: {json.dumps({'type': 'status', 'content': 'Menganalisa tingkat kesulitan tugas...'})}\n\n"
-                # 1. TASK CLASSIFICATION
-                classification = await task_classifier.classify(req.message)
-                task_type = classification["category"]
-                is_complex = classification["is_complex"]
-            else:
-                task_type = "GENERAL"
-                is_complex = False
-            
-            # 2. VPS SAFETY PROTOCOL
-            if task_type in ["SYSTEM", "FILE OPERATION"]:
-                # Pause and ask for user confirmation!
-                pending_payload = {
-                    "type": "pending_confirmation",
-                    "command": req.message,
-                    "purpose": f"User requested {task_type} action. ({classification['reasoning']})",
-                    "risk": "MEDIUM",
-                    "session_id": session.id
-                }
-                yield f"data: {json.dumps(pending_payload)}\n\n"
-                return # Stop generator immediately
-                
-            # 3. EXECUTION
-            
-            if is_complex:
-                yield f"data: {json.dumps({'type': 'status', 'content': 'Mengaktifkan mode Analisa Mendalam (Multi-AI)...'})}\n\n"
-                raw_result = await voting_engine.execute_complex_task(system_prompt, req.message, history)
-                
-                yield f"data: {json.dumps({'type': 'status', 'content': 'Menyusun kesimpulan jawaban akhir...'})}\n\n"
-                
-                # 4. STRICT COMMUNICATION LAYER (Only for complex/voted tasks)
-                com_messages = [
-                    {"role": "system", "content": "You are AL FATIH Communicator. Your strict rule: Rewrite the provided content into clear, professional Bahasa Indonesia. Do not change facts, just act as the formatter."},
-                    {"role": "user", "content": f"FORMAT THIS CONTENT FOR THE USER:\n\n{raw_result}"}
-                ]
-                async for chunk in model_manager.chat_stream(communicator_model, com_messages, temperature=0.7, max_tokens=4096):
-                    full_response += chunk
-                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
-            else:
-                yield f"data: {json.dumps({'type': 'status', 'content': 'Merespons kueri...'})}\n\n"
-                
-                # Jika menggunakan mode manual (single model call), bypass agent_executor overhead untuk response instan
-                if not is_orchestrator:
-                    async for chunk in model_manager.chat_stream(
-                        model=communicator_model,
-                        messages=messages,
-                        temperature=req.temperature,
-                        max_tokens=req.max_tokens,
-                    ):
-                        full_response += chunk
-                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
-                else:
-                    # Mode orchestrator tetap menggunakan agent_executor untuk akses tools
-                    async for chunk in agent_executor.stream_chat(
-                        base_model=communicator_model,
-                        messages=messages,
-                        temperature=req.temperature,
-                        max_tokens=req.max_tokens,
-                    ):
-                        full_response += chunk
-                        yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
-                
+                elif event.type == "status":
+                    yield event.to_sse()
+
+                elif event.type == "pending_confirmation":
+                    # VPS safety protocol — send confirmation request
+                    payload = {
+                        "type": "pending_confirmation",
+                        "command": req.message,
+                        "purpose": event.data.get("purpose", "") if event.data else "",
+                        "risk": event.data.get("risk", "MEDIUM") if event.data else "MEDIUM",
+                        "session_id": session.id,
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+                    return  # Stop generator
+
+                elif event.type == "done":
+                    # Pass through done event with orchestrator metadata
+                    done_payload = {"type": "done", "sources": rag_sources}
+                    if event.data:
+                        done_payload.update(event.data)
+                    yield f"data: {json.dumps(done_payload)}\n\n"
+
+                elif event.type == "error":
+                    yield event.to_sse()
+                    full_response = f"Error: {event.content}"
+
         except Exception as e:
             import traceback
             traceback.print_exc()
             err_str = str(e)
-            
-            # Ganti dengan pesan yang lebih pantas jika saldonya habis
+
             if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
-                user_friendly_err = "❌ API Key (Sumopod/OpenAI) Anda kehabisan saldo (Overdue Balance / Insufficient Quota). Silakan isi ulang saldo / ganti API Key di menu Integrations untuk melanjutkan."
+                user_friendly_err = "❌ API Key Anda kehabisan saldo. Silakan isi ulang di menu Integrations."
                 yield f"data: {json.dumps({'type': 'chunk', 'content': user_friendly_err})}\n\n"
                 full_response = user_friendly_err
             else:
                 yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
                 full_response = f"Error: {err_str}"
 
-        # Save assistant response
+        # ─── Save response & update session ───────────────────
         from db.database import AsyncSessionLocal
         async with AsyncSessionLocal() as save_db:
             ai_msg = Message(
@@ -296,27 +256,27 @@ async def chat_send(
                 user_id=user.id,
                 role="assistant",
                 content=full_response,
-                model=model,
+                model=final_model,
                 rag_sources=json.dumps(rag_sources) if rag_sources else None,
             )
             save_db.add(ai_msg)
 
-            # Update session title if first message
             sess = await save_db.get(ChatSession, session.id)
             if sess:
                 if sess.title == "New Chat":
                     sess.title = req.message[:60]
-                # Log communicator model
-                sess.model_used = communicator_model
+                sess.model_used = final_model
                 sess.updated_at = datetime.utcnow()
                 save_db.add(sess)
             await save_db.commit()
 
-        # Update memory
+        # ─── Update memory ────────────────────────────────────
         await memory_manager.save_chat_to_redis(session.id, "user", req.message)
         await memory_manager.save_chat_to_redis(session.id, "assistant", full_response)
 
-        yield f"data: {json.dumps({'type': 'done', 'sources': rag_sources})}\n\n"
+        # Ensure done event if not already sent
+        if not full_response.startswith("Error"):
+            pass  # done already yielded by orchestrator
 
     return StreamingResponse(
         generate(),
@@ -327,6 +287,7 @@ async def chat_send(
             "X-Accel-Buffering": "no",
         },
     )
+
 
 class PendingExecutionRequest(BaseModel):
     session_id: str
@@ -350,9 +311,9 @@ async def execute_pending(
     enforced_command = f"{req.command}\n\n[SYSTEM DIRECTIVE]: You have explicit user authorization to execute this command. DO NOT generate conversational text like 'I will check it now'. Output ONLY the JSON <tool> format immediately to execute what is asked."
     messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": enforced_command}]
     
-    # Resolve Model dynamically properly for execution
-    route_info = smart_router.route(req.command, req.model)
-    model = route_info["model"]
+    # Resolve model using agent registry instead of deprecated smart_router
+    from agents.agent_registry import agent_registry
+    model = agent_registry.resolve_model_for_agent("system", req.model)
     
     # Force high-tier model for executor if using auto-orchestrator to prevent nano hallucination
     if not req.model or "auto-orchestrator" in req.model.lower():

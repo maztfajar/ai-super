@@ -5,7 +5,7 @@ import { api } from '../hooks/useApi'
 import {
   LayoutDashboard, MessageSquare, Bot, BookOpen, Brain, Repeat2,
   BarChart3, Plug, FlaskConical, ScrollText, Menu, LogOut, Settings,
-  UserCircle, ShieldCheck, Users, Shield, ShieldAlert,
+  UserCircle, ShieldCheck, Users, Shield, ShieldAlert, Activity,
   Moon, Sun,
 } from 'lucide-react'
 import clsx from 'clsx'
@@ -21,6 +21,7 @@ const NAV_ADMIN = [
   { label: 'Workflow',    to: '/workflow',     icon: Repeat2,         section: 'Otomasi' },
   { label: 'Integrasi',   to: '/integrations', icon: Plug,            section: 'Otomasi' },
   { label: 'Analytics',   to: '/analytics',    icon: BarChart3,       section: 'Monitor' },
+  { label: 'Monitoring AI', to: '/monitoring',   icon: Activity,        section: 'Monitor' },
   { label: 'Logs',        to: '/logs',         icon: ScrollText,      section: 'Monitor' },
   { label: 'Playground',  to: '/playground',   icon: FlaskConical,    section: 'Monitor' },
   { label: 'Pengaturan',  to: '/settings',     icon: Settings,        section: 'Keamanan' },
