@@ -18,19 +18,24 @@ async def monitoring_dashboard():
     health = error_recovery.get_health_status()
     recovery = error_recovery.get_recovery_stats()
     agents = agent_registry.list_for_api()
+    active_agents = agent_registry.get_active_agents()
 
     return {
         "stats": stats,
         "agent_health": health,
         "recovery_stats": recovery,
         "registered_agents": agents,
+        "active_agents": active_agents,
     }
 
 
 @router.get("/agents")
 async def list_agents():
     """List all registered agent types and their capabilities."""
-    return {"agents": agent_registry.list_for_api()}
+    return {
+        "agents": agent_registry.list_for_api(),
+        "active_agents": agent_registry.get_active_agents()
+    }
 
 
 @router.get("/agent-performance")

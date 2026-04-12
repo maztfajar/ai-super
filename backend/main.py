@@ -33,10 +33,12 @@ from api.websocket import router as ws_router
 from api.settings_api import router as settings_router
 from api.cloudflare_wizard import router as cf_wizard_router
 from api.update_server import router as update_server_router
-from api.drive import router as drive_router
+
 from api.export import router as export_router
 from api.monitoring import router as monitoring_router
 from api.media import router as media_router
+from api.tts import router as tts_router
+
 
 setup_logging()
 log = structlog.get_logger()
@@ -105,9 +107,11 @@ app.include_router(cf_wizard_router,     prefix="/api/settings",     tags=["Clou
 app.include_router(security_router,      prefix="/api/security",     tags=["Security"])
 app.include_router(auth2fa_router,       prefix="/api/auth2fa",      tags=["Auth2FA"])
 app.include_router(update_server_router,  prefix="/api/public",       tags=["Public Update"])
-app.include_router(drive_router,         prefix="/api/drive",        tags=["Google Drive"])
+
 app.include_router(monitoring_router,    prefix="/api/monitoring",   tags=["Monitoring"])
 app.include_router(media_router,         prefix="/api/media",        tags=["Media"])
+app.include_router(tts_router,           prefix="/api/media",        tags=["TTS"])
+
 
 
 @app.get("/api/health")

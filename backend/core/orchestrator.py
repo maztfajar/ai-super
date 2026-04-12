@@ -143,9 +143,13 @@ class Orchestrator:
 
             if len(group_tasks) == 1:
                 # Single task — execute directly
+                # Mark agent as active for monitoring
+                agent_type = group_tasks[0].assigned_agent or "general"
+                agent_registry.mark_busy(agent_type, group_tasks[0].id)
                 result = await self._execute_subtask(
                     group_tasks[0], system_prompt, history, spec
                 )
+                agent_registry.mark_idle(agent_type, group_tasks[0].id)
                 results.append(result)
                 # Stream progress
                 if result.success:
@@ -159,10 +163,18 @@ class Orchestrator:
                 yield OrchestratorEvent("status",
                     f"  🔀 Menjalankan {len(group_tasks)} task secara paralel...")
 
+                # Mark all agents as busy
+                for st in group_tasks:
+                    agent_registry.mark_busy(st.assigned_agent or "general", st.id)
+
                 parallel_results = await asyncio.gather(*(
                     self._execute_subtask(st, system_prompt, history, spec)
                     for st in group_tasks
                 ), return_exceptions=True)
+
+                # Mark all agents as idle
+                for st in group_tasks:
+                    agent_registry.mark_idle(st.assigned_agent or "general", st.id)
 
                 for pr in parallel_results:
                     if isinstance(pr, Exception):

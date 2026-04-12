@@ -6,6 +6,8 @@ This replaces hardcoded agent logic with a structured registry.
 from typing import Dict, List, Optional, Set
 from dataclasses import dataclass, field
 import structlog
+import threading
+import time as _time
 
 from core.model_manager import model_manager
 
@@ -126,10 +128,47 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 class AgentRegistryManager:
     """
     Manages the agent registry and provides lookup/matching functionality.
+    Tracks real-time active agents for monitoring dashboard.
     """
 
     def __init__(self):
         self.registry = AGENT_REGISTRY
+        # Real-time active agent tracking: {agent_type: {task_id: start_timestamp}}
+        self._active_agents: Dict[str, Dict[str, float]] = {}
+        self._lock = threading.Lock()
+
+    # ─── Real-time Status Tracking ──────────────────────────────────────────
+
+    def mark_busy(self, agent_type: str, task_id: str) -> None:
+        """Mark an agent type as actively working on a task."""
+        with self._lock:
+            if agent_type not in self._active_agents:
+                self._active_agents[agent_type] = {}
+            self._active_agents[agent_type][task_id] = _time.time()
+
+    def mark_idle(self, agent_type: str, task_id: str) -> None:
+        """Mark an agent task as finished."""
+        with self._lock:
+            if agent_type in self._active_agents:
+                self._active_agents[agent_type].pop(task_id, None)
+                if not self._active_agents[agent_type]:
+                    del self._active_agents[agent_type]
+
+    def get_active_agents(self) -> List[str]:
+        """Return list of agent types currently working."""
+        # Clean up stale entries (> 5 minutes old)
+        now = _time.time()
+        with self._lock:
+            stale_agents = []
+            for agent_type, tasks in self._active_agents.items():
+                stale_tasks = [tid for tid, ts in tasks.items() if now - ts > 300]
+                for tid in stale_tasks:
+                    tasks.pop(tid)
+                if not tasks:
+                    stale_agents.append(agent_type)
+            for agent_type in stale_agents:
+                del self._active_agents[agent_type]
+            return list(self._active_agents.keys())
 
     def get_agent(self, agent_type: str) -> Optional[AgentCapability]:
         """Get agent capability by type."""

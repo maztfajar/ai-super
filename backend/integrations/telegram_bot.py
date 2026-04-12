@@ -28,7 +28,7 @@ async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = F
                     payload["reply_markup"] = {
                         "inline_keyboard": [
                             [
-                                {"text": "📁 Simpan ke G-Drive", "callback_data": "drive_options"},
+                                {"text": "🔊 Dengar (Voice)", "callback_data": "voice_reply"},
                                 {"text": "⬇️ Download File", "callback_data": "download_options"}
                             ]
                         ]
@@ -40,6 +40,26 @@ async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = F
             except Exception as ex:
                 log.warning("Telegram send error", error=str(ex)[:80])
 
+
+async def _send_voice(token: str, chat_id: int, text: str):
+    """Generate TTS and send as voice note."""
+    import httpx, io, edge_tts
+    try:
+        communicate = edge_tts.Communicate(text, "id-ID-ArdiNeural")
+        audio_data = io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data.write(chunk["data"])
+        audio_data.seek(0)
+        
+        async with httpx.AsyncClient(timeout=30) as c:
+            await c.post(
+                f"https://api.telegram.org/bot{token}/sendVoice",
+                data={'chat_id': str(chat_id)},
+                files={'voice': ('voice.mp3', audio_data.getvalue())}
+            )
+    except Exception as e:
+        log.error("Telegram send_voice error", error=str(e))
 
 async def _send_typing(token: str, chat_id: int):
     import httpx
@@ -294,7 +314,6 @@ async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
 # ── Handle Callback Query ─────────────────────────────────────
 async def _handle_callback_query(callback_query: dict, token: str):
     import httpx
-    from integrations.google_drive import list_drive_folders, get_drive_service
     from memory.manager import memory_manager
     import json
     
@@ -316,73 +335,40 @@ async def _handle_callback_query(callback_query: dict, token: str):
         await _send(token, chat_id, text)
 
     try:
-        if data == "drive_options" or data == "download_options":
-            action = "drive" if "drive" in data else "download"
+        if data == "voice_reply":
+            await _answer("Menyiapkan suara...")
+            history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
+            if history:
+                text = history[-1]['content']
+                await _send_voice(token, chat_id, text)
+            return
+
+        if data == "download_options":
             await _answer("Pilih Format")
             markup = {"inline_keyboard": [
-                [{"text": "📄 PDF", "callback_data": f"{action}_format_pdf"}, {"text": "📝 Word", "callback_data": f"{action}_format_docx"}],
-                [{"text": "📊 Excel", "callback_data": f"{action}_format_xlsx"}, {"text": "🗄 TXT", "callback_data": f"{action}_format_txt"}]
+                [{"text": "📄 PDF", "callback_data": "download_format_pdf"}, {"text": "📝 Word", "callback_data": "download_format_docx"}],
+                [{"text": "📊 Excel", "callback_data": "download_format_xlsx"}, {"text": "🗄 TXT", "callback_data": "download_format_txt"}]
             ]}
             await _edit_markup(markup)
             
-        elif data.startswith("drive_format_") or data.startswith("download_format_"):
-            action = "drive" if "drive" in data else "download"
+        elif data.startswith("download_format_"):
             fmt = data.split("_")[-1]
             await memory_manager.save_short_term(f"tg_fmt_{chat_id}", fmt) # store format
             
-            if action == "drive":
-                await _answer("Memuat daftar folder...")
-                folders = await list_drive_folders()
-                root_folders = [f for f in folders if not f.get('parents')]
-                if not root_folders:
-                    root_folders = folders[:10]
-                kb = []
-                for f in root_folders[:10]:
-                    kb.append([{"text": f"📁 {f['name'][:30]}", "callback_data": f"drive_save_{f['id']}"}])
-                kb.append([{"text": "✅ Simpan di Root", "callback_data": "drive_save_root"}])
-                await _edit_markup({"inline_keyboard": kb})
-            else:
-                await _answer("Menyiapkan dokumen...")
-                await _edit_markup({"inline_keyboard": []}) # clear buttons
-                await _send_text("⏳ Sedang menyusun dokumen, mohon tunggu...")
-                
-                # Fetch content
-                history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
-                if not history:
-                    await _send_text("❌ Gagal menyusun dokumen. Konten sudah kadaluarsa.")
-                    return
-                last_ai = history[-1]['content']
-                
-                # Generate file logic
-                await _process_and_send_file(token, chat_id, last_ai, fmt, action="download")
-                
-        elif data.startswith("drive_save_"):
-            folder_id = data.replace("drive_save_", "")
-            if folder_id == "root": folder_id = None
-            
-            await _edit_markup({"inline_keyboard": []}) # clear buttons
-            await _answer("Mengekspor file ke Google Drive...")
-            await _send_text("⏳ Sedang memproses dan mengunggah ke Google Drive...")
-            
+            # Fetch content
             history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
             if not history:
-                await _send_text("❌ Gagal menyimpan. Konten kadaluarsa.")
+                await _send_text("❌ Gagal menyusun dokumen. Konten sudah kadaluarsa.")
                 return
             last_ai = history[-1]['content']
             
-            fmt = await memory_manager.get_context(f"tg_fmt_{chat_id}", user_id)
-            if not fmt: fmt = "pdf"
-            if isinstance(fmt, list) and len(fmt) > 0: fmt = fmt[0].get('content', 'pdf')
-            elif isinstance(fmt, list): fmt = "pdf"
-            
-            await _process_and_send_file(token, chat_id, last_ai, fmt, action="drive", folder_id=folder_id)
+            await _process_and_send_file(token, chat_id, last_ai, fmt, action="download")
 
     except Exception as e:
         log.error("Telegram callback error", error=str(e))
         await _answer()
 
-async def _process_and_send_file(token, chat_id, last_ai, fmt, action="download", folder_id=None):
-    from integrations.google_drive import upload_to_drive
+async def _process_and_send_file(token, chat_id, last_ai, fmt, action="download"):
     import httpx
     import io, re
     
@@ -463,26 +449,18 @@ async def _process_and_send_file(token, chat_id, last_ai, fmt, action="download"
             await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": "❌ Terjadi distorsi saat menyusun file."})
         return
         
-    if action == "drive":
-        res = await upload_to_drive(filename, file_bytes, folder_id)
+    # Download logic
+    try:
+        async with httpx.AsyncClient(timeout=60) as c:
+            await c.post(
+                f"https://api.telegram.org/bot{token}/sendDocument",
+                data={'chat_id': str(chat_id)},
+                files={'document': (filename, file_bytes)}
+            )
+    except Exception as e:
+        log.error("Telegram sendDocument error", error=str(e)[:80])
         async with httpx.AsyncClient() as c:
-            if res.get("status") == "success":
-                await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": f"✅ *File Berhasil Disimpan!*\n\n[Lihat di Google Drive]({res.get('link')})", "parse_mode": "Markdown"})
-            else:
-                await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": f"❌ *Gagal menyimpan file:*\n{res.get('message')}", "parse_mode": "Markdown"})
-    else:
-        # Download logic
-        try:
-            async with httpx.AsyncClient(timeout=60) as c:
-                await c.post(
-                    f"https://api.telegram.org/bot{token}/sendDocument",
-                    data={'chat_id': str(chat_id)},
-                    files={'document': (filename, file_bytes)}
-                )
-        except Exception as e:
-            log.error("Telegram sendDocument error", error=str(e)[:80])
-            async with httpx.AsyncClient() as c:
-                await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": "❌ Gagal mengirim dokumen ke chat."})
+            await c.post(f"https://api.telegram.org/bot{token}/sendMessage", json={"chat_id": chat_id, "text": "❌ Gagal mengirim dokumen ke chat."})
 
 
 # ── Callback task selesai ─────────────────────────────────────

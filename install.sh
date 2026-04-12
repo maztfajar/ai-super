@@ -160,6 +160,10 @@ PACKAGES=(
     "fpdf2>=2.7.0"
     "openpyxl>=3.1.0"
     "markdown>=3.6.0"
+    "edge-tts>=6.1.12"
+    "gTTS>=2.5.1"
+    "psutil>=5.9.0"
+    "python-pptx>=0.6.23"
 )
 
 TOTAL=${#PACKAGES[@]}

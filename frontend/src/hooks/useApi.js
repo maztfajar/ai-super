@@ -361,4 +361,13 @@ export const api = {
     }
     return res.json()
   },
+
+  // ── TTS Text-to-Speech ─────────────────────────────────────
+  getTTSUrl: (text, lang) => {
+    // We use a public-ish URL or include token in query if backend supports it
+    const params = new URLSearchParams({ text, lang: lang || 'id' })
+    const token = getToken()
+    if (token) params.append('token', token)
+    return `/api/media/tts?${params.toString()}`
+  },
 }

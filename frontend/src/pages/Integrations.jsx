@@ -684,128 +684,7 @@ function WebhookSection() {
   )
 }
 
-// ── GoogleDriveCard ───────────────────────────────────────────
-function GoogleDriveCard({ status, onSave, saving }) {
-  const [creds, setCreds] = useState('')
-  const [folderId, setFolderId] = useState('')
-  const [open, setOpen] = useState(false)
-  const gdrive = status?.google_drive || {}
-  const configured = gdrive.configured
-  const serviceEmail = gdrive.service_email || ''
 
-  // Pre-fill folder ID from backend status
-  useEffect(() => {
-    if (gdrive.folder_id) setFolderId(gdrive.folder_id)
-  }, [gdrive.folder_id])
-
-  return (
-    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden transition-all duration-200">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-bg-4 transition-colors">
-        <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-lg flex-shrink-0">☁️</div>
-        <div className="flex-1 min-w-0 text-left">
-          <div className="text-sm font-semibold text-ink">Google Drive</div>
-          <div className="text-[10px] text-ink-3">Beri akses AI untuk membuat dan menyimpan file langsung ke Google Drive</div>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <StatusBadge ok={configured}/>
-          {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
-        </div>
-      </button>
-
-      <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
-        <div className="overflow-hidden">
-          <div className="px-4 pb-4 pt-2 border-t border-border">
-            <div className="space-y-3">
-              {/* Service Account Email Display */}
-              {configured && serviceEmail && (
-                <div className="bg-success/8 border border-success/20 rounded-xl p-3 space-y-1.5">
-                  <div className="text-[10px] font-semibold text-success flex items-center gap-1.5">
-                    <CheckCircle2 size={12}/> Service Account Terhubung
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="text-[10px] text-ink-2 bg-bg-3 px-2 py-1 rounded-lg flex-1 truncate font-mono">{serviceEmail}</code>
-                    <button
-                      onClick={() => { copyToClipboard(serviceEmail); toast.success('Email disalin!') }}
-                      className="p-1.5 rounded-lg text-ink-3 hover:text-accent hover:bg-accent/10 transition-colors flex-shrink-0"
-                      title="Salin email"
-                    >
-                      <Copy size={11}/>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Folder ID Input — CRITICAL for Service Account */}
-              <div className="space-y-1.5">
-                <TextInput
-                  label="📂 Folder Tujuan Upload (Folder ID) *"
-                  value={folderId}
-                  onChange={setFolderId}
-                  placeholder="1A2B3C4D5E6F7G8H9I0J... (dari URL folder Drive)"
-                  mono
-                />
-                <div className="text-[9px] text-ink-3 leading-relaxed pl-0.5">
-                  Salin ID folder dari URL: <code className="text-accent bg-bg-4 px-1 rounded">drive.google.com/drive/folders/<strong>FOLDER_ID_INI</strong></code>
-                </div>
-                <Btn label="Simpan Folder ID" onClick={() => {
-                  if (!folderId.trim()) { toast.error('Isi Folder ID terlebih dahulu'); return; }
-                  onSave('google_drive', { GDRIVE_UPLOAD_FOLDER_ID: folderId.trim() })
-                }} loading={saving} variant="primary" icon={Save} small/>
-              </div>
-
-              {/* Warning jika belum set folder */}
-              {configured && !gdrive.folder_id && (
-                <div className="bg-warn/8 border border-warn/20 rounded-xl p-3 text-[10px] text-warn space-y-1">
-                  <div className="font-semibold flex items-center gap-1.5"><AlertCircle size={12}/> Folder Tujuan Belum Diset!</div>
-                  <div className="text-ink-3 leading-relaxed">
-                    Service Account <strong>tidak punya kuota Drive sendiri</strong>. Upload akan gagal jika tidak ada Folder ID.
-                    {serviceEmail && (
-                      <span> Buat folder di Drive pribadi Anda, lalu <strong>Share ke <span className="text-accent">{serviceEmail}</span></strong> sebagai <strong>Editor</strong>.</span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Credentials Input */}
-              <Textarea
-                label="Service Account JSON Kredensial"
-                value={creds}
-                onChange={setCreds}
-                placeholder='{ "type": "service_account", "project_id": "...", ... }'
-                hint="Tempel seluruh isi file kredensial JSON tipe Service Account dari Google Cloud"
-                rows={4}
-              />
-              <Btn label="Simpan Kredensial" onClick={() => {
-                if (!creds.trim()) { toast.error('Isi kredensial JSON'); return; }
-                if (!creds.trim().startsWith('{')) { toast.error('Harus berformat JSON valid'); return; }
-
-                // Safe UTF-8 Base64 encoding
-                const encoded = btoa(encodeURIComponent(creds.trim()).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)))
-                onSave('google_drive', { GOOGLE_DRIVE_CREDENTIALS: encoded })
-                setCreds('')
-              }} loading={saving} variant="primary" icon={Save}/>
-
-              <div className="bg-bg-4 rounded-xl p-3 text-[10px] space-y-1 text-ink-3 mt-2">
-                <div className="text-ink-2 font-semibold mb-1.5 flex items-center gap-1"><AlertCircle size={12}/> Panduan Setup Google Drive:</div>
-                <div className="pl-2 space-y-1">
-                  <div>1. Login ke <a href="https://console.cloud.google.com" target="_blank" rel="noopener noreferrer" className="text-accent underline">Google Cloud Console</a>.</div>
-                  <div>2. Buat Project baru dan pastikan <span className="font-semibold text-ink-2">Google Drive API</span> sudah Enabled.</div>
-                  <div>3. Masuk ke APIs & Services {'>'} Credentials. Klik Create Credentials {'>'} Service Account.</div>
-                  <div>4. Buka Service Account tersebut, tab Keys {'>'} Add Key {'>'} Create New Key (JSON).</div>
-                  <div>5. Tempel JSON di atas, lalu simpan.</div>
-                  <div className="pt-1 text-warn font-semibold">⚠️ PENTING (agar upload tidak gagal):</div>
-                  <div>6. Buat folder di <strong>Google Drive pribadi</strong> Anda.</div>
-                  <div>7. Klik kanan folder {'>'} Share/Bagikan ke email Service Account sebagai <strong>Editor</strong>.</div>
-                  <div>8. Salin <strong>Folder ID</strong> dari URL folder dan tempel di kolom "Folder Tujuan Upload" di atas.</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // ── Main Integrations ─────────────────────────────────────────
 export default function Integrations() {
@@ -836,7 +715,7 @@ export default function Integrations() {
   const TABS = [
     { id: 'messaging', label: 'Messaging', icon: '💬' },
     { id: 'model_ai',  label: 'Model AI',  icon: '🤖' },
-    { id: 'cloud_storage', label: 'Cloud Storage', icon: '☁️' },
+
     { id: 'webhook',   label: 'Webhook & Otomasi', icon: '🔗' },
     { id: 'api_docs',  label: 'API Endpoints', icon: '🔌' },
   ]
@@ -998,9 +877,7 @@ export default function Integrations() {
           <CustomModelSection/>
         </div>
 
-        <div className={clsx("space-y-3", activeTab !== 'cloud_storage' && "hidden")}>
-          <GoogleDriveCard status={status} onSave={save} saving={saving.google_drive}/>
-        </div>
+
 
         <div className={clsx(activeTab !== 'webhook' && "hidden")}>
           <WebhookSection/>

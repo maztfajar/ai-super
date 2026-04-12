@@ -11,14 +11,14 @@ import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
   Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
-  ImagePlus, Mic, MicOff, Camera
+  ImagePlus, Mic, MicOff, Camera, Volume2
 } from 'lucide-react'
 import clsx from 'clsx'
 
-import DriveFolderPicker from '../components/DriveFolderPicker'
+
 
 // ── Message bubble ────────────────────────────────────────────
-function Bubble({ msg, isStreaming, onStop, onDriveUpload, onExport }) {
+function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId }) {
   const [copied, setCopied] = useState(false)
   const isUser = msg.role === 'user'
 
@@ -147,6 +147,20 @@ function Bubble({ msg, isStreaming, onStop, onDriveUpload, onExport }) {
                 </div>
               </div>
 
+              {/* TTS Listen */}
+              {!isUser && (
+                <button
+                  onClick={() => onSpeak(msg)}
+                  className={clsx(
+                    "opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all outline-none",
+                    speakingId === msg.id ? "bg-accent/20 text-accent opacity-100" : "hover:bg-bg-5 text-ink-3 hover:text-ink"
+                  )}
+                  title="Dengarkan (TTS)"
+                >
+                  <Volume2 size={11} className={speakingId === msg.id ? "animate-pulse" : ""} />
+                </button>
+              )}
+
               {/* Copy */}
               <button
                 onClick={copy}
@@ -234,9 +248,39 @@ export default function Chat() {
   const [useRAG, setUseRAG] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [actualModel, setActualModel] = useState(null)
+  const [speakingId, setSpeakingId] = useState(null)
+  const audioRef = useRef(null)
+
+  // ── TTS Logic ──
+  const handleSpeak = useCallback((msg) => {
+    if (speakingId === msg.id) {
+       if (audioRef.current) {
+         audioRef.current.pause()
+         audioRef.current = null
+       }
+       setSpeakingId(null)
+       return
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause()
+    }
+
+    setSpeakingId(msg.id)
+    const url = api.getTTSUrl(msg.content)
+    const audio = new Audio(url)
+    audioRef.current = audio
+    audio.play().catch(err => {
+      console.error("TTS Play Error", err)
+      toast.error("Gagal memutar suara")
+      setSpeakingId(null)
+    })
+    audio.onended = () => setSpeakingId(null)
+  }, [speakingId])
+
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
   const [statusText, setStatusText] = useState('')
-  const [uploadingDriveMsg, setUploadingDriveMsg] = useState(null)
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Multimodal state
   const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
@@ -605,24 +649,7 @@ export default function Chat() {
     e.target.value = ''
   }
 
-  // ── Handling Google Drive Upload Modal ──
-  async function handleConfirmDriveUpload(folder, format) {
-     if (!uploadingDriveMsg) return
-     const toastId = toast.loading('Menyimpan ke Drive...')
-     try {
-        const filename = `AI_Generated_${Date.now()}.${format}`
-        const res = await api.uploadGeneratedToDrive(uploadingDriveMsg.content, format, filename, folder ? folder.id : null)
-        toast.dismiss(toastId)
-        toast.success(`Berhasil disimpan!`)
-        // You could also open the link:
-        // window.open(res.link, '_blank')
-     } catch (e) {
-        toast.dismiss(toastId)
-        toast.error(e.message || 'Gagal menyimpan ke drive')
-     } finally {
-        setUploadingDriveMsg(null)
-     }
-  }
+
 
   // ── Handler Export Chat ─────────────────────────────────────
   const handleExportChat = async (format, msgId) => {
@@ -804,8 +831,9 @@ export default function Chat() {
               key={msg.id} 
               msg={msg} 
               isStreaming={false} 
-              onDriveUpload={setUploadingDriveMsg}
               onExport={handleExportChat}
+              onSpeak={handleSpeak}
+              speakingId={speakingId}
             />
           ))}
 
@@ -815,6 +843,8 @@ export default function Chat() {
               msg={{ role: 'assistant', content: streamingText, model: actualModel || selectedOrchestrator, created_at: new Date().toISOString() }}
               isStreaming={true}
               onStop={stopStreaming}
+              onSpeak={handleSpeak}
+              speakingId={speakingId}
             />
           )}
 
@@ -1036,13 +1066,7 @@ export default function Chat() {
         )}
       </div>
 
-      {/* Drive Modal */}
-      {uploadingDriveMsg && (
-        <DriveFolderPicker
-           onClose={() => setUploadingDriveMsg(null)}
-           onConfirm={handleConfirmDriveUpload}
-        />
-      )}
+
     </div>
   )
 }

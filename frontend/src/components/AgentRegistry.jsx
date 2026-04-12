@@ -58,38 +58,26 @@ function AgentRegistry({ viewMode = 'grid' }) {
     }
 
     // Fetch active sessions to infer which agents are currently in use
-    const fetchActiveSessions = async () => {
+    const fetchActiveAgents = async () => {
       try {
-        const res = await fetch('/api/monitoring/active-sessions')
-        const data = await res.json()
-        const activeTypes = new Set()
-        
-        data.active_sessions?.forEach(session => {
-          const title = (session.title || '').toLowerCase()
-          // Map keywords to agent types
-          if (title.match(/code|sql|python|function|debug|script/)) activeTypes.add('coding')
-          if (title.match(/riset|research|cari|search|data/)) activeTypes.add('research')
-          if (title.match(/tulis|write|doc|email|konten/)) activeTypes.add('writing')
-          if (title.match(/kreatif|creative|idea|brainstorm|design/)) activeTypes.add('creative')
-          if (title.match(/analisis|logic|strategi|reason/)) activeTypes.add('reasoning')
-          if (title.match(/server|deploy|sistem|system/)) activeTypes.add('system')
-        })
-        
-        setActiveAgentTypes(activeTypes)
+        const res = await api.monitoringDashboard?.() || await fetch('/api/monitoring/dashboard').then(r => r.json())
+        if (res && res.active_agents) {
+          setActiveAgentTypes(new Set(res.active_agents))
+        }
         setLoading(false)
       } catch (err) {
-        console.error('Error fetching active sessions:', err)
+        console.error('Error fetching active agents:', err)
         setLoading(false)
       }
     }
 
     fetchAgents()
     fetchPerformance()
-    fetchActiveSessions()
+    fetchActiveAgents()
 
     const interval = setInterval(() => {
       fetchPerformance()
-      fetchActiveSessions()
+      fetchActiveAgents()
     }, 3000)
 
     return () => clearInterval(interval)
