@@ -26,17 +26,20 @@ class AgentScore:
     historical_score: float = 0.0        # 0-1: past performance on similar tasks
     specialization_score: float = 0.0    # 0-1: how specialized this agent is for this task
     availability_score: float = 0.0      # 0-1: current load/availability
+    capability_map_score: float = 0.0    # 0-1: score from CapabilityMap discovery
     total_score: float = 0.0             # weighted combination
     reasoning: str = ""
 
     def compute_total(self,
-                      w_capability: float = 0.4,
-                      w_historical: float = 0.3,
-                      w_specialization: float = 0.2,
-                      w_availability: float = 0.1) -> float:
+                      w_capability: float = 0.35,
+                      w_cap_map: float = 0.25,
+                      w_historical: float = 0.22,
+                      w_specialization: float = 0.13,
+                      w_availability: float = 0.05) -> float:
         """Compute weighted total score."""
         self.total_score = (
             self.capability_score * w_capability +
+            self.capability_map_score * w_cap_map +
             self.historical_score * w_historical +
             self.specialization_score * w_specialization +
             self.availability_score * w_availability
@@ -61,28 +64,34 @@ class AgentScorer:
         """
         score = AgentScore(model_id=model_id, agent_type=agent_cap.agent_type)
 
-        # 1. Capability Match (0.4)
+        # 1. Capability Match from registry (0.35)
         score.capability_score = self._compute_capability(model_id, subtask, agent_cap)
 
-        # 2. Historical Performance (0.3)
+        # 2. Capability Map Score from discovery engine (0.25)
+        score.capability_map_score = self._compute_capability_map_score(
+            model_id, agent_cap, subtask
+        )
+
+        # 3. Historical Performance (0.22)
         score.historical_score = metrics_engine.get_model_score(
             model_id, subtask.task_type
         )
 
-        # 3. Specialization (0.2)
+        # 4. Specialization (0.13)
         score.specialization_score = self._compute_specialization(model_id, agent_cap)
 
-        # 4. Availability (0.1)
+        # 5. Availability (0.05)
         score.availability_score = self._compute_availability(model_id, agent_cap)
 
         score.compute_total()
 
         score.reasoning = (
             f"cap={score.capability_score:.2f} "
+            f"cap_map={score.capability_map_score:.2f} "
             f"hist={score.historical_score:.2f} "
             f"spec={score.specialization_score:.2f} "
             f"avail={score.availability_score:.2f} "
-            f"→ total={score.total_score:.3f}"
+            f"-> total={score.total_score:.3f}"
         )
 
         return score
@@ -220,6 +229,50 @@ class AgentScorer:
             return 1.0  # fully available
         else:
             return 1.0 - (active / max_concurrent) * 0.8
+
+    def _compute_capability_map_score(self, model_id: str,
+                                       agent_cap: AgentCapability,
+                                       subtask: SubTask) -> float:
+        """
+        Score based on discovered capability tags from CapabilityMapEngine.
+        Returns 1.0 if model has all required caps, 0.0 if incompatible.
+        """
+        try:
+            from core.capability_map import capability_map
+            model_caps = capability_map.get_capabilities(model_id)
+            if not model_caps:
+                return 0.5  # unknown model, neutral score
+
+            # Map agent type to required capability tags
+            AGENT_TO_CAPS = {
+                "image_gen":   {"image_gen"},
+                "audio_gen":   {"tts", "audio"},
+                "multimodal":  {"vision"},
+                "vision":      {"vision"},
+                "coding":      {"coding"},
+                "reasoning":   {"reasoning"},
+                "analysis":    {"analysis", "reasoning"},
+                "writing":     {"writing", "text"},
+                "research":    {"text"},
+                "system":      {"text"},
+                "creative":    {"text", "writing"},
+                "general":     {"text"},
+            }
+
+            required = AGENT_TO_CAPS.get(agent_cap.agent_type, {"text"})
+
+            # Hard block: if required cap is not available at all, score is 0
+            if agent_cap.agent_type in ("image_gen", "audio_gen"):
+                if not (required & model_caps):
+                    return 0.0  # Hard block — this model cannot do this task
+
+            overlap = len(required & model_caps)
+            if not required:
+                return 0.5
+            return min(1.0, overlap / len(required))
+
+        except Exception:
+            return 0.5  # neutral fallback if capability_map unavailable
 
 
 agent_scorer = AgentScorer()

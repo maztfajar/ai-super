@@ -9,8 +9,6 @@ import structlog
 import threading
 import time as _time
 
-from core.model_manager import model_manager
-
 log = structlog.get_logger()
 
 
@@ -118,9 +116,39 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         display_name="💬 General Agent",
         description="General conversation, FAQs, simple questions, greetings",
         skills=["conversation", "faq", "general_knowledge"],
-        preferred_models=["gpt-4o-mini", "gemini-1.5-flash", "claude-3-haiku"],
+        preferred_models=["gpt-4o-mini", "gemini-1.5-flash", "claude-3-haiku", "MiniMax-M2.7-highspeed"],
         default_temperature=0.7,
         system_prompt_addon="",
+    ),
+    "image_gen": AgentCapability(
+        agent_type="image_gen",
+        display_name="🖼️ Image Generation Agent",
+        description="Generate images from text descriptions using vision/image models",
+        skills=["image_gen", "vision", "creative", "design"],
+        preferred_models=["mimo-v2-omni", "dall-e-3", "gpt-image-1", "flux"],
+        default_temperature=0.7,
+        default_max_tokens=1024,
+        system_prompt_addon="You generate images. If the API supports it, use image generation. "
+                            "Otherwise, provide a very detailed image description and suggest the user use an image gen tool.",
+    ),
+    "audio_gen": AgentCapability(
+        agent_type="audio_gen",
+        display_name="🔊 Audio/TTS Agent",
+        description="Convert text to speech or generate audio using speech models",
+        skills=["tts", "audio", "speech", "voice"],
+        preferred_models=["minimax/speech-2.8-hd", "mimo-v2-omni"],
+        default_temperature=0.5,
+        default_max_tokens=512,
+        system_prompt_addon="You are a Text-to-Speech assistant. Acknowledge the TTS request and confirm it will be processed.",
+    ),
+    "multimodal": AgentCapability(
+        agent_type="multimodal",
+        display_name="🌐 Multimodal Agent",
+        description="Handle text, image, and audio inputs simultaneously",
+        skills=["vision", "audio", "text", "analysis", "reasoning"],
+        preferred_models=["mimo-v2-omni", "gpt-4o", "gemini-1.5-pro"],
+        default_temperature=0.7,
+        system_prompt_addon="You can process text, images, and audio. Handle multimodal inputs accurately.",
     ),
 }
 
@@ -136,6 +164,15 @@ class AgentRegistryManager:
         # Real-time active agent tracking: {agent_type: {task_id: start_timestamp}}
         self._active_agents: Dict[str, Dict[str, float]] = {}
         self._lock = threading.Lock()
+        # Lazy import to avoid circular imports
+        self._model_manager = None
+
+    @property
+    def model_manager(self):
+        if self._model_manager is None:
+            from core.model_manager import model_manager as mm
+            self._model_manager = mm
+        return self._model_manager
 
     # ─── Real-time Status Tracking ──────────────────────────────────────────
 
@@ -214,18 +251,35 @@ class AgentRegistryManager:
                                  user_preferred: Optional[str] = None) -> str:
         """
         Resolve the actual model ID to use for a given agent type.
-        Priority: user preference > agent preferred list > any available.
+        Priority: user preference > capability map > agent preferred list > any available.
         """
+        mm = self.model_manager
+
         # User explicitly chose a model
-        if user_preferred and user_preferred in model_manager.available_models:
+        if user_preferred and user_preferred in mm.available_models:
             return user_preferred
 
         agent = self.registry.get(agent_type)
         if not agent:
-            return model_manager.get_default_model()
+            return mm.get_default_model()
+
+        # Try capability map first for specialized agents
+        try:
+            from core.capability_map import capability_map
+            if agent_type in ("image_gen", "audio_gen", "multimodal"):
+                capability_tag = {
+                    "image_gen": "image_gen",
+                    "audio_gen": "tts",
+                    "multimodal": "vision",
+                }.get(agent_type, "text")
+                best = capability_map.find_best_model({capability_tag})
+                if best and best in mm.available_models:
+                    return best
+        except Exception:
+            pass
 
         # Try preferred models in order
-        available = set(model_manager.available_models.keys())
+        available = set(mm.available_models.keys())
         for preferred in agent.preferred_models:
             # Pattern match (e.g., "gpt-4o" matches "gpt-4o" or "sumopod/gpt-4o")
             for model_id in available:
@@ -233,7 +287,7 @@ class AgentRegistryManager:
                     return model_id
 
         # Fallback to any available model
-        return model_manager.get_default_model()
+        return mm.get_default_model()
 
     def get_agent_system_prompt(self, agent_type: str, base_prompt: str = "") -> str:
         """Build a complete system prompt for an agent, combining base + agent-specific."""

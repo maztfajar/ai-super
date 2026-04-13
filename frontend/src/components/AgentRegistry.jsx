@@ -76,6 +76,7 @@ function AgentRegistry({ viewMode = 'grid' }) {
     fetchActiveAgents()
 
     const interval = setInterval(() => {
+      fetchAgents()
       fetchPerformance()
       fetchActiveAgents()
     }, 3000)

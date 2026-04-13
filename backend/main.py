@@ -38,6 +38,7 @@ from api.export import router as export_router
 from api.monitoring import router as monitoring_router
 from api.media import router as media_router
 from api.tts import router as tts_router
+from api.capability import router as capability_router
 
 
 setup_logging()
@@ -67,6 +68,14 @@ async def lifespan(app: FastAPI):
     await model_manager.startup()
     await rag_engine.startup()
     await memory_manager.startup()
+
+    # Capability Map — discover model capabilities
+    from core.capability_map import capability_map
+    import asyncio
+    await capability_map.startup_sync()
+    # Schedule background re-sync every 30 minutes
+    asyncio.create_task(capability_map.sync_background_loop())
+    log.info("Capability Map ready", models=len(capability_map._map))
 
     if settings.TELEGRAM_BOT_TOKEN:
         from integrations.telegram_bot import start_polling
@@ -111,7 +120,7 @@ app.include_router(update_server_router,  prefix="/api/public",       tags=["Pub
 app.include_router(monitoring_router,    prefix="/api/monitoring",   tags=["Monitoring"])
 app.include_router(media_router,         prefix="/api/media",        tags=["Media"])
 app.include_router(tts_router,           prefix="/api/media",        tags=["TTS"])
-
+app.include_router(capability_router,    prefix="/api/capability",   tags=["Capability"])
 
 
 @app.get("/api/health")

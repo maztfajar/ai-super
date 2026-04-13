@@ -470,7 +470,125 @@ class ModelManager:
 
         return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini-2.5-flash, gpt-4o) di menu Integrasi."
 
-    # ── Audio: suara → teks (transcription) ──────────────────
+    # ── Image Generation: teks → gambar ───────────────────────
+    async def generate_image(
+        self,
+        prompt: str,
+        model: str = None,
+        size: str = "1024x1024",
+        n: int = 1,
+    ) -> Optional[str]:
+        """
+        Generate image from text prompt using /images/generations endpoint.
+        Returns URL of generated image or None if not supported.
+
+        Tries providers in order: OpenAI → Sumopod → Custom endpoints.
+        """
+        # 1. Try OpenAI DALL-E
+        if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
+            try:
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                image_model = model if model and "dall" in model.lower() else "dall-e-3"
+                if image_model not in (self.available_models or {}):
+                    image_model = "dall-e-3"  # default DALL-E model
+                resp = await client.images.generate(
+                    model=image_model,
+                    prompt=prompt,
+                    n=n,
+                    size=size,
+                )
+                if resp.data and resp.data[0].url:
+                    log.info("generate_image: OpenAI success", model=image_model)
+                    return resp.data[0].url
+            except Exception as e:
+                err = str(e)
+                if "model_not_found" in err or "invalid_model" in err:
+                    pass  # model not available, try next provider
+                else:
+                    log.debug("generate_image: OpenAI failed", error=err[:80])
+
+        # 2. Try Sumopod (OpenAI-compatible)
+        if settings.SUMOPOD_API_KEY:
+            try:
+                import httpx
+                headers = {
+                    "Authorization": f"Bearer {settings.SUMOPOD_API_KEY}",
+                    "Content-Type": "application/json",
+                }
+                payload = {
+                    "model": model or "mimo-v2-omni",
+                    "prompt": prompt,
+                    "n": n,
+                    "size": size,
+                    "response_format": "url",
+                }
+                async with httpx.AsyncClient(timeout=60) as client:
+                    resp = await client.post(
+                        f"{settings.SUMOPOD_HOST}/images/generations",
+                        json=payload,
+                        headers=headers,
+                    )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("data") and data["data"][0].get("url"):
+                        log.info("generate_image: Sumopod success", model=model)
+                        return data["data"][0]["url"]
+                    elif data.get("data") and data["data"][0].get("b64_json"):
+                        # Return as data URI if base64
+                        b64 = data["data"][0]["b64_json"]
+                        return f"data:image/png;base64,{b64}"
+                else:
+                    log.debug("generate_image: Sumopod returned", status=resp.status_code)
+            except Exception as e:
+                log.debug("generate_image: Sumopod failed", error=str(e)[:80])
+
+        # 3. Try custom model providers
+        from db.database import AsyncSessionLocal
+        from db.models import CustomModel
+        from sqlmodel import select
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(CustomModel).where(CustomModel.is_active == True)
+                )
+                custom_models = result.scalars().all()
+
+            for cm in custom_models:
+                if not cm.api_key or not cm.base_url:
+                    continue
+                try:
+                    import httpx
+                    payload = {
+                        "model": cm.model_id,
+                        "prompt": prompt,
+                        "n": n,
+                        "size": size,
+                    }
+                    headers = {
+                        "Authorization": f"Bearer {cm.api_key}",
+                        "Content-Type": "application/json",
+                    }
+                    async with httpx.AsyncClient(timeout=60) as client:
+                        resp = await client.post(
+                            f"{cm.base_url.rstrip('/')}/images/generations",
+                            json=payload,
+                            headers=headers,
+                        )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        if data.get("data") and data["data"][0].get("url"):
+                            log.info("generate_image: custom model success", model=cm.model_id)
+                            return data["data"][0]["url"]
+                except Exception:
+                    continue
+        except Exception:
+            pass
+
+        log.info("generate_image: no provider succeeded, returning None")
+        return None
+
+
     async def transcribe_audio(
         self,
         audio_bytes: bytes,
@@ -499,6 +617,11 @@ class ModelManager:
             except Exception as e:
                 log.warning("OpenAI Whisper failed, trying Sumopod", error=str(e)[:80])
 
+        # Cari model audio/tts yang tersedia
+        from core.capability_map import capability_map
+        best_audio_model = capability_map.find_best_model({"audio"})
+        sumopod_model = best_audio_model if best_audio_model else "whisper-1"
+
         # 2. Coba Sumopod (jika mendukung whisper-compatible endpoint)
         if settings.SUMOPOD_API_KEY:
             try:
@@ -510,13 +633,13 @@ class ModelManager:
                     base_url=settings.SUMOPOD_HOST,
                 )
                 transcript = await client.audio.transcriptions.create(
-                    model="whisper-1",
+                    model=sumopod_model,
                     file=audio_file2,
                     response_format="text",
                 )
                 return str(transcript)
             except Exception as e:
-                log.warning("Sumopod Whisper failed", error=str(e)[:80])
+                log.warning("Sumopod Whisper failed", model=sumopod_model, error=str(e)[:80])
 
         return ""
 

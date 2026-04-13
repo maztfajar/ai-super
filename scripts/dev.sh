@@ -56,8 +56,7 @@ fi
 step "Load Konfigurasi"
 cd "$DIR/backend"
 [ -f "$DIR/.env" ] && { set -a; source "$DIR/.env"; set +a; log ".env loaded"; }
-# Selalu pakai SQLite untuk dev (tidak perlu PostgreSQL)
-export DATABASE_URL="sqlite+aiosqlite:///./data/ai-super-assistant.db"
+# Biarkan mengikuti konfigurasi dari .env
 
 # ── Buat direktori data ───────────────────────────────────────
 mkdir -p data/logs data/uploads data/chroma_db
@@ -67,7 +66,7 @@ step "Inisialisasi Database"
 python3 - << 'PYEOF'
 import asyncio, sys, os
 sys.path.insert(0, '.')
-os.environ.setdefault('DATABASE_URL', 'sqlite+aiosqlite:///./data/ai-super-assistant.db')
+# config.py akan otomatis memuat .env
 
 async def main():
     try:

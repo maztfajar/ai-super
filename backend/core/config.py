@@ -6,14 +6,16 @@ import os
 # Resolve path ke .env di root project
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
-# Load .env secara eksplisit ke os.environ saat startup agar model_manager
-# langsung mendeteksi semua credentials tanpa perlu tekan Simpan ulang.
-if _ENV_FILE.exists():
+
+def _load_env_file(override: bool = False):
+    """Load .env values into os.environ with optional override."""
+    if not _ENV_FILE.exists():
+        return
+
     try:
         from dotenv import load_dotenv
-        load_dotenv(str(_ENV_FILE), override=False)
+        load_dotenv(str(_ENV_FILE), override=override)
     except ImportError:
-        # fallback manual parser jika python-dotenv tidak tersedia
         for line in _ENV_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
@@ -21,8 +23,14 @@ if _ENV_FILE.exists():
             k, _, v = line.partition("=")
             k = k.strip()
             v = v.strip().strip('"').strip("'")
-            if k and k.isidentifier() and k not in os.environ:
+            if not k:
+                continue
+            if override or k not in os.environ:
                 os.environ[k] = v
+
+
+# Load .env values into os.environ when the app starts.
+_load_env_file(override=False)
 
 
 class Settings(BaseSettings):
@@ -149,12 +157,7 @@ class Settings(BaseSettings):
 
     def reload(self):
         """Reload configuration from .env and environment variables in-place"""
-        if _ENV_FILE.exists():
-            try:
-                from dotenv import load_dotenv
-                load_dotenv(str(_ENV_FILE), override=True)
-            except ImportError:
-                pass
+        _load_env_file(override=True)
         new_settings = Settings()
         for field in self.model_fields:
             try:

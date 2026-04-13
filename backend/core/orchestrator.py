@@ -19,6 +19,7 @@ from core.model_manager import model_manager
 from core.request_preprocessor import request_preprocessor, TaskSpecification
 from core.task_decomposer import task_decomposer
 from core.dag_builder import dag_builder, ExecutionDAG, SubTask, ExecutionGroup
+from core.capability_map import capability_map
 from agents.agent_registry import agent_registry
 from agents.agent_scorer import agent_scorer
 from core.quality_engine import quality_engine
@@ -86,6 +87,55 @@ class Orchestrator:
                 is_simple=True,
                 primary_intent="general",
             )
+
+        # ─── PHASE 0: CAPABILITY-AWARE ROUTING ───────────────────
+        # Fast-path for special intents before full orchestration
+        primary = spec.primary_intent
+
+        if primary == "image_generation":
+            async for event in self._handle_image_gen(spec, system_prompt, history):
+                yield event
+            return
+
+        if primary == "audio_generation":
+            # Delegate to simple handler with audio_gen agent
+            async for event in self._handle_simple(
+                spec, system_prompt, history, temperature, max_tokens,
+                user_model_choice, include_tool_logs, force_agent="audio_gen"
+            ):
+                yield event
+            return
+
+        # Pre-inject web search results for real-time queries
+        search_context = ""
+        if "real_time_search" in spec.intents:
+            yield OrchestratorEvent("status", "🔍 Mencari data terkini di internet...")
+            try:
+                from agents.tools.web_search import web_search_realtime
+                query = spec.original_message[:200]
+                search_results = await asyncio.wait_for(
+                    web_search_realtime(query, max_results=5),
+                    timeout=15.0
+                )
+                if search_results:
+                    snippets = []
+                    for r in search_results:
+                        snippets.append(
+                            f"- **{r['title']}**: {r['snippet']} ({r['url']})"
+                        )
+                    search_context = (
+                        "\n\n[DATA REAL-TIME DARI INTERNET]\n" +
+                        "\n".join(snippets) +
+                        "\n[/DATA REAL-TIME]"
+                    )
+                    system_prompt = system_prompt + search_context
+                    yield OrchestratorEvent("status",
+                        f"  ✅ {len(search_results)} hasil ditemukan dari web")
+            except asyncio.TimeoutError:
+                yield OrchestratorEvent("status", "  ⚠️ Web search timeout, lanjut tanpa data real-time")
+            except Exception as e:
+                log.warning("Web search failed in orchestrator", error=str(e)[:80])
+                yield OrchestratorEvent("status", "  ⚠️ Web search gagal, lanjut tanpa data terkini")
 
         # ─── FAST PATH: Simple messages ──────────────────────────
         if spec.is_simple:
@@ -262,6 +312,7 @@ class Orchestrator:
             "subtasks": len(results),
             "total_time_ms": total_time,
             "synthesis_method": aggregated.synthesis_method,
+            "drive_prompt": aggregated.final_response[:2000] if aggregated.final_response else None,
         })
 
     # ─── Simple Message Handler ───────────────────────────────
@@ -275,12 +326,18 @@ class Orchestrator:
         max_tokens: int,
         user_model_choice: Optional[str],
         include_tool_logs: bool,
+        force_agent: Optional[str] = None,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """Handle simple messages without full orchestration overhead."""
 
         # Determine model
         if user_model_choice and user_model_choice in model_manager.available_models:
             model = user_model_choice
+        elif force_agent:
+            # Use capability-aware model selection for forced agent types
+            model = agent_registry.resolve_model_for_agent(force_agent, None)
+            yield OrchestratorEvent("status",
+                f"🤖 Capability routing: {force_agent} → {model}")
         else:
             # Use agent registry for model selection
             model = agent_registry.resolve_model_for_agent(
@@ -329,6 +386,83 @@ class Orchestrator:
                 yield OrchestratorEvent("chunk", chunk)
 
         yield OrchestratorEvent("done")
+
+    # ─── Image Generation Handler ─────────────────────────────
+
+    async def _handle_image_gen(
+        self,
+        spec: TaskSpecification,
+        system_prompt: str,
+        history: list,
+    ) -> AsyncGenerator[OrchestratorEvent, None]:
+        """Handle image generation requests with capability-aware model selection."""
+
+        # Find best model for image generation
+        image_model = capability_map.find_best_model({"image_gen"})
+        if not image_model:
+            # Fall back to mimo-v2-omni as the most capable multimodal model
+            image_model = agent_registry.resolve_model_for_agent("image_gen", None)
+
+        yield OrchestratorEvent("status",
+            f"🖼️ Merutekan ke model image: {image_model}...")
+
+        # Try image generation via OpenAI-compatible /images/generations endpoint
+        generated_url = None
+        try:
+            generated_url = await model_manager.generate_image(
+                model=image_model,
+                prompt=spec.original_message,
+            )
+        except Exception as e:
+            log.warning("Image generation API failed", error=str(e)[:120])
+
+        if generated_url:
+            # Image generated successfully
+            response_text = (
+                f"✅ **Gambar berhasil dibuat!**\n\n"
+                f"🖼️ [Lihat Gambar]({generated_url})\n\n"
+                f"Model yang digunakan: `{image_model}`\n"
+                f"Prompt: _{spec.original_message[:200]}_"
+            )
+            for chunk in [response_text]:
+                yield OrchestratorEvent("chunk", chunk)
+            yield OrchestratorEvent("done", "", {
+                "image_url": generated_url,
+                "model_used": image_model,
+                "capability_used": "image_gen",
+            })
+        else:
+            # Image gen not supported by this endpoint — provide detailed description
+            yield OrchestratorEvent("status",
+                f"ℹ️ Model {image_model} tidak mendukung generate gambar via API ini. "
+                "Memberikan deskripsi visual detail...")
+
+            messages = [
+                {"role": "system", "content": (
+                    system_prompt +
+                    "\n\nUser meminta gambar/foto. Karena endpoint image generation "
+                    "tidak tersedia saat ini, berikan:\n"
+                    "1. Deskripsi visual yang sangat detail dari gambar yang diminta\n"
+                    "2. Saran untuk menggunakan tools seperti DALL-E, Midjourney, atau "
+                    "Stable Diffusion dengan prompt yang dioptimasi\n"
+                    "3. Prompt yang sudah dioptimasi untuk image generator tersebut"
+                )},
+            ] + history[-6:] + [{"role": "user", "content": spec.original_message}]
+
+            full_response = ""
+            async for chunk in model_manager.chat_stream(
+                model=image_model,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=1000,
+            ):
+                full_response += chunk
+                yield OrchestratorEvent("chunk", chunk)
+
+            yield OrchestratorEvent("done", "", {
+                "model_used": image_model,
+                "note": "image_gen_api_not_available",
+            })
 
     # ─── Subtask Execution ────────────────────────────────────
 

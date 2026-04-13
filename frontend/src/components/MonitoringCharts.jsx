@@ -20,27 +20,24 @@ export function LiveModelPerformanceChart({ activeSessions = [] }) {
 
         // Fetch active sessions (real-time data)
         try {
-          const sessionsRes = await fetch('/api/monitoring/active-sessions')
-          if (sessionsRes.ok) {
-            const sessionsData = await sessionsRes.json()
-            sessionsData?.active_sessions?.forEach((session) => {
-              const model = session.model_used || 'Unknown'
-              // Extract model name from full path (e.g., "gpt-4" from "openai/gpt-4")
-              const modelKey = model.includes('/') ? model.split('/').pop() : model
-              const displayModel = modelKey.substring(0, 12)
-              
-              if (!modelStats[displayModel]) {
-                modelStats[displayModel] = {
-                  tasks: 0,
-                  sessions: 0,
-                  isActive: true,
-                }
+          const sessionsData = await api.activeSessions?.()
+          sessionsData?.active_sessions?.forEach((session) => {
+            const model = session.model_used || 'Unknown'
+            // Extract model name from full path (e.g., "gpt-4" from "openai/gpt-4")
+            const modelKey = model.includes('/') ? model.split('/').pop() : model
+            const displayModel = modelKey.substring(0, 12)
+            
+            if (!modelStats[displayModel]) {
+              modelStats[displayModel] = {
+                tasks: 0,
+                sessions: 0,
+                isActive: true,
               }
-              
-              modelStats[displayModel].tasks += session.msg_count || 1
-              modelStats[displayModel].sessions += 1
-            })
-          }
+            }
+            
+            modelStats[displayModel].tasks += session.msg_count || 1
+            modelStats[displayModel].sessions += 1
+          })
         } catch (err) {
           console.log('Active sessions fetch error (non-critical):', err)
         }

@@ -264,7 +264,21 @@ export default function Analytics() {
   const [resetMsg,  setResetMsg]  = useState(null)
   const [lastRef,   setLastRef]   = useState(null)
   const [showCores, setShowCores] = useState(false)
+  const [mediaFiles, setMediaFiles] = useState([])
+  const [mediaLoading, setMediaLoading] = useState(false)
   const sysTimer = useRef(null)
+
+  const formatBytes = (bytes) => {
+    if (!bytes || bytes === 0) return '0 B'
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    let value = bytes
+    let index = 0
+    while (value >= 1024 && index < units.length - 1) {
+      value /= 1024
+      index += 1
+    }
+    return `${value.toFixed(1)} ${units[index]}`
+  }
 
   const fetchSystem = useCallback(async () => {
     try {
@@ -304,6 +318,7 @@ export default function Analytics() {
     fetchAll()
     fetchSystem()
     api.storageInfo().then(setStorage).catch(() => {})
+    fetchMedia()
     sysTimer.current = setInterval(fetchSystem, 3000)
     return () => clearInterval(sysTimer.current)
   }, [])
@@ -314,6 +329,28 @@ export default function Analytics() {
     setDash(null); setUsage([]); setTL([])
     await fetchAll()
     setTimeout(() => setResetMsg(null), 4000)
+  }
+
+  const fetchMedia = async () => {
+    setMediaLoading(true)
+    try {
+      const res = await api.listMedia()
+      setMediaFiles(res.files || [])
+    } catch (e) {
+      console.error('Failed to fetch media', e)
+    } finally {
+      setMediaLoading(false)
+    }
+  }
+
+  const deleteMediaFile = async (filename) => {
+    if (!confirm(`Hapus file "${filename}"?`)) return
+    try {
+      await api.deleteMedia(filename)
+      setMediaFiles(prev => prev.filter(f => f.filename !== filename))
+    } catch (e) {
+      alert('Gagal menghapus file: ' + e.message)
+    }
   }
 
   const stats     = dash?.stats || {}
@@ -452,24 +489,49 @@ export default function Analytics() {
         </div>
       </div>
 
-      {timeline.length > 0 && (
-        <div className="bg-bg-3 border border-border rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={14} className="text-success"/>
-            <span className="text-sm font-semibold text-ink">Aktivitas 7 Hari Terakhir</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="text-[10px] text-ink-3 mb-2">Pesan per hari</div>
-              <MiniBarChart data={timeline} valueKey="messages" color="#6366f1"/>
+      {/* Media Management */}
+      <div className="bg-bg-3 border border-border rounded-xl p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <FolderOpen size={14} className="text-accent"/>
+              <span className="text-sm font-semibold text-ink">Manajemen Media</span>
             </div>
-            <div>
-              <div className="text-[10px] text-ink-3 mb-2">Token per hari</div>
-              <MiniBarChart data={timeline} valueKey="tokens" color="#10b981"/>
+            <div className="text-[11px] text-ink-3">
+              {mediaFiles.length} file · Total {formatBytes(mediaFiles.reduce((sum, file) => sum + (file.size_bytes || 0), 0))}
             </div>
           </div>
+          <button onClick={fetchMedia} disabled={mediaLoading} className="text-xs text-accent hover:underline disabled:opacity-50">
+            {mediaLoading ? 'Memuat...' : 'Refresh'}
+          </button>
         </div>
-      )}
+        {mediaFiles.length > 0 ? (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {mediaFiles.map((file) => (
+              <div key={file.filename} className="flex items-center justify-between p-2 bg-bg-4 rounded border border-border/50">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium text-ink truncate">{file.filename}</div>
+                  <div className="text-[10px] text-ink-3">
+                    {(file.size_bytes / 1024).toFixed(1)} KB • {new Date(file.modified * 1000).toLocaleDateString('id-ID')}
+                  </div>
+                </div>
+                <button
+                  onClick={() => deleteMediaFile(file.filename)}
+                  className="ml-2 p-1 text-danger hover:bg-danger/10 rounded"
+                  title="Hapus file"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-ink-3">
+            <FolderOpen size={24} className="mx-auto mb-2 opacity-50" />
+            <p className="text-sm">Tidak ada file media</p>
+          </div>
+        )}
+      </div>
 
       {storage && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -221,6 +221,19 @@ export const api = {
     return res.json()
   },
 
+  uploadImage: async function(file) {
+    const token = getToken()
+    const form  = new FormData()
+    form.append('file', file)
+    const res = await fetch(BASE + '/media/upload-image', {
+      method:  'POST',
+      headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+      body:    form,
+    })
+    if (!res.ok) throw new Error('Upload image failed')
+    return res.json()
+  },
+
   // ── Transkrip audio suara ────────────────────────────────
   transcribeAudio: async function(audioBlob, filename) {
     const token = getToken()
@@ -234,6 +247,10 @@ export const api = {
     if (!res.ok) throw new Error('Transcribe failed')
     return res.json()
   },
+
+  // ── Media Management ──────────────────────────────────────
+  listMedia:   ()       => req('GET',    '/media/list'),
+  deleteMedia: (filename) => req('DELETE', '/media/delete/' + encodeURIComponent(filename)),
 
   // ── Streaming chat multimodal (gambar/suara + teks) ────────
   chatStreamMultimodal: function(payload, imageData, onChunk, onDone, onSession, onStatus) {

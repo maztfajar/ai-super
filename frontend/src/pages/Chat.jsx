@@ -235,6 +235,10 @@ export default function Chat() {
   // Global state
   const appName = useOrchestratorStore(s => s.appName)
   const selectedOrchestrator = useOrchestratorStore(s => s.selectedOrchestrator)
+  const { 
+    activeModel, activeCapability, setActiveModel, setActiveCapability, clearActiveRouting,
+    drivePromptContent, drivePromptTitle, setDrivePromptContent, clearDrivePrompt 
+  } = useOrchestratorStore()
 
   const {
     sessions, setSessions,
@@ -464,8 +468,13 @@ export default function Chat() {
   // ── SEND message ─────────────────────────────────────────
   async function sendMessage() {
     const text = input.trim()
-    if (!text || streaming) return
+    const imageToSend = pendingImage
+    if (!text && !imageToSend) return
+    if (streaming) return
     if (!currentSession) { await newSession(); return }
+
+    clearActiveRouting()
+    clearDrivePrompt()
 
     setInput('')
     setActualModel(null)
@@ -482,7 +491,6 @@ export default function Chat() {
     }
     addMessage(tempUserMsg)
 
-    const imageToSend = pendingImage
     setPendingImage(null)  // clear preview
     setStreaming(true)
     setStatusText('Menghubungi AI...')
@@ -503,6 +511,13 @@ export default function Chat() {
         const fullText = useChatStore.getState().streamingText
         clearStreaming()
         setStatusText('')
+
+        if (done.drive_prompt) {
+          setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
+        }
+        if (done.model_used) setActiveModel(done.model_used)
+        if (done.capability_used) setActiveCapability(done.capability_used)
+
 
         addMessage({
           id: Date.now() + 1,
@@ -916,7 +931,74 @@ export default function Chat() {
             </div>
           )}
 
-          <div ref={messagesEndRef} />
+          {/* Real-time Routing Badge / Capability Indicator (shown when finished) */}
+          {(activeModel || activeCapability) && !streaming && !pendingConfirmation && (
+            <div className="flex justify-center my-4 animate-fade">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-bg-2 border border-border-2 rounded-full shadow-sm">
+                <Sparkles size={12} className="text-accent-2" />
+                <span className="text-[10px] text-ink-3">Dirutekan ke:</span>
+                {activeModel && (
+                  <span className="text-[10px] font-medium text-ink-2 bg-bg-3 px-2 py-0.5 rounded-full border border-border">
+                    {activeModel}
+                  </span>
+                )}
+                {activeCapability && (
+                  <span className="text-[10px] font-bold text-accent-2 tracking-widest uppercase bg-accent-2/10 px-2 py-0.5 rounded-full">
+                    {activeCapability}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Drive Upload Prompt UI */}
+          {drivePromptContent && !streaming && !pendingConfirmation && (
+             <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
+               <div className="flex gap-4">
+                 <div className="w-8 h-8 flex-shrink-0 bg-blue-500/20 border border-blue-500/50 rounded-lg flex items-center justify-center">
+                   <CloudUpload size={16} className="text-blue-500" />
+                 </div>
+                 <div className="flex-1 min-w-0 bg-bg-2 border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-md">
+                   <div className="flex items-center justify-between mb-2">
+                     <span className="text-sm font-bold text-ink">Google Drive Upload Ready</span>
+                   </div>
+                   <div className="text-xs text-ink-2 mb-3">
+                     <p>Pilih metadata berikut untuk di-upload:</p>
+                   </div>
+                   <div className="bg-bg-3 p-2.5 rounded border border-border-2 font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap max-h-32">
+                     {drivePromptTitle && <div className="font-bold border-b border-border-2 pb-1 mb-1">{drivePromptTitle}</div>}
+                     {drivePromptContent}
+                   </div>
+                   <div className="flex gap-3">
+                     <button
+                       onClick={() => {
+                          addMessage({
+                            id: Date.now() + 1,
+                            role: 'user',
+                            content: `Teruskan metadata ini dan lakukan upload ke gdrive: ${drivePromptTitle || ''}\n\n${drivePromptContent}`,
+                            model: selectedOrchestrator,
+                            created_at: new Date().toISOString(),
+                          })
+                          setInput(`Tolong upload metadata tadi`)
+                          clearDrivePrompt()
+                       }}
+                       className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-lg text-xs shadow-md transition-all"
+                     >
+                       Ya, upload sekarang!
+                     </button>
+                     <button
+                       onClick={() => clearDrivePrompt()}
+                       className="flex-1 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink font-medium py-2 border border-border rounded-lg text-xs transition-all"
+                     >
+                       Batal
+                     </button>
+                   </div>
+                 </div>
+               </div>
+             </div>
+          )}
+
+          <div ref={messagesEndRef} className="h-4" />
         </div>
 
         {/* Input area */}

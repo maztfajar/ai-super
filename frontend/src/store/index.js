@@ -89,6 +89,24 @@ export const useOrchestratorStore = create(
       // → Currently selected orchestrator option (auto / workflow / single model)
       selectedOrchestrator: 'auto-orchestrator',
       setSelectedOrchestrator: (id) => set({ selectedOrchestrator: id }),
+
+      // → Real-time routing info (updated live as messages stream in)
+      activeModel: null,           // Model yang sedang digunakan saat ini
+      activeCapability: null,      // Capability tag yang digunakan
+      setActiveModel: (m) => set({ activeModel: m }),
+      setActiveCapability: (c) => set({ activeCapability: c }),
+      clearActiveRouting: () => set({ activeModel: null, activeCapability: null }),
+
+      // → Capability Map cache dari backend
+      capabilityMap: {},
+      setCapabilityMap: (map) => set({ capabilityMap: map }),
+
+      // → Drive Upload Prompt: konten AI yang siap di-upload ke Drive
+      // Muncul setelah AI selesai menjawab dalam mode orchestrator kompleks
+      drivePromptContent: null,
+      drivePromptTitle: null,
+      setDrivePromptContent: (content, title) => set({ drivePromptContent: content, drivePromptTitle: title }),
+      clearDrivePrompt: () => set({ drivePromptContent: null, drivePromptTitle: null }),
     }),
     { 
       name: 'ai-super-assistant-orchestrator',

@@ -62,6 +62,7 @@ You MUST output ONLY valid JSON in exactly this format:
     "requires_multi_agent": true,
     "quality_priority": "balanced",
     "urgency": "normal",
+    "requires_web_search": false,
     "entities": {
         "languages": ["python"],
         "files": [],
@@ -81,6 +82,9 @@ Intent categories (can be MULTIPLE):
 - file_operation: file CRUD on local filesystem
 - creative: brainstorming, design, ideation
 - planning: strategy, scheduling, project management
+- image_generation: user wants to CREATE or GENERATE an image/photo/picture/illustration
+- audio_generation: user wants to CREATE audio, TTS, or voice output
+- real_time_search: user asks about news, current prices, live data, "hari ini", "terkini", "terbaru"
 - general: casual chat, greetings, simple questions
 
 Complexity scoring guide:
@@ -94,6 +98,10 @@ requires_multi_agent = true ONLY IF:
 - Complexity > 0.6 AND multiple intents
 - Task explicitly requires different perspectives
 - Task has multiple independent sub-deliverables
+
+requires_web_search = true IF:
+- User asks about current events, latest news, live prices, or real-time data
+- Question contains: "hari ini", "terkini", "terbaru", "sekarang", "harga", "berita", "today", "latest", "current"
 
 quality_priority options:
 - speed: user wants fast response (use cheaper/faster models)
@@ -122,6 +130,29 @@ COMPLEX_TRIGGERS = [
     "server", "file", "tulis", "write", "riset", "research", "rencana",
     "plan", "desain", "design", "debug", "fix", "perbaiki", "optimasi",
     "optimize", "migrasi", "migrate", "refactor", "arsitektur", "architecture",
+]
+
+# Heuristic: detect image generation
+IMAGE_GEN_PATTERNS = [
+    "buatkan gambar", "bikin gambar", "buat foto", "buat ilustrasi", "generate image",
+    "generate picture", "buat gambar", "bikin foto", "create image", "create picture",
+    "gambarkan", "ilustrasikan", "buatkan foto", "bikin ilustrasi", "make image",
+    "draw", "sketch", "render gambar",
+]
+
+# Heuristic: detect real-time search needs
+REAL_TIME_PATTERNS = [
+    "harga", "hari ini", "terkini", "terbaru", "sekarang", "berita", "live",
+    "today", "latest", "current price", "stock price", "crypto", "bitcoin",
+    "btc", "eth", "saham", "kurs", "nilai tukar", "update terbaru",
+    "news", "breaking", "trending", "real time", "real-time",
+]
+
+# Heuristic: detect audio/TTS generation requests
+AUDIO_GEN_PATTERNS = [
+    "balas dengan suara", "kirim suara", "buat audio", "jadikan audio",
+    "ubah jadi suara", "text to speech", "tts", "bacakan", "suarakan",
+    "voice note", "rekam suara",
 ]
 
 
@@ -184,6 +215,11 @@ class RequestPreprocessor:
             spec.success_criteria = classification.get("success_criteria", [])
             spec.raw_classification = classification
 
+            # Override: if LLM detected real_time_search — inject it into intents
+            if classification.get("requires_web_search", False):
+                if "real_time_search" not in spec.intents:
+                    spec.intents.append("real_time_search")
+
             # Determine if simple (skip orchestration overhead)
             spec.is_simple = spec.complexity_score < 0.4 and not spec.requires_multi_agent
 
@@ -196,6 +232,26 @@ class RequestPreprocessor:
 
         # Step 3: Post-processing
         spec = self._enrich(spec)
+
+        # Step 4: Fast heuristic check for special intents (override LLM if patterns found)
+        msg_lower = message.lower()
+        if any(p in msg_lower for p in IMAGE_GEN_PATTERNS):
+            spec.primary_intent = "image_generation"
+            if "image_generation" not in spec.intents:
+                spec.intents.insert(0, "image_generation")
+            spec.is_simple = True  # handled separately by orchestrator
+
+        elif any(p in msg_lower for p in AUDIO_GEN_PATTERNS):
+            spec.primary_intent = "audio_generation"
+            if "audio_generation" not in spec.intents:
+                spec.intents.insert(0, "audio_generation")
+            spec.is_simple = True
+
+        elif any(p in msg_lower for p in REAL_TIME_PATTERNS):
+            if "real_time_search" not in spec.intents:
+                spec.intents.append("real_time_search")
+            # Not simple — needs search + analysis
+            spec.is_simple = False
 
         spec.preprocessing_time_ms = int((time.time() - start) * 1000)
         log.info("Preprocessor complete",
@@ -268,8 +324,14 @@ class RequestPreprocessor:
             "system": ["install", "sudo", "terminal", "server", "vps", "restart", "deploy",
                         "nginx", "systemctl", "docker"],
             "file_operation": ["file", "baca", "read", "edit", "hapus", "delete", "folder"],
-            "creative": ["desain", "design", "gambar", "ide", "brainstorm", "kreatif"],
+            "creative": ["desain", "design", "ide", "brainstorm", "kreatif"],
             "planning": ["rencana", "plan", "jadwal", "schedule", "strategy", "roadmap"],
+            "image_generation": ["buatkan gambar", "bikin gambar", "buat foto", "generate image",
+                                   "gambarkan", "ilustrasikan", "buatkan foto", "draw"],
+            "audio_generation": ["balas dengan suara", "buat audio", "text to speech",
+                                   "tts", "bacakan", "suarakan", "voice note"],
+            "real_time_search": ["harga", "hari ini", "terkini", "terbaru", "berita", "live",
+                                   "today", "latest", "current price", "crypto", "btc", "saham"],
         }
 
         detected_intents = []
@@ -289,7 +351,13 @@ class RequestPreprocessor:
         else:
             spec.complexity_score = 0.3
 
-        spec.is_simple = spec.complexity_score < 0.4
+        # Special cases
+        if spec.primary_intent == "image_generation":
+            spec.is_simple = True
+        elif spec.primary_intent == "audio_generation":
+            spec.is_simple = True
+        else:
+            spec.is_simple = spec.complexity_score < 0.4
 
         return spec
 

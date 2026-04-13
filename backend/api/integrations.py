@@ -22,6 +22,31 @@ log = structlog.get_logger()
 ENV_FILE = Path(__file__).parent.parent.parent / ".env"
 
 
+def _load_env_file(override: bool = False):
+    """Load .env values into os.environ with optional override."""
+    if not ENV_FILE.exists():
+        return
+
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(str(ENV_FILE), override=override)
+    except ImportError:
+        for line in ENV_FILE.read_text(encoding="utf-8", errors="ignore").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            k = k.strip()
+            v = v.strip().strip('"').strip("'")
+            if not k:
+                continue
+            if override or k not in os.environ:
+                os.environ[k] = v
+
+
+# ── Helper: baca/tulis .env ────────────────────────────────────
+
+
 # ── Helper: baca/tulis .env ───────────────────────────────────
 def read_env() -> Dict[str, str]:
     """Baca semua key dari .env"""
@@ -36,6 +61,13 @@ def read_env() -> Dict[str, str]:
     return result
 
 
+def _env_key_matches(key: str, line: str) -> bool:
+    stripped = line.strip()
+    if not stripped or stripped.startswith("#"):
+        return False
+    return stripped.split("=", 1)[0].strip() == key
+
+
 def write_env_key(key: str, value: str):
     """Update atau tambah satu key di .env"""
     if not ENV_FILE.exists():
@@ -45,8 +77,7 @@ def write_env_key(key: str, value: str):
     found = False
     new_lines = []
     for line in lines:
-        stripped = line.strip()
-        if stripped.startswith(f"{key}=") or stripped.startswith(f"# {key}="):
+        if _env_key_matches(key, line):
             new_lines.append(f"{key}={value}")
             found = True
         else:
@@ -117,7 +148,8 @@ class SaveKeyRequest(BaseModel):
 
 
 async def _perform_model_reload():
-    """Helper untuk reload settings dan re-detect models secara sinkron internal"""
+    """Helper untuk reload settings and re-detect models secara sinkron internal"""
+    _load_env_file(override=True)
     # reload in-place agar referensi global tetap valid
     settings.reload()
     await model_manager._detect_models()

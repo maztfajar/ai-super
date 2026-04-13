@@ -44,12 +44,83 @@ else
     err "Unsupported OS."
 fi
 
+# ── Interactive Wizard ───────────────────────────────────────
+step "Interactive Configuration Wizard"
+
+echo -e "${CYAN}Tekan ENTER untuk menggunakan nilai [Default].${NC}\n"
+
+read -p "1. Nama Aplikasi [Default: AL FATIH]: " WZ_APP_NAME
+WZ_APP_NAME=${WZ_APP_NAME:-"AL FATIH"}
+
+echo -e "\n2. Konfigurasi Database (dijalankan otomatis oleh sistem)"
+echo "   [1] SQLite (Ringan, Tanpa Konfigurasi Ekstra)"
+echo "   [2] PostgreSQL (Disarankan untuk Server/Production)"
+read -p "   Pilih tipe database [1/2, Default: 1]: " WZ_DB_TYPE
+WZ_DB_TYPE=${WZ_DB_TYPE:-1}
+
+if [ "$WZ_DB_TYPE" = "2" ]; then
+    read -p "   Nama User DB [Default: pitakonku]: " WZ_DB_USER
+    WZ_DB_USER=${WZ_DB_USER:-pitakonku}
+    
+    read -p "   Nama Database [Default: pitakonku_db]: " WZ_DB_NAME
+    WZ_DB_NAME=${WZ_DB_NAME:-pitakonku_db}
+    
+    read -p "   Password DB [Default: admin]: " WZ_DB_PASS
+    WZ_DB_PASS=${WZ_DB_PASS:-admin}
+else
+    WZ_DB_USER="-"
+    WZ_DB_NAME="-"
+    WZ_DB_PASS="-"
+fi
+
+echo -e "\n3. Kredensial Login Aplikasi AI"
+read -p "   Username Login [Default: admin]: " WZ_ADMIN_USER
+WZ_ADMIN_USER=${WZ_ADMIN_USER:-admin}
+read -p "   Password Login [Default: admin]: " WZ_ADMIN_PASS
+WZ_ADMIN_PASS=${WZ_ADMIN_PASS:-admin}
+
+echo -e "\n4. Integrasi & Model AI (Tekan ENTER untuk melewati)"
+read -p "   OpenAI API Key: " WZ_OPENAI
+read -p "   Anthropic API Key: " WZ_ANTHROPIC
+read -p "   Telegram Bot Token: " WZ_TELEGRAM
+read -p "   WhatsApp Access Token: " WZ_WHATSAPP
+
+# Copy env.example
+if [ ! -f "$APP_DIR/.env" ]; then
+    cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+    log ".env dibuat dari template .env.example"
+else
+    log ".env sudah ada. Akan disesuaikan dengan isian wizard..."
+fi
+
+# Update .env
+if [ -f "$APP_DIR/.env" ]; then
+    sed -i -e "s/^APP_NAME=.*/APP_NAME=\"$WZ_APP_NAME\"/" "$APP_DIR/.env"
+    sed -i -e "s/^ADMIN_USERNAME=.*/ADMIN_USERNAME=\"$WZ_ADMIN_USER\"/" "$APP_DIR/.env"
+    sed -i -e "s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=\"$WZ_ADMIN_PASS\"/" "$APP_DIR/.env"
+
+    if [ -n "$WZ_OPENAI" ]; then sed -i -e "s/^OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$WZ_OPENAI\"/" "$APP_DIR/.env"; fi
+    if [ -n "$WZ_ANTHROPIC" ]; then sed -i -e "s/^ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$WZ_ANTHROPIC\"/" "$APP_DIR/.env"; fi
+    if [ -n "$WZ_TELEGRAM" ]; then sed -i -e "s/^TELEGRAM_BOT_TOKEN=.*/TELEGRAM_BOT_TOKEN=\"$WZ_TELEGRAM\"/" "$APP_DIR/.env"; fi
+    if [ -n "$WZ_WHATSAPP" ]; then sed -i -e "s/^WHATSAPP_ACCESS_TOKEN=.*/WHATSAPP_ACCESS_TOKEN=\"$WZ_WHATSAPP\"/" "$APP_DIR/.env"; fi
+
+    if [ "$WZ_DB_TYPE" = "2" ]; then
+        # PostgreSQL
+        DB_URL="postgresql+asyncpg:\/\/$WZ_DB_USER:$WZ_DB_PASS@localhost\/$WZ_DB_NAME"
+        sed -i -e "s/^DATABASE_URL=.*/DATABASE_URL=$DB_URL/" "$APP_DIR/.env"
+    else
+        # SQLite
+        DB_URL="sqlite+aiosqlite:\/\/\/.\/data\/ai-super-assistant.db"
+        sed -i -e "s/^DATABASE_URL=.*/DATABASE_URL=$DB_URL/" "$APP_DIR/.env"
+    fi
+fi
+
 # ── System dependencies (TANPA nodejs/npm dari apt) ──────────
 step "Installing System Dependencies"
 if [ "$PKG" = "apt" ]; then
     sudo apt-get update -qq
     sudo apt-get install -y curl wget git \
-        python3 python3-pip python3-venv \
+        python3 python3-pip python3-venv python3-full \
         redis-server postgresql postgresql-contrib \
         build-essential libpq-dev libssl-dev libffi-dev \
         python3-dev gcc g++ make 2>/dev/null \
@@ -99,13 +170,18 @@ sudo systemctl start redis-server 2>/dev/null || sudo systemctl start redis 2>/d
 log "Redis started"
 
 # ── PostgreSQL ────────────────────────────────────────────────
-step "Setting Up PostgreSQL"
-sudo systemctl enable postgresql 2>/dev/null || true
-sudo systemctl start postgresql 2>/dev/null || true
-sudo -u postgres psql -c "CREATE USER ai-super-assistant WITH PASSWORD 'ai-super-assistant2024';" 2>/dev/null || true
-sudo -u postgres psql -c "CREATE DATABASE ai_super_assistant_db OWNER ai-super-assistant;" 2>/dev/null || true
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE ai_super_assistant_db TO ai-super-assistant;" 2>/dev/null || true
-log "PostgreSQL ready (db: ai_super_assistant_db, user: ai-super-assistant)"
+if [ "$WZ_DB_TYPE" = "2" ]; then
+    step "Setting Up PostgreSQL"
+    sudo systemctl enable postgresql 2>/dev/null || true
+    sudo systemctl start postgresql 2>/dev/null || true
+    sudo -u postgres psql -c "CREATE USER $WZ_DB_USER WITH PASSWORD '$WZ_DB_PASS';" 2>/dev/null || true
+    sudo -u postgres psql -c "CREATE DATABASE $WZ_DB_NAME OWNER $WZ_DB_USER;" 2>/dev/null || true
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $WZ_DB_NAME TO $WZ_DB_USER;" 2>/dev/null || true
+    log "PostgreSQL ready (db: $WZ_DB_NAME, user: $WZ_DB_USER)"
+else
+    step "Setting Up PostgreSQL"
+    log "Menggunakan SQLite, melewati instalasi PostgreSQL setup."
+fi
 
 # ── Python Backend ────────────────────────────────────────────
 step "Setting Up Python Backend"
@@ -182,26 +258,21 @@ done
 
 [ ${#FAILED[@]} -gt 0 ] && warn "Gagal: ${FAILED[*]}" || log "Semua package terinstall!"
 
-# ── Env file ─────────────────────────────────────────────────
-step "Creating Environment Config"
-if [ ! -f "$APP_DIR/.env" ]; then
-    cp "$APP_DIR/.env.example" "$APP_DIR/.env"
-    log ".env dibuat — edit untuk tambah API key"
-else
-    log ".env sudah ada"
-fi
-
 # ── Init Database & Admin ─────────────────────────────────────
 step "Initializing Database & Admin User"
 cd "$APP_DIR/backend"
 source "$APP_DIR/backend/venv/bin/activate"
-export DATABASE_URL="sqlite+aiosqlite:///./data/ai-super-assistant.db"
 mkdir -p data/logs data/uploads data/chroma_db
+
+if [ -f "$APP_DIR/.env" ]; then
+    set -a
+    source "$APP_DIR/.env"
+    set +a
+fi
 
 python3 - << 'PYEOF'
 import asyncio, sys, os
 sys.path.insert(0, '.')
-os.environ['DATABASE_URL'] = 'sqlite+aiosqlite:///./data/ai-super-assistant.db'
 
 async def main():
     from db.database import init_db, AsyncSessionLocal
@@ -220,9 +291,9 @@ log "Database & admin user siap"
 step "Building Frontend"
 cd "$APP_DIR/frontend"
 log "Installing npm packages..."
-npm install 2>&1 | tail -3
+npm install --silent
 log "Building React app..."
-npm run build 2>&1 | tail -3
+npm run build
 log "Frontend built"
 
 # ── Systemd services ─────────────────────────────────────────
@@ -237,7 +308,7 @@ Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR/backend
 EnvironmentFile=$APP_DIR/.env
-Environment=DATABASE_URL=sqlite+aiosqlite:///./data/ai-super-assistant.db
+Environment=PATH=$APP_DIR/backend/venv/bin:/usr/bin
 ExecStart=$APP_DIR/backend/venv/bin/uvicorn main:app --host 0.0.0.0 --port 7860 --workers 2
 Restart=always
 RestartSec=3
@@ -263,7 +334,7 @@ echo -e "  ${CYAN}Langkah berikutnya:${NC}"
 echo -e "  1. Edit API key (opsional) : ${YELLOW}nano $APP_DIR/.env${NC}"
 echo -e "  2. Jalankan server         : ${YELLOW}bash $APP_DIR/scripts/dev.sh${NC}"
 echo -e "  3. Buka browser            : ${YELLOW}http://localhost:7860${NC}"
-echo -e "  4. Login                   : ${YELLOW}admin / ai-super-assistant2024${NC}"
+echo -e "  4. Login                   : ${YELLOW}$WZ_ADMIN_USER / $WZ_ADMIN_PASS${NC}"
 echo -e "\n  ${CYAN}RAG/LangChain (opsional):${NC}"
 echo -e "  bash $APP_DIR/scripts/install-rag.sh"
 echo ""
