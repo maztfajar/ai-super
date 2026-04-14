@@ -1,0 +1,121 @@
+# 🚀 VPS Deploy Instructions - Git Conflict Resolved
+
+## Current Status
+✅ Binary files removed from git tracking  
+✅ `.gitignore` updated  
+✅ Script untuk resolve conflict sudah disiapkan  
+
+---
+
+## Step 1: Fix Git Conflict di VPS
+
+Run di VPS command line:
+
+```bash
+cd ~/ai-super
+
+# Option A: Using new script (recommended)
+bash scripts/fix-git-conflict.sh
+
+# Option B: Manual commands
+git merge --abort 2>/dev/null || true
+git stash drop 2>/dev/null || true
+git rm --cached backend/data/chroma_db/chroma.sqlite3 2>/dev/null || true
+rm -f backend/data/chroma_db/chroma.sqlite3
+git pull
+```
+
+---
+
+## Step 2: Rebuild Frontend
+
+```bash
+cd ~/ai-super/frontend
+npm install --legacy-peer-deps
+npm run build
+cd ..
+```
+
+---
+
+## Step 3: Restart Services
+
+```bash
+bash scripts/stop.sh
+sleep 2
+bash scripts/start.sh
+```
+
+---
+
+## 🧪 Test Deployment
+
+```bash
+# Check API
+curl http://localhost:7860 -I
+
+# Check chat endpoint exists
+curl -X POST http://localhost:7860/api/chat/send \
+  -H "Content-Type: application/json" \
+  -d '{"message": "test"}' 2>/dev/null | head -50
+```
+
+---
+
+## 📋 Changedlog dari Master
+
+Sejak VPS deployment awal, kami sudah add:
+
+1. **Thinking Process Feature** ⭐
+   - Expandable thinking section like Claude AI
+   - User bisa klik icon untuk lihat model's thinking steps
+   - Status messages di-collect dan di-display hidden
+
+2. **Database Migration**
+   - Tambah `thinking_process` column ke messages table
+   - Auto-migrated saat startup
+
+3. **Frontend Improvements**
+   - Better error handling untuk dashboard
+   - Drag & drop image support
+   - Auto-focus input setelah send
+
+4. **Git Tracking Fix** (CRITICAL)
+   - Removed binary chroma.sqlite3 dari tracking
+   - Prevent future merge conflicts
+   - Each environment maintains own RAG data
+
+---
+
+## ⚠️ Important Notes
+
+- Binary database files (chroma.sqlite3) tidak lagi ter-track
+- Setiap environment (dev, prod) punya sendiri copy
+- `git pull` di masa depan akan smooth tanpa conflicts
+- RAG indices tetap intact di local environment
+
+---
+
+## 🆘 Troubleshooting
+
+**Jika git masih stuck:**
+```bash
+cd ~/ai-super
+git fetch origin
+git reset --hard origin/main
+# Then rebuild & restart
+```
+
+**Jika frontend error:**
+```bash
+rm -rf frontend/node_modules frontend/dist
+npm install --legacy-peer-deps
+npm run build
+```
+
+**Jika API won't start:**
+```bash
+lsof -i :7860  # Find process using port
+kill -9 <PID>
+bash scripts/start.sh
+```
