@@ -493,7 +493,7 @@ export default function Chat() {
 
     setPendingImage(null)  // clear preview
     setStreaming(true)
-    setStatusText('Menghubungi AI...')
+    setStatusText('')
 
     const sessionId = currentSession.id
 
@@ -546,7 +546,7 @@ export default function Chat() {
         setStatusText('')
         setPendingConfirmation(pendingData)
       },
-      (status) => setStatusText(status)
+      (status) => {} // Ignore intermediate status for natural chat
       )
     } else {
       // Use regular endpoint for text-only
@@ -595,7 +595,7 @@ export default function Chat() {
           setStatusText('')
           setPendingConfirmation(pendingData)
         },
-        (status) => setStatusText(status)
+        (status) => {} // Ignore intermediate status for natural chat
       )
     }
     
@@ -960,7 +960,7 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Thinking indicator */}
+          {/* Thinking indicator - simple & clean */}
           {streaming && !streamingText && (
             <div className="flex gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0">
@@ -977,9 +977,9 @@ export default function Chat() {
                       />
                     ))}
                   </div>
-                  <span className="text-xs text-ink-3">{statusText || 'AI sedang berpikir...'}</span>
+                  <span className="text-xs text-ink-3">Thinking...</span>
                 </div>
-                {/* Stop button di thinking state juga */}
+                {/* Stop button */}
                 <button
                   onClick={stopStreaming}
                   className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-xs font-medium transition-all"

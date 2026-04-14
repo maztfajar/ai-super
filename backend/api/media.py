@@ -194,3 +194,25 @@ async def delete_media(filename: str, user: User = Depends(get_current_user)):
     except Exception as e:
         log.error("Failed to delete media file", error=str(e), filename=filename)
         raise HTTPException(500, "Gagal menghapus file")
+
+
+@router.delete("/delete-all")
+async def delete_all_media(user: User = Depends(get_current_user)):
+    """
+    Hapus semua file media milik user.
+    """
+    upload_dir = Path(settings.UPLOAD_DIR)
+    if not upload_dir.exists():
+        return {"status": "done", "deleted": 0, "detail": "Upload folder tidak ada"}
+
+    deleted = 0
+    try:
+        for file_path in upload_dir.glob("*"):
+            if file_path.is_file():
+                file_path.unlink()
+                deleted += 1
+        log.info("All media files deleted", user=user.username, count=deleted)
+        return {"status": "done", "deleted": deleted, "detail": f"{deleted} file berhasil dihapus"}
+    except Exception as e:
+        log.error("Failed to delete all media files", error=str(e), user=user.username)
+        raise HTTPException(500, f"Gagal menghapus semua file: {str(e)[:100]}")

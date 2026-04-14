@@ -251,6 +251,7 @@ export const api = {
   // ── Media Management ──────────────────────────────────────
   listMedia:   ()       => req('GET',    '/media/list'),
   deleteMedia: (filename) => req('DELETE', '/media/delete/' + encodeURIComponent(filename)),
+  deleteAllMedia: () => req('DELETE', '/media/delete-all'),
 
   // ── Streaming chat multimodal (gambar/suara + teks) ────────
   chatStreamMultimodal: function(payload, imageData, onChunk, onDone, onSession, onStatus) {

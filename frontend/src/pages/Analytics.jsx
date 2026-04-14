@@ -353,6 +353,34 @@ export default function Analytics() {
     }
   }
 
+  const deleteAllMediaFiles = async () => {
+    if (!confirm(`Hapus semua ${mediaFiles.length} file media? Tindakan ini tidak bisa dibatalkan.`)) return
+    try {
+      const res = await api.deleteAllMedia()
+      alert(res.detail || 'Semua file media berhasil dihapus')
+      setMediaFiles([])
+      await fetchMedia()
+    } catch (e) {
+      alert('Gagal menghapus semua file: ' + e.message)
+    }
+  }
+
+  const handleCleanStorage = async (componentId) => {
+    if (!confirm(`Bersihkan storage "${componentId}"? (Hasil mungkin tidak diproses jika backend belum siap)`)) return
+    setCleaning(prev => ({ ...prev, [componentId]: true }))
+    try {
+      const res = await api.cleanStorage(componentId)
+      setCleanMsg(res.detail || `Storage "${componentId}" berhasil dibersihkan`)
+      await new Promise(r => setTimeout(r, 1500))
+      api.storageInfo().then(setStorage).catch(() => {})
+      setTimeout(() => setCleanMsg(null), 4000)
+    } catch (e) {
+      alert('Gagal membersihkan storage: ' + e.message)
+    } finally {
+      setCleaning(prev => ({ ...prev, [componentId]: false }))
+    }
+  }
+
   const stats     = dash?.stats || {}
   const totalTok  = usage.reduce((a, u) => a + (u.tokens || 0), 0)
   const totalCost = usage.reduce((a, u) => a + (u.cost_usd || 0), 0)
@@ -385,6 +413,12 @@ export default function Analytics() {
       {resetMsg && (
         <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/30 rounded-xl text-xs text-success">
           <CheckCircle2 size={14}/>{resetMsg}
+        </div>
+      )}
+
+      {cleanMsg && (
+        <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent/30 rounded-xl text-xs text-accent">
+          <CheckCircle2 size={14}/>{cleanMsg}
         </div>
       )}
 
@@ -501,9 +535,20 @@ export default function Analytics() {
               {mediaFiles.length} file · Total {formatBytes(mediaFiles.reduce((sum, file) => sum + (file.size_bytes || 0), 0))}
             </div>
           </div>
-          <button onClick={fetchMedia} disabled={mediaLoading} className="text-xs text-accent hover:underline disabled:opacity-50">
-            {mediaLoading ? 'Memuat...' : 'Refresh'}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={fetchMedia} disabled={mediaLoading} className="text-xs text-accent hover:underline disabled:opacity-50">
+              {mediaLoading ? 'Memuat...' : 'Refresh'}
+            </button>
+            {mediaFiles.length > 0 && (
+              <button 
+                onClick={deleteAllMediaFiles} 
+                disabled={mediaLoading}
+                className="text-xs px-2 py-1 rounded bg-danger/10 hover:bg-danger/20 text-danger font-medium disabled:opacity-50"
+              >
+                Hapus Semua
+              </button>
+            )}
+          </div>
         </div>
         {mediaFiles.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -544,7 +589,13 @@ export default function Analytics() {
               <div className="text-xs font-semibold text-ink">{comp.name}</div>
               <div className="text-[10px] text-ink-3">{comp.desc}</div>
               {comp.can_clean && (
-                <button onClick={() => {}} className="mt-2 text-[10px] text-accent hover:underline">Bersihkan</button>
+                <button 
+                  onClick={() => handleCleanStorage(comp.id)}
+                  disabled={cleaning[comp.id]}
+                  className="mt-2 text-[10px] text-accent hover:underline disabled:opacity-50"
+                >
+                  {cleaning[comp.id] ? 'Sedang membersihkan...' : 'Bersihkan'}
+                </button>
               )}
             </div>
           ))}
