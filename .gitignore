@@ -5,6 +5,7 @@ dist/
 build/
 .env
 backend/data/
+data/
 uploads/
 __pycache__/
 **/__pycache__/
