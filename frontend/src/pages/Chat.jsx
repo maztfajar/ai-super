@@ -11,7 +11,7 @@ import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
   Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
-  ImagePlus, Mic, MicOff, Camera, Volume2
+  ImagePlus, Mic, MicOff, Camera, Volume2, Brain, ChevronDown, ChevronUp
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -20,6 +20,7 @@ import clsx from 'clsx'
 // ── Message bubble ────────────────────────────────────────────
 function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId }) {
   const [copied, setCopied] = useState(false)
+  const [showThinking, setShowThinking] = useState(false)
   const isUser = msg.role === 'user'
 
   const copy = () => {
@@ -161,6 +162,20 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId }) {
                 </button>
               )}
 
+              {/* Thinking Toggle - show if thinking_process exists */}
+              {!isUser && msg.thinking_process && (
+                <button
+                  onClick={() => setShowThinking(!showThinking)}
+                  className={clsx(
+                    "opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all outline-none",
+                    showThinking ? "bg-accent/20 text-accent opacity-100" : "hover:bg-bg-5 text-ink-3 hover:text-ink"
+                  )}
+                  title="Tampilkan Thinking"
+                >
+                  {showThinking ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                </button>
+              )}
+
               {/* Copy */}
               <button
                 onClick={copy}
@@ -191,6 +206,23 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId }) {
           } catch { }
           return null
         })()}
+
+        {/* Thinking Process - Expandable Section */}
+        {!isUser && msg.thinking_process && showThinking && (
+          <div className="mt-2 p-2.5 bg-bg-3 border border-border rounded-lg text-[11px] text-ink-3 leading-relaxed space-y-1">
+            <div className="font-semibold text-accent-2 mb-1.5 flex items-center gap-1">
+              <Brain size={11} /> Proses Thinking:
+            </div>
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {msg.thinking_process.split('\n').map((step, i) => step.trim() && (
+                <div key={i} className="flex gap-2">
+                  <span className="text-ink-3 flex-shrink-0">•</span>
+                  <span className="flex-1">{step.trim()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -527,6 +559,7 @@ export default function Chat() {
           content: fullText,
           model: abortRef.current?.actualModel || selectedOrchestrator,
           rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
+          thinking_process: done.thinking_process || null,
           created_at: new Date().toISOString(),
         })
         // Refresh session list — tapi hati-hati jangan restore sesi yang dihapus
@@ -576,6 +609,7 @@ export default function Chat() {
             content: fullText,
             model: abortRef.current?.actualModel || selectedOrchestrator,
             rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
+            thinking_process: done.thinking_process || null,
             created_at: new Date().toISOString(),
           })
           // Refresh session list — tapi hati-hati jangan restore sesi yang dihapus

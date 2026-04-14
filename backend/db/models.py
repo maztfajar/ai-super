@@ -49,6 +49,7 @@ class Message(SQLModel, table=True):
     tokens_output: int = 0
     cost_usd: float = 0.0
     rag_sources: Optional[str] = None   # JSON list of source doc names
+    thinking_process: Optional[str] = None  # Collected status/thinking steps for expandable section
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 

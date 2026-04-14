@@ -71,6 +71,9 @@ class Orchestrator:
         start_time = time.time()
         task_exec_id = None
         history = history or []
+        
+        # Collect all thinking/status messages for expandable thinking section
+        thinking_steps = []
 
         # ─── DEBUG: Log image parameters ──────────────────────────
         if image_b64 or image_mime:

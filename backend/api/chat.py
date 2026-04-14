@@ -197,6 +197,7 @@ async def chat_send(
     async def generate():
         full_response = ""
         final_model = req.model or "orchestrator"
+        thinking_steps = []  # Collect all status messages for thinking section
 
         # Send session info
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': final_model})}\n\n"
@@ -223,6 +224,8 @@ async def chat_send(
                     yield event.to_sse()
 
                 elif event.type == "status":
+                    # Collect thinking steps
+                    thinking_steps.append(event.content)
                     yield event.to_sse()
 
                 elif event.type == "pending_confirmation":
@@ -238,10 +241,12 @@ async def chat_send(
                     return  # Stop generator
 
                 elif event.type == "done":
-                    # Pass through done event with orchestrator metadata
+                    # Pass through done event with orchestrator metadata + thinking process
                     done_payload = {"type": "done", "sources": rag_sources}
                     if event.data:
                         done_payload.update(event.data)
+                    # Include thinking process for expandable thinking section
+                    done_payload["thinking_process"] = "\n".join(thinking_steps) if thinking_steps else ""
                     yield f"data: {json.dumps(done_payload)}\n\n"
 
                 elif event.type == "error":
@@ -271,6 +276,7 @@ async def chat_send(
                 content=full_response,
                 model=final_model,
                 rag_sources=json.dumps(rag_sources) if rag_sources else None,
+                thinking_process="\n".join(thinking_steps) if thinking_steps else None,
             )
             save_db.add(ai_msg)
 
