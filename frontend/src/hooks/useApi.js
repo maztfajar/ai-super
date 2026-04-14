@@ -262,8 +262,8 @@ export const api = {
     // Jika ada gambar, tambahkan sebagai metadata ke payload
     const enriched = Object.assign({}, payload)
     if (imageData) {
-      enriched._image_b64  = imageData.base64
-      enriched._image_mime = imageData.mime_type
+      enriched.image_b64  = imageData.base64
+      enriched.image_mime = imageData.mime_type
     }
     return api.chatStream(enriched, onChunk, onDone, onSession, undefined, onStatus)
   },
