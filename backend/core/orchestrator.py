@@ -62,6 +62,8 @@ class Orchestrator:
         max_tokens: int = 4096,
         use_rag: bool = True,
         include_tool_logs: bool = True,
+        image_b64: Optional[str] = None,
+        image_mime: Optional[str] = None,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """
         Main orchestration pipeline. Yields events as the orchestration progresses.
@@ -79,6 +81,8 @@ class Orchestrator:
                 user_id=user_id,
                 session_id=session_id,
                 user_model_choice=user_model_choice,
+                image_b64=image_b64,
+                image_mime=image_mime,
             )
         except Exception as e:
             log.error("Preprocessing failed", error=str(e)[:100])
@@ -94,6 +98,11 @@ class Orchestrator:
 
         if primary == "image_generation":
             async for event in self._handle_image_gen(spec, system_prompt, history):
+                yield event
+            return
+
+        if primary == "vision":
+            async for event in self._handle_vision(spec, image_b64, image_mime, system_prompt, history):
                 yield event
             return
 
@@ -463,6 +472,66 @@ class Orchestrator:
                 "model_used": image_model,
                 "note": "image_gen_api_not_available",
             })
+
+    async def _handle_vision(
+        self,
+        spec: TaskSpecification,
+        image_b64: str,
+        image_mime: str,
+        system_prompt: str,
+        history: list,
+    ) -> AsyncGenerator[OrchestratorEvent, None]:
+        """Handle vision/image analysis requests with VISION_GATE engine."""
+
+        if not image_b64:
+            yield OrchestratorEvent("error", "❌ Tidak ada gambar yang terdeteksi. Silakan unggah gambar terlebih dahulu.")
+            return
+
+        yield OrchestratorEvent("status", "🔍 Menganalisa gambar dengan VISION_GATE engine...")
+
+        # Find best model for vision
+        vision_model = capability_map.find_best_model({"vision"})
+        if not vision_model:
+            vision_model = agent_registry.resolve_model_for_agent("vision", None)
+
+        if not vision_model:
+            vision_model = model_manager.get_default_model()
+
+        yield OrchestratorEvent("status", f"🔍 Analisis visual menggunakan: {vision_model}")
+
+        try:
+            # Call vision model with image + text prompt
+            response = await model_manager.chat_with_image(
+                image_b64=image_b64,
+                mime_type=image_mime,
+                text_prompt=spec.original_message or "Jelaskan secara detail apa yang ada dalam gambar ini. Sebutkan semua objek, aktivitas, situasi, konteks, dan detail penting yang terlihat.",
+                system_prompt=system_prompt,
+                history=history,
+                model=vision_model,
+            )
+
+            # Stream response in chunks
+            for chunk in [response]:  # Simple line-by-line for now
+                yield OrchestratorEvent("chunk", chunk)
+
+            yield OrchestratorEvent("done", "", {
+                "model_used": vision_model,
+                "capability_used": "vision",
+                "image_analyzed": True,
+            })
+
+        except Exception as e:
+            error_msg = str(e)
+            log.error("Vision analysis failed", model=vision_model, error=error_msg[:200])
+
+            if "api" in error_msg.lower() or "model" in error_msg.lower():
+                yield OrchestratorEvent("error",
+                    f"❌ Gagal menganalisis gambar: {error_msg}\n\n"
+                    f"Silakan coba lagi atau gunakan model berbeda.")
+            else:
+                yield OrchestratorEvent("error",
+                    f"❌ Terjadi kesalahan saat menganalisis gambar.\n\n"
+                    f"Detail: {error_msg}")
 
     # ─── Subtask Execution ────────────────────────────────────
 

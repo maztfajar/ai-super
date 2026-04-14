@@ -26,6 +26,8 @@ class ChatRequest(BaseModel):
     use_rag: bool = True
     temperature: float = 0.7
     max_tokens: int = 4096
+    _image_b64: Optional[str] = None  # Base64 encoded image
+    _image_mime: Optional[str] = None  # MIME type (image/png, image/jpeg, etc)
 
 
 class NewSessionRequest(BaseModel):
@@ -204,6 +206,8 @@ async def chat_send(
                 temperature=req.temperature,
                 max_tokens=req.max_tokens,
                 use_rag=req.use_rag,
+                image_b64=req._image_b64,
+                image_mime=req._image_mime,
             ):
                 if event.type == "chunk":
                     full_response += event.content

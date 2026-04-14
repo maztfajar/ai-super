@@ -497,26 +497,28 @@ export default function Chat() {
 
     const sessionId = currentSession.id
 
-    abortRef.current = api.chatStream(
-      {
-        session_id: sessionId,
-        message:    imageToSend
-          ? `[📷 Gambar dikirim] ${text}`
-          : text,
-        model:   selectedOrchestrator,
-        use_rag: useRAG,
-      },
-      (chunk) => appendStreamingText(chunk),
-      async (done) => {
-        const fullText = useChatStore.getState().streamingText
-        clearStreaming()
-        setStatusText('')
+    // Use different endpoints based on whether image is present
+    if (imageToSend) {
+      // Use multimodal endpoint for image + text
+      abortRef.current = api.chatStreamMultimodal(
+        {
+          session_id: sessionId,
+          message: text,
+          model: selectedOrchestrator,
+          use_rag: useRAG,
+        },
+        imageToSend,  // Pass image data (base64 + mime_type)
+        (chunk) => appendStreamingText(chunk),
+        async (done) => {
+          const fullText = useChatStore.getState().streamingText
+          clearStreaming()
+          setStatusText('')
 
-        if (done.drive_prompt) {
-          setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
-        }
-        if (done.model_used) setActiveModel(done.model_used)
-        if (done.capability_used) setActiveCapability(done.capability_used)
+          if (done.drive_prompt) {
+            setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
+          }
+          if (done.model_used) setActiveModel(done.model_used)
+          if (done.capability_used) setActiveCapability(done.capability_used)
 
 
         addMessage({
@@ -545,7 +547,57 @@ export default function Chat() {
         setPendingConfirmation(pendingData)
       },
       (status) => setStatusText(status)
-    )
+      )
+    } else {
+      // Use regular endpoint for text-only
+      abortRef.current = api.chatStream(
+        {
+          session_id: sessionId,
+          message: text,
+          model: selectedOrchestrator,
+          use_rag: useRAG,
+        },
+        (chunk) => appendStreamingText(chunk),
+        async (done) => {
+          const fullText = useChatStore.getState().streamingText
+          clearStreaming()
+          setStatusText('')
+
+          if (done.drive_prompt) {
+            setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
+          }
+          if (done.model_used) setActiveModel(done.model_used)
+          if (done.capability_used) setActiveCapability(done.capability_used)
+
+
+          addMessage({
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: fullText,
+            model: abortRef.current?.actualModel || selectedOrchestrator,
+            rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
+            created_at: new Date().toISOString(),
+          })
+          // Refresh session list — tapi hati-hati jangan restore sesi yang dihapus
+          api.listSessions().then((s) => {
+            const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+            setSessions(safe)
+          }).catch(() => {})
+        },
+        (sessionData) => {
+          if (sessionData && sessionData.model) {
+            setActualModel(sessionData.model)
+            if (abortRef.current) abortRef.current.actualModel = sessionData.model
+          }
+        },
+        (pendingData) => {
+          clearStreaming()
+          setStatusText('')
+          setPendingConfirmation(pendingData)
+        },
+        (status) => setStatusText(status)
+      )
+    }
   }
 
   function approveExecution(pendingData) {

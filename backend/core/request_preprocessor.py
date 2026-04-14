@@ -168,6 +168,8 @@ class RequestPreprocessor:
         user_id: str = "",
         session_id: str = "",
         user_model_choice: Optional[str] = None,
+        image_b64: Optional[str] = None,
+        image_mime: Optional[str] = None,
     ) -> TaskSpecification:
         """
         Full preprocessing pipeline:
@@ -246,6 +248,13 @@ class RequestPreprocessor:
             if "audio_generation" not in spec.intents:
                 spec.intents.insert(0, "audio_generation")
             spec.is_simple = True
+
+        elif image_b64 and image_mime:
+            # Vision/Image Analysis Intent - image provided by user
+            spec.primary_intent = "vision"
+            if "vision" not in spec.intents:
+                spec.intents.insert(0, "vision")
+            spec.is_simple = True  # handled separately by orchestrator
 
         elif any(p in msg_lower for p in REAL_TIME_PATTERNS):
             if "real_time_search" not in spec.intents:
