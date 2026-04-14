@@ -192,6 +192,18 @@ class RequestPreprocessor:
             spec.preprocessing_time_ms = int((time.time() - start) * 1000)
             return spec
 
+        # Step 0: Priority-check for special intents (before any LLM classification)
+        # VISION has highest priority — if image present, always analyze as vision
+        if image_b64 and image_mime:
+            spec.primary_intent = "vision"
+            spec.intents = ["vision"]
+            spec.is_simple = True
+            spec.complexity_score = 0.3
+            spec.preprocessing_time_ms = int((time.time() - start) * 1000)
+            log.info("Preprocessor: vision intent detected (image present)", 
+                    image_mime=image_mime[:20], msg=message[:50])
+            return spec
+
         # Step 1: Fast heuristic check
         if self._is_trivial(message):
             spec.is_simple = True
@@ -248,13 +260,6 @@ class RequestPreprocessor:
             if "audio_generation" not in spec.intents:
                 spec.intents.insert(0, "audio_generation")
             spec.is_simple = True
-
-        elif image_b64 and image_mime:
-            # Vision/Image Analysis Intent - image provided by user
-            spec.primary_intent = "vision"
-            if "vision" not in spec.intents:
-                spec.intents.insert(0, "vision")
-            spec.is_simple = True  # handled separately by orchestrator
 
         elif any(p in msg_lower for p in REAL_TIME_PATTERNS):
             if "real_time_search" not in spec.intents:

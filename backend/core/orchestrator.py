@@ -72,6 +72,13 @@ class Orchestrator:
         task_exec_id = None
         history = history or []
 
+        # ─── DEBUG: Log image parameters ──────────────────────────
+        if image_b64 or image_mime:
+            log.info("Orchestrator received image",
+                    image_mime=image_mime,
+                    image_b64_len=len(image_b64) if image_b64 else 0,
+                    message_preview=message[:100])
+
         # ─── PHASE 1: PREPROCESSING ──────────────────────────────
         yield OrchestratorEvent("status", "🔍 Menganalisa permintaan...")
 
@@ -95,6 +102,12 @@ class Orchestrator:
         # ─── PHASE 0: CAPABILITY-AWARE ROUTING ───────────────────
         # Fast-path for special intents before full orchestration
         primary = spec.primary_intent
+
+        log.info("Orchestrator routing decision",
+                primary_intent=primary,
+                intents=spec.intents,
+                is_simple=spec.is_simple,
+                complexity=spec.complexity_score)
 
         if primary == "image_generation":
             async for event in self._handle_image_gen(spec, system_prompt, history):

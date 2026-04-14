@@ -147,6 +147,15 @@ async def chat_send(
 ):
     """Chat endpoint — returns streaming response via Orchestrator pipeline"""
 
+    # Debug: Log image data
+    if req.image_b64 or req.image_mime:
+        import structlog
+        log = structlog.get_logger()
+        log.info("Chat API received image",
+                image_mime=req.image_mime,
+                image_b64_len=len(req.image_b64) if req.image_b64 else 0,
+                message_preview=req.message[:100])
+
     # Get or create session
     if req.session_id:
         session = await db.get(ChatSession, req.session_id)
