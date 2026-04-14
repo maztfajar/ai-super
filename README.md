@@ -1,6 +1,59 @@
 # 🧠 AI SUPER ASSISTANT — AI Super Assistant
 
-Platform AI Self-Hosted dengan multi-model, knowledge base, workflow otomatis, integrasi Telegram/WhatsApp, dan keamanan 2FA.
+Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration, knowledge base RAG, workflow otomatis, integrasi Telegram/WhatsApp, dan keamanan 2FA.
+
+---
+
+## ✨ Fitur Utama
+
+### 🤖 **AI Orchestrator Engine**
+- **Multi-Model Intelligence**: Otomatis routing ke model terbaik berdasarkan tugas
+- **VISION_GATE Engine**: Analisis gambar lengkap - objek, aktivitas, situasi, konteks
+- **Multimodal Chat**: Chat dengan gambar + teks secara bersamaan
+- **Smart Routing**: Auto-pilih model untuk coding, analysis, vision, audio, dll.
+
+### 📸 **Vision & Image Analysis**
+- Upload gambar dan dapatkan analisis detail
+- Deteksi objek, aktivitas, situasi, dan konteks dalam foto
+- OCR (Optical Character Recognition) untuk teks dalam gambar
+- Screenshot analysis untuk debugging error
+
+### 🗄️ **RAG (Retrieval Augmented Generation)**
+- Knowledge base dengan vector search
+- Upload dokumen PDF, DOC, TXT untuk augmentasi AI
+- Context-aware responses dengan sumber referensi
+- Auto-indexing dan semantic search
+
+### 🔄 **Workflow Automation**
+- Buat workflow otomatis dengan trigger & actions
+- Integrasi dengan berbagai platform
+- Scheduled tasks dan background processing
+- Visual workflow builder
+
+### 📱 **Multi-Channel Integration**
+- **Telegram Bot**: Chat AI langsung di Telegram
+- **WhatsApp Integration**: Coming soon
+- **Web Interface**: Full-featured web app
+- **API Endpoints**: RESTful API untuk integrasi
+
+### 🔒 **Enterprise Security**
+- Two-Factor Authentication (TOTP + Telegram OTP)
+- JWT tokens dengan expiry management
+- Brute force protection
+- Multi-level user roles & permissions
+- Encrypted data storage
+
+### 📊 **Analytics & Monitoring**
+- Real-time system monitoring
+- Usage analytics dan performance metrics
+- Agent performance tracking
+- System health dashboard
+- Log management & rotation
+
+### 🎵 **Text-to-Speech (TTS)**
+- High-quality voice synthesis
+- Multiple voice options
+- Audio file generation & download
 
 ---
 
@@ -24,7 +77,9 @@ Login default: `admin` / `ai-super-assistant2024`
 | | Minimum | Rekomendasi |
 |---|---|---|
 | OS | Ubuntu 20.04+ | Ubuntu 22.04 LTS |
-| RAM | 1 GB | 4 GB+ |
+| RAM | 2 GB | 8 GB+ (untuk vision models) |
+| CPU | 2 cores | 4+ cores |
+| Storage | 5 GB | 20 GB+ (untuk knowledge base) |
 | Python | 3.10+ | 3.11 |
 | Node.js | 18+ | 20 LTS |
 
@@ -35,22 +90,43 @@ Login default: `admin` / `ai-super-assistant2024`
 ```
 ai-super-assistant/
 ├── backend/          # FastAPI Python backend
-│   ├── api/          # Endpoint API
-│   ├── core/         # Auth, config, services
-│   ├── db/           # Models & database
-│   └── data/         # Database & uploads (auto-created)
+│   ├── api/          # REST API endpoints
+│   │   ├── chat.py           # Chat & multimodal endpoints
+│   │   ├── media.py          # Image upload & analysis
+│   │   ├── rag.py            # Knowledge base management
+│   │   ├── workflow.py       # Workflow automation
+│   │   ├── tts.py            # Text-to-speech
+│   │   └── ...
+│   ├── core/         # Core services
+│   │   ├── orchestrator.py   # AI orchestration engine
+│   │   ├── model_manager.py  # Multi-model management
+│   │   ├── request_preprocessor.py # Intent classification
+│   │   └── vision_gate.py    # Image analysis engine
+│   ├── db/           # Database models & migrations
+│   ├── data/         # Persistent data (auto-created)
+│   │   ├── chroma_db/        # Vector database
+│   │   └── uploads/          # User uploads
+│   └── integrations/ # External integrations
 ├── frontend/         # React + Vite frontend
 │   ├── src/
-│   │   ├── pages/    # Halaman aplikasi
-│   │   ├── components/
-│   │   └── hooks/
+│   │   ├── pages/    # Main application pages
+│   │   │   ├── Chat.jsx      # Multimodal chat interface
+│   │   │   └── ...
+│   │   ├── components/       # Reusable UI components
+│   │   └── hooks/            # React hooks & API calls
 │   └── public/
-├── scripts/          # Script utility
-│   ├── install.sh    # Installer otomatis
-│   ├── start.sh      # Jalankan aplikasi
-│   ├── stop.sh       # Hentikan aplikasi
-│   └── migrate-db.sh # Migrasi database
-├── .env.example      # Template konfigurasi
+├── scripts/          # Utility scripts
+│   ├── install.sh            # Full installation
+│   ├── start.sh              # Start all services
+│   ├── stop.sh               # Stop all services
+│   ├── migrate-db.sh         # Database migrations
+│   ├── reset-password.sh     # Emergency password reset
+│   └── ...
+├── data/             # Static data & configurations
+│   ├── ai_core_prompt.md     # AI orchestrator personality
+│   ├── capability_map.json   # Model capabilities mapping
+│   └── ...
+├── .env.example      # Configuration template
 └── README.md
 ```
 
@@ -59,7 +135,8 @@ ai-super-assistant/
 ## ⚙️ Konfigurasi (.env)
 
 ```env
-APP_NAME=NamaAplikasi         # Nama tampil di sidebar
+# Basic Configuration
+APP_NAME=AI Super Assistant    # Nama tampil di sidebar
 SECRET_KEY=random-32-chars    # WAJIB diganti untuk keamanan
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=passwordbaru
@@ -68,48 +145,166 @@ ADMIN_PASSWORD=passwordbaru
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AIza...
+SUMOPOD_API_KEY=sk-...
 OLLAMA_HOST=http://localhost:11434
+
+# Vision Models (untuk VISION_GATE)
+VISION_MODEL=gpt-4o            # OpenAI GPT-4 Vision
+# VISION_MODEL=gemini-2.5-flash # Google Gemini Vision
+# VISION_MODEL=sumopod/mimo-v2-omni # Sumopod Vision
+
+# Database
+DATABASE_URL=sqlite:///./data/app.db
 
 # SMTP untuk reset password via email
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=email@gmail.com
 SMTP_PASS=app-password
+
+# Telegram Bot (untuk 2FA & notifications)
+TELEGRAM_BOT_TOKEN=1234567890:ABC...
+TELEGRAM_CHAT_ID=123456789
+
+# RAG Configuration
+RAG_CHUNK_SIZE=1000
+RAG_CHUNK_OVERLAP=200
+RAG_EMBEDDING_MODEL=text-embedding-3-small
+
+# Workflow
+CELERY_BROKER_URL=redis://localhost:6379/0
+CELERY_RESULT_BACKEND=redis://localhost:6379/0
 ```
+
+---
+
+## 🚀 Panduan Penggunaan
+
+### 💬 **Multimodal Chat dengan Vision**
+1. Klik tombol **📷 Kamera** untuk upload gambar
+2. Ketik pertanyaan tentang gambar tersebut
+3. Sistem akan mengaktifkan **VISION_GATE Engine**
+4. Dapatkan analisis detail: objek, aktivitas, situasi, konteks
+
+### 📚 **Knowledge Base RAG**
+1. Upload dokumen ke **RAG** menu
+2. Sistem akan auto-index dokumen
+3. AI akan menggunakan knowledge base untuk jawaban yang lebih akurat
+4. Lihat sumber referensi pada setiap jawaban
+
+### 🔄 **Workflow Automation**
+1. Buat workflow baru di menu **Workflow**
+2. Set trigger (schedule, webhook, manual)
+3. Tambah actions (send message, API call, file operations)
+4. Jalankan atau schedule workflow
+
+### 🤖 **Telegram Integration**
+1. Setup bot token di **Integrations** menu
+2. Chat dengan AI langsung di Telegram
+3. Support untuk gambar dan dokumen
+4. 2FA verification via Telegram
 
 ---
 
 ## 🛠️ Script Utility
 
 ```bash
-bash scripts/install.sh       # Install semua dependencies
-bash scripts/start.sh         # Jalankan aplikasi
-bash scripts/stop.sh          # Hentikan aplikasi
-bash scripts/migrate-db.sh    # Perbaiki/update database
-bash scripts/reset-password.sh # Reset password darurat
+# Installation & Setup
+bash scripts/install.sh           # Install semua dependencies
+bash scripts/install-rag.sh       # Setup RAG dengan ChromaDB
+bash scripts/setup-cloudflare.sh  # Setup Cloudflare tunnel
+
+# Service Management
+bash scripts/start.sh             # Jalankan aplikasi lengkap
+bash scripts/stop.sh              # Hentikan semua services
+bash scripts/dev.sh               # Development mode
+
+# Database & Data
+bash scripts/migrate-db.sh        # Migrasi database
+bash scripts/reindex-rag.sh       # Re-index RAG documents
+bash scripts/reset-password.sh    # Reset password darurat
+
+# Maintenance
+bash scripts/backup.sh            # Backup data & konfigurasi
+bash scripts/cleanup.sh           # Cleanup temporary files
+bash scripts/update.sh            # Update aplikasi
 ```
+
+---
+
+## 🔧 Troubleshooting
+
+### Gambar Tidak Bisa Diupload
+- Pastikan file < 10MB
+- Format yang didukung: JPG, PNG, GIF, WebP
+- Check logs: `tail -f logs/app.log`
+
+### Vision Analysis Tidak Berfungsi
+- Pastikan model vision tersedia (GPT-4o, Gemini, dll)
+- Check API keys di menu **Integrations**
+- Lihat status model di **Monitoring** dashboard
+
+### RAG Tidak Menggunakan Knowledge Base
+- Pastikan dokumen sudah ter-index
+- Check ChromaDB status: `bash scripts/check-rag.sh`
+- Re-index jika perlu: `bash scripts/reindex-rag.sh`
+
+### Telegram Bot Tidak Merespon
+- Verify bot token di @BotFather
+- Check webhook URL di **Integrations**
+- Lihat logs Telegram: `tail -f logs/telegram.log`
+
+Lihat **TROUBLESHOOTING.md** untuk panduan lengkap.
 
 ---
 
 ## 📖 Dokumentasi Lengkap
 
-Lihat file **AI SUPER ASSISTANT_Dokumentasi.docx** untuk panduan lengkap:
-- Instalasi step-by-step
-- Konfigurasi semua fitur
-- Panduan setiap menu
-- Setup 2FA & keamanan
-- Troubleshooting
+Lihat file **PITAKONKU_Dokumentasi.docx** untuk panduan lengkap:
+- Instalasi step-by-step dengan screenshots
+- Konfigurasi semua fitur (Vision, RAG, Workflow)
+- Panduan setiap menu dan fitur
+- Setup 2FA & enterprise security
+- API documentation untuk developers
+- Troubleshooting guide lengkap
 
 ---
 
-## 🔐 Keamanan
+## 🔐 Keamanan & Compliance
 
-- Brute force protection (5x gagal → kunci 5 menit)
-- Two-Factor Auth: TOTP (Google Authenticator) + Telegram OTP
-- JWT token dengan expiry 7 hari
-- Recovery password: Email / Telegram OTP / Token Recovery / Manual
-- Mode gelap & terang
+- **Brute Force Protection**: 5x gagal login → kunci 5 menit
+- **Two-Factor Authentication**: TOTP (Google Authenticator) + Telegram OTP
+- **JWT Security**: Token expiry 7 hari dengan refresh mechanism
+- **Password Recovery**: Email / Telegram OTP / Recovery Token / Manual
+- **Data Encryption**: AES-256 untuk sensitive data
+- **Audit Logging**: Semua aktivitas tercatat untuk compliance
+- **Role-Based Access**: Multi-level permissions system
 
 ---
 
-*AI SUPER ASSISTANT v1.0 — Self-Hosted AI Assistant*
+## 🤝 Contributing
+
+1. Fork repository
+2. Buat feature branch: `git checkout -b feature/nama-fitur`
+3. Commit changes: `git commit -am 'Add new feature'`
+4. Push ke branch: `git push origin feature/nama-fitur`
+5. Buat Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+## 🆘 Support
+
+- **Issues**: Buat issue di GitHub repository
+- **Documentation**: Baca TROUBLESHOOTING.md
+- **Community**: Join our Telegram group (link di dokumentasi)
+
+---
+
+*AI SUPER ASSISTANT v2.0 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
+*Built with ❤️ using FastAPI, React, and cutting-edge AI models*
