@@ -598,6 +598,13 @@ export default function Chat() {
         (status) => setStatusText(status)
       )
     }
+    
+    // Auto-focus input after sending
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus()
+      }
+    }, 100)
   }
 
   function approveExecution(pendingData) {
@@ -915,8 +922,8 @@ export default function Chat() {
             />
           )}
 
-          {/* Pending Confirmation UI */}
-          {pendingConfirmation && (
+          {/* Pending Confirmation UI (HIDDEN for vision tasks) */}
+          {false && pendingConfirmation && (
             <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
               <div className="flex gap-4">
                 <div className="w-8 h-8 flex-shrink-0 bg-warn/20 border border-warn/50 rounded-lg flex items-center justify-center">
@@ -983,8 +990,8 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Real-time Routing Badge / Capability Indicator (shown when finished) */}
-          {(activeModel || activeCapability) && !streaming && !pendingConfirmation && (
+          {/* Real-time Routing Badge / Capability Indicator (HIDDEN) */}
+          {false && (activeModel || activeCapability) && !streaming && !pendingConfirmation && (
             <div className="flex justify-center my-4 animate-fade">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-bg-2 border border-border-2 rounded-full shadow-sm">
                 <Sparkles size={12} className="text-accent-2" />
@@ -1154,7 +1161,27 @@ export default function Chat() {
               </button>
 
               {/* Text input */}
-              <div className="flex-1 relative">
+              <div 
+                className="flex-1 relative"
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.add('ring-2', 'ring-accent', 'bg-accent/5')
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove('ring-2', 'ring-accent', 'bg-accent/5')
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.currentTarget.classList.remove('ring-2', 'ring-accent', 'bg-accent/5')
+                  const files = e.dataTransfer.files
+                  if (files.length > 0) {
+                    const file = files[0]
+                    if (file.type.startsWith('image/')) {
+                      handleImagePick({ target: { files } })
+                    }
+                  }
+                }}
+              >
                 <textarea
                   ref={inputRef}
                   value={input}
@@ -1164,10 +1191,13 @@ export default function Chat() {
                     e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'
                   }}
                   onKeyDown={handleKeyDown}
+                  onFocus={(e) => {
+                    e.currentTarget.parentElement?.classList.remove('ring-2', 'ring-accent', 'bg-accent/5')
+                  }}
                   placeholder={
                     streaming
                       ? 'AI sedang merespons... (Esc untuk stop)'
-                      : 'Ketik pesan, perintah, atau minta analisa data...'
+                      : 'Ketik pesan, perintah, atau minta analisa data... (atau drag & drop gambar)'
                   }
                   disabled={streaming}
                   rows={1}
