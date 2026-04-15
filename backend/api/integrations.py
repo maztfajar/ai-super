@@ -114,6 +114,23 @@ def _get_sa_email(env: dict) -> str:
     except Exception:
         return ""
 
+
+async def _check_ollama_available(env: dict) -> bool:
+    """Check if Ollama is actually running and available"""
+    # Check if there are models configured in .env
+    ollama_models = env.get("OLLAMA_AVAILABLE_MODELS", "").strip()
+    
+    # Try to ping Ollama API
+    try:
+        import httpx
+        host = env.get("OLLAMA_HOST", "http://localhost:11434")
+        async with httpx.AsyncClient(timeout=2) as client:
+            resp = await client.get(f"{host}/api/tags")
+            return resp.status_code == 200
+    except Exception:
+        # If API ping fails, only consider it available if models are in .env
+        return bool(ollama_models)
+
 @router.get("/status")
 async def integrations_status(user: User = Depends(get_current_user)):
     env = read_env()
@@ -121,6 +138,9 @@ async def integrations_status(user: User = Depends(get_current_user)):
     def is_set(key: str) -> bool:
         v = env.get(key, "")
         return bool(v) and not v.startswith("sk-...") and not v.startswith("sk-ant-...") and not v.startswith("AIza...")
+
+    # Check Ollama availability
+    ollama_available = await _check_ollama_available(env)
 
     return {
         "telegram":  {"configured": is_set("TELEGRAM_BOT_TOKEN"),  "token_masked": mask(env.get("TELEGRAM_BOT_TOKEN", "")), "webhook_url": env.get("TELEGRAM_WEBHOOK_URL", "")},
@@ -131,7 +151,7 @@ async def integrations_status(user: User = Depends(get_current_user)):
         "sumopod":   {"configured": is_set("SUMOPOD_API_KEY"),      "key_masked": mask(env.get("SUMOPOD_API_KEY", "")),
                       "host": env.get("SUMOPOD_HOST", "https://ai.sumopod.com/v1"),
                       "models": env.get("SUMOPOD_AVAILABLE_MODELS", "")},
-        "ollama":    {"configured": True, "host": env.get("OLLAMA_HOST", "http://localhost:11434"),
+        "ollama":    {"configured": ollama_available, "host": env.get("OLLAMA_HOST", "http://localhost:11434"),
                       "models": env.get("OLLAMA_AVAILABLE_MODELS", "")},
         "google_drive": {
             "configured": is_set("GOOGLE_DRIVE_CREDENTIALS"),

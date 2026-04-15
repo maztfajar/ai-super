@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore, useUIStore, useThemeStore, useOrchestratorStore } from '../store'
 import { useState, useEffect } from 'react'
 import { api } from '../hooks/useApi'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard, MessageSquare, Bot, BookOpen, Brain, Repeat2,
   BarChart3, Plug, FlaskConical, ScrollText, Menu, LogOut, Settings,
@@ -12,37 +13,36 @@ import clsx from 'clsx'
 import OrchestratorDropdown from './OrchestratorDropdown'
 import ChannelSelector from './ChannelSelector'
 
-const NAV_ADMIN = [
-  { label: 'Dashboard',   to: '/dashboard',    icon: LayoutDashboard, section: 'Utama' },
-  { label: 'Chat',        to: '/chat',         icon: MessageSquare,   section: 'Utama' },
-  { label: 'Models',      to: '/models',       icon: Bot,             section: 'Utama' },
-  { label: 'Knowledge',   to: '/knowledge',    icon: BookOpen,        section: 'Data & AI' },
-  { label: 'Memory',      to: '/memory',       icon: Brain,           section: 'Data & AI' },
-  { label: 'Workflow',    to: '/workflow',     icon: Repeat2,         section: 'Otomasi' },
-  { label: 'Integrasi',   to: '/integrations', icon: Plug,            section: 'Otomasi' },
-  { label: 'Analytics',   to: '/analytics',    icon: BarChart3,       section: 'Monitor' },
-  { label: 'Monitoring AI', to: '/monitoring',   icon: Activity,        section: 'Monitor' },
-  { label: 'Logs',        to: '/logs',         icon: ScrollText,      section: 'Monitor' },
-  { label: 'Playground',  to: '/playground',   icon: FlaskConical,    section: 'Monitor' },
-  { label: 'Pengaturan',  to: '/settings',     icon: Settings,        section: 'Keamanan' },
-  { label: '2FA & Login', to: '/security2fa',  icon: Shield,          section: 'Keamanan' },
-  { label: 'Admin',       to: '/admin',        icon: Users,           section: 'Keamanan' },
-]
-
-const NAV_SUBADMIN = [
-  { label: 'Dashboard',   to: '/dashboard',    icon: LayoutDashboard, section: 'Utama' },
-  { label: 'Chat',        to: '/chat',         icon: MessageSquare,   section: 'Utama' },
-  { label: 'Analytics',   to: '/analytics',    icon: BarChart3,       section: 'Monitor' },
-  { label: '2FA & Login', to: '/security2fa',  icon: Shield,          section: 'Keamanan' },
-]
-
-const SECTIONS = ['Utama', 'Data & AI', 'Otomasi', 'Monitor', 'Keamanan']
-
 export default function Layout() {
+  const { t } = useTranslation()
   const { user, logout } = useAuthStore()
   const { sidebarOpen, toggleSidebar } = useUIStore()
   const navigate  = useNavigate()
   const location  = useLocation()
+
+  const NAV_ADMIN = [
+    { label: t('dashboard'),        to: '/dashboard',    icon: LayoutDashboard, section: 'Utama' },
+    { label: t('chat'),             to: '/chat',         icon: MessageSquare,   section: 'Utama' },
+    { label: t('models'),           to: '/models',       icon: Bot,             section: 'Utama' },
+    { label: t('knowledge'),        to: '/knowledge',    icon: BookOpen,        section: 'Data & AI' },
+    { label: t('memory'),           to: '/memory',       icon: Brain,           section: 'Data & AI' },
+    { label: t('workflow'),         to: '/workflow',     icon: Repeat2,         section: 'Otomasi' },
+    { label: t('integrations'),     to: '/integrations', icon: Plug,            section: 'Otomasi' },
+    { label: t('analytics'),        to: '/analytics',    icon: BarChart3,       section: 'Monitor' },
+    { label: t('monitoring_ai'),    to: '/monitoring',   icon: Activity,        section: 'Monitor' },
+    { label: t('logs'),             to: '/logs',         icon: ScrollText,      section: 'Monitor' },
+    { label: t('playground'),       to: '/playground',   icon: FlaskConical,    section: 'Monitor' },
+    { label: t('settings'),         to: '/settings',     icon: Settings,        section: 'Keamanan' },
+    { label: t('2fa_login'),        to: '/security2fa',  icon: Shield,          section: 'Keamanan' },
+    { label: t('admin'),            to: '/admin',        icon: Users,           section: 'Keamanan' },
+  ]
+
+  const NAV_SUBADMIN = [
+    { label: t('dashboard'),        to: '/dashboard',    icon: LayoutDashboard, section: 'Utama' },
+    { label: t('chat'),             to: '/chat',         icon: MessageSquare,   section: 'Utama' },
+    { label: t('analytics'),        to: '/analytics',    icon: BarChart3,       section: 'Monitor' },
+    { label: t('2fa_login'),        to: '/security2fa',  icon: Shield,          section: 'Keamanan' },
+  ]
 
   const appName = useOrchestratorStore(s => s.appName)
   const setAppName = useOrchestratorStore(s => s.setAppName)
@@ -55,6 +55,18 @@ export default function Layout() {
   const { theme, toggleTheme } = useThemeStore()
   const isAdmin = user?.is_admin
   const NAV     = isAdmin ? NAV_ADMIN : NAV_SUBADMIN
+  
+  // Extract unique sections from NAV in order
+  const SECTIONS = Array.from(new Set(NAV.map(n => n.section)))
+  
+  // Section header translations map
+  const sectionLabels = {
+    'Utama': t('section_utama'),
+    'Data & AI': t('section_data_ai'),
+    'Otomasi': t('section_otomasi'),
+    'Monitor': t('section_monitor'),
+    'Keamanan': t('section_keamanan'),
+  }
 
   // Sync app profile + models on mount
   useEffect(() => {
@@ -122,7 +134,7 @@ export default function Layout() {
               <div key={section} className="mb-1">
                 {sidebarOpen && (
                   <div className="text-[9px] font-semibold tracking-widest uppercase text-ink-3 px-2 pt-3 pb-1">
-                    {section}
+                    {sectionLabels[section]}
                   </div>
                 )}
                 {!sidebarOpen && section !== 'Utama' && items.length > 0 && (
@@ -188,13 +200,13 @@ export default function Layout() {
                 {isAdmin && (
                   <NavLink to="/admin" onClick={() => setShowMenu(false)}
                     className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-ink-2 hover:bg-bg-4 hover:text-ink transition-colors">
-                    <ShieldCheck size={13}/>Panel Admin
+                    <ShieldCheck size={13}/>{t('admin')}
                   </NavLink>
                 )}
                 <div className="border-t border-border"/>
                 <button onClick={handleLogout}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-danger hover:bg-danger/10 transition-colors">
-                  <LogOut size={13}/>Keluar
+                  <LogOut size={13}/>{t('logout')}
                 </button>
               </div>
             )}

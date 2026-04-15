@@ -10,6 +10,7 @@ import {
   Wifi, WifiOff, Terminal, CheckCircle2, XCircle, Zap,
   Plus, Trash2, Star, AlertTriangle, Info, ArrowRight, Wand2, Cpu,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 const sApi = {
@@ -680,6 +681,7 @@ function TunnelTabbed({ settings }) {
 
 // ── Main ──────────────────────────────────────────────────────
 export default function SettingsPage() {
+  const { t, i18n } = useTranslation()
   const [settings,   setSettings]   = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [saving,     setSaving]     = useState({})
@@ -691,6 +693,25 @@ export default function SettingsPage() {
   const [newPass,    setNewPass]    = useState('')
   const [newUser,    setNewUser]    = useState('')
   const [systemPrompt, setSystemPrompt] = useState('')
+
+  const languageOptions = [
+    ['ar', t('arab')],
+    ['id', t('indonesian')],
+    ['jv', t('javanese')],
+    ['en', t('english')],
+    ['jp', t('japanese')],
+  ]
+
+  useEffect(() => {
+    const savedLang = window.localStorage.getItem('ai-super-language') || 'id'
+    i18n.changeLanguage(savedLang)
+  }, [i18n])
+
+  const saveLanguage = async (lang) => {
+    i18n.changeLanguage(lang)
+    window.localStorage.setItem('ai-super-language', lang)
+    toast.success(`${t('save_language')}: ${languageOptions.find(([v]) => v === lang)?.[1] || lang}`)
+  }
 
   const load = async () => {
     try {
@@ -739,12 +760,20 @@ export default function SettingsPage() {
     <div className="p-4 md:p-6 w-full">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-lg font-bold text-ink">Pengaturan</h1>
-          <p className="text-xs text-ink-3 mt-0.5">Server, Cloudflare Tunnel, Domain, Akun Admin</p>
+          <h1 className="text-lg font-bold text-ink">{t('settings_title')}</h1>
+          <p className="text-xs text-ink-3 mt-0.5">{t('settings_subtitle')}</p>
         </div>
         <Btn label={restarting?'Restarting...':'Restart Server'} onClick={restart} loading={restarting} variant="danger" icon={RotateCcw}/>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+
+        <Section title={t('language')} icon="🌐" defaultOpen={true}>
+          <div className="space-y-3">
+            <Label>{t('language')}</Label>
+            <Sel value={i18n.language} onChange={(lang) => saveLanguage(lang)} options={languageOptions}/>
+            <p className="text-[10px] text-ink-3 mt-2">Pilih bahasa untuk mengubah tampilan aplikasi</p>
+          </div>
+        </Section>
 
         <Section title="Cloudflare Tunnel" icon="☁" className="xl:col-span-2" defaultOpen={false}
           badge={settings?.tunnel_status?.running
@@ -782,14 +811,23 @@ export default function SettingsPage() {
           <DomainManager/>
         </Section>
 
-        <Section title="Pengaturan Aplikasi" icon="⚙" defaultOpen={false}>
+        <Section title={t('app_settings')} icon="⚙" defaultOpen={false}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-            <div><Label>Nama Aplikasi</Label><Inp value={appName} onChange={setAppName} placeholder="AI SUPER ASSISTANT"/></div>
-            <div><Label>Port</Label><Inp value={appPort} onChange={setAppPort} placeholder="7860" mono/></div>
+            <div><Label>{t('app_name')}</Label><Inp value={appName} onChange={setAppName} placeholder="AI SUPER ASSISTANT"/></div>
+            <div><Label>{t('port')}</Label><Inp value={appPort} onChange={setAppPort} placeholder="7860" mono/></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-            <div><Label>Log Level</Label><Sel value={logLevel} onChange={setLogLevel} options={[['DEBUG','DEBUG'],['INFO','INFO'],['WARNING','WARNING'],['ERROR','ERROR']]}/></div>
-            <div className="flex items-end pb-1"><Toggle value={debug} onChange={setDebug} label="Debug Mode"/></div>
+            <div><Label>{t('log_level')}</Label><Sel value={logLevel} onChange={setLogLevel} options={[['DEBUG','DEBUG'],['INFO','INFO'],['WARNING','WARNING'],['ERROR','ERROR']]}/></div>
+            <div className="flex items-end pb-1"><Toggle value={debug} onChange={setDebug} label={t('debug_mode')}/></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <Label>{t('language')}</Label>
+              <Sel value={i18n.language} onChange={(lang) => saveLanguage(lang)} options={languageOptions}/>
+            </div>
+            <div className="flex items-end pb-1">
+              {/* Language selector already handles saving */}
+            </div>
           </div>
           <div className="pt-3 border-t border-border flex items-center justify-between">
             <span className="text-[10px] text-ink-3">DB: <code className="font-mono text-accent-2">{settings?.database?.url_type}</code></span>
@@ -797,21 +835,21 @@ export default function SettingsPage() {
           </div>
         </Section>
 
-        <Section title="Akun Admin" icon="🔐" defaultOpen={false}>
+        <Section title={t('admin_account')} icon="🔐" defaultOpen={false}>
           <div className="mb-3 p-2.5 bg-bg-4 rounded-lg border border-border text-[10px] text-ink-3 flex items-center gap-2">
             <Shield size={12} className="text-accent-2"/>Username saat ini: <code className="font-mono text-accent-2">{settings?.admin?.username}</code>
           </div>
           <div className="space-y-3">
-            <div><Label>Username Baru</Label><Inp value={newUser} onChange={setNewUser} placeholder="admin"/></div>
-            <div><Label>Password Baru</Label><SecretInp value={newPass} onChange={setNewPass} placeholder="password baru..."/></div>
-            <Btn label="Update" onClick={saveAdmin} loading={saving.admin} variant="primary" icon={Save}/>
+            <div><Label>{t('new_username')}</Label><Inp value={newUser} onChange={setNewUser} placeholder="admin"/></div>
+            <div><Label>{t('new_password')}</Label><SecretInp value={newPass} onChange={setNewPass} placeholder="password baru..."/></div>
+            <Btn label={t('update')} onClick={saveAdmin} loading={saving.admin} variant="primary" icon={Save}/>
           </div>
         </Section>
 
-        <Section title="Info Sistem" icon="ℹ" defaultOpen={false}>
+        <Section title={t('system_info')} icon="ℹ" defaultOpen={false}>
           <div className="grid grid-cols-2 gap-2">
-            {[['Versi',settings?.app?.version||'1.0.0'],['Build',settings?.app?.build||'1'],['Port',settings?.app?.port||'7860'],['DB',settings?.database?.url_type||'sqlite'],
-              ['Local',`http://localhost:${settings?.app?.port||'7860'}`],['Docs',`http://localhost:${settings?.app?.port||'7860'}/docs`]].map(([k,v])=>(
+            {[[t('version'),settings?.app?.version||'1.0.0'],[t('build'),settings?.app?.build||'1'],[t('port'),settings?.app?.port||'7860'],[t('database'),settings?.database?.url_type||'sqlite'],
+              [t('local'),`http://localhost:${settings?.app?.port||'7860'}`],[t('docs'),`http://localhost:${settings?.app?.port||'7860'}/docs`]].map(([k,v])=>(
               <div key={k} className="flex items-center gap-2 p-2.5 bg-bg-4 rounded-lg border border-border">
                 <span className="text-[10px] text-ink-3 w-10 flex-shrink-0">{k}</span>
                 <code className="font-mono text-[10px] text-accent-2 flex-1 truncate">{v}</code>

@@ -38,5 +38,15 @@
     "coding",
     "reasoning",
     "text"
+  ],
+  "ollama/llama3.1": [
+    "coding",
+    "reasoning",
+    "text"
+  ],
+  "ollama/mistral": [
+    "coding",
+    "reasoning",
+    "text"
   ]
 }
