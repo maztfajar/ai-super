@@ -12,6 +12,7 @@ from pathlib import Path as _Path
 import shutil as _shutil
 import glob as _glob
 import hashlib
+import os
 
 router = APIRouter()
 
@@ -86,7 +87,7 @@ async def _fetch_recent_logs_helper(lines: int = 100, level: str = ""):
                         entries.append({
                             "text": line,
                             "level": lvl,
-                            "file": _glob.os.path.basename(lf),
+                            "file": os.path.basename(lf),
                         })
             except Exception:
                 pass
