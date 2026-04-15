@@ -50,6 +50,13 @@ def _safe_migrate(conn):
             conn.execute(sa.text("ALTER TABLE users ADD COLUMN locked_until TEXT DEFAULT NULL"))
             print("  ✓ Migrasi: kolom keamanan ditambahkan ke tabel users")
 
+    # Migrasi tabel messages
+    if inspector.has_table("messages"):
+        existing = [c["name"] for c in inspector.get_columns("messages")]
+        if "thinking_process" not in existing:
+            conn.execute(sa.text("ALTER TABLE messages ADD COLUMN thinking_process TEXT"))
+            print("  ✓ Migrasi: kolom thinking_process ditambahkan ke tabel messages")
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:
