@@ -156,45 +156,57 @@ class MetricsEngine:
 
     async def get_all_summaries(self) -> List[Dict]:
         """Get aggregated summaries for all agent/model combos (from DB)."""
-        try:
-            from db.database import AsyncSessionLocal
-            from db.models import AgentPerformance
-            from sqlmodel import select, func
-            from sqlalchemy import desc
+        # Fallback to hot summary if DB query fails
+        return self._get_hot_summaries_all()
 
-            async with AsyncSessionLocal() as db:
-                # Get unique model/agent combos with stats
-                result = await db.execute(
-                    select(
-                        AgentPerformance.model_used,
-                        AgentPerformance.agent_type,
-                        func.count(AgentPerformance.id).label("total"),
-                        func.sum(AgentPerformance.success.cast(int)).label("successes"),
-                        func.avg(AgentPerformance.confidence).label("avg_conf"),
-                        func.avg(AgentPerformance.execution_time_ms).label("avg_time"),
-                        func.sum(AgentPerformance.cost_usd).label("total_cost"),
-                    )
-                    .group_by(AgentPerformance.model_used, AgentPerformance.agent_type)
-                    .order_by(desc("total"))
-                )
-                rows = result.all()
-
-            return [
-                {
-                    "model": r[0],
-                    "agent_type": r[1],
-                    "total_tasks": r[2],
-                    "successful_tasks": r[3] or 0,
-                    "success_rate": (r[3] or 0) / r[2] if r[2] else 0,
-                    "avg_confidence": round(r[4] or 0, 3),
-                    "avg_time_ms": round(r[5] or 0, 0),
-                    "total_cost": round(r[6] or 0, 4),
-                }
-                for r in rows
-            ]
-        except Exception as e:
-            log.warning("Failed to get summaries", error=str(e)[:100])
+    def _get_hot_summaries_all(self) -> List[Dict]:
+        """Get performance summaries from hot cache (in-memory, always works)."""
+        if not self._hot_metrics:
             return []
+
+        summaries: Dict[str, Dict] = {}
+        now = time.time()
+        cutoff = now - 604800  # last 7 days
+
+        for m in self._hot_metrics:
+            if m.timestamp <= cutoff:
+                continue
+            key = f"{m.model_used}#{m.agent_type}"
+            if key not in summaries:
+                summaries[key] = {
+                    "model": m.model_used,
+                    "agent_type": m.agent_type,
+                    "total_tasks": 0,
+                    "successful_tasks": 0,
+                    "successes": 0,
+                    "confidences": [],
+                    "times": [],
+                    "costs": [],
+                }
+            s = summaries[key]
+            s["total_tasks"] += 1
+            if m.success:
+                s["successful_tasks"] += 1
+            s["confidences"].append(m.confidence)
+            s["times"].append(m.execution_time_ms)
+            s["costs"].append(m.cost_usd)
+
+        result = []
+        for key, s in summaries.items():
+            avg_conf = sum(s["confidences"]) / len(s["confidences"]) if s["confidences"] else 0
+            avg_time = sum(s["times"]) / len(s["times"]) if s["times"] else 0
+            total_cost = sum(s["costs"]) if s["costs"] else 0
+            result.append({
+                "model": s["model"],
+                "agent_type": s["agent_type"],
+                "total_tasks": s["total_tasks"],
+                "successful_tasks": s["successful_tasks"],
+                "success_rate": s["successful_tasks"] / s["total_tasks"] if s["total_tasks"] else 0,
+                "avg_confidence": round(avg_conf, 3),
+                "avg_time_ms": round(avg_time, 0),
+                "total_cost": round(total_cost, 4),
+            })
+        return sorted(result, key=lambda x: x["total_tasks"], reverse=True)
 
     async def get_recent_executions(self, limit: int = 50) -> List[Dict]:
         """Get recent task executions for monitoring dashboard."""
