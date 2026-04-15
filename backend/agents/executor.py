@@ -1,4 +1,5 @@
 import json
+import re
 import asyncio
 from typing import AsyncGenerator
 import structlog
@@ -11,30 +12,169 @@ log = structlog.get_logger()
 
 def build_agent_system_prompt(current_model: str) -> str:
     from core.model_manager import model_manager
+    import datetime
     models = list(model_manager.available_models.keys())
     model_list_str = ", ".join(models)
     
-    return f"""You are AI SUPER ASSISTANT AI, a Super Assistant autonomous agent currently running as '{current_model}'.
-You can use tools to perform tasks on the local system and orchestrate other AI models.
+    # Get current datetime to prevent models from rejecting future dates (e.g., cutoff in 2023 but current is 2026)
+    current_time = datetime.datetime.now().strftime("%A, %d %B %Y, %H:%M:%S")
+    
+    return f"""You are AI SUPER ASSISTANT, an advanced autonomous agent currently running as '{current_model}'.
+CURRENT SYSTEM TIME: {current_time}. You MUST accept this as the true current date and time. Do NOT rely on your training cutoff date.
 
-**CORE DIRECTIVE**: You are part of an advanced AI orchestration system. When you receive a complex project or request, you MUST collaborate with other AI models in the system to gather different perspectives, verify logic, or sub-contract tasks. You operate in the background until the final, verified conclusion is reached.
+**INTERNET ACCESS:**
+You have FULL and UNRESTRICTED live internet access via the `web_search` tool. 
+If a user asks for news, recent events, or information beyond your training data, you MUST use `web_search` to find it. NEVER apologize or claim you don't have internet access. If you don't know, search the web like a human would.
 
-Currently available tools:
-1. `execute_bash` - Run a bash command. Arguments: `command` (string).
-2. `read_file` - Read contents of a file. Arguments: `path` (string).
-3. `write_file` - Write content to a file. Arguments: `path` (string), `content` (string).
-4. `ask_model` - Ask another AI model to perform a specific sub-task or get its perspective. Arguments: `model_id` (string), `prompt` (string). Available models in the system: {model_list_str}.
-5. `web_search` - Perform a web search to find information if your internal knowledge is insufficient. Arguments: `query` (string).
+**ABSOLUTE RULE — OUTPUT FORMAT:**
+You MUST wrap your entire output in EXACTLY these XML tags. NO EXCEPTIONS.
 
-**TOOL USAGE RULES:**
-- If you need to use a tool, you MUST output ONLY the exact JSON tool format below and NOTHING ELSE. DO NOT output any conversational text or "thinking" before the tool call.
-- Tool Format (must be on a new line):
-  <tool>{{"name": "tool_name", "args": {{"arg_name": "value"}}}}</tool>
-- Immediately STOP generating after the <tool> block.
-- You will receive the tool's result in an <observation> block.
+Step 1 (HIDDEN from user): Put ALL your reasoning, analysis, and tool calls inside:
+<thinking>
+...your internal analysis, tool calls, etc...
+</thinking>
 
-Once you have gathered enough information and cross-checked with other models (if necessary), output your **FINAL ANSWER**. This final answer will be shown directly to the user. Do format your final answer nicely using Markdown. Do NOT use tool blocks in your final answer.
+Step 2 (SHOWN to user): Put ONLY your final answer inside:
+<response>
+...direct answer to user, formatted in Markdown...
+</response>
+
+CRITICAL: Do NOT write ANY text outside of these two tags. The system will BLOCK everything that is not inside <response> tags. If you write text without tags, the user sees NOTHING.
+
+Available tools (use INSIDE <thinking> only):
+1. execute_bash — run a command. Args: command (string).
+2. read_file — read a file. Args: path (string).
+3. write_file — write a file. Args: path (string), content (string).
+4. ask_model — ask another AI for data processing or structural tasks. NEVER use this for factual/world knowledge queries. Args: model_id (string), prompt (string). Models: {model_list_str}.
+5. web_search — search the web. MUST be used for real-world facts, news, and specific local information. Args: query (string).
+
+Tool format (inside <thinking>):
+<tool>{{"name": "tool_name", "args": {{"key": "value"}}}}</tool>
+Stop generating immediately after a <tool> block. You will get results in <observation>.
+
+Example for a simple greeting:
+<thinking>
+Simple greeting, no tools needed.
+</thinking>
+<response>
+Hai! 👋 Ada yang bisa saya bantu?
+</response>
+
+Example for a system check:
+<thinking>
+User wants RAM info. I need to run a command.
+<tool>{{"name": "execute_bash", "args": {{"command": "free -h"}}}}</tool>
+</thinking>
+[receives observation]
+<response>
+**RAM Server:**
+- Total: 4 GB
+- Used: 1.8 GB (45%)
+- Free: 2.2 GB
+</response>
 """
+
+
+class ResponseFilter:
+    """
+    TagRewriter/Filter.
+    Wraps <thinking> blocks into <details> dropdowns.
+    Only emits content from <response> naturally or inside the <details> wrapper.
+    Drops plain text outside of known tags.
+    """
+    def __init__(self):
+        self.state = "WAITING"
+        self.pending = ""
+        self.ever_emitted = False
+
+    def process(self, chunk: str) -> str:
+        self.pending += chunk
+        output = ""
+
+        while self.pending:
+            if self.state == "WAITING":
+                # Look for earliest supported tag
+                i_think = self.pending.find("<thinking>")
+                i_resp = self.pending.find("<response>")
+                i_tool = self.pending.find("<tool>")
+
+                tags = []
+                if i_think != -1: tags.append((i_think, "<thinking>"))
+                if i_resp != -1: tags.append((i_resp, "<response>"))
+                if i_tool != -1: tags.append((i_tool, "<tool>"))
+
+                if tags:
+                    tags.sort(key=lambda x: x[0])
+                    idx, tag = tags[0]
+                    # Discard anything before the earliest tag
+                    self.pending = self.pending[idx:]
+                    if tag == "<thinking>":
+                        output += '\n\n<details class="tool-log" style="opacity: 0.8; font-size: 0.9em;"><summary><span>🤔 **Proses Berpikir...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
+                        self.pending = self.pending[len("<thinking>"):]
+                        self.state = "THINKING"
+                    elif tag == "<response>":
+                        self.pending = self.pending[len("<response>"):]
+                        self.state = "RESPONSE"
+                        self.ever_emitted = True
+                    elif tag == "<tool>":
+                        # Handled by AgentExecutor outer loop
+                        break
+                else:
+                    if len(self.pending) > 15:
+                        self.pending = self.pending[-15:]
+                    break
+
+            elif self.state == "THINKING":
+                end_think = self.pending.find("</thinking>")
+                idx_tool = self.pending.find("<tool>")
+                
+                # If <tool> is found before </thinking>, let AgentExecutor grab it
+                if idx_tool != -1 and (end_think == -1 or idx_tool < end_think):
+                    output += self.pending[:idx_tool]
+                    self.pending = self.pending[idx_tool:]
+                    break
+                
+                if end_think != -1:
+                    output += self.pending[:end_think]
+                    output += '\n\n</details>\n\n'
+                    self.pending = self.pending[end_think + len("</thinking>"):]
+                    self.state = "WAITING"
+                else:
+                    safe = len(self.pending) - 15
+                    if safe > 0:
+                        output += self.pending[:safe]
+                        self.pending = self.pending[safe:]
+                    break
+
+            elif self.state == "RESPONSE":
+                end_resp = self.pending.find("</response>")
+                idx_tool = self.pending.find("<tool>")
+                
+                if idx_tool != -1 and (end_resp == -1 or idx_tool < end_resp):
+                    output += self.pending[:idx_tool]
+                    self.pending = self.pending[idx_tool:]
+                    break
+                    
+                if end_resp != -1:
+                    output += self.pending[:end_resp]
+                    self.pending = self.pending[end_resp + len("</response>"):]
+                    self.state = "WAITING"
+                else:
+                    safe = len(self.pending) - 15
+                    if safe > 0:
+                        output += self.pending[:safe]
+                        self.pending = self.pending[safe:]
+                    break
+
+        return output
+
+    def flush(self) -> str:
+        if self.state in ["THINKING", "RESPONSE"] and self.pending:
+            res = self.pending
+            self.pending = ""
+            return res
+        return ""
+
 
 class AgentExecutor:
     async def stream_chat(
@@ -60,51 +200,55 @@ class AgentExecutor:
             agent_msgs.insert(0, {"role": "system", "content": system_prompt})
             
         MAX_ITERATIONS = 8
-        final_buffer = ""
+        response_filter = ResponseFilter()
         
         for iteration in range(MAX_ITERATIONS):
             buffer = ""
             has_tool_started = False
-            flushed_buffer = False
+            pre_tool_fed = False
             
             async for chunk in model_manager.chat_stream(base_model, agent_msgs, temperature, max_tokens):
                 buffer += chunk
                 
-                if "<tool>" in buffer:
+                if "<tool>" in buffer and not has_tool_started:
                     has_tool_started = True
+                    # Feed everything before <tool> through the filter to cleanly emit into DOM
+                    if not pre_tool_fed:
+                        pre_tool_idx = buffer.find("<tool>")
+                        pre_tool_text = buffer[:pre_tool_idx]
+                        if pre_tool_text:
+                            filtered = response_filter.process(pre_tool_text)
+                            if filtered:
+                                yield filtered
+                                
+                        # Auto-close <details> logic if interrupted during THINKING
+                        if response_filter.state == "THINKING":
+                            yield "\n\n</details>\n\n"
+                            
+                        pre_tool_fed = True
+                        # Reset filter to prevent layout corruption
+                        response_filter.state = "WAITING"
+                        response_filter.pending = ""
                 
                 if has_tool_started:
                     if "</tool>" in buffer:
                         break
                     continue
                 
-                # Wait to determine if it's forming a <tool> block
-                clean_buf = buffer.lstrip()
-                if not clean_buf:
-                    continue
-                    
-                if clean_buf.startswith("<"):
-                    if len(clean_buf) < 7:
-                        continue
-                
-                if not flushed_buffer:
-                    yield buffer
-                    flushed_buffer = True
-                else:
-                    yield chunk
+                # Feed every chunk through the response filter
+                filtered = response_filter.process(chunk)
+                if filtered:
+                    yield filtered
             
-            final_buffer += buffer
-            
-            # Periksa jika model berniat menggunakan tool (mengandung <tool>)
+            # Check if model intends to use a tool
             has_tool = "<tool>" in buffer
             if has_tool and "</tool>" not in buffer:
-                buffer += "</tool>"  # Paksa tutup jika kepotong/model lupa
+                buffer += "</tool>"
                 
             if has_tool:
                 try:
                     tool_content = buffer.split("<tool>")[1].split("</tool>")[0].strip()
                     
-                    # Bersihkan jika LLM memasukkan markdown json
                     if tool_content.startswith("```json"):
                         tool_content = tool_content[7:]
                     elif tool_content.startswith("```"):
@@ -118,48 +262,29 @@ class AgentExecutor:
                     cmd = tool_req.get("name")
                     args = tool_req.get("args", {})
                     
-                    # Yield explicitly — wrap in <details> for browser if requested
+                    # Execute tool
+                    res = ""
+                    if cmd == "execute_bash":
+                        res = await execute_bash(args.get("command", ""))
+                    elif cmd == "read_file":
+                        res = await read_file(args.get("path", ""))
+                    elif cmd == "write_file":
+                        res = await write_file(args.get("path", ""), args.get("content", ""))
+                    elif cmd == "ask_model":
+                        res = await ask_model(args.get("model_id", ""), args.get("prompt", ""))
+                    elif cmd == "web_search":
+                        res = await web_search(args.get("query", ""))
+                    else:
+                        res = f"Unknown tool: {cmd}"
+                    
                     if include_tool_logs:
                         yield f'\n\n<details class="tool-log">\n<summary><span>⚙️ **Executing {cmd}...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
-                        
-                        res = ""
-                        if cmd == "execute_bash":
-                            res = await execute_bash(args.get("command", ""))
-                        elif cmd == "read_file":
-                            res = await read_file(args.get("path", ""))
-                        elif cmd == "write_file":
-                            res = await write_file(args.get("path", ""), args.get("content", ""))
-                        elif cmd == "ask_model":
-                            res = await ask_model(args.get("model_id", ""), args.get("prompt", ""))
-                        elif cmd == "web_search":
-                            res = await web_search(args.get("query", ""))
-                        else:
-                            res = f"Unknown tool: {cmd}"
-                            
-                        obs_text = f"\n<observation>\n{res}\n</observation>\n"
-                        
                         yield f"**Result:**\n```\n{res[:1500]}{'...' if len(res)>1500 else ''}\n```\n\n</details>\n\n"
-                    else:
-                        # Di platform yang tidak support HTML/Details (Telegram/WA), sembunyikan total
-                        # Kecuali mungkin indikator kecil
-                        res = ""
-                        if cmd == "execute_bash":
-                            res = await execute_bash(args.get("command", ""))
-                        elif cmd == "read_file":
-                            res = await read_file(args.get("path", ""))
-                        elif cmd == "write_file":
-                            res = await write_file(args.get("path", ""), args.get("content", ""))
-                        elif cmd == "ask_model":
-                            res = await ask_model(args.get("model_id", ""), args.get("prompt", ""))
-                        elif cmd == "web_search":
-                            res = await web_search(args.get("query", ""))
-                        else:
-                            res = f"Unknown tool: {cmd}"
-                        
-                        obs_text = f"\n<observation>\n{res}\n</observation>\n"
+                            
+                    obs_text = f"\n<observation>\n{res}\n</observation>\n"
                     
-                    # Set history properly
-                    agent_msgs.append({"role": "assistant", "content": buffer.split("<tool>")[0] + f"<tool>{tool_content}</tool>"})
+                    # Only store the tool call in history, without the pre-tool thinking text
+                    agent_msgs.append({"role": "assistant", "content": f"<tool>{tool_content}</tool>"})
                     agent_msgs.append({"role": "user", "content": obs_text})
                     
                 except Exception as e:
@@ -169,7 +294,25 @@ class AgentExecutor:
                     agent_msgs.append({"role": "assistant", "content": buffer})
                     agent_msgs.append({"role": "user", "content": err_obs})
             else:
-                # No tool call => Final answer reached
+                # No tool call => stream ended
+                # Flush any remaining content in the filter
+                remaining = response_filter.flush()
+                if remaining:
+                    yield remaining
+                
+                # SAFE FALLBACK: If the model never used <response> tags,
+                # salvage the raw text. We strictly use `buffer` (which only contains 
+                # the final iteration's output).
+                if not response_filter.ever_emitted:
+                    # Explicitly remove the entire <thinking> block and its contents first
+                    fallback_text = re.sub(r'<thinking>.*?</thinking>', '', buffer, flags=re.DOTALL)
+                    # Remove any loose tags remaining
+                    fallback_text = re.sub(r'</?(?:thinking|response|tool|observation)>', '', fallback_text).strip()
+                    if fallback_text:
+                        yield fallback_text
+                
                 break
 
 agent_executor = AgentExecutor()
+
+
