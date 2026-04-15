@@ -74,6 +74,30 @@ else
     echo -e "${YELLOW}⚠️  No logs directory${NC}"
 fi
 
+# 7. Check database schema
+echo -e "\n${BOLD}7. Checking Database Schema${NC}"
+if [ -f "$DIR/backend/data/ai-super-assistant.db" ]; then
+    # Check if thinking_process column exists
+    if python3 -c "
+import sqlite3
+conn = sqlite3.connect('$DIR/backend/data/ai-super-assistant.db')
+cursor = conn.cursor()
+cursor.execute('PRAGMA table_info(messages)')
+columns = [row[1] for row in cursor.fetchall()]
+conn.close()
+print('thinking_process' in columns)
+" 2>/dev/null | grep -q "True"; then
+        echo -e "${GREEN}✅ Database schema is up to date${NC}"
+        SCHEMA_OK=true
+    else
+        echo -e "${RED}❌ Database schema needs migration${NC}"
+        SCHEMA_OK=false
+    fi
+else
+    echo -e "${YELLOW}⚠️  Database file not found${NC}"
+    SCHEMA_OK=false
+fi
+
 echo -e "\n${BOLD}📋 TROUBLESHOOTING SUMMARY${NC}"
 echo "=========================="
 echo "Backend Running: $([ "$BACKEND_RUNNING" = true ] && echo "${GREEN}YES${NC}" || echo "${RED}NO${NC}")"
@@ -81,6 +105,7 @@ echo "Health Endpoint: $([ "$HEALTH_OK" = true ] && echo "${GREEN}OK${NC}" || ec
 echo "Dashboard API: $([ "$DASHBOARD_OK" = true ] && echo "${GREEN}OK${NC}" || echo "${RED}FAIL${NC}")"
 echo "Frontend Built: $([ "$FRONTEND_EXISTS" = true ] && echo "${GREEN}YES${NC}" || echo "${RED}NO${NC}")"
 echo "Database Exists: $([ "$DB_EXISTS" = true ] && echo "${GREEN}YES${NC}" || echo "${RED}NO${NC}")"
+echo "Schema Updated: $([ "$SCHEMA_OK" = true ] && echo "${GREEN}YES${NC}" || echo "${RED}NO${NC}")"
 echo "Recent Errors: $([ "$LOG_ERRORS" = true ] && echo "${YELLOW}YES${NC}" || echo "${GREEN}NO${NC}")"
 
 # Auto-fix suggestions
@@ -105,17 +130,17 @@ if [ "$BACKEND_RUNNING" = false ]; then
     fi
 fi
 
-# Fix 2: Rebuild frontend if missing
-if [ "$FRONTEND_EXISTS" = false ]; then
-    echo -e "\n${YELLOW}Fix 2: Rebuilding frontend...${NC}"
-    cd "$DIR/frontend"
-    npm install --legacy-peer-deps
-    npm run build
-    if [ -f "$DIR/frontend/dist/index.html" ]; then
-        echo -e "${GREEN}✅ Frontend rebuilt successfully${NC}"
+# Fix 3: Run database migration if schema outdated
+if [ "$SCHEMA_OK" = false ] && [ "$DB_EXISTS" = true ]; then
+    echo -e "\n${YELLOW}Fix 3: Running database migration...${NC}"
+    cd "$DIR"
+    python3 migrate_thinking_process.py
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Database migration completed${NC}"
         FIXES_APPLIED=true
+        SCHEMA_OK=true
     else
-        echo -e "${RED}❌ Failed to rebuild frontend${NC}"
+        echo -e "${RED}❌ Database migration failed${NC}"
     fi
 fi
 
