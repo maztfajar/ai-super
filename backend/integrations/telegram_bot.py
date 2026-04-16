@@ -126,10 +126,14 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         # Pesan biasa → proses AI
         await _send_typing(token, chat_id)
 
+        from core.orchestrator import orchestrator
         from core.model_manager import model_manager
         from core.smart_router import smart_router
         from memory.manager import memory_manager
         from rag.engine import rag_engine
+        from db.database import AsyncSessionLocal
+        from db.models import Message, ChatSession
+        from sqlmodel import select
 
         route  = smart_router.route(text)
         # Default telegram bot to orchestrator (seed-2-0-pro) as requested
@@ -150,10 +154,23 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         messages += history
         messages.append({"role": "user", "content": text})
 
-        # Generate using AgentExecutor for Tool support (Agentic)
+        # Generate using Orchestrator for full monitoring and robustness
         full_response = ""
-        from agents.executor import agent_executor
+        session_id = "tg_" + str(chat_id)
         
+        # Ensure session exists in DB for monitoring
+        async with AsyncSessionLocal() as db:
+            sess = await db.get(ChatSession, session_id)
+            if not sess:
+                sess = ChatSession(id=session_id, user_id=user_id, title=text[:50], platform="telegram")
+                db.add(sess)
+                await db.commit()
+            
+            # Save User Message to DB
+            user_msg = Message(session_id=session_id, user_id=user_id, role="user", content=text)
+            db.add(user_msg)
+            await db.commit()
+
         # Periodic typing status task
         typing_active = True
         async def keep_typing():
@@ -164,13 +181,20 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         typing_task = asyncio.create_task(keep_typing())
         
         try:
-            async for chunk in agent_executor.stream_chat(
-                base_model=model, 
-                messages=messages,
-                include_tool_logs=False,  # Sembunyikan logs di Telegram agar bersih
-                emit_thinking=False       # Sembunyikan thinking process
+            async for event in orchestrator.process(
+                message=text,
+                user_id=user_id,
+                session_id=session_id,
+                system_prompt=system,
+                history=history,
+                include_tool_logs=False,
+                emit_thinking=False
             ):
-                full_response += chunk
+                if event.type == "chunk":
+                    full_response += event.content
+                elif event.type == "error":
+                    full_response = f"⚠️ **Error:** {event.content}"
+                    break
         finally:
             typing_active = False
             typing_task.cancel()
@@ -180,10 +204,23 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
 
         await _send(token, chat_id, full_response, include_drive_btn=True)
 
-        # Simpan ke memory
-        await memory_manager.save_chat_to_redis("tg_" + str(chat_id), "user", text)
-        await memory_manager.save_chat_to_redis("tg_" + str(chat_id), "assistant", full_response)
-        log.info("Telegram reply sent", chat_id=chat_id, model=model, chars=len(full_response))
+        # Save Assistant Message to DB
+        async with AsyncSessionLocal() as db:
+            ai_msg = Message(session_id=session_id, user_id=user_id, role="assistant", content=full_response, model=model)
+            db.add(ai_msg)
+            
+            # Update session timestamp
+            sess = await db.get(ChatSession, session_id)
+            if sess:
+                from datetime import datetime
+                sess.updated_at = datetime.utcnow()
+                db.add(sess)
+            await db.commit()
+
+        # Simpan ke Redis (Memory)
+        await memory_manager.save_chat_to_redis(session_id, "user", text)
+        await memory_manager.save_chat_to_redis(session_id, "assistant", full_response)
+        log.info("Telegram reply sent (Orchestrated)", chat_id=chat_id, model=model, chars=len(full_response))
 
     except asyncio.CancelledError:
         raise

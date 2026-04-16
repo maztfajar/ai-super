@@ -64,6 +64,7 @@ class Orchestrator:
         include_tool_logs: bool = True,
         image_b64: Optional[str] = None,
         image_mime: Optional[str] = None,
+        emit_thinking: bool = True,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """
         Main orchestration pipeline. Yields events as the orchestration progresses.
@@ -126,7 +127,8 @@ class Orchestrator:
             # Delegate to simple handler with audio_gen agent
             async for event in self._handle_simple(
                 spec, system_prompt, history, temperature, max_tokens,
-                user_model_choice, include_tool_logs, force_agent="audio_gen"
+                user_model_choice, include_tool_logs, force_agent="audio_gen",
+                emit_thinking=emit_thinking
             ):
                 yield event
             return
@@ -164,11 +166,28 @@ class Orchestrator:
 
         # ─── FAST PATH: Simple messages ──────────────────────────
         if spec.is_simple:
+            # Create a lightweight TaskExecution for monitoring
+            task_exec_id = await self._create_task_execution(
+                session_id, user_id, message, spec, [], None
+            )
+            
             async for event in self._handle_simple(
                 spec, system_prompt, history, temperature, max_tokens,
-                user_model_choice, include_tool_logs
+                user_model_choice, include_tool_logs, emit_thinking=emit_thinking
             ):
+                if event.type == "chunk":
+                    # Potentially update result_summary here if needed
+                    pass
                 yield event
+            
+            # Update simple task as completed
+            if task_exec_id:
+                await self._update_task_execution(
+                    task_exec_id, 
+                    AggregatedResult(final_response="Simple Response", overall_confidence=1.0), 
+                    int((time.time() - start_time) * 1000), 
+                    []
+                )
             return
 
         # ─── PHASE 2: TASK DECOMPOSITION ─────────────────────────
@@ -352,6 +371,7 @@ class Orchestrator:
         user_model_choice: Optional[str],
         include_tool_logs: bool,
         force_agent: Optional[str] = None,
+        emit_thinking: bool = True,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """Handle simple messages without full orchestration overhead."""
 
@@ -398,6 +418,7 @@ class Orchestrator:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 include_tool_logs=include_tool_logs,
+                emit_thinking=emit_thinking,
             ):
                 yield OrchestratorEvent("chunk", chunk)
         else:
@@ -711,8 +732,8 @@ class Orchestrator:
                     user_id=user_id,
                     original_request=message[:1000],
                     task_spec_json=spec.to_json(),
-                    subtasks_json=json.dumps([s.to_dict() for s in subtasks], ensure_ascii=False),
-                    dag_json=dag.to_json(),
+                    subtasks_json=json.dumps([s.to_dict() for s in subtasks], ensure_ascii=False) if subtasks else "[]",
+                    dag_json=dag.to_json() if dag else "{}" ,
                     status="executing",
                 )
                 db.add(te)
