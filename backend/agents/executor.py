@@ -169,7 +169,11 @@ class ResponseFilter:
         return output
 
     def flush(self) -> str:
-        if self.state in ["THINKING", "RESPONSE"] and self.pending:
+        if self.state == "THINKING" and self.pending:
+            res = self.pending + '\n\n</details>\n\n'
+            self.pending = ""
+            return res
+        elif self.state == "RESPONSE" and self.pending:
             res = self.pending
             self.pending = ""
             return res
@@ -249,15 +253,30 @@ class AgentExecutor:
                 try:
                     tool_content = buffer.split("<tool>")[1].split("</tool>")[0].strip()
                     
-                    if tool_content.startswith("```json"):
-                        tool_content = tool_content[7:]
-                    elif tool_content.startswith("```"):
-                        tool_content = tool_content[3:]
-                    if tool_content.endswith("```"):
-                        tool_content = tool_content[:-3]
-                        
-                    tool_content = tool_content.strip()
-                    tool_req = json.loads(tool_content)
+                    # Clean markdown code blocks
+                    clean_content = tool_content
+                    if clean_content.startswith("```json"):
+                        clean_content = clean_content[7:]
+                    elif clean_content.startswith("```"):
+                        clean_content = clean_content[3:]
+                    if clean_content.endswith("```"):
+                        clean_content = clean_content[:-3]
+                    
+                    clean_content = clean_content.strip()
+                    
+                    # Robust parsing: try json.loads first, then regex for first {...} block
+                    tool_req = None
+                    try:
+                        tool_req = json.loads(clean_content)
+                    except json.JSONDecodeError:
+                        match = re.search(r'\{.*\}', clean_content, re.DOTALL)
+                        if match:
+                            try:
+                                tool_req = json.loads(match.group(0))
+                            except json.JSONDecodeError as e:
+                                raise Exception(f"Failed to parse inner JSON: {e}. Raw: {clean_content}")
+                        else:
+                            raise Exception(f"No JSON object found in tool format: {clean_content}")
                     
                     cmd = tool_req.get("name")
                     args = tool_req.get("args", {})

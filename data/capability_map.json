@@ -49,5 +49,12 @@
     "speed",
     "text",
     "vision"
+  ],
+  "sumopod/mimo-v2-omni": [
+    "analysis",
+    "audio",
+    "reasoning",
+    "text",
+    "vision"
   ]
 }
