@@ -91,15 +91,13 @@ function AgentRegistry({ viewMode = 'grid' }) {
     }
     const perf = agentPerformance[agentType]
     if (!perf) return 'idle'
-    if (perf.tasks > 10) return 'busy'
     if (perf.tasks > 0) return 'ready'
     return 'idle'
   }
 
   const statusConfig = {
-    active: { label: '🔵 Active', color: '#3B82F6', bg: 'rgba(59,130,246,0.2)', pulse: true },
-    ready: { label: '🟢 Ready', color: '#10B981', bg: 'rgba(16,185,129,0.1)' },
-    busy: { label: '🔴 Busy', color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
+    active: { label: '🟢 Active', color: '#10B981', bg: 'rgba(16,185,129,0.2)', pulse: true },
+    ready: { label: '⚪ Ready', color: '#64748B', bg: 'rgba(100,116,139,0.1)' },
     idle: { label: '⚪ Idle', color: '#999999', bg: 'rgba(150,150,150,0.1)' },
   }
 
@@ -168,7 +166,10 @@ function AgentRegistry({ viewMode = 'grid' }) {
                         <h3 className="text-[11px] font-bold text-ink truncate">{agent.name}</h3>
                       </div>
                     </div>
-                    <span className="text-xs flex-shrink-0">{cfg.label.split(' ')[0]}</span>
+                    <div className="flex items-center gap-1 flex-shrink-0 relative">
+                      {cfg.pulse && <span className="absolute w-2.5 h-2.5 rounded-full animate-ping" style={{ backgroundColor: cfg.color }} />}
+                      <span className="relative w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cfg.color }} />
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-0.5">
@@ -223,9 +224,10 @@ function AgentRegistry({ viewMode = 'grid' }) {
                     <div className="text-[8px] text-ink-3">{perf.tasks || 0} tasks</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color }}>
-                    {cfg.label.split(' ')[0]}
+                <div className="flex items-center gap-2 flex-shrink-0 min-w-[70px] justify-end">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{ background: cfg.bg, color: cfg.color }}>
+                    {cfg.pulse && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: cfg.color }} />}
+                    {cfg.label.split(' ')[1]}
                   </span>
                 </div>
               </div>

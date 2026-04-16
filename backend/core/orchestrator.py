@@ -409,27 +409,35 @@ class Orchestrator:
 
         yield OrchestratorEvent("status", "Merespons...")
 
-        if is_orchestrator:
-            # Use agent executor for tool access
-            from agents.executor import agent_executor
-            async for chunk in agent_executor.stream_chat(
-                base_model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                include_tool_logs=include_tool_logs,
-                emit_thinking=emit_thinking,
-            ):
-                yield OrchestratorEvent("chunk", chunk)
-        else:
-            # Direct model call — no tools
-            async for chunk in model_manager.chat_stream(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-            ):
-                yield OrchestratorEvent("chunk", chunk)
+        active_agent = force_agent or spec.primary_intent
+        import uuid
+        task_id = str(uuid.uuid4())
+        agent_registry.mark_busy(active_agent, task_id)
+
+        try:
+            if is_orchestrator:
+                # Use agent executor for tool access
+                from agents.executor import agent_executor
+                async for chunk in agent_executor.stream_chat(
+                    base_model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    include_tool_logs=include_tool_logs,
+                    emit_thinking=emit_thinking,
+                ):
+                    yield OrchestratorEvent("chunk", chunk)
+            else:
+                # Direct model call — no tools
+                async for chunk in model_manager.chat_stream(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                ):
+                    yield OrchestratorEvent("chunk", chunk)
+        finally:
+            agent_registry.mark_idle(active_agent, task_id)
 
         yield OrchestratorEvent("done")
 
@@ -452,82 +460,89 @@ class Orchestrator:
         yield OrchestratorEvent("status",
             f"🖼️ Merutekan ke model image: {image_model}...")
 
-        # Try image generation via OpenAI-compatible /images/generations endpoint
-        generated_url = None
+        import uuid
+        task_id = str(uuid.uuid4())
+        agent_registry.mark_busy("image_gen", task_id)
+
         try:
-            # Wrap dengan timeout 60 detik
-            generated_url = await asyncio.wait_for(
-                model_manager.generate_image(
-                    model=image_model,
-                    prompt=spec.original_message,
-                ),
-                timeout=60.0
-            )
-        except asyncio.TimeoutError:
-            log.warning("Image generation timeout")
-            yield OrchestratorEvent("status",
-                f"⏱️ Model {image_model} timeout. Mencoba alternatif...")
-        except Exception as e:
-            log.warning("Image generation API failed", error=str(e)[:120])
-
-        if generated_url:
-            # Image generated successfully
-            response_text = (
-                f"✅ **Gambar berhasil dibuat!**\n\n"
-                f"🖼️ [Lihat Gambar]({generated_url})\n\n"
-                f"Model yang digunakan: `{image_model}`\n"
-                f"Prompt: _{spec.original_message[:200]}_"
-            )
-            for chunk in [response_text]:
-                yield OrchestratorEvent("chunk", chunk)
-            yield OrchestratorEvent("done", "", {
-                "image_url": generated_url,
-                "model_used": image_model,
-                "capability_used": "image_gen",
-            })
-        else:
-            # Image gen not supported by this endpoint — provide detailed description
-            yield OrchestratorEvent("status",
-                f"ℹ️ Model {image_model} tidak mendukung generate gambar via API ini. "
-                "Memberikan deskripsi visual detail...")
-
-            messages = [
-                {"role": "system", "content": (
-                    system_prompt +
-                    "\n\nUser meminta gambar/foto. Karena endpoint image generation "
-                    "tidak tersedia saat ini, berikan:\n"
-                    "1. Deskripsi visual yang sangat detail dari gambar yang diminta\n"
-                    "2. Saran untuk menggunakan tools seperti DALL-E, Midjourney, atau "
-                    "Stable Diffusion dengan prompt yang dioptimasi\n"
-                    "3. Prompt yang sudah dioptimasi untuk image generator tersebut"
-                )},
-            ] + history[-6:] + [{"role": "user", "content": spec.original_message}]
-
-            full_response = ""
+            # Try image generation via OpenAI-compatible /images/generations endpoint
+            generated_url = None
             try:
-                # Wrap dengan timeout 90 detik
-                async for chunk in asyncio.wait_for(
-                    model_manager.chat_stream(
+                # Wrap dengan timeout 60 detik
+                generated_url = await asyncio.wait_for(
+                    model_manager.generate_image(
                         model=image_model,
-                        messages=messages,
-                        temperature=0.7,
-                        max_tokens=1000,
+                        prompt=spec.original_message,
                     ),
-                    timeout=90.0
-                ):
-                    full_response += chunk
-                    yield OrchestratorEvent("chunk", chunk)
+                    timeout=60.0
+                )
             except asyncio.TimeoutError:
-                log.warning("Chat stream timeout during image description")
-                yield OrchestratorEvent("chunk", "\n\n[Deskripsi terpotong karena timeout]")
+                log.warning("Image generation timeout")
+                yield OrchestratorEvent("status",
+                    f"⏱️ Model {image_model} timeout. Mencoba alternatif...")
             except Exception as e:
-                log.warning("Chat stream error", error=str(e)[:100])
-                yield OrchestratorEvent("chunk", f"\n\n[Error: {str(e)[:100]}]")
+                log.warning("Image generation API failed", error=str(e)[:120])
 
-            yield OrchestratorEvent("done", "", {
-                "model_used": image_model,
-                "note": "image_gen_api_not_available",
-            })
+            if generated_url:
+                # Image generated successfully
+                response_text = (
+                    f"✅ **Gambar berhasil dibuat!**\n\n"
+                    f"🖼️ [Lihat Gambar]({generated_url})\n\n"
+                    f"Model yang digunakan: `{image_model}`\n"
+                    f"Prompt: _{spec.original_message[:200]}_"
+                )
+                for chunk in [response_text]:
+                    yield OrchestratorEvent("chunk", chunk)
+                yield OrchestratorEvent("done", "", {
+                    "image_url": generated_url,
+                    "model_used": image_model,
+                    "capability_used": "image_gen",
+                })
+            else:
+                # Image gen not supported by this endpoint — provide detailed description
+                yield OrchestratorEvent("status",
+                    f"ℹ️ Model {image_model} tidak mendukung generate gambar via API ini. "
+                    "Memberikan deskripsi visual detail...")
+
+                messages = [
+                    {"role": "system", "content": (
+                        system_prompt +
+                        "\n\nUser meminta gambar/foto. Karena endpoint image generation "
+                        "tidak tersedia saat ini, berikan:\n"
+                        "1. Deskripsi visual yang sangat detail dari gambar yang diminta\n"
+                        "2. Saran untuk menggunakan tools seperti DALL-E, Midjourney, atau "
+                        "Stable Diffusion dengan prompt yang dioptimasi\n"
+                        "3. Prompt yang sudah dioptimasi untuk image generator tersebut"
+                    )},
+                ] + history[-6:] + [{"role": "user", "content": spec.original_message}]
+
+                full_response = ""
+                try:
+                    # Wrap dengan timeout 90 detik
+                    async for chunk in asyncio.wait_for(
+                        model_manager.chat_stream(
+                            model=image_model,
+                            messages=messages,
+                            temperature=0.7,
+                            max_tokens=1000,
+                        ),
+                        timeout=90.0
+                    ):
+                        full_response += chunk
+                        yield OrchestratorEvent("chunk", chunk)
+                except asyncio.TimeoutError:
+                    log.warning("Chat stream timeout during image description")
+                    yield OrchestratorEvent("chunk", "\n\n[Deskripsi terpotong karena timeout]")
+                except Exception as e:
+                    log.warning("Chat stream error", error=str(e)[:100])
+                    yield OrchestratorEvent("chunk", f"\n\n[Error: {str(e)[:100]}]")
+
+                yield OrchestratorEvent("done", "", {
+                    "model_used": image_model,
+                    "note": "image_gen_api_not_available",
+                })
+        finally:
+            agent_registry.mark_idle("image_gen", task_id)
 
     async def _handle_vision(
         self,
@@ -554,6 +569,10 @@ class Orchestrator:
             vision_model = model_manager.get_default_model()
 
         yield OrchestratorEvent("status", f"🔍 Analisis visual menggunakan: {vision_model}")
+
+        import uuid
+        task_id = str(uuid.uuid4())
+        agent_registry.mark_busy("vision", task_id)
 
         try:
             # Call vision model with image + text prompt
