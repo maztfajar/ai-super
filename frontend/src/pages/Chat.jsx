@@ -392,7 +392,8 @@ export default function Chat() {
         if (newMsgs && newMsgs.length > 0) {
           // Merge: only add messages with IDs we don't already have
           const existingIds = new Set(currentMsgs.map(m => m.id))
-          const uniqueNew = newMsgs.filter(m => !existingIds.has(m.id))
+          const existingContents = new Set(currentMsgs.map(m => m.content))
+          const uniqueNew = newMsgs.filter(m => !existingIds.has(m.id) && !existingContents.has(m.content))
           if (uniqueNew.length > 0) {
             const merged = [...currentMsgs, ...uniqueNew]
             useChatStore.getState().setMessages(merged)

@@ -167,7 +167,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             async for chunk in agent_executor.stream_chat(
                 base_model=model, 
                 messages=messages,
-                include_tool_logs=False  # Sembunyikan logs di Telegram agar bersih
+                include_tool_logs=False,  # Sembunyikan logs di Telegram agar bersih
+                emit_thinking=False       # Sembunyikan thinking process
             ):
                 full_response += chunk
         finally:

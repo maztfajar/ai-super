@@ -82,10 +82,11 @@ class ResponseFilter:
     Only emits content from <response> naturally or inside the <details> wrapper.
     Drops plain text outside of known tags.
     """
-    def __init__(self):
+    def __init__(self, emit_thinking: bool = True):
         self.state = "WAITING"
         self.pending = ""
         self.ever_emitted = False
+        self.emit_thinking = emit_thinking
 
     def process(self, chunk: str) -> str:
         self.pending += chunk
@@ -109,7 +110,8 @@ class ResponseFilter:
                     # Discard anything before the earliest tag
                     self.pending = self.pending[idx:]
                     if tag == "<thinking>":
-                        output += '\n\n<details class="tool-log" style="opacity: 0.8; font-size: 0.9em;"><summary><span>🤔 **Proses Berpikir...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
+                        if self.emit_thinking:
+                            output += '\n\n<details class="tool-log" style="opacity: 0.8; font-size: 0.9em;"><summary><span>🤔 **Proses Berpikir...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
                         self.pending = self.pending[len("<thinking>"):]
                         self.state = "THINKING"
                     elif tag == "<response>":
@@ -130,19 +132,22 @@ class ResponseFilter:
                 
                 # If <tool> is found before </thinking>, let AgentExecutor grab it
                 if idx_tool != -1 and (end_think == -1 or idx_tool < end_think):
-                    output += self.pending[:idx_tool]
+                    if self.emit_thinking:
+                        output += self.pending[:idx_tool]
                     self.pending = self.pending[idx_tool:]
                     break
                 
                 if end_think != -1:
-                    output += self.pending[:end_think]
-                    output += '\n\n</details>\n\n'
+                    if self.emit_thinking:
+                        output += self.pending[:end_think]
+                        output += '\n\n</details>\n\n'
                     self.pending = self.pending[end_think + len("</thinking>"):]
                     self.state = "WAITING"
                 else:
                     safe = len(self.pending) - 15
                     if safe > 0:
-                        output += self.pending[:safe]
+                        if self.emit_thinking:
+                            output += self.pending[:safe]
                         self.pending = self.pending[safe:]
                     break
 
@@ -170,7 +175,10 @@ class ResponseFilter:
 
     def flush(self) -> str:
         if self.state == "THINKING" and self.pending:
-            res = self.pending + '\n\n</details>\n\n'
+            if self.emit_thinking:
+                res = self.pending + '\n\n</details>\n\n'
+            else:
+                res = ""
             self.pending = ""
             return res
         elif self.state == "RESPONSE" and self.pending:
@@ -188,6 +196,7 @@ class AgentExecutor:
         temperature: float = 0.7,
         max_tokens: int = 4096,
         include_tool_logs: bool = True,
+        emit_thinking: bool = True,
     ) -> AsyncGenerator[str, None]:
         
         system_prompt = build_agent_system_prompt(base_model)
@@ -204,7 +213,7 @@ class AgentExecutor:
             agent_msgs.insert(0, {"role": "system", "content": system_prompt})
             
         MAX_ITERATIONS = 8
-        response_filter = ResponseFilter()
+        response_filter = ResponseFilter(emit_thinking=emit_thinking)
         
         for iteration in range(MAX_ITERATIONS):
             buffer = ""
@@ -226,7 +235,7 @@ class AgentExecutor:
                                 yield filtered
                                 
                         # Auto-close <details> logic if interrupted during THINKING
-                        if response_filter.state == "THINKING":
+                        if response_filter.state == "THINKING" and emit_thinking:
                             yield "\n\n</details>\n\n"
                             
                         pre_tool_fed = True
