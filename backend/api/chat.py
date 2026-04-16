@@ -198,6 +198,7 @@ async def chat_send(
         full_response = ""
         final_model = req.model or "orchestrator"
         thinking_steps = []  # Collect all status messages for thinking section
+        error_occurred = False
 
         # Send session info
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': final_model})}\n\n"
@@ -252,50 +253,84 @@ async def chat_send(
                 elif event.type == "error":
                     yield event.to_sse()
                     full_response = f"Error: {event.content}"
+                    error_occurred = True
+
+        except asyncio.TimeoutError:
+            import traceback
+            traceback.print_exc()
+            err_str = "⏱️ Operasi timeout - permintaan Anda memerlukan waktu terlalu lama"
+            log.error("Chat timeout", message=req.message[:50])
+            
+            yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
+            full_response = err_str
+            error_occurred = True
+            thinking_steps.append(f"❌ Timeout error: {err_str}")
 
         except Exception as e:
             import traceback
             traceback.print_exc()
             err_str = str(e)
+            log.error("Chat error", error=err_str[:200])
 
+            # Provide user-friendly error messages
             if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
                 user_friendly_err = "❌ API Key Anda kehabisan saldo. Silakan isi ulang di menu Integrations."
                 yield f"data: {json.dumps({'type': 'chunk', 'content': user_friendly_err})}\n\n"
                 full_response = user_friendly_err
+            elif "timeout" in err_str.lower():
+                user_friendly_err = "⏱️ Operasi timeout - silakan coba lagi dengan pesan yang lebih singkat"
+                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
+                full_response = user_friendly_err
+            elif "rate limit" in err_str.lower():
+                user_friendly_err = "🛑 Terlalu banyak request - silakan tunggu beberapa detik sebelum mencoba lagi"
+                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
+                full_response = user_friendly_err
             else:
                 yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
                 full_response = f"Error: {err_str}"
+            
+            error_occurred = True
+            thinking_steps.append(f"❌ Error: {err_str[:100]}")
 
         # ─── Save response & update session ───────────────────
-        from db.database import AsyncSessionLocal
-        async with AsyncSessionLocal() as save_db:
-            ai_msg = Message(
-                session_id=session.id,
-                user_id=user.id,
-                role="assistant",
-                content=full_response,
-                model=final_model,
-                rag_sources=json.dumps(rag_sources) if rag_sources else None,
-                thinking_process="\n".join(thinking_steps) if thinking_steps else None,
-            )
-            save_db.add(ai_msg)
+        try:
+            from db.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as save_db:
+                ai_msg = Message(
+                    session_id=session.id,
+                    user_id=user.id,
+                    role="assistant",
+                    content=full_response[:5000],  # Limit to 5000 chars to prevent DB issues
+                    model=final_model,
+                    rag_sources=json.dumps(rag_sources) if rag_sources else None,
+                    thinking_process="\n".join(thinking_steps) if thinking_steps else None,
+                )
+                save_db.add(ai_msg)
 
-            sess = await save_db.get(ChatSession, session.id)
-            if sess:
-                if sess.title == "New Chat":
-                    sess.title = req.message[:60]
-                sess.model_used = final_model
-                sess.updated_at = datetime.utcnow()
-                save_db.add(sess)
-            await save_db.commit()
+                sess = await save_db.get(ChatSession, session.id)
+                if sess:
+                    if sess.title == "New Chat":
+                        sess.title = req.message[:60]
+                    sess.model_used = final_model
+                    sess.updated_at = datetime.utcnow()
+                    save_db.add(sess)
+                await save_db.commit()
+        except Exception as e:
+            log.warning("Failed to save message", error=str(e)[:100])
+            # Continue anyway - don't fail the chat if message save fails
 
         # ─── Update memory ────────────────────────────────────
-        await memory_manager.save_chat_to_redis(session.id, "user", req.message)
-        await memory_manager.save_chat_to_redis(session.id, "assistant", full_response)
+        try:
+            await memory_manager.save_chat_to_redis(session.id, "user", req.message)
+            await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
+        except Exception as e:
+            log.warning("Failed to update memory", error=str(e)[:100])
+            # Continue anyway - don't fail the chat if memory update fails
 
-        # Ensure done event if not already sent
-        if not full_response.startswith("Error"):
+        # Ensure done event if not already sent and no error
+        if not error_occurred and not full_response.startswith("Error"):
             pass  # done already yielded by orchestrator
+
 
     return StreamingResponse(
         generate(),

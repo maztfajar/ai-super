@@ -434,10 +434,18 @@ class Orchestrator:
         # Try image generation via OpenAI-compatible /images/generations endpoint
         generated_url = None
         try:
-            generated_url = await model_manager.generate_image(
-                model=image_model,
-                prompt=spec.original_message,
+            # Wrap dengan timeout 60 detik
+            generated_url = await asyncio.wait_for(
+                model_manager.generate_image(
+                    model=image_model,
+                    prompt=spec.original_message,
+                ),
+                timeout=60.0
             )
+        except asyncio.TimeoutError:
+            log.warning("Image generation timeout")
+            yield OrchestratorEvent("status",
+                f"⏱️ Model {image_model} timeout. Mencoba alternatif...")
         except Exception as e:
             log.warning("Image generation API failed", error=str(e)[:120])
 
@@ -475,14 +483,25 @@ class Orchestrator:
             ] + history[-6:] + [{"role": "user", "content": spec.original_message}]
 
             full_response = ""
-            async for chunk in model_manager.chat_stream(
-                model=image_model,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=1000,
-            ):
-                full_response += chunk
-                yield OrchestratorEvent("chunk", chunk)
+            try:
+                # Wrap dengan timeout 90 detik
+                async for chunk in asyncio.wait_for(
+                    model_manager.chat_stream(
+                        model=image_model,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=1000,
+                    ),
+                    timeout=90.0
+                ):
+                    full_response += chunk
+                    yield OrchestratorEvent("chunk", chunk)
+            except asyncio.TimeoutError:
+                log.warning("Chat stream timeout during image description")
+                yield OrchestratorEvent("chunk", "\n\n[Deskripsi terpotong karena timeout]")
+            except Exception as e:
+                log.warning("Chat stream error", error=str(e)[:100])
+                yield OrchestratorEvent("chunk", f"\n\n[Error: {str(e)[:100]}]")
 
             yield OrchestratorEvent("done", "", {
                 "model_used": image_model,

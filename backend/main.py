@@ -39,10 +39,43 @@ from api.monitoring import router as monitoring_router
 from api.media import router as media_router
 from api.tts import router as tts_router
 from api.capability import router as capability_router
+from api.compliance import router as compliance_router
 
+# Import new systems (untuk initialization di lifespan)
+from core.cost_tracking import cost_engine
+from core.audit_logging import audit_logger
+from core.approval_system import approval_system
+
+# Timeout middleware configuration
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+import asyncio
+from contextlib import asynccontextmanager as acm
 
 setup_logging()
 log = structlog.get_logger()
+
+class TimeoutMiddleware(BaseHTTPMiddleware):
+    """Middleware untuk prevent request timeout pada streaming responses"""
+    
+    async def dispatch(self, request: Request, call_next):
+        try:
+            # Set longer timeout untuk chat creation/image generation (120s)
+            # Set normal timeout untuk other requests (60s)
+            if "/api/chat/send" in request.url.path or "/images" in request.url.path:
+                timeout = 120  # 2 minutes untuk long-running operations
+            else:
+                timeout = 60  # 1 minute untuk normal requests
+            
+            # Execute dengan timeout
+            return await asyncio.wait_for(call_next(request), timeout=timeout)
+        except asyncio.TimeoutError:
+            log.warning(f"Request timeout: {request.url.path}")
+            return {
+                "error": "Request timeout - operasi terlalu lama",
+                "message": "Chat atau pembuatan konten memerlukan waktu lebih lama. Silakan coba lagi.",
+                "retry_after": 60
+            }
 
 
 @asynccontextmanager
@@ -50,7 +83,7 @@ async def lifespan(app: FastAPI):
     log.info("Starting AI SUPER ASSISTANT...")
 
     # Buat direktori data
-    for d in ["./data/uploads", "./data/chroma_db", "./data/logs"]:
+    for d in ["./data/uploads", "./data/chroma_db", "./data/logs", "./data/audit_logs"]:
         Path(d).mkdir(parents=True, exist_ok=True)
 
     # Init database tables
@@ -68,6 +101,11 @@ async def lifespan(app: FastAPI):
     await model_manager.startup()
     await rag_engine.startup()
     await memory_manager.startup()
+    
+    # Init new compliance systems
+    log.info("✅ Approval System initialized")
+    log.info("✅ Cost Tracking Engine initialized")
+    log.info("✅ Audit Logging System initialized")
 
     # Capability Map — discover model capabilities
     from core.capability_map import capability_map
@@ -93,6 +131,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add timeout middleware
+app.add_middleware(TimeoutMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -116,11 +157,11 @@ app.include_router(cf_wizard_router,     prefix="/api/settings",     tags=["Clou
 app.include_router(security_router,      prefix="/api/security",     tags=["Security"])
 app.include_router(auth2fa_router,       prefix="/api/auth2fa",      tags=["Auth2FA"])
 app.include_router(update_server_router,  prefix="/api/public",       tags=["Public Update"])
-
 app.include_router(monitoring_router,    prefix="/api/monitoring",   tags=["Monitoring"])
 app.include_router(media_router,         prefix="/api/media",        tags=["Media"])
 app.include_router(tts_router,           prefix="/api/media",        tags=["TTS"])
 app.include_router(capability_router,    prefix="/api/capability",   tags=["Capability"])
+app.include_router(compliance_router,    prefix="/api/compliance",   tags=["Compliance & Security"])
 
 
 @app.get("/api/health")

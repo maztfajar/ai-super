@@ -1,1 +1,53 @@
-{}
+{
+  "ollama/llama3.1": [
+    "coding",
+    "reasoning",
+    "text"
+  ],
+  "ollama/mistral": [
+    "coding",
+    "reasoning",
+    "text"
+  ],
+  "sumopod/seed-2-0-pro": [
+    "analysis",
+    "coding",
+    "reasoning",
+    "text"
+  ],
+  "sumopod/minimax/speech-2.8-hd": [
+    "audio",
+    "speed",
+    "tts"
+  ],
+  "sumopod/MiniMax-M2.7-highspeed": [
+    "speed",
+    "text",
+    "writing"
+  ],
+  "sumopod/big-pickle": [
+    "analysis",
+    "coding",
+    "text"
+  ],
+  "sumopod/minimax-m2.5-free": [
+    "speed"
+  ],
+  "sumopod/mimo-v2-pro": [
+    "analysis",
+    "coding",
+    "reasoning",
+    "text",
+    "writing"
+  ],
+  "sumopod/deepseek-v3-2": [
+    "coding",
+    "reasoning",
+    "text"
+  ],
+  "sumopod/gemini-2.5-flash-lite": [
+    "speed",
+    "text",
+    "vision"
+  ]
+}
