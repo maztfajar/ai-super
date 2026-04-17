@@ -404,7 +404,7 @@ class Orchestrator:
 
         # Build messages
         messages = [{"role": "system", "content": system_prompt}]
-        messages += history
+        messages += history[-10:]  # Limit history to prevent context overflow
         messages.append({"role": "user", "content": spec.original_message})
 
         yield OrchestratorEvent("status", "Merespons...")

@@ -25,20 +25,30 @@ async def execute_bash(command: str) -> str:
 async def read_file(path: str) -> str:
     """Read a file."""
     try:
+        import aiofiles
         if not os.path.exists(path):
             return f"Error: File {path} not found."
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
+        async def _read():
+            async with aiofiles.open(path, "r", encoding="utf-8") as f:
+                return await f.read()
+        return await asyncio.wait_for(_read(), timeout=30.0)
+    except asyncio.TimeoutError:
+        return f"Error: Reading file {path} timed out after 30 seconds."
     except Exception as e:
         return f"Error reading file {path}: {str(e)}"
 
 async def write_file(path: str, content: str) -> str:
     """Write content to a file."""
     try:
+        import aiofiles
         os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
+        async def _write():
+            async with aiofiles.open(path, "w", encoding="utf-8") as f:
+                await f.write(content)
+        await asyncio.wait_for(_write(), timeout=30.0)
         return f"Successfully wrote to {path}"
+    except asyncio.TimeoutError:
+        return f"Error: Writing file {path} timed out after 30 seconds."
     except Exception as e:
         return f"Error writing file {path}: {str(e)}"
 

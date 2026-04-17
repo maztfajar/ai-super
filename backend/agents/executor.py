@@ -189,6 +189,48 @@ class ResponseFilter:
 
 
 class AgentExecutor:
+    def _prune_agent_messages(self, messages: list) -> list:
+        """Remove <thinking> blocks and enforce token/message limits."""
+        for msg in messages:
+            if msg["role"] == "assistant":
+                msg["content"] = re.sub(r'<thinking>.*?</thinking>', '', msg["content"], flags=re.DOTALL)
+        
+        if len(messages) > 20:
+            return messages[:2] + messages[-10:]
+        return messages
+
+    def _safe_parse_tool_json(self, text: str) -> dict:
+        """Robust JSON parsing with 3 fallback strategies."""
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+        text = text.strip()
+        
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+            
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+                
+        try:
+            fixed_text = text.replace("'", '"')
+            fixed_text = re.sub(r',\s*\}', '}', fixed_text)
+            fixed_text = re.sub(r',\s*\]', ']', fixed_text)
+            return json.loads(fixed_text)
+        except Exception:
+            pass
+            
+        return None
+
     async def stream_chat(
         self,
         base_model: str,
@@ -273,39 +315,41 @@ class AgentExecutor:
                     
                     clean_content = clean_content.strip()
                     
-                    # Robust parsing: try json.loads first, then regex for first {...} block
-                    tool_req = None
-                    try:
-                        tool_req = json.loads(clean_content)
-                    except json.JSONDecodeError:
-                        match = re.search(r'\{.*\}', clean_content, re.DOTALL)
-                        if match:
-                            try:
-                                tool_req = json.loads(match.group(0))
-                            except json.JSONDecodeError as e:
-                                raise Exception(f"Failed to parse inner JSON: {e}. Raw: {clean_content}")
-                        else:
-                            raise Exception(f"No JSON object found in tool format: {clean_content}")
+                    # Robust parsing with 3 fallback strategies
+                    tool_req = self._safe_parse_tool_json(clean_content)
+                    if tool_req is None:
+                        raise Exception(f"Failed to parse tool JSON. Raw text: {clean_content[:100]}...")
                     
                     cmd = tool_req.get("name")
                     args = tool_req.get("args", {})
                     
                     # Execute tool
                     res = ""
-                    if cmd == "execute_bash":
-                        res = await execute_bash(args.get("command", ""))
-                    elif cmd == "read_file":
-                        res = await read_file(args.get("path", ""))
-                    elif cmd == "write_file":
-                        res = await write_file(args.get("path", ""), args.get("content", ""))
-                    elif cmd == "ask_model":
-                        res = await ask_model(args.get("model_id", ""), args.get("prompt", ""))
-                    elif cmd == "web_search":
-                        res = await web_search(args.get("query", ""))
-                    else:
-                        res = f"Unknown tool: {cmd}"
+                    try:
+                        async def _exec_tool():
+                            if cmd == "execute_bash":
+                                return await execute_bash(args.get("command", ""))
+                            elif cmd == "read_file":
+                                return await read_file(args.get("path", ""))
+                            elif cmd == "write_file":
+                                return await write_file(args.get("path", ""), args.get("content", ""))
+                            elif cmd == "ask_model":
+                                return await ask_model(args.get("model_id", ""), args.get("prompt", ""))
+                            elif cmd == "web_search":
+                                return await web_search(args.get("query", ""))
+                            else:
+                                return f"Unknown tool: {cmd}"
+                        res = await asyncio.wait_for(_exec_tool(), timeout=30.0)
+                    except asyncio.TimeoutError:
+                        res = f"Error: Tool {cmd} timed out after 30 seconds."
+                        if include_tool_logs:
+                            yield f"\n> ⏱️ **Tool {cmd} timeout setelah 30 detik. Melanjutkan...**\n"
+                    except Exception as e:
+                        res = f"Error executing tool {cmd}: {str(e)}"
+                        if include_tool_logs:
+                            yield f"\n> ❌ **Tool Execution Error:** {str(e)}\n"
                     
-                    if include_tool_logs:
+                    if include_tool_logs and not res.startswith("Error: Tool"):
                         yield f'\n\n<details class="tool-log">\n<summary><span>⚙️ **Executing {cmd}...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
                         yield f"**Result:**\n```\n{res[:1500]}{'...' if len(res)>1500 else ''}\n```\n\n</details>\n\n"
                             
@@ -314,6 +358,7 @@ class AgentExecutor:
                     # Only store the tool call in history, without the pre-tool thinking text
                     agent_msgs.append({"role": "assistant", "content": f"<tool>{tool_content}</tool>"})
                     agent_msgs.append({"role": "user", "content": obs_text})
+                    agent_msgs = self._prune_agent_messages(agent_msgs)
                     
                 except Exception as e:
                     if include_tool_logs:
@@ -321,6 +366,7 @@ class AgentExecutor:
                     err_obs = f"\n<observation>\nError parsing or executing tool: {str(e)}\n</observation>\n"
                     agent_msgs.append({"role": "assistant", "content": buffer})
                     agent_msgs.append({"role": "user", "content": err_obs})
+                    agent_msgs = self._prune_agent_messages(agent_msgs)
             else:
                 # No tool call => stream ended
                 # Flush any remaining content in the filter
@@ -338,6 +384,8 @@ class AgentExecutor:
                     fallback_text = re.sub(r'</?(?:thinking|response|tool|observation)>', '', fallback_text).strip()
                     if fallback_text:
                         yield fallback_text
+                    else:
+                        yield "⚠️ Proses selesai namun tidak ada respons yang dihasilkan. Silakan ulangi pertanyaan Anda."
                 
                 break
 
