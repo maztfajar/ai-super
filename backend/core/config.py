@@ -129,7 +129,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_PERIOD: int = 60
 
     # Logging
-    LOG_LEVEL: str = "INFO"
+    LOG_LEVEL: str = "IMPORTANT"
     LOG_FILE: str = "./data/logs/ai-super-assistant.log"
 
     # Tunnel / Cloudflare (fields diakui agar tidak crash dengan extra="ignore")

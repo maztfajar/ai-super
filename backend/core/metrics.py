@@ -110,8 +110,10 @@ class MetricsEngine:
             return {
                 "total_tasks": 0,
                 "success_rate": 0.0,
+                "failure_rate": 0.0,
                 "avg_confidence": 0.0,
                 "avg_time_ms": 0.0,
+                "avg_tokens": 0.0,
                 "total_cost": 0.0,
             }
 
@@ -119,8 +121,10 @@ class MetricsEngine:
         return {
             "total_tasks": len(filtered),
             "success_rate": successful / len(filtered),
+            "failure_rate": (len(filtered) - successful) / len(filtered),
             "avg_confidence": sum(m.confidence for m in filtered) / len(filtered),
             "avg_time_ms": sum(m.execution_time_ms for m in filtered) / len(filtered),
+            "avg_tokens": sum(m.tokens_input + m.tokens_output for m in filtered) / len(filtered),
             "total_cost": sum(m.cost_usd for m in filtered),
         }
 
@@ -178,9 +182,9 @@ class MetricsEngine:
                     "agent_type": m.agent_type,
                     "total_tasks": 0,
                     "successful_tasks": 0,
-                    "successes": 0,
                     "confidences": [],
                     "times": [],
+                    "tokens": [],
                     "costs": [],
                 }
             s = summaries[key]
@@ -189,21 +193,27 @@ class MetricsEngine:
                 s["successful_tasks"] += 1
             s["confidences"].append(m.confidence)
             s["times"].append(m.execution_time_ms)
+            s["tokens"].append(m.tokens_input + m.tokens_output)
             s["costs"].append(m.cost_usd)
 
         result = []
         for key, s in summaries.items():
             avg_conf = sum(s["confidences"]) / len(s["confidences"]) if s["confidences"] else 0
             avg_time = sum(s["times"]) / len(s["times"]) if s["times"] else 0
+            avg_tokens = sum(s["tokens"]) / len(s["tokens"]) if s["tokens"] else 0
             total_cost = sum(s["costs"]) if s["costs"] else 0
+            success_rate = s["successful_tasks"] / s["total_tasks"] if s["total_tasks"] else 0
+            
             result.append({
                 "model": s["model"],
                 "agent_type": s["agent_type"],
                 "total_tasks": s["total_tasks"],
                 "successful_tasks": s["successful_tasks"],
-                "success_rate": s["successful_tasks"] / s["total_tasks"] if s["total_tasks"] else 0,
+                "success_rate": success_rate,
+                "failure_rate": 1.0 - success_rate if s["total_tasks"] else 0.0,
                 "avg_confidence": round(avg_conf, 3),
                 "avg_time_ms": round(avg_time, 0),
+                "avg_tokens": round(avg_tokens, 0),
                 "total_cost": round(total_cost, 4),
             })
         return sorted(result, key=lambda x: x["total_tasks"], reverse=True)

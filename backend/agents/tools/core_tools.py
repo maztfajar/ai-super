@@ -10,14 +10,53 @@ async def execute_bash(command: str) -> str:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120.0)
+
+        async def read_stream(stream, max_lines=10000):
+            lines = []
+            truncated = False
+            if stream is None:
+                return "", False
+            async for line in stream:
+                if len(lines) < max_lines:
+                    lines.append(line.decode(errors="replace"))
+                else:
+                    if not truncated:
+                        truncated = True
+                        try:
+                            # Kill process if it exceeds our cap to prevent background resource hogging
+                            proc.terminate()
+                        except Exception:
+                            pass
+            return "".join(lines), truncated
+
+        async def run_with_timeout():
+            stdout_task = asyncio.create_task(read_stream(proc.stdout))
+            stderr_task = asyncio.create_task(read_stream(proc.stderr))
+            
+            await proc.wait()
+            
+            out, out_trunc = await stdout_task
+            err, err_trunc = await stderr_task
+            return out, out_trunc, err, err_trunc
+
+        out, out_trunc, err, err_trunc = await asyncio.wait_for(run_with_timeout(), timeout=120.0)
+        
         output = ""
-        if stdout:
-            output += stdout.decode(errors="replace")
-        if stderr:
-            output += "\n[stderr]\n" + stderr.decode(errors="replace")
+        if out:
+            output += out
+            if out_trunc:
+                output += "\n...[STDOUT TRUNCATED: EXCEEDED 10000 LINES]..."
+        if err:
+            output += "\n[stderr]\n" + err
+            if err_trunc:
+                output += "\n...[STDERR TRUNCATED: EXCEEDED 10000 LINES]..."
+                
         return output.strip() or "Command executed successfully with no output."
     except asyncio.TimeoutError:
+        try:
+            proc.kill()
+        except:
+            pass
         return "Error: Command timed out after 120 seconds."
     except Exception as e:
         return f"Error executing command: {str(e)}"

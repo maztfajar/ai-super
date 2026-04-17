@@ -9,7 +9,13 @@ def setup_logging():
     log_path = Path(settings.LOG_FILE)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    log_level = getattr(logging, settings.LOG_LEVEL, logging.INFO)
+    level_map = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "IMPORTANT": logging.WARNING,
+        "ERROR": logging.ERROR
+    }
+    log_level = level_map.get(settings.LOG_LEVEL.upper(), logging.INFO)
     log_format = "%(asctime)s %(levelname)s %(message)s"
     formatter = logging.Formatter(log_format)
 
