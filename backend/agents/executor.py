@@ -45,6 +45,7 @@ If a user asks for news, recent events, or information beyond your training data
 
 **ABSOLUTE RULE — OUTPUT FORMAT:**
 You MUST wrap your entire output in EXACTLY these XML tags. NO EXCEPTIONS.
+DO NOT write any conversational text, greetings, or explanations before the `<thinking>` tag. Your response MUST start exactly with `<thinking>`.
 
 Step 1 (HIDDEN from user): Put ALL your reasoning, analysis, and tool calls inside:
 <thinking>
@@ -56,7 +57,7 @@ Step 2 (SHOWN to user): Put ONLY your final answer inside:
 ...direct answer to user, formatted in Markdown...
 </response>
 
-CRITICAL: Do NOT write ANY text outside of these two tags. The system will BLOCK everything that is not inside <response> tags. If you write text without tags, the user sees NOTHING.
+CRITICAL: Do NOT write ANY text outside of these two tags. The system will BLOCK everything that is not inside `<response>` tags. If you write text without tags, it breaks the system.
 
 Available tools (use INSIDE <thinking> only):
 1. execute_bash — run a command. Args: command (string).
@@ -79,7 +80,9 @@ Hai! 👋 Ada yang bisa saya bantu?
 
 Example for a system check:
 <thinking>
-User wants RAM info. I need to run a command.
+1. Plan Evaluation: User wants RAM info.
+2. Tool Need Check: I need to run a command.
+3. Action & Review: Executing bash.
 <tool>{{"name": "execute_bash", "args": {{"command": "free -h"}}}}</tool>
 </thinking>
 [receives observation]
@@ -88,6 +91,18 @@ User wants RAM info. I need to run a command.
 - Total: 4 GB
 - Used: 1.8 GB (45%)
 - Free: 2.2 GB
+</response>
+
+Example for asking another model:
+<thinking>
+1. Plan Evaluation: User wants a poem.
+2. Tool Need Check: I will delegate to another model.
+3. Action & Review: Let's ask deepseek.
+<tool>{{"name": "ask_model", "args": {{"model_id": "deepseek-v3-2", "prompt": "Write a poem"}}}}</tool>
+</thinking>
+[receives observation]
+<response>
+Here is the poem written by the other model...
 </response>
 """
 
