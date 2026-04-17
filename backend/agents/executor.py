@@ -283,35 +283,25 @@ class AgentExecutor:
             async for chunk in model_manager.chat_stream(base_model, agent_msgs, temperature, max_tokens):
                 buffer += chunk
                 
+                # ALWAYS process chunk perfectly; the ResponseFilter is built to gracefully stop when it hits <tool>
+                filtered = response_filter.process(chunk)
+                if filtered:
+                    yield filtered
+                
                 if "<tool>" in buffer and not has_tool_started:
                     has_tool_started = True
-                    # Feed everything before <tool> through the filter to cleanly emit into DOM
-                    if not pre_tool_fed:
-                        pre_tool_idx = buffer.find("<tool>")
-                        pre_tool_text = buffer[:pre_tool_idx]
-                        if pre_tool_text:
-                            filtered = response_filter.process(pre_tool_text)
-                            if filtered:
-                                yield filtered
-                                
-                        # Auto-close <details> logic if interrupted during THINKING
-                        if response_filter.state == "THINKING" and emit_thinking:
-                            yield "\n\n</details>\n\n"
-                            
-                        pre_tool_fed = True
-                        # Reset filter to prevent layout corruption
-                        response_filter.state = "WAITING"
-                        response_filter.pending = ""
+                    
+                    # Auto-close <details> logic if interrupted during THINKING
+                    if response_filter.state == "THINKING" and emit_thinking:
+                        yield "\n\n</details>\n\n"
+                    
+                    # Reset filter gracefully so next iteration starts fresh
+                    response_filter.state = "WAITING"
+                    response_filter.pending = ""
                 
                 if has_tool_started:
                     if "</tool>" in buffer:
                         break
-                    continue
-                
-                # Feed every chunk through the response filter
-                filtered = response_filter.process(chunk)
-                if filtered:
-                    yield filtered
             
             # Check if model intends to use a tool
             has_tool = "<tool>" in buffer
