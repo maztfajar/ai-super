@@ -90,9 +90,27 @@ class AuditLogger:
         self._events: List[AuditEvent] = []
         self._max_memory_events = 5000
         
-        # Daily log files
-        self._current_log_date = None
-        self._current_log_file = None
+        # Async non-blocking file writer
+        import queue
+        import threading
+        self._write_queue = queue.Queue()
+        self._writer_thread = threading.Thread(target=self._writer_loop, daemon=True)
+        self._writer_thread.start()
+
+    def _writer_loop(self):
+        """Dedicated background thread to write audit events serially without blocking event loop."""
+        while True:
+            try:
+                event = self._write_queue.get()
+                if event is None:
+                    break
+                log_file = self._get_log_file(event.timestamp)
+                with open(log_file, "a", encoding="utf-8") as f:
+                    f.write(event.to_json_line() + "\n")
+                self._write_queue.task_done()
+            except Exception as e:
+                # Can't use structlog if it's dead, print directly to prevent silent fail of thread
+                print(f"Failed background audit write: {str(e)}")
 
     def _get_log_file(self, timestamp: float) -> Path:
         """Get log file path untuk date dari timestamp."""
@@ -129,13 +147,8 @@ class AuditLogger:
         if len(self._events) > self._max_memory_events:
             self._events.pop(0)
         
-        # Write to file
-        try:
-            log_file = self._get_log_file(event.timestamp)
-            with open(log_file, "a", encoding="utf-8") as f:
-                f.write(event.to_json_line() + "\n")
-        except Exception as e:
-            log.error("Failed to write audit log", error=str(e))
+        # Write to file (non-blocking pushed to thread queue)
+        self._write_queue.put(event)
         
         return event
 

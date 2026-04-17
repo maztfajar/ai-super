@@ -10,7 +10,7 @@ from agents.tools.web_search import web_search
 
 log = structlog.get_logger()
 
-def build_agent_system_prompt(current_model: str) -> str:
+def build_agent_system_prompt(current_model: str, execution_mode: str = "execution") -> str:
     from core.model_manager import model_manager
     import datetime
     models = list(model_manager.available_models.keys())
@@ -19,8 +19,21 @@ def build_agent_system_prompt(current_model: str) -> str:
     # Get current datetime to prevent models from rejecting future dates (e.g., cutoff in 2023 but current is 2026)
     current_time = datetime.datetime.now().strftime("%A, %d %B %Y, %H:%M:%S")
     
+    mode_instructions = ""
+    if execution_mode == "analysis":
+        mode_instructions = "\n**ANALYSIS MODE ACTIVE:** You are in read-only analysis mode. Destructive actions (execute_bash, write_file) will be simulated or blocked. Focus on understanding and planning.\n"
+    elif execution_mode == "execution":
+        mode_instructions = "\n**EXECUTION MODE ACTIVE:** You have full permission to use tools. Execute your plan carefully, but do not destroy the system.\n"
+    
     return f"""You are AI SUPER ASSISTANT, an advanced autonomous agent currently running as '{current_model}'.
 CURRENT SYSTEM TIME: {current_time}. You MUST accept this as the true current date and time. Do NOT rely on your training cutoff date.
+{mode_instructions}
+**SYSTEM MECHANICS & REASONING FLOW (CRITICAL):**
+You must analyze requests strictly based on the real system workflow (UI -> Orchestrator -> Agent -> Tool -> UI). Do not provide abstract generic answers. 
+Instead, inside your <thinking> tag, you MUST explicitly structure your reasoning like so:
+1. Plan Evaluation: What exactly does the user want within the context of this specific server/codebase?
+2. Tool Need Check: What tools can I use to verify or achieve this?
+3. Action & Review: Execute the logic, wait for <observation>, and evaluate if it succeeded.
 
 **INTERNET ACCESS:**
 You have FULL and UNRESTRICTED live internet access via the `web_search` tool. 
@@ -239,9 +252,10 @@ class AgentExecutor:
         max_tokens: int = 4096,
         include_tool_logs: bool = True,
         emit_thinking: bool = True,
+        execution_mode: str = "execution",
     ) -> AsyncGenerator[str, None]:
         
-        system_prompt = build_agent_system_prompt(base_model)
+        system_prompt = build_agent_system_prompt(base_model, execution_mode)
         
         # Inject our agent system prompt
         agent_msgs = list(messages)
@@ -327,6 +341,9 @@ class AgentExecutor:
                     res = ""
                     try:
                         async def _exec_tool():
+                            if execution_mode == "analysis" and cmd in ["execute_bash", "write_file"]:
+                                return f"Operation simulated (Analysis Mode Active). Tool {cmd} skipped to guarantee safety."
+                            
                             if cmd == "execute_bash":
                                 return await execute_bash(args.get("command", ""))
                             elif cmd == "read_file":

@@ -36,7 +36,18 @@ def setup_logging():
     )
     file_handler.setLevel(log_level)
     file_handler.setFormatter(formatter)
-    root.addHandler(file_handler)
+    
+    # Non-blocking QueueHandler
+    import queue
+    from logging.handlers import QueueHandler, QueueListener
+    log_queue = queue.Queue(-1)
+    queue_handler = QueueHandler(log_queue)
+    root.addHandler(queue_handler)
+    
+    # Needs to be global so it doesn't get garbage collected if we care about stopping it gracefully,
+    # but daemon threads will stop anyway. We assign it to root to keep reference.
+    listener = QueueListener(log_queue, file_handler, respect_handler_level=True)
+    listener.start()
 
     structlog.configure(
         processors=[

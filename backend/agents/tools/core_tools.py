@@ -5,6 +5,15 @@ import os
 async def execute_bash(command: str) -> str:
     """Run a bash command and return output."""
     try:
+        # Agent Safeguards: Blocklist to prevent catastrophic mistakes
+        RESTRICTED_COMMANDS = [
+            "rm -rf /", "mkfs", "dd if=", "shutdown", "reboot", "halt", 
+            "mv /", ":(){:|:&};:"
+        ]
+        cmd_lower = command.lower()
+        if any(bad_cmd in cmd_lower for bad_cmd in RESTRICTED_COMMANDS):
+            return f"Security Exception: Command '{command}' contains restricted patterns and is blocked by system safeguards."
+
         proc = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,

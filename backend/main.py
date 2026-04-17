@@ -51,9 +51,42 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 import asyncio
 from contextlib import asynccontextmanager as acm
+import time
 
 setup_logging()
 log = structlog.get_logger()
+
+class APIMetricsMiddleware(BaseHTTPMiddleware):
+    """Middleware for tracking request performance to provide objective telemetry."""
+    
+    async def dispatch(self, request: Request, call_next):
+        start_time = time.time()
+        try:
+            response = await call_next(request)
+            error_count = 1 if response.status_code >= 500 else 0
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            
+            # Log objective metrics, but don't spam for static assets
+            if not request.url.path.startswith("/assets") and request.url.path != "/api/health":
+                log.info(
+                    "API Request Completed",
+                    method=request.method,
+                    path=request.url.path,
+                    status=response.status_code,
+                    execution_time_ms=execution_time_ms,
+                    is_error=bool(error_count)
+                )
+            return response
+        except Exception as e:
+            execution_time_ms = int((time.time() - start_time) * 1000)
+            log.error(
+                "API Request Failed Unhandled",
+                method=request.method,
+                path=request.url.path,
+                error=str(e),
+                execution_time_ms=execution_time_ms
+            )
+            raise
 
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Middleware untuk prevent request timeout pada streaming responses"""
@@ -131,8 +164,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add timeout middleware
+# Add middlewares
 app.add_middleware(TimeoutMiddleware)
+app.add_middleware(APIMetricsMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
