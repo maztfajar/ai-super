@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penyederhana URL</title>
+</head>
+<body>
+    <h1>Penyederhana URL</h1>
+    <form method="POST">
+        <label for="url">Masukkan URL panjang:</label>
+        <input type="url" name="url" required>
+        <button type="submit">Pendekkan URL</button>
+    </form>
+
+    {% if short_url %}
+        <p>URL pendek Anda: <a href="{{ url_for('redirect_to_url', short_url=short_url) }}">{{ request.host_url }}{{ short_url }}</a></p>
+    {% endif %}
+</body>
+</html>

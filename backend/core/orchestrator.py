@@ -647,13 +647,22 @@ class Orchestrator:
         )})
 
         try:
+            from agents.executor import agent_executor
+            
             # Execute with error recovery
             async def _exec(model, **kwargs):
-                return await model_manager.chat_completion(
-                    model=model, messages=messages,
+                full_response = ""
+                async for chunk in agent_executor.stream_chat(
+                    base_model=model,
+                    messages=messages,
                     temperature=kwargs.get("temperature", 0.5),
-                    max_tokens=kwargs.get("max_tokens", 4096),
-                )
+                    max_tokens=kwargs.get("max_tokens", 8192),
+                    include_tool_logs=False,
+                    emit_thinking=False,
+                    execution_mode="execution",
+                ):
+                    full_response += chunk
+                return full_response
 
             response, attempts = await error_recovery.execute_with_recovery(
                 execute_fn=_exec,
@@ -661,7 +670,7 @@ class Orchestrator:
                 task_type=subtask.task_type,
                 max_retries=subtask.max_retries,
                 temperature=0.5,
-                max_tokens=4096,
+                max_tokens=8192,
             )
 
             if response is None:

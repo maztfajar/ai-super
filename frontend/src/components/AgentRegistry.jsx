@@ -96,9 +96,15 @@ function AgentRegistry({ viewMode = 'grid' }) {
   }
 
   const statusConfig = {
-    active: { label: '🟢 Active', color: '#10B981', bg: 'rgba(16,185,129,0.2)', pulse: true },
-    ready: { label: '⚪ Ready', color: '#64748B', bg: 'rgba(100,116,139,0.1)' },
-    idle: { label: '⚪ Idle', color: '#999999', bg: 'rgba(150,150,150,0.1)' },
+    active: { 
+      label: '🟢 Active', 
+      color: '#10B981', 
+      bg: 'rgba(16,185,129,0.2)', 
+      pulse: true, 
+      glow: '0 0 10px 2px rgba(16,185,129,0.8)' 
+    },
+    ready: { label: '🟡 Ready', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
+    idle: { label: '⚪ Idle', color: '#64748B', bg: 'rgba(100,116,139,0.1)' },
   }
 
   if (loading && agents.length === 0) {
@@ -168,7 +174,10 @@ function AgentRegistry({ viewMode = 'grid' }) {
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 relative">
                       {cfg.pulse && <span className="absolute w-2.5 h-2.5 rounded-full animate-ping" style={{ backgroundColor: cfg.color }} />}
-                      <span className="relative w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cfg.color }} />
+                      <span className="relative w-2.5 h-2.5 rounded-full" style={{ 
+                        backgroundColor: cfg.color,
+                        boxShadow: cfg.glow || 'none'
+                      }} />
                     </div>
                   </div>
 
@@ -225,7 +234,11 @@ function AgentRegistry({ viewMode = 'grid' }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 min-w-[70px] justify-end">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{ background: cfg.bg, color: cfg.color }}>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{ 
+                    background: cfg.bg, 
+                    color: cfg.color,
+                    boxShadow: cfg.glow || 'none'
+                  }}>
                     {cfg.pulse && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: cfg.color }} />}
                     {cfg.label.split(' ')[1]}
                   </span>
