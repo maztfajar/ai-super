@@ -72,7 +72,9 @@ class ModelManager:
 
         # ── Sumopod (OpenAI-compatible API) ──────────────────
         if settings.SUMOPOD_API_KEY and not settings.SUMOPOD_API_KEY.startswith("sk-..."):
-            for model_id in settings.sumopod_models_list:
+            # Tambahkan model dari .env (manual override) dulu
+            env_models = settings.sumopod_models_list
+            for model_id in env_models:
                 key = f"sumopod/{model_id}"
                 self.available_models[key] = {
                     "provider":  "sumopod",
@@ -80,7 +82,36 @@ class ModelManager:
                     "status":    "online",
                     "model_id":  model_id,
                 }
-            log.info(f"Sumopod models registered: {settings.sumopod_models_list}")
+            
+            # Auto-detect dari endpoint /models
+            try:
+                import httpx
+                async with httpx.AsyncClient(timeout=5) as client:
+                    resp = await client.get(
+                        f"{settings.SUMOPOD_HOST}/models",
+                        headers={"Authorization": f"Bearer {settings.SUMOPOD_API_KEY}"}
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        detected = 0
+                        for m in data.get("data", []):
+                            model_id = m.get("id")
+                            if model_id:
+                                key = f"sumopod/{model_id}"
+                                if key not in self.available_models:
+                                    self.available_models[key] = {
+                                        "provider":  "sumopod",
+                                        "display":   f"{model_id} (Sumopod)",
+                                        "status":    "online",
+                                        "model_id":  model_id,
+                                    }
+                                    detected += 1
+                        if detected > 0:
+                            log.info(f"Sumopod auto-detected {detected} additional models")
+            except Exception as e:
+                log.warning("Sumopod /models auto-detect failed", error=str(e)[:80])
+
+            log.info(f"Sumopod models registered: {[k for k in self.available_models.keys() if k.startswith('sumopod/')]}")
 
         # ── Ollama (local) ────────────────────────────────────
         ollama_models = await self._check_ollama()
