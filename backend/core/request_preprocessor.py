@@ -130,6 +130,12 @@ COMPLEX_TRIGGERS = [
     "server", "file", "tulis", "write", "riset", "research", "rencana",
     "plan", "desain", "design", "debug", "fix", "perbaiki", "optimasi",
     "optimize", "migrasi", "migrate", "refactor", "arsitektur", "architecture",
+    # System monitoring & server queries
+    "cek", "check", "status", "ram", "cpu", "disk", "memory", "monitor",
+    "uptime", "proses", "process", "port", "service", "log", "restart",
+    "berapa", "tampilkan", "lihat", "show", "info", "nginx", "docker",
+    "jalankan", "execute", "run", "terminal", "perintah", "command",
+    "hapus", "delete", "download", "upload", "update", "upgrade",
 ]
 
 # Heuristic: detect image generation

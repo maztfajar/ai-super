@@ -188,12 +188,20 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                 system_prompt=system,
                 history=history,
                 include_tool_logs=False,
-                emit_thinking=False
+                emit_thinking=False,
+                auto_execute=True,
             ):
                 if event.type == "chunk":
                     full_response += event.content
                 elif event.type == "error":
                     full_response = f"⚠️ **Error:** {event.content}"
+                    break
+                elif event.type == "done":
+                    # Normal completion — continue to send
+                    pass
+                elif event.type == "pending_confirmation":
+                    # Should not happen with auto_execute=True, but handle gracefully
+                    full_response = f"⚠️ Perintah ini memerlukan konfirmasi: {event.data.get('command', text)}\n\nSilakan gunakan web dashboard untuk menjalankan perintah ini."
                     break
         finally:
             typing_active = False

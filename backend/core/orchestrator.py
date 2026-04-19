@@ -65,6 +65,7 @@ class Orchestrator:
         image_b64: Optional[str] = None,
         image_mime: Optional[str] = None,
         emit_thinking: bool = True,
+        auto_execute: bool = False,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """
         Main orchestration pipeline. Yields events as the orchestration progresses.
@@ -173,7 +174,8 @@ class Orchestrator:
             
             async for event in self._handle_simple(
                 spec, system_prompt, history, temperature, max_tokens,
-                user_model_choice, include_tool_logs, emit_thinking=emit_thinking
+                user_model_choice, include_tool_logs, emit_thinking=emit_thinking,
+                auto_execute=auto_execute,
             ):
                 if event.type == "chunk":
                     # Potentially update result_summary here if needed
@@ -372,6 +374,7 @@ class Orchestrator:
         include_tool_logs: bool,
         force_agent: Optional[str] = None,
         emit_thinking: bool = True,
+        auto_execute: bool = False,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """Handle simple messages without full orchestration overhead."""
 
@@ -389,18 +392,23 @@ class Orchestrator:
                 spec.primary_intent, user_model_choice
             )
 
+        is_orchestrator = not user_model_choice or "orchestrator" in (user_model_choice or "").lower()
+
         # Check if VPS safety protocol needed
         if spec.primary_intent in ("system", "file_operation"):
-            yield OrchestratorEvent("status", "⚠️ Tindakan sistem terdeteksi...")
-            # Will be handled by chat.py confirmation flow
-            yield OrchestratorEvent("pending_confirmation", "", {
-                "command": spec.original_message,
-                "purpose": f"Detected {spec.primary_intent} action",
-                "risk": "MEDIUM",
-            })
-            return
-
-        is_orchestrator = not user_model_choice or "orchestrator" in (user_model_choice or "").lower()
+            if not auto_execute:
+                yield OrchestratorEvent("status", "⚠️ Tindakan sistem terdeteksi...")
+                # Will be handled by chat.py confirmation flow
+                yield OrchestratorEvent("pending_confirmation", "", {
+                    "command": spec.original_message,
+                    "purpose": f"Detected {spec.primary_intent} action",
+                    "risk": "MEDIUM",
+                })
+                return
+            else:
+                # Auto-execute mode (Telegram): bypass confirmation, go straight to agent executor
+                yield OrchestratorEvent("status", "⚙️ Mengeksekusi perintah sistem...")
+                is_orchestrator = True  # Force agent executor path for tool access
 
         # Build messages
         messages = [{"role": "system", "content": system_prompt}]
