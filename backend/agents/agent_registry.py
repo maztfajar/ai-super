@@ -35,8 +35,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Complex logic, math, deep analysis, and strategic planning",
         skills=["logic", "math", "analysis", "planning", "strategy", "reasoning",
                 "problem_solving", "critical_thinking"],
-        preferred_models=["gpt-4o", "claude-3-5-sonnet", "claude-3-opus",
-                           "gemini-1.5-pro", "seed-2-0-pro"],
+        preferred_models=["deepseek-v3", "qwen3.6-flash", "claude-haiku", "gpt-4o"],
         default_temperature=0.3,
         system_prompt_addon="Focus on logical reasoning. Show your thought process step by step. "
                             "Prioritize accuracy over speed.",
@@ -47,8 +46,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Software development, debugging, code review, and refactoring",
         skills=["python", "javascript", "typescript", "sql", "bash", "api",
                 "debug", "refactor", "code_review", "testing"],
-        preferred_models=["gpt-4o", "claude-3-5-sonnet", "seed-2-0-pro",
-                           "gemini-1.5-pro"],
+        preferred_models=["deepseek-v3", "qwen3.6-flash", "gpt-4o"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         default_max_tokens=8192,
@@ -61,7 +59,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Information gathering, web search, data collection, and comparison",
         skills=["search", "gather", "compare", "summarize", "fact_check",
                 "data_collection"],
-        preferred_models=["gemini-1.5-pro", "gpt-4o", "claude-3-5-sonnet"],
+        preferred_models=["gemini-2.5-flash-lite", "claude-haiku", "qwen3.6-flash", "gpt-4o-mini"],
         default_temperature=0.5,
         system_prompt_addon="Be thorough in your research. Cite sources when possible. "
                             "Present findings in a structured format.",
@@ -72,7 +70,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Content creation, documentation, translation, and editing",
         skills=["writing", "editing", "translation", "documentation",
                 "content_creation", "copywriting", "email"],
-        preferred_models=["claude-3-5-sonnet", "gpt-4o", "gemini-1.5-pro"],
+        preferred_models=["claude-haiku", "qwen3.6-flash", "gemini-2.5-flash-lite"],
         default_temperature=0.7,
         system_prompt_addon="Write in clear, professional language. Match the requested tone and style. "
                             "Use proper formatting.",
@@ -83,7 +81,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="VPS management, server admin, terminal commands, DevOps",
         skills=["bash", "linux", "docker", "nginx", "systemd", "networking",
                 "monitoring", "deployment"],
-        preferred_models=["gpt-4o", "claude-3-5-sonnet", "seed-2-0-pro"],
+        preferred_models=["deepseek-v3", "qwen3.6-flash", "gpt-4o"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         system_prompt_addon="Prioritize safety. Always explain what a command does before executing. "
@@ -95,7 +93,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Brainstorming, idea generation, design thinking, innovation",
         skills=["brainstorming", "ideation", "design", "creativity",
                 "innovation", "storytelling"],
-        preferred_models=["claude-3-5-sonnet", "gpt-4o", "gemini-1.5-pro"],
+        preferred_models=["claude-haiku", "qwen3.6-flash", "gemini-2.5-flash-lite"],
         default_temperature=0.9,
         system_prompt_addon="Think outside the box. Offer multiple creative options. "
                             "Encourage novel approaches.",
@@ -106,7 +104,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Quality assurance, testing, verification, fact-checking",
         skills=["testing", "verification", "qa", "fact_checking",
                 "code_review", "proofreading"],
-        preferred_models=["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"],
+        preferred_models=["deepseek-v3", "qwen3.6-flash", "claude-haiku"],
         default_temperature=0.1,
         system_prompt_addon="Be critical and thorough. Check for errors, inconsistencies, "
                             "and edge cases. Provide specific feedback.",
@@ -116,7 +114,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         display_name="💬 General Agent",
         description="General conversation, FAQs, simple questions, greetings",
         skills=["conversation", "faq", "general_knowledge"],
-        preferred_models=["gpt-4o-mini", "gemini-1.5-flash", "claude-3-haiku", "MiniMax-M2.7-highspeed"],
+        preferred_models=["gemini-2.5-flash-lite", "gpt-4o-mini", "claude-haiku"],
         default_temperature=0.7,
         system_prompt_addon="",
     ),
