@@ -22,3 +22,4 @@ scripts/venv/
 .domains.json
 
 cloudflared*.log
+*.swp
