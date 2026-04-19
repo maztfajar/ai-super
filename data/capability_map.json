@@ -56,5 +56,23 @@
     "reasoning",
     "text",
     "vision"
+  ],
+  "sumopod/gpt-4o-mini": [
+    "analysis",
+    "coding",
+    "reasoning",
+    "speed",
+    "text",
+    "vision",
+    "writing"
+  ],
+  "sumopod/qwen3.6-flash": [
+    "coding",
+    "speed",
+    "text",
+    "vision"
+  ],
+  "sumopod/claude-haiku-4-5": [
+    "speed"
   ]
 }

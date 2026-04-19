@@ -1,5 +1,99 @@
 import asyncio
 import os
+import json
+import re as _re
+import socket
+
+
+# ─── Port Safety System ─────────────────────────────────────────────────────
+# Ports reserved by the AI Orchestrator and critical system services.
+# Any app created by the agent MUST NOT use these ports.
+RESERVED_PORTS = {
+    7860,   # AI Orchestrator (FastAPI main)
+    6379,   # Redis
+    5432,   # PostgreSQL (if used)
+    3306,   # MySQL (if used)
+    11434,  # Ollama
+}
+
+def _get_safe_port(preferred: int = 0, range_start: int = 8100, range_end: int = 9000) -> int:
+    """Find a free port that doesn't collide with reserved ports."""
+    if preferred and preferred not in RESERVED_PORTS:
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", preferred))
+                return preferred
+        except OSError:
+            pass  # port busy, find another
+
+    for port in range(range_start, range_end):
+        if port in RESERVED_PORTS:
+            continue
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", port))
+                return port
+        except OSError:
+            continue
+    return 0  # OS will assign
+
+def _rewrite_port_in_command(command: str) -> tuple[str, str]:
+    """
+    Detect if a command tries to bind to a reserved port and rewrite it.
+    Returns (possibly_rewritten_command, warning_message_or_empty).
+    """
+    # Patterns that indicate a server binding to a port
+    port_patterns = [
+        # --port 7860  or  --port=7860  or  -p 7860
+        _re.compile(r'(--port[= ]+)(\d+)'),
+        _re.compile(r'(-p\s+)(\d+)'),
+        # PORT=7860 (env var)
+        _re.compile(r'(PORT=)(\d+)'),
+        # :7860 in URLs like 0.0.0.0:7860 or localhost:7860
+        _re.compile(r'((?:0\.0\.0\.0|127\.0\.0\.1|localhost):)(\d+)'),
+        # uvicorn/gunicorn --bind 0.0.0.0:7860
+        _re.compile(r'(--bind\s+\S+:)(\d+)'),
+        # flask run -p 7860
+        _re.compile(r'(run\s+-p\s+)(\d+)'),
+        # npm start -- --port 7860, vite --port 7860
+        _re.compile(r'(--port\s+)(\d+)'),
+    ]
+    
+    warning = ""
+    modified = command
+    
+    for pattern in port_patterns:
+        match = pattern.search(modified)
+        if match:
+            port_str = match.group(2)
+            try:
+                port = int(port_str)
+            except ValueError:
+                continue
+            
+            if port in RESERVED_PORTS:
+                safe_port = _get_safe_port(range_start=port + 1)
+                if not safe_port:
+                    # If port+1 exceeds default range, fall back to standard safe range
+                    safe_port = _get_safe_port()
+                if safe_port:
+                    modified = modified[:match.start(2)] + str(safe_port) + modified[match.end(2):]
+                    warning = (
+                        f"⚠️ PORT COLLISION PREVENTED: Port {port} is reserved by the AI Orchestrator system. "
+                        f"Automatically reassigned to port {safe_port}.\n"
+                    )
+                    break
+    
+    return modified, warning
+
+
+async def find_safe_port(preferred: int = 0) -> str:
+    """Find a safe, available port that won't conflict with the AI Orchestrator.
+    Use this before starting any server application."""
+    port = _get_safe_port(preferred)
+    if port:
+        return f"Safe port found: {port}. This port is free and does NOT conflict with the AI Orchestrator (port 7860) or other system services."
+    return "Error: Could not find a free port in range 8100-9000."
 
 
 async def execute_bash(command: str) -> str:
@@ -13,6 +107,10 @@ async def execute_bash(command: str) -> str:
         cmd_lower = command.lower()
         if any(bad_cmd in cmd_lower for bad_cmd in RESTRICTED_COMMANDS):
             return f"Security Exception: Command '{command}' contains restricted patterns and is blocked by system safeguards."
+
+        # ── Port Collision Prevention ─────────────────────────────
+        port_warning = ""
+        command, port_warning = _rewrite_port_in_command(command)
 
         proc = await asyncio.create_subprocess_shell(
             command,
@@ -32,7 +130,6 @@ async def execute_bash(command: str) -> str:
                     if not truncated:
                         truncated = True
                         try:
-                            # Kill process if it exceeds our cap to prevent background resource hogging
                             proc.terminate()
                         except Exception:
                             pass
@@ -50,7 +147,7 @@ async def execute_bash(command: str) -> str:
 
         out, out_trunc, err, err_trunc = await asyncio.wait_for(run_with_timeout(), timeout=120.0)
         
-        output = ""
+        output = port_warning  # Prepend port warning if any
         if out:
             output += out
             if out_trunc:
@@ -99,6 +196,30 @@ async def write_file(path: str, content: str) -> str:
         return f"Error: Writing file {path} timed out after 30 seconds."
     except Exception as e:
         return f"Error writing file {path}: {str(e)}"
+
+async def write_multiple_files(files_data: list) -> str:
+    """Write multiple files at once. files_data is a list of dicts: [{'path': '...', 'content': '...'}]"""
+    try:
+        import aiofiles
+        results = []
+        for file_obj in files_data:
+            path = file_obj.get("path")
+            content = file_obj.get("content", "")
+            if not path:
+                results.append(f"Skipped invalid entry: {file_obj}")
+                continue
+            
+            try:
+                os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+                async with aiofiles.open(path, "w", encoding="utf-8") as f:
+                    await f.write(content)
+                results.append(f"Successfully wrote to {path}")
+            except Exception as e:
+                results.append(f"Error writing to {path}: {str(e)}")
+        
+        return "\n".join(results)
+    except Exception as e:
+        return f"Fatal error in write_multiple_files: {str(e)}"
 
 async def ask_model(model_id: str, prompt: str) -> str:
     """Ask another AI model installed in the system a question or to perform a task."""

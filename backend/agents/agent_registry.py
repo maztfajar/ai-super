@@ -49,7 +49,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
                 "debug", "refactor", "code_review", "testing"],
         preferred_models=["gpt-4o", "claude-3-5-sonnet", "seed-2-0-pro",
                            "gemini-1.5-pro"],
-        tools_allowed=["execute_bash", "read_file", "write_file"],
+        tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         default_max_tokens=8192,
         system_prompt_addon="Write clean, production-quality code. Include error handling. "
@@ -84,7 +84,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["bash", "linux", "docker", "nginx", "systemd", "networking",
                 "monitoring", "deployment"],
         preferred_models=["gpt-4o", "claude-3-5-sonnet", "seed-2-0-pro"],
-        tools_allowed=["execute_bash", "read_file", "write_file"],
+        tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         system_prompt_addon="Prioritize safety. Always explain what a command does before executing. "
                             "Use sudo only when necessary.",
