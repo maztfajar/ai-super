@@ -11,14 +11,186 @@ import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
   Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
-  ImagePlus, Mic, MicOff, Camera, Volume2, Brain, ChevronDown, ChevronUp
+  ImagePlus, Mic, MicOff, Camera, Volume2, Brain, ChevronDown, ChevronUp,
+  ExternalLink, FileCode2, Maximize2, Minimize2, PanelRightClose, PanelRightOpen
 } from 'lucide-react'
 import clsx from 'clsx'
 
 
+// ── Language color badges ─────────────────────────────────────
+const LANG_COLORS = {
+  javascript: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+  typescript: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+  python: 'text-blue-300 bg-blue-300/10 border-blue-300/20',
+  html: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
+  css: 'text-pink-400 bg-pink-400/10 border-pink-400/20',
+  sql: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
+  bash: 'text-green-400 bg-green-400/10 border-green-400/20',
+  sh: 'text-green-400 bg-green-400/10 border-green-400/20',
+  json: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
+  jsx: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20',
+  tsx: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20',
+}
+
+// ── CodeBlock: replaces default ReactMarkdown pre/code renders ─
+function CodeBlock({ language, code, onOpenArtifact }) {
+  const [copied, setCopied] = useState(false)
+  const lines = code.split('\n').length
+  const isLong = lines > 25
+  const langColor = LANG_COLORS[language?.toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
+
+  const handleCopy = () => {
+    copyToClipboard(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="code-block-wrapper relative my-2 rounded-xl overflow-hidden border border-border-2" style={{ background: '#0d1117' }}>
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-2" style={{ background: '#161b22' }}>
+        <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', langColor)}>
+          {language || 'code'}
+        </span>
+        <div className="flex items-center gap-1">
+          {isLong && onOpenArtifact && (
+            <button
+              onClick={() => onOpenArtifact(code, language || 'txt')}
+              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all border border-transparent hover:border-accent/20"
+              style={{ color: 'var(--accent-2)' }}
+              title="Buka di Artifacts Panel"
+            >
+              <ExternalLink size={9} />
+              <span>Artifacts</span>
+            </button>
+          )}
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all border border-transparent hover:border-border-2"
+            style={{ color: copied ? 'var(--success)' : '#6e7681' }}
+            title="Copy kode"
+          >
+            {copied ? <Check size={9} /> : <Copy size={9} />}
+            <span>{copied ? 'Copied!' : 'Copy'}</span>
+          </button>
+        </div>
+      </div>
+      {/* Code content — always dark themed, text selalu terbaca */}
+      <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono" style={{ color: '#abb2bf', background: 'transparent', margin: 0, border: 'none' }}>
+        <code style={{ color: 'inherit', background: 'none', padding: 0 }}>{code}</code>
+      </pre>
+    </div>
+  )
+}
+
+// ── ArtifactsPanel: slideout panel di sebelah kanan ───────────
+function ArtifactsPanel({ code, language, onClose }) {
+  const [activeTab, setActiveTab] = useState('code')
+  const [copied, setCopied] = useState(false)
+
+  const isHtml = ['html', 'htm'].includes((language || '').toLowerCase())
+  const filename = `artifact.${language || 'txt'}`
+
+  const iframeSrc = isHtml
+    ? `data:text/html;charset=utf-8,${encodeURIComponent(code)}`
+    : null
+
+  const handleCopy = () => {
+    copyToClipboard(code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownload = () => {
+    const blob = new Blob([code], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const langColor = LANG_COLORS[(language || '').toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
+  const lines = code.split('\n').length
+
+  return (
+    <div className="flex flex-col border-l border-border bg-bg-2 animate-slide-in-right" style={{ width: '48%', flexShrink: 0 }}>
+      {/* Header */}
+      <div className="h-12 border-b border-border flex items-center px-3 gap-2 flex-shrink-0 bg-bg-3">
+        <FileCode2 size={14} className="text-accent-2 flex-shrink-0" />
+        <span className="text-xs font-medium text-ink truncate flex-1">{filename}</span>
+        <span className={clsx('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0', langColor)}>
+          {language || 'txt'}
+        </span>
+        <span className="text-[10px] text-ink-3 flex-shrink-0">{lines} baris</span>
+        <div className="flex items-center gap-0.5 flex-shrink-0">
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+            title="Copy semua"
+          >
+            {copied ? <Check size={13} className="text-success" /> : <Copy size={13} className="text-ink-3" />}
+          </button>
+          <button
+            onClick={handleDownload}
+            className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+            title={`Download ${filename}`}
+          >
+            <Download size={13} className="text-ink-3" />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-danger/10 hover:text-danger transition-colors"
+            title="Tutup panel"
+          >
+            <X size={13} className="text-ink-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs — hanya tampil jika bisa di-preview */}
+      {isHtml && (
+        <div className="flex border-b border-border flex-shrink-0">
+          {['preview', 'code'].map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={clsx(
+                'flex-1 py-2 text-xs font-medium capitalize transition-colors',
+                activeTab === tab
+                  ? 'text-accent-2 border-b-2 border-accent-2 bg-accent/5'
+                  : 'text-ink-3 hover:text-ink hover:bg-bg-3'
+              )}
+            >
+              {tab === 'preview' ? '👁 Preview' : '{ } Code'}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Content */}
+      {activeTab === 'preview' && iframeSrc ? (
+        <iframe
+          src={iframeSrc}
+          className="flex-1 w-full"
+          style={{ background: 'white', border: 'none' }}
+          sandbox="allow-scripts allow-same-origin"
+          title="Artifact Preview"
+        />
+      ) : (
+        <div className="flex-1 overflow-auto">
+          <pre className="artifact-code-view p-4 min-h-full" style={{ margin: 0 }}>
+            <code>{code}</code>
+          </pre>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ── Message bubble ────────────────────────────────────────────
-function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId }) {
+function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpenArtifact }) {
   const [copied, setCopied] = useState(false)
   const [showThinking, setShowThinking] = useState(false)
   const isUser = msg.role === 'user'
@@ -27,6 +199,48 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId }) {
     copyToClipboard(msg.content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Custom ReactMarkdown components — code block dengan copy & artifacts + link handler
+  const markdownComponents = {
+    code({ node, inline, className, children, ...props }) {
+      const match = /language-(\w+)/.exec(className || '')
+      const language = match ? match[1] : ''
+      const codeText = String(children).replace(/\n$/, '')
+      if (inline) {
+        return (
+          <code
+            className="px-1 py-0.5 bg-accent/10 rounded text-accent-2 text-[11px] font-mono border border-accent/20"
+            {...props}
+          >{children}</code>
+        )
+      }
+      return <CodeBlock language={language} code={codeText} onOpenArtifact={onOpenArtifact} />
+    },
+    // Custom link renderer: buka di tab baru + styling yang jelas
+    a({ node, href, children, ...props }) {
+      const isLocalServer = href && (
+        href.includes('localhost') ||
+        href.includes('127.0.0.1') ||
+        href.includes('0.0.0.0') ||
+        /:\d{4,5}/.test(href)
+      )
+      return (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent-2 underline underline-offset-2 hover:text-accent transition-colors"
+          title={isLocalServer ? `Buka ${href} di tab baru` : href}
+          {...props}
+        >
+          {children}
+          {isLocalServer && (
+            <ExternalLink size={10} className="inline ml-0.5 mb-0.5 opacity-70" />
+          )}
+        </a>
+      )
+    }
   }
 
   return (
@@ -62,7 +276,11 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId }) {
             <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
           ) : (
             <div className="prose prose-sm max-w-none">
-              <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{msg.content}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+                components={markdownComponents}
+              >{msg.content}</ReactMarkdown>
               {isStreaming && (
                 <span className="inline-block w-1.5 h-4 bg-accent-2 animate-pulse2 ml-0.5 align-middle" />
               )}
@@ -318,6 +536,14 @@ export default function Chat() {
   const [statusText, setStatusText] = useState('')
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Artifacts Panel state
+  const [artifact, setArtifact] = useState({ open: false, code: '', language: '' })
+  const openArtifact = useCallback((code, language) => {
+    setArtifact({ open: true, code, language })
+  }, [])
+  const closeArtifact = useCallback(() => {
+    setArtifact(a => ({ ...a, open: false }))
+  }, [])
   // Multimodal state
   const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
   const [isRecording, setIsRecording] = useState(false)
@@ -413,7 +639,16 @@ export default function Chat() {
     return () => clearInterval(interval)
   }, [currentSession?.id])
 
+  // Cek apakah sesi aktif masih kosong (belum ada pesan)
+  const isCurrentSessionEmpty = currentSession && messages.length === 0
+
   async function newSession() {
+    // Jika sesi aktif masih kosong, jangan buat sesi baru
+    if (isCurrentSessionEmpty) {
+      toast('Sesi ini masih kosong. Mulai chat dulu!', { icon: '💬', duration: 2000 })
+      inputRef.current?.focus()
+      return
+    }
     try {
       const s = await api.createSession('New Chat')
       const updated = await api.listSessions()
@@ -568,6 +803,8 @@ export default function Chat() {
           const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
           setSessions(safe)
         }).catch(() => {})
+        // Auto-focus kembali ke textarea setelah AI selesai merespons
+        setTimeout(() => { inputRef.current?.focus() }, 50)
       },
       (sessionData) => {
         if (sessionData && sessionData.model) {
@@ -618,6 +855,8 @@ export default function Chat() {
             const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
             setSessions(safe)
           }).catch(() => {})
+          // Auto-focus kembali ke textarea setelah AI selesai merespons
+          setTimeout(() => { inputRef.current?.focus() }, 50)
         },
         (sessionData) => {
           if (sessionData && sessionData.model) {
@@ -809,7 +1048,9 @@ export default function Chat() {
         <div className="p-3 border-b border-border flex items-center justify-between">
           <button
             onClick={() => { newSession(); setSidebarOpen(false); }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors"
+            disabled={isCurrentSessionEmpty}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            title={isCurrentSessionEmpty ? 'Sesi ini masih kosong, mulai chat dulu!' : 'Buat sesi chat baru'}
           >
             <Plus size={13} /> New Chat
           </button>
@@ -841,7 +1082,10 @@ export default function Chat() {
       </div>
 
       {/* Chat area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={clsx(
+        'flex flex-col min-w-0 transition-all duration-300',
+        artifact.open ? 'flex-1' : 'flex-1'
+      )}>
 
         {/* Topbar */}
         <div className="h-12 border-b border-border flex items-center px-4 gap-3 flex-shrink-0 bg-bg-2">
@@ -943,6 +1187,7 @@ export default function Chat() {
               onExport={handleExportChat}
               onSpeak={handleSpeak}
               speakingId={speakingId}
+              onOpenArtifact={openArtifact}
             />
           ))}
 
@@ -954,6 +1199,7 @@ export default function Chat() {
               onStop={stopStreaming}
               onSpeak={handleSpeak}
               speakingId={speakingId}
+              onOpenArtifact={openArtifact}
             />
           )}
 
@@ -1265,7 +1511,14 @@ export default function Chat() {
         )}
       </div>
 
-
+      {/* Artifacts Panel — slideout dari kanan */}
+      {artifact.open && (
+        <ArtifactsPanel
+          code={artifact.code}
+          language={artifact.language}
+          onClose={closeArtifact}
+        />
+      )}
     </div>
   )
 }

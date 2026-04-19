@@ -453,11 +453,11 @@ class AgentExecutor:
                                 return await find_safe_port(args.get("preferred", 0))
                             else:
                                 return f"Unknown tool: {cmd}. Available tools: execute_bash, read_file, write_file, write_multiple_files, ask_model, web_search, find_safe_port"
-                        res = await asyncio.wait_for(_exec_tool(), timeout=45.0)
+                        res = await asyncio.wait_for(_exec_tool(), timeout=90.0)
                     except asyncio.TimeoutError:
-                        res = f"Tool {cmd} timed out after 45 seconds. The tool execution was too slow. Try a simpler command or break it into smaller steps."
+                        res = f"Tool {cmd} timed out after 90 seconds. The tool execution was too slow. Try a simpler command or break it into smaller steps."
                         if include_tool_logs:
-                            yield f"\n> ⏱️ **Tool {cmd} timeout setelah 45 detik. Melanjutkan...**\n"
+                            yield f"\n> ⏱️ **Tool {cmd} timeout setelah 90 detik. Melanjutkan...**\n"
                     except Exception as e:
                         res = f"Error executing tool {cmd}: {str(e)}. The tool encountered an error but the process continues."
                         if include_tool_logs:

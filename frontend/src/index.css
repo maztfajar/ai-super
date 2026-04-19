@@ -133,9 +133,18 @@ body {
 @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
 @keyframes pulse2 { 0%,100%{opacity:1} 50%{opacity:0.4} }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes slideInRight { from { opacity:0; transform:translateX(32px); } to { opacity:1; transform:translateX(0); } }
 .animate-fade { animation: fadeIn 0.2s ease; }
 .animate-pulse2 { animation: pulse2 2s infinite; }
 .animate-spin { animation: spin 1s linear infinite; }
+.animate-slide-in-right { animation: slideInRight 0.22s cubic-bezier(0.16,1,0.3,1); }
+
+/* Artifacts panel code display (no bubble background) */
+.artifact-code-view { background: var(--bg); color: var(--ink-2); font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.7; }
+
+/* Override prose pre/code inside custom CodeBlock — avoid double styling */
+.prose .code-block-wrapper pre { background: none; border: none; padding: 0; margin: 0; overflow: visible; }
+.prose .code-block-wrapper code { background: none; padding: 0; color: inherit; font-size: inherit; }
 
 /* Scrollbar */
 * { scrollbar-width: thin; scrollbar-color: rgba(100,120,255,0.25) transparent; }

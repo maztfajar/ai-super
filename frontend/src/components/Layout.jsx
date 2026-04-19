@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { useAuthStore, useUIStore, useThemeStore, useOrchestratorStore } from '../store'
+import { useAuthStore, useUIStore, useThemeStore, useOrchestratorStore, useChatStore } from '../store'
 import { useState, useEffect } from 'react'
 import { api } from '../hooks/useApi'
 import { useTranslation } from 'react-i18next'
@@ -12,6 +12,38 @@ import {
 import clsx from 'clsx'
 import OrchestratorDropdown from './OrchestratorDropdown'
 import ChannelSelector from './ChannelSelector'
+
+import toast from 'react-hot-toast'
+
+// ── Topbar New Chat Button dengan guard sesi kosong ─────────────
+function TopbarNewChatButton() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const currentSession = useChatStore(s => s.currentSession)
+  const messages = useChatStore(s => s.messages)
+
+  const isOnChatPage = location.pathname.startsWith('/chat')
+  const isCurrentSessionEmpty = currentSession && messages.length === 0
+
+  const handleClick = () => {
+    if (isCurrentSessionEmpty) {
+      toast('Sesi ini masih kosong. Mulai chat dulu!', { icon: '💬', duration: 2000 })
+      return
+    }
+    navigate('/chat')
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={isCurrentSessionEmpty}
+      title={isCurrentSessionEmpty ? 'Sesi ini masih kosong, mulai chat dulu!' : 'Buat sesi chat baru'}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+    >
+      <MessageSquare size={12}/>New Chat
+    </button>
+  )
+}
 
 export default function Layout() {
   const { t } = useTranslation()
@@ -236,9 +268,7 @@ export default function Layout() {
               className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
               {theme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
             </button>
-            <NavLink to="/chat" className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors">
-              <MessageSquare size={12}/>New Chat
-            </NavLink>
+            <TopbarNewChatButton />
           </div>
         </header>
         <main className="flex-1 overflow-auto">

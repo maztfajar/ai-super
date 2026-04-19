@@ -161,6 +161,30 @@ AUDIO_GEN_PATTERNS = [
     "voice note", "rekam suara",
 ]
 
+# Fast-path: skip LLM classifier untuk permintaan coding/app yang jelas
+# Langsung assign intent + is_simple=True agar time-to-first-token cepat
+FAST_CODING_PATTERNS = [
+    "buatkan aplikasi", "bikin aplikasi", "buat aplikasi",
+    "buatkan kode", "bikin kode", "buat kode",
+    "buatkan program", "bikin program", "buat program",
+    "buatkan website", "bikin website", "buat website",
+    "buatkan fungsi", "bikin fungsi", "buat fungsi",
+    "buatkan script", "bikin script",
+    "buatkan kalkulator", "bikin kalkulator",
+    "buatkan todo", "bikin todo", "buatkan game", "bikin game",
+    "create app", "create website", "create function", "create script",
+    "write code", "write a function", "write a script",
+    "generate code", "generate a",
+    "tampilkan kode lengkap", "kode lengkap", "full code", "complete code",
+]
+
+# Fast-path: skip LLM classifier untuk permintaan analisis sederhana
+FAST_ANALYSIS_PATTERNS = [
+    "jelaskan", "explain", "apa itu", "what is", "bagaimana cara", "how to",
+    "perbedaan antara", "difference between", "compare", "bandingkan",
+    "rangkum", "summarize", "translate", "terjemahkan",
+]
+
 
 class RequestPreprocessor:
     """
@@ -210,6 +234,27 @@ class RequestPreprocessor:
                     image_mime=image_mime[:20], msg=message[:50])
             return spec
 
+        # Step 0b: Fast-path untuk coding/writing — skip LLM classifier sepenuhnya
+        msg_lower_fast = message.lower()
+        if any(p in msg_lower_fast for p in FAST_CODING_PATTERNS):
+            spec.primary_intent = "coding"
+            spec.intents = ["coding"]
+            spec.complexity_score = 0.5
+            spec.is_simple = True  # Biarkan agent executor yang handle kompleksitasnya
+            spec.quality_priority = "balanced"
+            spec.preprocessing_time_ms = int((time.time() - start) * 1000)
+            log.info("Preprocessor: fast-path coding detected", msg=message[:60])
+            return spec
+
+        if any(p in msg_lower_fast for p in FAST_ANALYSIS_PATTERNS) and len(message) < 300:
+            spec.primary_intent = "analysis"
+            spec.intents = ["analysis"]
+            spec.complexity_score = 0.3
+            spec.is_simple = True
+            spec.preprocessing_time_ms = int((time.time() - start) * 1000)
+            log.info("Preprocessor: fast-path analysis detected", msg=message[:60])
+            return spec
+
         # Step 1: Fast heuristic check
         if self._is_trivial(message):
             spec.is_simple = True
@@ -241,7 +286,8 @@ class RequestPreprocessor:
                     spec.intents.append("real_time_search")
 
             # Determine if simple (skip orchestration overhead)
-            spec.is_simple = spec.complexity_score < 0.4 and not spec.requires_multi_agent
+            # Threshold 0.55: single-deliverable tasks (coding, writing) skip pipeline
+            spec.is_simple = spec.complexity_score < 0.55 and not spec.requires_multi_agent
 
         except _asyncio.TimeoutError:
             log.warning("Preprocessor LLM classification timed out (>6s), using fallback")

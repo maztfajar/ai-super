@@ -412,7 +412,7 @@ class Orchestrator:
 
         # Build messages
         messages = [{"role": "system", "content": system_prompt}]
-        messages += history[-10:]  # Limit history to prevent context overflow
+        messages += history[-6:]  # Limit history to prevent context overflow
         messages.append({"role": "user", "content": spec.original_message})
 
         yield OrchestratorEvent("status", "Merespons...")
@@ -424,17 +424,56 @@ class Orchestrator:
 
         try:
             if is_orchestrator:
-                # Use agent executor for tool access
                 from agents.executor import agent_executor
-                async for chunk in agent_executor.stream_chat(
-                    base_model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    include_tool_logs=include_tool_logs,
-                    emit_thinking=emit_thinking,
-                ):
-                    yield OrchestratorEvent("chunk", chunk)
+                # Watchdog pattern: jika tidak ada chunk selama IDLE_TIMEOUT detik, hentikan
+                IDLE_TIMEOUT = 120.0  # 2 menit idle = timeout
+                timed_out = False
+
+                async def _producer(q: asyncio.Queue):
+                    """Push chunks ke queue, None = selesai."""
+                    try:
+                        async for chunk in agent_executor.stream_chat(
+                            base_model=model,
+                            messages=messages,
+                            temperature=temperature,
+                            max_tokens=max_tokens,
+                            include_tool_logs=include_tool_logs,
+                            emit_thinking=emit_thinking,
+                        ):
+                            await q.put(chunk)
+                    except asyncio.CancelledError:
+                        pass
+                    finally:
+                        await q.put(None)  # sentinel
+
+                q = asyncio.Queue()
+                producer_task = asyncio.create_task(_producer(q))
+
+                try:
+                    while True:
+                        try:
+                            chunk = await asyncio.wait_for(q.get(), timeout=IDLE_TIMEOUT)
+                        except asyncio.TimeoutError:
+                            timed_out = True
+                            producer_task.cancel()
+                            break
+                        if chunk is None:
+                            break
+                        yield OrchestratorEvent("chunk", chunk)
+                finally:
+                    if not producer_task.done():
+                        producer_task.cancel()
+                    try:
+                        await asyncio.shield(producer_task)
+                    except (asyncio.CancelledError, Exception):
+                        pass
+
+                if timed_out:
+                    yield OrchestratorEvent("chunk",
+                        "\n\n⏱️ **Waktu habis (idle >2 menit).** "
+                        "Model berhenti merespons. Coba pertanyaan lebih sederhana "
+                        "atau pilih model yang lebih cepat."
+                    )
             else:
                 # Direct model call — no tools
                 async for chunk in model_manager.chat_stream(
@@ -637,7 +676,7 @@ class Orchestrator:
             {"role": "system", "content": agent_prompt},
         ]
         # Include relevant history (trimmed)
-        messages += history[-10:]
+        messages += history[-6:]
         # Task-specific instruction
         messages.append({"role": "user", "content": (
             f"You are working on a specific sub-task as part of a larger request.\n\n"
