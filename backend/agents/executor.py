@@ -196,7 +196,7 @@ class ResponseFilter:
                     self.pending = self.pending[idx:]
                     if tag_type == "thinking":
                         if self.emit_thinking:
-                            output += '\n\n<details class="tool-log" style="opacity: 0.8; font-size: 0.9em;"><summary><span>🤔 **Proses Berpikir...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
+                            output += '\n\n---\n*🤔 Proses Berpikir:*\n'
                         self.pending = self.pending[tag_len:]
                         self.state = "THINKING"
                     elif tag_type == "response":
@@ -224,7 +224,7 @@ class ResponseFilter:
                 if end_think != -1:
                     if self.emit_thinking:
                         output += self.pending[:end_think]
-                        output += '\n\n</details>\n\n'
+                        output += '\n---\n\n'
                     self.pending = self.pending[end_think + len(self.current_think_tag):]
                     self.state = "WAITING"
                 else:
@@ -260,7 +260,7 @@ class ResponseFilter:
     def flush(self) -> str:
         if self.state == "THINKING" and self.pending:
             if self.emit_thinking:
-                res = self.pending + '\n\n</details>\n\n'
+                res = self.pending + '\n---\n\n'
             else:
                 res = ""
             self.pending = ""

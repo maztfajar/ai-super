@@ -200,6 +200,12 @@ async def chat_send(
         thinking_steps = []  # Collect all status messages for thinking section
         error_occurred = False
 
+        # ─── ANTI-BUFFERING PADDING ────────────────────────────
+        # VPS reverse proxies (Nginx/Cloudflare) often buffer SSE chunks until 4KB.
+        # This padding forces the proxy to flush the headers/buffer immediately
+        # so the frontend doesn't hang at "0 karakter" for a long time.
+        yield f": {' ' * 4096}\n\n"
+
         # Send session info
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': final_model})}\n\n"
 

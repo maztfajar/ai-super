@@ -93,10 +93,10 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
     
     async def dispatch(self, request: Request, call_next):
         try:
-            # Set longer timeout untuk chat creation/image generation (120s)
+            # Set longer timeout untuk chat creation/image generation (600s / 10 minutes)
             # Set normal timeout untuk other requests (60s)
-            if "/api/chat/send" in request.url.path or "/images" in request.url.path:
-                timeout = 120  # 2 minutes untuk long-running operations
+            if "/api/chat/send" in request.url.path or "/images" in request.url.path or "/execute_pending" in request.url.path:
+                timeout = 600  # 10 minutes untuk agent orchestration
             else:
                 timeout = 60  # 1 minute untuk normal requests
             
