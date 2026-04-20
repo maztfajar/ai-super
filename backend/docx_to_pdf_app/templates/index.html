@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOCX to PDF Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .card {
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            border: none;
+            overflow: hidden;
+        }
+        .card-header {
+            background: linear-gradient(90deg, #4a6fa5, #6d9dc5);
+            color: white;
+            border-bottom: none;
+            padding: 2rem 1rem;
+        }
+        .upload-area {
+            border: 3px dashed #6c757d;
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background-color: #f8f9fa;
+        }
+        .upload-area:hover {
+            border-color: #4a6fa5;
+            background-color: #e9ecef;
+        }
+        .upload-area.dragover {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .file-info {
+            background-color: #f1f8ff;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+        .btn-convert {
+            background: linear-gradient(90deg, #28a745, #20c997);
+            border: none;
+            padding: 0.8rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            transition: all 0.3s;
+        }
+        .btn-convert:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+        }
+        .features {
+            background-color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        .feature-icon {
+            font-size: 2.5rem;
+            color: #4a6fa5;
+            margin-bottom: 1rem;
+        }
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        .spinner-border {
+            width: 1.5rem;
+            height: 1.5rem;
+            display: none;
+        }
+        .file-icon {
+            font-size: 4rem;
+            color: #4a6fa5;
+        }
+        .max-size {
+            background-color: #fff3cd;
+            border-radius: 10px;
+            padding: 0.5rem 1rem;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <h1 class="display-5 fw-bold mb-3"><i class="fas fa-file-pdf me-3"></i>DOCX to PDF Converter</h1>
+                        <p class="lead mb-0">Convert your Microsoft Word documents to PDF format instantly</p>
+                    </div>
+                    <div class="card-body p-4 p-md-5">
+                        {% if error %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Error:</strong> {{ error }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        {% endif %}
+                        
+                        <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+                            <div class="upload-area" id="dropArea">
+                                <div class="file-icon mb-3">
+                                    <i class="fas fa-file-word"></i>
+                                    <i class="fas fa-long-arrow-alt-right mx-3 text-muted"></i>
+                                    <i class="fas fa-file-pdf"></i>
+                                </div>
+                                <h4 class="mb-3">Drag & Drop Your DOCX File Here</h4>
+                                <p class="text-muted mb-4">or click to browse your computer</p>
+                                
+                                <div class="mb-3">
+                                    <label for="fileInput" class="btn btn-outline-primary btn-lg">
+                                        <i class="fas fa-folder-open me-2"></i>Choose File
+                                    </label>
+                                    <input type="file" class="form-control d-none" id="fileInput" name="file" accept=".docx" required>
+                                </div>
+                                
+                                <div class="max-size">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Maximum file size: 16MB
+                                </div>
+                            </div>
+                            
+                            <div class="file-info" id="fileInfo">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-file-word fa-2x text-primary"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h6 class="mb-1" id="fileName"></h6>
+                                        <small class="text-muted" id="fileSize"></small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="removeFile">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="text-center mt-4">
+                                <button type="submit" class="btn btn-convert" id="convertBtn">
+                                    <i class="fas fa-sync-alt me-2"></i>
+                                    Convert to PDF
+                                    <span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true" id="loadingSpinner"></span>
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="features mt-5">
+                            <h3 class="text-center mb-4"><i class="fas fa-star me-2 text-warning"></i>Why Use Our Converter?</h3>
+                            <div class="row text-center">
+                                <div class="col-md-4 mb-4">
+                                    <div class="feature-icon">
+                                        <i class="fas fa-bolt"></i>
+                                    </div>
+                                    <h5>Fast Conversion</h5>
+                                    <p class="text-muted">Convert documents in seconds with our optimized processing</p>
+                                </div>
+                                <div class="col-md-4 mb-4">
+                                    <div class="feature-icon">
+                                        <i class="fas fa-shield-alt"></i>
+                                    </div>
+                                    <h5>Secure & Private</h5>
+                                    <p class="text-muted">Files are automatically deleted after download for your privacy</p>
+                                </div>
+                                <div class="col-md-4 mb-4">
+                                    <div class="feature-icon">
+                                        <i class="fas fa-desktop"></i>
+                                    </div>
+                                    <h5>No Installation</h5>
+                                    <p class="text-muted">Works directly in your browser - no software to install</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-4 text-muted">
+                            <small>
+                                <i class="fas fa-info-circle me-1"></i>
+                                Supports .docx files only. Converted files are automatically deleted after 1 hour.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const dropArea = document.getElementById('dropArea');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFileBtn = document.getElementById('removeFile');
+        const convertBtn = document.getElementById('convertBtn');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const uploadForm = document.getElementById('uploadForm');
+        
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        // Highlight drop area when item is dragged over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropArea.classList.add('dragover');
+        }
+        
+        function unhighlight() {
+            dropArea.classList.remove('dragover');
+        }
+        
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                fileInput.files = files;
+                updateFileInfo(files[0]);
+            }
+        }
+        
+        // Handle file selection via click
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                updateFileInfo(fileInput.files[0]);
+            }
+        });
+        
+        // Update file info display
+        function updateFileInfo(file) {
+            // Validate file type
+            if (!file.name.toLowerCase().endsWith('.docx')) {
+                alert('Please select a .docx file');
+                fileInput.value = '';
+                return;
+            }
+            
+            // Validate file size (16MB)
+            const maxSize = 16 * 1024 * 1024; // 16MB in bytes
+            if (file.size > maxSize) {
+                alert('File is too large. Maximum size is 16MB');
+                fileInput.value = '';
+                return;
+            }
+            
+            // Display file info
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.style.display = 'block';
+            
+            // Enable convert button
+            convertBtn.disabled = false;
+        }
+        
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Remove file
+        removeFileBtn.addEventListener('click', () => {
+            fileInput.value = '';
+            fileInfo.style.display = 'none';
+            convertBtn.disabled = true;
+        });
+        
+        // Form submission
+        uploadForm.addEventListener('submit', (e) => {
+            if (!fileInput.files.length) {
+                e.preventDefault();
+                alert('Please select a file first');
+                return;
+            }
+            
+            // Show loading spinner
+            loadingSpinner.style.display = 'inline-block';
+            convertBtn.disabled = true;
+            convertBtn.innerHTML = '<i class="fas fa-sync-alt me-2"></i>Converting...' + 
+                '<span class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true" id="loadingSpinner"></span>';
+        });
+        
+        // Check for URL error parameter
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+            
+            if (error) {
+                // Show error alert if not already shown by template
+                if (!document.querySelector('.alert-danger')) {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+                    alertDiv.innerHTML = `
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Error:</strong> ${error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    
+                    const cardBody = document.querySelector('.card-body');
+                    cardBody.insertBefore(alertDiv, cardBody.firstChild);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

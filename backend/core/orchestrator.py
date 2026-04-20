@@ -129,7 +129,7 @@ class Orchestrator:
             async for event in self._handle_simple(
                 spec, system_prompt, history, temperature, max_tokens,
                 user_model_choice, include_tool_logs, force_agent="audio_gen",
-                emit_thinking=emit_thinking
+                emit_thinking=emit_thinking, session_id=session_id
             ):
                 yield event
             return
@@ -175,7 +175,7 @@ class Orchestrator:
             async for event in self._handle_simple(
                 spec, system_prompt, history, temperature, max_tokens,
                 user_model_choice, include_tool_logs, emit_thinking=emit_thinking,
-                auto_execute=auto_execute,
+                auto_execute=auto_execute, session_id=session_id
             ):
                 if event.type == "chunk":
                     # Potentially update result_summary here if needed
@@ -375,6 +375,7 @@ class Orchestrator:
         force_agent: Optional[str] = None,
         emit_thinking: bool = True,
         auto_execute: bool = False,
+        session_id: str = None,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """Handle simple messages without full orchestration overhead."""
 
@@ -466,8 +467,10 @@ class Orchestrator:
                         producer_task.cancel()
                     try:
                         await asyncio.shield(producer_task)
-                    except (asyncio.CancelledError, Exception):
-                        pass
+                    except (asyncio.CancelledError, Exception) as e:
+                        if not isinstance(e, asyncio.CancelledError):
+                            log.error("Producer task internal error", error=str(e))
+                            yield OrchestratorEvent("chunk", f"\n\n❌ **Error System:** {str(e)}")
 
                 if timed_out:
                     yield OrchestratorEvent("chunk",

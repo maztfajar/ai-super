@@ -47,9 +47,9 @@ function CodeBlock({ language, code, onOpenArtifact }) {
   }
 
   return (
-    <div className="code-block-wrapper relative my-2 rounded-xl overflow-hidden border border-border-2" style={{ background: '#0d1117' }}>
+    <div className="code-block-wrapper relative my-2 rounded-xl overflow-hidden border border-border-2 bg-bg-3">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-2" style={{ background: '#161b22' }}>
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-2 bg-bg-4">
         <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', langColor)}>
           {language || 'code'}
         </span>
@@ -76,9 +76,9 @@ function CodeBlock({ language, code, onOpenArtifact }) {
           </button>
         </div>
       </div>
-      {/* Code content — always dark themed, text selalu terbaca */}
-      <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono" style={{ color: '#abb2bf', background: 'transparent', margin: 0, border: 'none' }}>
-        <code style={{ color: 'inherit', background: 'none', padding: 0 }}>{code}</code>
+      {/* Code content — automatically adapts to light/dark themes via CSS vars */}
+      <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none">
+        <code className="text-inherit bg-transparent p-0">{code}</code>
       </pre>
     </div>
   )

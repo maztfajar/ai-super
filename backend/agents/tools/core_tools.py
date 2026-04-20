@@ -96,9 +96,28 @@ async def find_safe_port(preferred: int = 0) -> str:
     return "Error: Could not find a free port in range 8100-9000."
 
 
-async def execute_bash(command: str) -> str:
+async def execute_bash(command: str, session_id: str = None) -> str:
     """Run a bash command and return output."""
     try:
+        # Get project location from session if available
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.project_metadata:
+                        project_base_path = session.project_metadata.get("project_path")
+            except Exception:
+                pass
+                
+        if not project_base_path:
+            safe_folder = session_id[:8] if session_id else "agent"
+            project_base_path = os.path.expanduser(f"~/projects/{safe_folder}")
+            
+        os.makedirs(project_base_path, exist_ok=True)
+
         # Agent Safeguards: Blocklist to prevent catastrophic mistakes
         RESTRICTED_COMMANDS = [
             "rm -rf /", "mkfs", "dd if=", "shutdown", "reboot", "halt", 
@@ -116,6 +135,7 @@ async def execute_bash(command: str) -> str:
             command,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            cwd=project_base_path
         )
 
         async def read_stream(stream, max_lines=10000):
@@ -147,7 +167,8 @@ async def execute_bash(command: str) -> str:
 
         out, out_trunc, err, err_trunc = await asyncio.wait_for(run_with_timeout(), timeout=120.0)
         
-        output = port_warning  # Prepend port warning if any
+        output = f"📁 [Working Directory: {project_base_path}]\n"
+        output += port_warning  # Prepend port warning if any
         if out:
             output += out
             if out_trunc:
@@ -167,14 +188,37 @@ async def execute_bash(command: str) -> str:
     except Exception as e:
         return f"Error executing command: {str(e)}"
 
-async def read_file(path: str) -> str:
+async def read_file(path: str, session_id: str = None) -> str:
     """Read a file."""
     try:
         import aiofiles
-        if not os.path.exists(path):
-            return f"Error: File {path} not found."
+        
+        # Get project location from session if available
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.project_metadata:
+                        project_base_path = session.project_metadata.get("project_path")
+            except Exception:
+                pass
+                
+        if not project_base_path and not os.path.isabs(path):
+            safe_folder = session_id[:8] if session_id else "agent"
+            project_base_path = os.path.expanduser(f"~/projects/{safe_folder}")
+            
+        if project_base_path and not os.path.isabs(path):
+            abs_path = os.path.join(project_base_path, path)
+        else:
+            abs_path = os.path.abspath(path)
+            
+        if not os.path.exists(abs_path):
+            return f"Error: File {abs_path} not found."
         async def _read():
-            async with aiofiles.open(path, "r", encoding="utf-8") as f:
+            async with aiofiles.open(abs_path, "r", encoding="utf-8") as f:
                 return await f.read()
         return await asyncio.wait_for(_read(), timeout=30.0)
     except asyncio.TimeoutError:
@@ -199,6 +243,12 @@ async def write_file(path: str, content: str, session_id: str = None) -> str:
                         project_base_path = session.project_metadata.get("project_path")
             except Exception:
                 pass  # Continue without project path if database error
+        
+        # DEFAULT: never write inside AI Orchestrator folders.
+        # If no explicit project_path is set for the session, sandbox in ~/projects/
+        if not project_base_path and not os.path.isabs(path):
+            safe_folder = session_id[:8] if session_id else "agent"
+            project_base_path = os.path.expanduser(f"~/projects/{safe_folder}")
         
         # Apply project base path if set and path is relative
         if project_base_path and not os.path.isabs(path):
@@ -242,6 +292,14 @@ async def write_multiple_files(files_data: list, session_id: str = None) -> str:
                         project_base_path = session.project_metadata.get("project_path")
             except Exception:
                 pass  # Continue without project path if database error
+        
+        # DEFAULT: sandbox in ~/projects/ when no explicit project_path set
+        if not project_base_path:
+            # Check if any first file path is relative (not absolute)
+            first_relative = next((f.get("path", "") for f in files_data if f.get("path") and not os.path.isabs(f.get("path", ""))), None)
+            if first_relative:
+                safe_folder = session_id[:8] if session_id else "agent"
+                project_base_path = os.path.expanduser(f"~/projects/{safe_folder}")
         
         results = []
         for file_obj in files_data:

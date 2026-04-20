@@ -38,6 +38,7 @@ Instead, inside your <thinking> tag, you MUST explicitly structure your reasonin
 **STRICT ANTI-HALLUCINATION & TOOL USAGE RULES (MANDATORY):**
 - NEVER guess or hallucinate server metrics, file contents, or system status. If asked about the system (e.g., RAM, CPU), you MUST use the `execute_bash` tool to fetch real data BEFORE answering.
 - ALWAYS USE TOOLS for data management and creation. If requested to create a document, manage files, or handle complex data structures (like a system table), DO NOT merely simulate the output in text. You MUST use `write_file` or `execute_bash` to actually materialize that data on the system.
+- **PROJECT DIRECTORY & FOLDER ISOLATION (CRITICAL):** All tools automatically execute relative to the user's chosen root directory (e.g., Desktop). To prevent polluting their root folder, you MUST ALWAYS create a dedicated sub-folder named after the application you are building. For instance, if creating a calculator app, your file paths in `write_file` MUST be `calculator-app/index.html` and `calculator-app/style.css` instead of just `index.html` at the root. Ensure all your bash commands also point into this sub-folder (e.g., `cd calculator-app && npm init -y`).
 
 **PORT SAFETY (CRITICAL — NEVER VIOLATE):**
 - The AI Orchestrator runs on port 7860. Reserved ports: 7860, 6379 (Redis), 5432 (Postgres), 3306 (MySQL), 11434 (Ollama).
@@ -61,7 +62,7 @@ DO NOT stop after initial creation - continue through testing and validation unt
 
 **ABSOLUTE RULE — OUTPUT FORMAT:**
 You MUST wrap your entire output in EXACTLY these XML tags. NO EXCEPTIONS.
-DO NOT write any conversational text, greetings, or explanations before the `<thinking>` tag. Your response MUST start exactly with `<thinking>`.
+DO NOT write any conversational text, greetings, or explanations before the `<thinking>` or `<think>` tag. Your response MUST start exactly with `<thinking>` or `<think>`.
 
 Step 1 (HIDDEN from user): Put ALL your reasoning, analysis, and tool calls inside:
 <thinking>
@@ -128,59 +129,92 @@ Here is the poem written by the other model...
 class ResponseFilter:
     """
     TagRewriter/Filter.
-    Wraps <thinking> blocks into <details> dropdowns.
+    Wraps <thinking> or <think> blocks into <details> dropdowns.
     Only emits content from <response> naturally or inside the <details> wrapper.
-    Drops plain text outside of known tags.
+    If the model fails to use tags, falls back to emitting raw text.
     """
     def __init__(self, emit_thinking: bool = True):
         self.state = "WAITING"
         self.pending = ""
-        self.ever_emitted = False
+        self.ever_emitted_response = False
         self.emit_thinking = emit_thinking
+        self.current_think_tag = "</thinking>"
 
     def process(self, chunk: str) -> str:
         self.pending += chunk
         output = ""
 
-        while self.pending:
+        # Auto-fallback: if we haven't seen any known tags within the first 100 chars,
+        # we assume the model failed to follow instructions and just emit raw text.
+        if self.state == "WAITING" and len(self.pending) > 100:
+            if not any(t in self.pending for t in ["<think", "<response>", "<tool>"]):
+                self.state = "RAW"
+                
+        if self.state == "RAW":
+            self.ever_emitted_response = True
+            out = self.pending
+            self.pending = ""
+            return out
+
+        while self.pending and self.state != "RAW":
             if self.state == "WAITING":
-                # Look for earliest supported tag
-                i_think = self.pending.find("<thinking>")
+                i_think1 = self.pending.find("<thinking>")
+                i_think2 = self.pending.find("<think>")
+                
+                i_think = -1
+                think_len = 0
+                if i_think1 != -1 and i_think2 != -1:
+                    if i_think1 <= i_think2:
+                        i_think, think_len = i_think1, len("<thinking>")
+                        self.current_think_tag = "</thinking>"
+                    else:
+                        i_think, think_len = i_think2, len("<think>")
+                        self.current_think_tag = "</think>"
+                elif i_think1 != -1:
+                    i_think, think_len = i_think1, len("<thinking>")
+                    self.current_think_tag = "</thinking>"
+                elif i_think2 != -1:
+                    i_think, think_len = i_think2, len("<think>")
+                    self.current_think_tag = "</think>"
+
                 i_resp = self.pending.find("<response>")
                 i_tool = self.pending.find("<tool>")
 
                 tags = []
-                if i_think != -1: tags.append((i_think, "<thinking>"))
-                if i_resp != -1: tags.append((i_resp, "<response>"))
-                if i_tool != -1: tags.append((i_tool, "<tool>"))
+                if i_think != -1: tags.append((i_think, think_len, "thinking"))
+                if i_resp != -1: tags.append((i_resp, len("<response>"), "response"))
+                if i_tool != -1: tags.append((i_tool, len("<tool>"), "tool"))
 
                 if tags:
                     tags.sort(key=lambda x: x[0])
-                    idx, tag = tags[0]
-                    # Discard anything before the earliest tag
+                    idx, tag_len, tag_type = tags[0]
+                    # Check if there is plain text before the first tag. If it's substantial, emit it.
+                    if idx > 15 and not self.ever_emitted_response:
+                        output += self.pending[:idx]
+                        self.ever_emitted_response = True
+                        
                     self.pending = self.pending[idx:]
-                    if tag == "<thinking>":
+                    if tag_type == "thinking":
                         if self.emit_thinking:
                             output += '\n\n<details class="tool-log" style="opacity: 0.8; font-size: 0.9em;"><summary><span>🤔 **Proses Berpikir...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
-                        self.pending = self.pending[len("<thinking>"):]
+                        self.pending = self.pending[tag_len:]
                         self.state = "THINKING"
-                    elif tag == "<response>":
-                        self.pending = self.pending[len("<response>"):]
+                    elif tag_type == "response":
+                        self.pending = self.pending[tag_len:]
                         self.state = "RESPONSE"
-                        self.ever_emitted = True
-                    elif tag == "<tool>":
-                        # Handled by AgentExecutor outer loop
+                        self.ever_emitted_response = True
+                    elif tag_type == "tool":
                         break
                 else:
-                    if len(self.pending) > 15:
-                        self.pending = self.pending[-15:]
+                    if len(self.pending) > 50:
+                        output += self.pending[:-50]
+                        self.pending = self.pending[-50:]
                     break
 
             elif self.state == "THINKING":
-                end_think = self.pending.find("</thinking>")
+                end_think = self.pending.find(self.current_think_tag)
                 idx_tool = self.pending.find("<tool>")
                 
-                # If <tool> is found before </thinking>, let AgentExecutor grab it
                 if idx_tool != -1 and (end_think == -1 or idx_tool < end_think):
                     if self.emit_thinking:
                         output += self.pending[:idx_tool]
@@ -191,7 +225,7 @@ class ResponseFilter:
                     if self.emit_thinking:
                         output += self.pending[:end_think]
                         output += '\n\n</details>\n\n'
-                    self.pending = self.pending[end_think + len("</thinking>"):]
+                    self.pending = self.pending[end_think + len(self.current_think_tag):]
                     self.state = "WAITING"
                 else:
                     safe = len(self.pending) - 15
@@ -235,6 +269,10 @@ class ResponseFilter:
             res = self.pending
             self.pending = ""
             return res
+        elif self.state == "RAW" and self.pending:
+            res = self.pending
+            self.pending = ""
+            return res
         return ""
 
 
@@ -244,6 +282,7 @@ class AgentExecutor:
         for msg in messages:
             if msg["role"] == "assistant":
                 msg["content"] = re.sub(r'<thinking>.*?</thinking>', '', msg["content"], flags=re.DOTALL)
+                msg["content"] = re.sub(r'<think>.*?</think>', '', msg["content"], flags=re.DOTALL)
         
         if len(messages) > 20:
             return messages[:2] + messages[-10:]
@@ -449,9 +488,9 @@ class AgentExecutor:
                             from agents.tools import write_multiple_files, find_safe_port
                             
                             if cmd == "execute_bash":
-                                return await execute_bash(args.get("command", ""))
+                                return await execute_bash(args.get("command", ""), session_id)
                             elif cmd == "read_file":
-                                return await read_file(args.get("path", ""))
+                                return await read_file(args.get("path", ""), session_id)
                             elif cmd == "write_file":
                                 return await write_file(args.get("path", ""), args.get("content", ""), session_id)
                             elif cmd == "write_multiple_files":
@@ -502,11 +541,11 @@ class AgentExecutor:
                 
                 # SAFE FALLBACK: If the model never used <response> tags,
                 # salvage the raw text.
-                if not response_filter.ever_emitted:
-                    # Explicitly remove the entire <thinking> block and its contents first
-                    fallback_text = re.sub(r'<thinking>.*?</thinking>', '', buffer, flags=re.DOTALL)
+                if not response_filter.ever_emitted_response:
+                    # Explicitly remove the entire <thinking> or <think> block and its contents first
+                    fallback_text = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', buffer, flags=re.DOTALL)
                     # Remove any loose tags remaining
-                    fallback_text = re.sub(r'</?(?:thinking|response|tool|observation)>', '', fallback_text).strip()
+                    fallback_text = re.sub(r'</?(?:thinking|think|response|tool|observation)>', '', fallback_text).strip()
                     if fallback_text:
                         yield fallback_text
                     elif not stream_error:
