@@ -7,6 +7,7 @@ import { api } from '../hooks/useApi'
 import { copyToClipboard } from "../utils/clipboard"
 import { useAuthStore, useChatStore, useModelsStore, useOrchestratorStore } from '../store'
 import ChannelSelector from '../components/ChannelSelector'
+import ProjectLocationPopup from '../components/ProjectLocationPopup'
 import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
@@ -544,6 +545,14 @@ export default function Chat() {
   const closeArtifact = useCallback(() => {
     setArtifact(a => ({ ...a, open: false }))
   }, [])
+  // Project Location Popup state
+  const [projectLocationPopup, setProjectLocationPopup] = useState({ open: false, sessionId: null })
+  const openProjectLocationPopup = useCallback((sessionId) => {
+    setProjectLocationPopup({ open: true, sessionId })
+  }, [])
+  const closeProjectLocationPopup = useCallback(() => {
+    setProjectLocationPopup({ open: false, sessionId: null })
+  }, [])
   // Multimodal state
   const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
   const [isRecording, setIsRecording] = useState(false)
@@ -743,6 +752,25 @@ export default function Chat() {
 
     clearActiveRouting()
     clearDrivePrompt()
+
+    // Check if user wants to create an application/project
+    const isAppCreation = /buat|create|bikin|buatkan|create|develop|develop|make|build/i.test(text) && 
+                           (/aplikasi|application|web|website|project|proyek|sistem|system|app/i.test(text) ||
+                            /react|vue|angular|node|python|php|javascript|typescript/i.test(text))
+
+    if (isAppCreation) {
+      // Check if project location is set
+      try {
+        const projectLocation = await api.getProjectLocation(currentSession.id)
+        if (!projectLocation.project_path) {
+          // Show popup to set project location
+          openProjectLocationPopup(currentSession.id)
+          return
+        }
+      } catch (error) {
+        console.error('Failed to check project location:', error)
+      }
+    }
 
     setInput('')
     setActualModel(null)
@@ -1517,6 +1545,19 @@ export default function Chat() {
           code={artifact.code}
           language={artifact.language}
           onClose={closeArtifact}
+        />
+      )}
+      
+      {/* Project Location Popup */}
+      {projectLocationPopup.open && (
+        <ProjectLocationPopup
+          isOpen={projectLocationPopup.open}
+          sessionId={projectLocationPopup.sessionId}
+          onClose={closeProjectLocationPopup}
+          onLocationSet={(projectPath) => {
+            // Store project path in session and notify user
+            toast.success(`📁 Lokasi proyek disimpan: ${projectPath}`)
+          }}
         />
       )}
     </div>

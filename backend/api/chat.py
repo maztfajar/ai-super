@@ -258,11 +258,16 @@ async def chat_send(
         except asyncio.TimeoutError:
             import traceback
             traceback.print_exc()
-            err_str = "⏱️ Operasi timeout - permintaan Anda memerlukan waktu terlalu lama"
+            err_str = "⏱️ Operasi timeout - permintaan Anda memerlukan waktu terlalu lama. Sistem akan melanjutkan dengan respons yang sudah ada."
             log.error("Chat timeout", message=req.message[:50])
             
-            yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
-            full_response = err_str
+            # Try to get partial response before timeout
+            if full_response.strip():
+                yield f"data: {json.dumps({'type': 'chunk', 'content': '\\n\\n⚠️ Partial response due to timeout:\\n\\n' + full_response[-1000:]})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'partial': True, 'sources': rag_sources})}\n\n"
+            else:
+                yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
+                full_response = err_str
             error_occurred = True
             thinking_steps.append(f"❌ Timeout error: {err_str}")
 
@@ -348,6 +353,11 @@ class PendingExecutionRequest(BaseModel):
     command: str
     model: Optional[str] = None
 
+
+class ProjectLocationRequest(BaseModel):
+    session_id: str
+    project_path: str
+
 @router.post("/execute_pending")
 async def execute_pending(
     req: PendingExecutionRequest,
@@ -397,3 +407,53 @@ async def execute_pending(
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
         
     return StreamingResponse(generate(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+
+
+@router.post("/set_project_location")
+async def set_project_location(
+    req: ProjectLocationRequest,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Set project location for a session"""
+    session = await db.get(ChatSession, req.session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+    
+    if session.user_id != user.id:
+        raise HTTPException(403, "No access to this session")
+    
+    # Validate path (basic security check)
+    import os
+    project_path = os.path.abspath(req.project_path)
+    if not project_path.startswith(os.path.expanduser("~")) and not project_path.startswith("/home/"):
+        raise HTTPException(400, "Project path must be in user home directory")
+    
+    # Store project location in session metadata
+    if not session.metadata:
+        session.metadata = {}
+    session.metadata["project_path"] = project_path
+    
+    await db.commit()
+    return {"status": "success", "project_path": project_path}
+
+
+@router.get("/get_project_location/{session_id}")
+async def get_project_location(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get project location for a session"""
+    session = await db.get(ChatSession, session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
+    
+    if session.user_id != user.id:
+        raise HTTPException(403, "No access to this session")
+    
+    project_path = None
+    if session.metadata:
+        project_path = session.metadata.get("project_path")
+    
+    return {"project_path": project_path}

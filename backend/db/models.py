@@ -33,6 +33,7 @@ class ChatSession(SQLModel, table=True):
     platform: str = "web"          # web | telegram | whatsapp | api
     total_tokens: int = 0
     total_cost_usd: float = 0.0
+    metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

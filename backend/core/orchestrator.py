@@ -439,6 +439,7 @@ class Orchestrator:
                             max_tokens=max_tokens,
                             include_tool_logs=include_tool_logs,
                             emit_thinking=emit_thinking,
+                            session_id=session_id,
                         ):
                             await q.put(chunk)
                     except asyncio.CancelledError:

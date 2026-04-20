@@ -160,8 +160,13 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         from sqlmodel import select
 
         route  = smart_router.route(text)
-        # Default telegram bot to orchestrator (seed-2-0-pro) as requested
-        model  = "sumopod/seed-2-0-pro"
+        # Check if default model exists before using it
+        if "sumopod/seed-2-0-pro" in model_manager.available_models:
+            model = "sumopod/seed-2-0-pro"
+        else:
+            # Fallback to available model or default
+            available_models = list(model_manager.available_models.keys())
+            model = model_manager.get_default_model() if available_models else available_models[0]
         system = await memory_manager.build_system_prompt(user_id, "tg_" + str(chat_id))
 
         # RAG context

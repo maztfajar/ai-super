@@ -95,7 +95,7 @@ export const api = {
 
   // ── Chat ─────────────────────────────────────────────────
   createSession: (title) => req('POST', '/chat/sessions', { title }),
-  listSessions:  ()      => req('GET',  '/chat/sessions?t=' + Date.now()),
+  listSessions:  ()      => req('GET', '/chat/sessions?t=' + Date.now()),
   getMessages:   (id)    => req('GET',  '/chat/sessions/' + id + '/messages'),
   getNewMessages:(id, afterTs) => req('GET', '/chat/sessions/' + id + '/messages/new' + (afterTs ? '?after_ts=' + encodeURIComponent(afterTs) : '')),
   deleteSession: (id)    => req('DELETE', '/chat/sessions/' + id),
@@ -109,6 +109,8 @@ export const api = {
     if (!res.ok) throw new Error('Gagal download export chat')
     return res.blob()
   },
+  setProjectLocation: (sessionId, projectPath) => req('POST', '/chat/set_project_location', { session_id: sessionId, project_path: projectPath }),
+  getProjectLocation: (sessionId) => req('GET', '/chat/get_project_location/' + sessionId),
 
   // ── RAG ───────────────────────────────────────────────────
   listDocs:   ()     => req('GET',    '/rag/documents'),

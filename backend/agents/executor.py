@@ -328,6 +328,7 @@ class AgentExecutor:
         include_tool_logs: bool = True,
         emit_thinking: bool = True,
         execution_mode: str = "execution",
+        session_id: str = None,
     ) -> AsyncGenerator[str, None]:
         
         system_prompt = build_agent_system_prompt(base_model, execution_mode)
@@ -452,9 +453,9 @@ class AgentExecutor:
                             elif cmd == "read_file":
                                 return await read_file(args.get("path", ""))
                             elif cmd == "write_file":
-                                return await write_file(args.get("path", ""), args.get("content", ""))
+                                return await write_file(args.get("path", ""), args.get("content", ""), session_id)
                             elif cmd == "write_multiple_files":
-                                return await write_multiple_files(args.get("files_data", []))
+                                return await write_multiple_files(args.get("files_data", []), session_id)
                             elif cmd == "ask_model":
                                 return await ask_model(args.get("model_id", ""), args.get("prompt", ""))
                             elif cmd == "web_search":

@@ -182,25 +182,67 @@ async def read_file(path: str) -> str:
     except Exception as e:
         return f"Error reading file {path}: {str(e)}"
 
-async def write_file(path: str, content: str) -> str:
+async def write_file(path: str, content: str, session_id: str = None) -> str:
     """Write content to a file."""
     try:
         import aiofiles
-        os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+        
+        # Get project location from session if available
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.metadata:
+                        project_base_path = session.metadata.get("project_path")
+            except Exception:
+                pass  # Continue without project path if database error
+        
+        # Apply project base path if set and path is relative
+        if project_base_path and not os.path.isabs(path):
+            path = os.path.join(project_base_path, path)
+        
+        abs_path = os.path.abspath(path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+        
         async def _write():
-            async with aiofiles.open(path, "w", encoding="utf-8") as f:
+            async with aiofiles.open(abs_path, "w", encoding="utf-8") as f:
                 await f.write(content)
         await asyncio.wait_for(_write(), timeout=30.0)
-        return f"Successfully wrote to {path}"
+        
+        # Show relative path in result for cleaner output
+        display_path = os.path.relpath(abs_path, project_base_path) if project_base_path else path
+        
+        result = f"Successfully wrote to {display_path}"
+        if project_base_path:
+            result = f"📁 Project: {project_base_path}\n{result}"
+        
+        return result
     except asyncio.TimeoutError:
         return f"Error: Writing file {path} timed out after 30 seconds."
     except Exception as e:
         return f"Error writing file {path}: {str(e)}"
 
-async def write_multiple_files(files_data: list) -> str:
+async def write_multiple_files(files_data: list, session_id: str = None) -> str:
     """Write multiple files at once. files_data is a list of dicts: [{'path': '...', 'content': '...'}]"""
     try:
         import aiofiles
+        
+        # Get project location from session if available
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.metadata:
+                        project_base_path = session.metadata.get("project_path")
+            except Exception:
+                pass  # Continue without project path if database error
+        
         results = []
         for file_obj in files_data:
             path = file_obj.get("path")
@@ -209,15 +251,28 @@ async def write_multiple_files(files_data: list) -> str:
                 results.append(f"Skipped invalid entry: {file_obj}")
                 continue
             
+            # Apply project base path if set and path is relative
+            if project_base_path and not os.path.isabs(path):
+                path = os.path.join(project_base_path, path)
+            
             try:
-                os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-                async with aiofiles.open(path, "w", encoding="utf-8") as f:
+                abs_path = os.path.abspath(path)
+                os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+                async with aiofiles.open(abs_path, "w", encoding="utf-8") as f:
                     await f.write(content)
-                results.append(f"Successfully wrote to {path}")
+                
+                # Show relative path in result for cleaner output
+                display_path = os.path.relpath(abs_path, project_base_path) if project_base_path else path
+                results.append(f"Successfully wrote to {display_path}")
             except Exception as e:
                 results.append(f"Error writing to {path}: {str(e)}")
         
-        return "\n".join(results)
+        # Add project location info if available
+        if project_base_path:
+            project_info = f"\n📁 Project Location: {project_base_path}"
+            return project_info + "\n" + "\n".join(results)
+        else:
+            return "\n".join(results)
     except Exception as e:
         return f"Fatal error in write_multiple_files: {str(e)}"
 
