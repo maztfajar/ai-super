@@ -16,29 +16,53 @@ _bot_loop:   Optional[asyncio.AbstractEventLoop] = None
 
 
 # ── Helper kirim pesan ────────────────────────────────────────
-async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = False):
-    """Kirim pesan Markdown, auto-split > 4000 char."""
+async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = False, max_retries: int = 3):
+    """Kirim pesan Markdown, auto-split > 4000 char dengan retry mechanism."""
     import httpx
+    import asyncio
+    
     chunks = [text[i:i+4000] for i in range(0, max(len(text), 1), 4000)]
-    async with httpx.AsyncClient(timeout=15) as c:
-        for idx, chunk in enumerate(chunks):
-            try:
-                payload = {"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"}
-                if include_drive_btn and idx == len(chunks) - 1:
-                    payload["reply_markup"] = {
-                        "inline_keyboard": [
-                            [
-                                {"text": "🔊 Dengar (Voice)", "callback_data": "voice_reply"},
-                                {"text": "⬇️ Download File", "callback_data": "download_options"}
+    
+    for retry in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=30) as c:  # Increased timeout
+                for idx, chunk in enumerate(chunks):
+                    payload = {"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"}
+                    if include_drive_btn and idx == len(chunks) - 1:
+                        payload["reply_markup"] = {
+                            "inline_keyboard": [
+                                [
+                                    {"text": "🔊 Dengar (Voice)", "callback_data": "voice_reply"},
+                                    {"text": "⬇️ Download File", "callback_data": "download_options"}
+                                ]
                             ]
-                        ]
-                    }
-                await c.post(
-                    "https://api.telegram.org/bot" + token + "/sendMessage",
-                    json=payload,
-                )
-            except Exception as ex:
-                log.warning("Telegram send error", error=str(ex)[:80])
+                        }
+                    
+                    # Retry individual chunk if needed
+                    chunk_retry = 0
+                    while chunk_retry < 2:
+                        try:
+                            await c.post(
+                                "https://api.telegram.org/bot" + token + "/sendMessage",
+                                json=payload,
+                            )
+                            break  # Success, move to next chunk
+                        except Exception as chunk_ex:
+                            chunk_retry += 1
+                            if chunk_retry >= 2:
+                                raise chunk_ex
+                            await asyncio.sleep(1)  # Wait before retry
+                
+                # All chunks sent successfully
+                return
+                
+        except Exception as ex:
+            log.warning("Telegram send error (retry {}/{})".format(retry + 1, max_retries), error=str(ex)[:80])
+            if retry < max_retries - 1:
+                await asyncio.sleep(2 ** retry)  # Exponential backoff
+            else:
+                # Final retry failed, log and continue
+                log.error("Telegram send failed after all retries", chat_id=chat_id, error=str(ex)[:100])
 
 
 async def _send_voice(token: str, chat_id: int, text: str):
@@ -181,31 +205,52 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         typing_task = asyncio.create_task(keep_typing())
         
         try:
-            async for event in orchestrator.process(
-                message=text,
-                user_id=user_id,
-                session_id=session_id,
-                system_prompt=system,
-                history=history,
-                include_tool_logs=False,
-                emit_thinking=False,
-                auto_execute=True,
-            ):
-                if event.type == "chunk":
-                    full_response += event.content
-                elif event.type == "error":
-                    full_response = f"⚠️ **Error:** {event.content}"
-                    break
-                elif event.type == "done":
-                    # Normal completion — continue to send
-                    pass
-                elif event.type == "pending_confirmation":
-                    # Should not happen with auto_execute=True, but handle gracefully
-                    full_response = f"⚠️ Perintah ini memerlukan konfirmasi: {event.data.get('command', text)}\n\nSilakan gunakan web dashboard untuk menjalankan perintah ini."
-                    break
+            # Add timeout wrapper for orchestrator processing
+            async def process_with_timeout():
+                try:
+                    async for event in orchestrator.process(
+                        message=text,
+                        user_id=user_id,
+                        session_id=session_id,
+                        system_prompt=system,
+                        history=history,
+                        include_tool_logs=False,
+                        emit_thinking=False,
+                        auto_execute=True,
+                    ):
+                        if event.type == "chunk":
+                            full_response += event.content
+                        elif event.type == "error":
+                            full_response = f"⚠️ **Error:** {event.content}"
+                            break
+                        elif event.type == "done":
+                            # Normal completion — continue to send
+                            pass
+                        elif event.type == "pending_confirmation":
+                            # Should not happen with auto_execute=True, but handle gracefully
+                            full_response = f"⚠️ Perintah ini memerlukan konfirmasi: {event.data.get('command', text)}\n\nSilakan gunakan web dashboard untuk menjalankan perintah ini."
+                            break
+                except asyncio.TimeoutError:
+                    full_response = "⏱️ Maaf, response terlalu lama. Silakan coba lagi dengan pertanyaan yang lebih singkat."
+                except Exception as e:
+                    log.error("Orchestrator processing error", error=str(e), chat_id=chat_id)
+                    full_response = f"⚠️ Terjadi kesalahan saat memproses: {str(e)[:100]}"
+            
+            # Set timeout to 120 seconds for AI generation
+            await asyncio.wait_for(process_with_timeout(), timeout=120.0)
+            
+        except asyncio.TimeoutError:
+            full_response = "⏱️ Maaf, request terlalu lama diproses. Silakan coba lagi."
+            log.warning("Telegram message processing timeout", chat_id=chat_id)
+        except Exception as e:
+            log.error("Telegram message processing failed", error=str(e), chat_id=chat_id)
+            full_response = f"⚠️ Maaf, terjadi kesalahan: {str(e)[:80]}..."
         finally:
             typing_active = False
-            typing_task.cancel()
+            try:
+                typing_task.cancel()
+            except Exception:
+                pass
 
         if not full_response.strip():
             full_response = "Maaf, saya tidak bisa memproses permintaan itu. Coba lagi ya!"
@@ -548,17 +593,23 @@ async def _polling_loop(token: str):
     except Exception as e:
         log.warning("Flush updates failed", error=str(e))
 
+    consecutive_errors = 0
+    max_consecutive_errors = 5
+    
     while _bot_running:
         try:
-            async with httpx.AsyncClient(timeout=40) as c:
+            async with httpx.AsyncClient(timeout=45) as c:  # Increased timeout
                 resp = await c.get(
                     "https://api.telegram.org/bot" + token + "/getUpdates",
                     params={
                         "offset":          offset,
-                        "timeout":         30,
+                        "timeout":         25,  # Reduced long polling timeout
                         "allowed_updates": ["message", "callback_query"],
                     },
                 )
+            
+            # Reset error counter on successful request
+            consecutive_errors = 0
 
             if resp.status_code == 409:
                 log.warning("Telegram 409 Conflict, retry 10s")
@@ -635,11 +686,22 @@ async def _polling_loop(token: str):
         except asyncio.CancelledError:
             break
         except httpx.ReadTimeout:
+            consecutive_errors += 1
+            if consecutive_errors >= max_consecutive_errors:
+                log.error("Too many consecutive timeouts, restarting polling")
+                await asyncio.sleep(10)
+                consecutive_errors = 0
             continue
         except Exception as e:
+            consecutive_errors += 1
             if _bot_running:
-                log.error("Polling error", error=str(e))
-                await asyncio.sleep(5)
+                log.error("Polling error ({}/{})".format(consecutive_errors, max_consecutive_errors), error=str(e))
+                if consecutive_errors >= max_consecutive_errors:
+                    log.error("Too many consecutive errors, waiting longer")
+                    await asyncio.sleep(15)
+                    consecutive_errors = 0
+                else:
+                    await asyncio.sleep(2 ** min(consecutive_errors, 5))  # Exponential backoff
 
     if active_tasks:
         await asyncio.gather(*active_tasks, return_exceptions=True)

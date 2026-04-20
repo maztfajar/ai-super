@@ -14,7 +14,7 @@ import { useOrchestratorStore } from '../store'
  * WORKFLOWS reads from Zustand `savedWorkflows`.
  * If empty → shows a warning with a link to the relevant page.
  */
-export default function OrchestratorDropdown({ value, onChange }) {
+export default function OrchestratorDropdown({ value, onChange, compact = false }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -61,15 +61,16 @@ export default function OrchestratorDropdown({ value, onChange }) {
       <button
         onClick={() => setOpen(!open)}
         className={clsx(
-          'flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border',
+          'flex items-center gap-2 rounded-lg text-xs font-medium transition-all border',
           'bg-bg-4 border-border-2 text-ink hover:bg-bg-5 hover:border-accent/40',
-          open && 'border-accent/60 bg-bg-5 ring-1 ring-accent/20'
+          open && 'border-accent/60 bg-bg-5 ring-1 ring-accent/20',
+          compact ? 'px-2 py-1.5' : 'px-3 py-1.5'
         )}
       >
-        <span className="truncate max-w-[180px]">{getSelectedLabel()}</span>
+        <span className={clsx('truncate', compact ? 'max-w-[120px]' : 'max-w-[180px]')}>{getSelectedLabel()}</span>
         <ChevronDown
-          size={13}
-          className={clsx('text-ink-3 transition-transform duration-200', open && 'rotate-180')}
+          size={compact ? 11 : 13}
+          className={clsx('text-ink-3 transition-transform duration-200 flex-shrink-0', open && 'rotate-180')}
         />
       </button>
 

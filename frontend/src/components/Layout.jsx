@@ -7,7 +7,7 @@ import {
   LayoutDashboard, MessageSquare, Bot, BookOpen, Brain, Repeat2,
   BarChart3, Plug, FlaskConical, ScrollText, Menu, LogOut, Settings,
   UserCircle, ShieldCheck, Users, Shield, ShieldAlert, Activity,
-  Moon, Sun,
+  Moon, Sun, X, ChevronLeft,
 } from 'lucide-react'
 import clsx from 'clsx'
 import OrchestratorDropdown from './OrchestratorDropdown'
@@ -51,6 +51,30 @@ export default function Layout() {
   const { sidebarOpen, toggleSidebar } = useUIStore()
   const navigate  = useNavigate()
   const location  = useLocation()
+  
+  // Mobile responsive state
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+      // Auto-close sidebar on mobile
+      if (window.innerWidth < 768 && sidebarOpen) {
+        toggleSidebar()
+      }
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [sidebarOpen, toggleSidebar])
+  
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
 
   const NAV_ADMIN = [
     { label: t('dashboard'),        to: '/dashboard',    icon: LayoutDashboard, section: 'Utama' },
@@ -140,20 +164,39 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden">
+      {/* Mobile overlay */}
+      {isMobile && mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+      
       <aside className={clsx(
-        'flex flex-col bg-bg-2 border-r border-border transition-all duration-200 flex-shrink-0',
-        sidebarOpen ? 'w-52' : 'w-14'
+        'flex flex-col bg-bg-2 border-r border-border transition-all duration-200 flex-shrink-0 z-50',
+        // Mobile styles
+        isMobile ? (mobileMenuOpen ? 'fixed left-0 top-0 h-full w-64' : 'hidden') :
+        // Desktop styles
+        (sidebarOpen ? 'w-52' : 'w-14')
       )}>
         {/* Logo */}
         <div className="flex items-center gap-2.5 px-3.5 py-4 border-b border-border">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20 overflow-hidden">
             {logoUrl ? <img src={logoUrl} alt="logo" className="w-full h-full object-contain"/> : <span className="text-sm font-bold">🧠</span>}
           </div>
-          {sidebarOpen && (
-            <div className="min-w-0">
+          {(sidebarOpen || (isMobile && mobileMenuOpen)) && (
+            <div className="min-w-0 flex-1">
               <div className="text-sm font-bold tracking-wide text-ink truncate">{appName}</div>
               <div className="text-[9px] text-ink-3 tracking-widest uppercase">AI Orchestrator</div>
             </div>
+          )}
+          {isMobile && mobileMenuOpen && (
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-1 rounded-lg hover:bg-bg-4 text-ink-2 transition-colors"
+            >
+              <X size={16} />
+            </button>
           )}
         </div>
 
@@ -164,16 +207,19 @@ export default function Layout() {
             if (!items.length) return null
             return (
               <div key={section} className="mb-1">
-                {sidebarOpen && (
+                {(sidebarOpen || (isMobile && mobileMenuOpen)) && (
                   <div className="text-[9px] font-semibold tracking-widest uppercase text-ink-3 px-2 pt-3 pb-1">
                     {sectionLabels[section]}
                   </div>
                 )}
-                {!sidebarOpen && section !== 'Utama' && items.length > 0 && (
+                {!sidebarOpen && !isMobile && section !== 'Utama' && items.length > 0 && (
                   <div className="border-t border-border/50 my-1 mx-2"/>
                 )}
                 {items.map(({ label, to, icon: Icon }) => (
-                  <NavLink key={to} to={to}
+                  <NavLink 
+                    key={to} 
+                    to={to}
+                    onClick={() => isMobile && setMobileMenuOpen(false)}
                     className={({ isActive }) => clsx(
                       'flex items-center gap-2.5 px-2.5 py-2 rounded-lg mb-0.5 text-sm transition-all relative group',
                       isActive ? 'bg-accent/10 text-accent-2 font-medium' : 'text-ink-2 hover:bg-bg-4 hover:text-ink'
@@ -182,8 +228,8 @@ export default function Layout() {
                       <>
                         {isActive && <span className="absolute left-0 top-1/4 bottom-1/4 w-0.5 bg-accent rounded-r"/>}
                         <Icon size={15} className="flex-shrink-0"/>
-                        {sidebarOpen && <span>{label}</span>}
-                        {!sidebarOpen && (
+                        {(sidebarOpen || (isMobile && mobileMenuOpen)) && <span className={clsx('text-sm', isMobile && 'text-base')}>{label}</span>}
+                        {!sidebarOpen && !isMobile && (
                           <div className="absolute left-full ml-2 px-2 py-1 bg-bg-4 border border-border rounded text-xs text-ink whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
                             {label}
                           </div>
@@ -206,7 +252,7 @@ export default function Layout() {
                 isAdmin ? 'bg-gradient-to-br from-accent to-pink text-white' : 'bg-bg-4 text-ink-2 border border-border')}>
                 {user?.username?.[0]?.toUpperCase() || 'A'}
               </div>
-              {sidebarOpen && (
+              {(sidebarOpen || (isMobile && mobileMenuOpen)) && (
                 <div className="flex-1 min-w-0 text-left">
                   <div className="text-xs font-medium text-ink truncate">{user?.username}</div>
                   <div className="text-[10px] text-ink-3 group-hover:text-accent-2 transition-colors">
@@ -219,18 +265,19 @@ export default function Layout() {
             {showMenu && (
               <div className={clsx(
                 'absolute bottom-full mb-1 bg-bg-3 border border-border rounded-xl shadow-xl overflow-hidden z-50',
-                sidebarOpen ? 'left-0 right-0' : 'left-full ml-2 w-40'
+                // Mobile: full width from sidebar, Desktop: position based on sidebar state
+                isMobile ? 'left-0 right-0' : (sidebarOpen ? 'left-0 right-0' : 'left-full ml-2 w-40')
               )}>
-                <NavLink to="/profile" onClick={() => setShowMenu(false)}
+                <NavLink to="/profile" onClick={() => {setShowMenu(false); isMobile && setMobileMenuOpen(false)}}
                   className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-ink-2 hover:bg-bg-4 hover:text-ink transition-colors">
                   <UserCircle size={13}/>Edit Profil
                 </NavLink>
-                <NavLink to="/security2fa" onClick={() => setShowMenu(false)}
+                <NavLink to="/security2fa" onClick={() => {setShowMenu(false); isMobile && setMobileMenuOpen(false)}}
                   className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-ink-2 hover:bg-bg-4 hover:text-ink transition-colors">
                   <Shield size={13}/>2FA & Keamanan
                 </NavLink>
                 {isAdmin && (
-                  <NavLink to="/admin" onClick={() => setShowMenu(false)}
+                  <NavLink to="/admin" onClick={() => {setShowMenu(false); isMobile && setMobileMenuOpen(false)}}
                     className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-ink-2 hover:bg-bg-4 hover:text-ink transition-colors">
                     <ShieldCheck size={13}/>{t('admin')}
                   </NavLink>
@@ -248,27 +295,62 @@ export default function Layout() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-12 border-b border-border bg-bg-2 flex items-center px-4 gap-3 flex-shrink-0">
-          <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
-            <Menu size={16}/>
-          </button>
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse2"/>
-            <span className="text-xs text-ink-3">{appName}</span>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <OrchestratorDropdown
-              value={selectedOrchestrator}
-              onChange={setSelectedOrchestrator}
-            />
-            <div className="w-px h-5 bg-border" />
-            <ChannelSelector />
-            <div className="w-px h-5 bg-border" />
-            <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
-              className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
-              {theme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
+        <header className={clsx(
+          'border-b border-border bg-bg-2 flex items-center gap-3 flex-shrink-0',
+          // Mobile: taller header with better spacing
+          isMobile ? 'h-14 px-3' : 'h-12 px-4'
+        )}>
+          {/* Mobile menu toggle */}
+          {isMobile ? (
+            <button 
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+              className="p-2 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors"
+            >
+              {mobileMenuOpen ? <X size={18}/> : <Menu size={18}/>}
             </button>
-            <TopbarNewChatButton />
+          ) : (
+            <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
+              {sidebarOpen ? <ChevronLeft size={16}/> : <Menu size={16}/>}
+            </button>
+          )}
+          
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse2 flex-shrink-0"/>
+            <span className={clsx('text-ink-3 truncate', isMobile ? 'text-xs' : 'text-xs')}>{appName}</span>
+          </div>
+          
+          <div className={clsx('flex items-center gap-2', isMobile ? 'gap-1.5' : 'gap-2')}>
+            {/* Mobile: Compact layout */}
+            {isMobile ? (
+              <>
+                <OrchestratorDropdown
+                  value={selectedOrchestrator}
+                  onChange={setSelectedOrchestrator}
+                  compact={true}
+                />
+                <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                  className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
+                  {theme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
+                </button>
+                <TopbarNewChatButton />
+              </>
+            ) : (
+              /* Desktop: Full layout */
+              <>
+                <OrchestratorDropdown
+                  value={selectedOrchestrator}
+                  onChange={setSelectedOrchestrator}
+                />
+                <div className="w-px h-5 bg-border" />
+                <ChannelSelector />
+                <div className="w-px h-5 bg-border" />
+                <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                  className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
+                  {theme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
+                </button>
+                <TopbarNewChatButton />
+              </>
+            )}
           </div>
         </header>
         <main className="flex-1 overflow-auto">
