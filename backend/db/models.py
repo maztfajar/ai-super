@@ -200,3 +200,4 @@ class TaskExecution(SQLModel, table=True):
     error_message: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
+    vps_deployment_at: Optional[datetime] = None  # Track VPS deployment timing

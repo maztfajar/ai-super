@@ -283,22 +283,24 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        log.error("Telegram handle_message error", error=str(e), chat_id=chat_id)
-        err = str(e).lower()
-        try:
-            if "cancelled" in err:
-                return
-            if "timeout" in err or "timed out" in err:
-                msg = "Maaf, request terlalu lama. Coba kirim lagi ya!"
-            elif "api key" in err or "unauthorized" in err or "invalid" in err:
-                msg = "Model AI tidak bisa diakses. Pastikan API key sudah diset di menu Integrasi."
-            elif "redis" in err or "connection" in err:
-                msg = "Sedang menginisialisasi. Coba kirim pesan lagi."
-            else:
-                msg = "Maaf ada gangguan sementara. Silakan kirim ulang pesan kamu."
-            await _send(token, chat_id, msg)
-        except Exception:
-            pass
+            log.error("Telegram handle_message error", error=str(e), chat_id=chat_id)
+            err = str(e).lower()
+            try:
+                if "cancelled" in err:
+                    return
+                if "timeout" in err or "timed out" in err:
+                    msg = "⏱️ Maaf, request terlalu lama. VPS mungkin sedang load tinggi. Coba kirim lagi ya!"
+                elif "api key" in err or "unauthorized" in err or "invalid" in err:
+                    msg = "🔑 Model AI tidak bisa diakses. Pastikan API key sudah diset di menu Integrasi."
+                elif "redis" in err or "connection" in err:
+                    msg = "🔄 Sedang menginisialisasi koneksi VPS. Coba kirim pesan lagi."
+                elif "memory" in err or "resource" in err:
+                    msg = "💾 VPS resource sedang tinggi. Silakan coba beberapa saat lagi."
+                else:
+                    msg = "⚠️ VPS sedang ada gangguan sementara. Silakan kirim ulang pesan kamu."
+                await _send(token, chat_id, msg)
+            except Exception:
+                pass
 
 # ── Handle pesan FOTO ────────────────────────────────────────
 async def _handle_photo(chat_id: int, user_id: str, photo_list: list, caption: str,
