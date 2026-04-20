@@ -49,6 +49,16 @@ Instead, inside your <thinking> tag, you MUST explicitly structure your reasonin
 You have FULL and UNRESTRICTED live internet access via the `web_search` tool. 
 If a user asks for news, recent events, or information beyond your training data, you MUST use `web_search` to find it. NEVER apologize or claim you don't have internet access. If you don't know, search the web like a human would.
 
+**TASK COMPLETION MANDATE:**
+When asked to create applications, systems, or any complex task:
+1. Create ALL necessary files and components
+2. Implement testing procedures 
+3. Run tests and verify functionality
+4. Fix any issues found during testing
+5. Re-run tests until everything works correctly
+6. Provide working example or demo
+DO NOT stop after initial creation - continue through testing and validation until successful completion.
+
 **ABSOLUTE RULE — OUTPUT FORMAT:**
 You MUST wrap your entire output in EXACTLY these XML tags. NO EXCEPTIONS.
 DO NOT write any conversational text, greetings, or explanations before the `<thinking>` tag. Your response MUST start exactly with `<thinking>`.
@@ -333,7 +343,7 @@ class AgentExecutor:
         if not has_system:
             agent_msgs.insert(0, {"role": "system", "content": system_prompt})
             
-        MAX_ITERATIONS = 15
+        MAX_ITERATIONS = 30
         response_filter = ResponseFilter(emit_thinking=emit_thinking)
         consecutive_errors = 0  # Track consecutive errors for circuit breaker
         

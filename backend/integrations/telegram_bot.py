@@ -236,8 +236,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                     log.error("Orchestrator processing error", error=str(e), chat_id=chat_id)
                     full_response = f"⚠️ Terjadi kesalahan saat memproses: {str(e)[:100]}"
             
-            # Set timeout to 120 seconds for AI generation
-            await asyncio.wait_for(process_with_timeout(), timeout=120.0)
+            # Set timeout to 300 seconds (5 minutes) for complex tasks like app development
+            await asyncio.wait_for(process_with_timeout(), timeout=300.0)
             
         except asyncio.TimeoutError:
             full_response = "⏱️ Maaf, request terlalu lama diproses. Silakan coba lagi."

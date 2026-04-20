@@ -19,7 +19,7 @@
   --success:  #22c55e;
   --warn:     #f59e0b;
   --danger:   #ef4444;
-  --code-bg:       rgba(10,11,15,0.6);
+  --code-bg:       var(--bg-3);
   --code-ink:      #c3e88d;
 }
 
@@ -39,7 +39,7 @@
   --success:  #16a34a;
   --warn:     #d97706;
   --danger:   #dc2626;
-  --code-bg:       #fcfcfc;
+  --code-bg:       var(--bg-3);
   --code-ink:      #24292e;
 }
 
