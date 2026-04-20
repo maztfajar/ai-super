@@ -30,7 +30,15 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 - Scheduled tasks dan background processing
 - Visual workflow builder
 
-### 📱 **Multi-Channel Integration**
+### � **Project Management System**
+- **Smart Project Location**: Auto-deteksi saat pembuatan aplikasi
+- **Persistent Storage**: Lokasi proyek tersimpan per session
+- **File Browser**: Popup untuk memilih folder penyimpanan
+- **Auto-Organization**: Semua file aplikasi tersimpan di lokasi yang sama
+- **Security Validation**: Hanya允许 lokasi di user home directory
+- **Relative Path Support**: Path relatif otomatis di-resolve ke lokasi proyek
+
+### � **Multi-Channel Integration**
 - **Telegram Bot**: Chat AI langsung di Telegram
 - **WhatsApp Integration**: Coming soon
 - **Web Interface**: Full-featured web app
@@ -49,6 +57,9 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 - Agent performance tracking
 - System health dashboard
 - Log management & rotation
+- **Enhanced Session Management**: Persistent session dengan project location
+- **Improved Error Recovery**: Better timeout handling dengan partial responses
+- **Model Management**: Fixed deleted model appearing in monitoring
 
 ### 🎵 **Text-to-Speech (TTS)**
 - High-quality voice synthesis
@@ -198,6 +209,26 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/0
 3. Tambah actions (send message, API call, file operations)
 4. Jalankan atau schedule workflow
 
+### 📁 **Project Management System**
+1. **Auto-Detection**: Saat minta AI buat aplikasi, sistem otomatis meminta lokasi proyek
+2. **Location Selection**: Popup muncul untuk memilih folder penyimpanan (Desktop, Home, atau custom)
+3. **Persistent Storage**: Lokasi tersimpan per session chat
+4. **Smart File Organization**: Semua file aplikasi otomatis tersimpan di lokasi yang sama
+5. **Security**: Hanya允许 lokasi di user home directory untuk keamanan
+
+**Contoh Penggunaan:**
+```
+User: "Buat aplikasi React dengan login system"
+Sistem: 📁 Pilih lokasi proyek:
+       • 🏠 Folder Home  
+       • 🖥️ Desktop
+       • 📂 Custom folder
+       
+Output: 📁 Project Location: /home/user/Desktop
+       ✓ Successfully wrote to src/App.jsx
+       ✓ Successfully wrote to src/Login.jsx
+```
+
 ### 🤖 **Telegram Integration**
 1. Setup bot token di **Integrations** menu
 2. Chat dengan AI langsung di Telegram
@@ -313,5 +344,13 @@ This source code is licensed under the copyright strictly for viewing purposes o
 You may not use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Software without explicit written permission from the author.
 
 
-*AI SUPER ASSISTANT v2.0 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
+*AI SUPER ASSISTANT v2.1 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
 *Built with ❤️ using FastAPI, React, and cutting-edge AI models*
+
+## 🆕 **Recent Updates (v2.1)**
+- ✅ **Project Management System**: Auto-deteksi lokasi proyek untuk aplikasi
+- ✅ **Enhanced Session Reliability**: Timeout improvements dengan partial responses
+- ✅ **Fixed Model Management**: Mencegah deleted models muncul di monitoring
+- ✅ **Better Error Recovery**: Increased iterations dan timeout handling
+- ✅ **Smart File Organization**: Path relatif otomatis ke lokasi proyek
+- ✅ **Improved Code Styling**: Code block background sesuai tema aplikasi
