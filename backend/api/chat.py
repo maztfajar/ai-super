@@ -430,9 +430,9 @@ async def set_project_location(
         raise HTTPException(400, "Project path must be in user home directory")
     
     # Store project location in session metadata
-    if not session.metadata:
-        session.metadata = {}
-    session.metadata["project_path"] = project_path
+    if not session.project_metadata:
+        session.project_metadata = {}
+    session.project_metadata["project_path"] = project_path
     
     await db.commit()
     return {"status": "success", "project_path": project_path}
@@ -453,7 +453,7 @@ async def get_project_location(
         raise HTTPException(403, "No access to this session")
     
     project_path = None
-    if session.metadata:
-        project_path = session.metadata.get("project_path")
+    if session.project_metadata:
+        project_path = session.project_metadata.get("project_path")
     
     return {"project_path": project_path}

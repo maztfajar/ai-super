@@ -195,8 +195,8 @@ async def write_file(path: str, content: str, session_id: str = None) -> str:
                 from db.models import ChatSession
                 async with AsyncSessionLocal() as db:
                     session = await db.get(ChatSession, session_id)
-                    if session and session.metadata:
-                        project_base_path = session.metadata.get("project_path")
+                    if session and session.project_metadata:
+                        project_base_path = session.project_metadata.get("project_path")
             except Exception:
                 pass  # Continue without project path if database error
         
@@ -238,8 +238,8 @@ async def write_multiple_files(files_data: list, session_id: str = None) -> str:
                 from db.models import ChatSession
                 async with AsyncSessionLocal() as db:
                     session = await db.get(ChatSession, session_id)
-                    if session and session.metadata:
-                        project_base_path = session.metadata.get("project_path")
+                    if session and session.project_metadata:
+                        project_base_path = session.project_metadata.get("project_path")
             except Exception:
                 pass  # Continue without project path if database error
         
