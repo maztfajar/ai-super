@@ -193,8 +193,79 @@ function ArtifactsPanel({ code, language, onClose }) {
 // ── Message bubble ────────────────────────────────────────────
 function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpenArtifact }) {
   const [copied, setCopied] = useState(false)
-  const [showThinking, setShowThinking] = useState(false)
+  const [showThinking, setShowThinking] = useState(false) // Default: collapsed
   const isUser = msg.role === 'user'
+
+  // Helper: Split content into main text and thinking process
+  const splitContent = (content) => {
+    if (!content) return { mainContent: '', thinkingContent: null, hasThinking: false }
+    
+    // Find the thinking section: starts with 🤔 Proses Berpikir:
+    const thinkStart = content.indexOf('🤔 Proses Berpikir:')
+    
+    if (thinkStart === -1) {
+      return { mainContent: content, thinkingContent: null, hasThinking: false }
+    }
+    
+    // Get everything before the thinking section (main content before thinking)
+    const beforeThink = content.substring(0, thinkStart).trim()
+    
+    // Get the thinking section content (after the header)
+    let thinkEnd = content.length
+    const afterThinkStart = thinkStart + '🤔 Proses Berpikir:'.length
+    
+    // Find where thinking ends - look for double newline followed by non-bullet text
+    const remaining = content.substring(afterThinkStart)
+    const lines = remaining.split('\n')
+    
+    let thinkLineEnd = 0
+    let foundThinkEnd = false
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const trimmed = line.trim()
+      
+      // Check if this line marks the end of thinking (actual response)
+      const isResponseStart = (
+        trimmed &&
+        !trimmed.startsWith('Plan') &&
+        !trimmed.startsWith('Tool') &&
+        !trimmed.startsWith('Action') &&
+        !trimmed.startsWith('Thought') &&
+        !trimmed.startsWith('Analysis') &&
+        !trimmed.startsWith('Step') &&
+        !trimmed.startsWith('-') &&
+        !trimmed.startsWith('•') &&
+        !trimmed.match(/^[A-Z][a-z]+:/) && // Not a label like "Key: value"
+        (trimmed.startsWith('I\'') || trimmed.startsWith('The ') || trimmed.startsWith('Here') || 
+         trimmed.startsWith('Let') || trimmed.startsWith('I will') || trimmed.startsWith('Sure') ||
+         /^(Okay|Alright|Got it|Understood|Yes|No|Great|Perfect)/i.test(trimmed))
+      )
+      
+      if (isResponseStart && i > 0) {
+        thinkLineEnd = i
+        foundThinkEnd = true
+        break
+      }
+    }
+    
+    // Extract thinking content
+    const thinkingLines = foundThinkEnd ? lines.slice(0, thinkLineEnd) : lines
+    let thinkingContent = thinkingLines.join('\n').trim()
+    
+    // Extract main content (after thinking + before thinking)
+    let mainContent = beforeThink
+    if (foundThinkEnd) {
+      const afterThink = lines.slice(thinkLineEnd).join('\n').trim()
+      if (afterThink) {
+        mainContent = (beforeThink ? beforeThink + '\n\n' : '') + afterThink
+      }
+    }
+    
+    return { mainContent: mainContent.trim(), thinkingContent, hasThinking: true }
+  }
+
+  const { mainContent, thinkingContent, hasThinking } = splitContent(msg.content || '')
 
   const copy = () => {
     copyToClipboard(msg.content)
@@ -281,9 +352,35 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
                 components={markdownComponents}
-              >{msg.content}</ReactMarkdown>
+              >{mainContent}</ReactMarkdown>
               {isStreaming && (
                 <span className="inline-block w-1.5 h-4 bg-accent-2 animate-pulse2 ml-0.5 align-middle" />
+              )}
+              
+              {/* Collapsible Thinking Section */}
+              {hasThinking && (
+                <div className="mt-3 border border-border-2 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowThinking(!showThinking)}
+                    className="w-full flex items-center justify-between px-3 py-2 bg-bg-3 hover:bg-bg-5 transition-colors text-xs text-ink-3"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Brain size={12} className="text-accent" />
+                      🤔 Proses Berpikir
+                    </span>
+                    {showThinking ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
+                  {showThinking && (
+                    <div className="px-3 py-2 bg-bg-2 text-[11px] text-ink-3 leading-relaxed max-h-48 overflow-y-auto">
+                      {thinkingContent.split('\n').map((line, i) => line.trim() && (
+                        <div key={i} className="flex gap-2 py-0.5">
+                          <span className="text-accent flex-shrink-0">•</span>
+                          <span className="flex-1">{line.trim()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -381,8 +478,8 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
                 </button>
               )}
 
-              {/* Thinking Toggle - show if thinking_process exists */}
-              {!isUser && msg.thinking_process && (
+              {/* Thinking Toggle - show if embedded thinking exists in content */}
+              {!isUser && hasThinking && (
                 <button
                   onClick={() => setShowThinking(!showThinking)}
                   className={clsx(
@@ -391,7 +488,7 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
                   )}
                   title="Tampilkan Thinking"
                 >
-                  {showThinking ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                  <Brain size={11} />
                 </button>
               )}
 
@@ -426,22 +523,6 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
           return null
         })()}
 
-        {/* Thinking Process - Expandable Section */}
-        {!isUser && msg.thinking_process && showThinking && (
-          <div className="mt-2 p-2.5 bg-bg-3 border border-border rounded-lg text-[11px] text-ink-3 leading-relaxed space-y-1">
-            <div className="font-semibold text-accent-2 mb-1.5 flex items-center gap-1">
-              <Brain size={11} /> Proses Thinking:
-            </div>
-            <div className="max-h-48 overflow-y-auto space-y-1">
-              {msg.thinking_process.split('\n').map((step, i) => step.trim() && (
-                <div key={i} className="flex gap-2">
-                  <span className="text-ink-3 flex-shrink-0">•</span>
-                  <span className="flex-1">{step.trim()}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -535,6 +616,8 @@ export default function Chat() {
 
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
   const [statusText, setStatusText] = useState('')
+  const [executionSteps, setExecutionSteps] = useState([])
+  const [showExecutionSteps, setShowExecutionSteps] = useState(false) // Default: collapsed
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Artifacts Panel state
@@ -739,6 +822,7 @@ export default function Chat() {
     }
     clearStreaming()
     setStatusText('')
+    setExecutionSteps([])
     toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
   }
 
@@ -790,6 +874,16 @@ export default function Chat() {
     setPendingImage(null)  // clear preview
     setStreaming(true)
     setStatusText('')
+    setExecutionSteps([])  // Reset execution steps
+
+    // Helper to add execution step
+    const addExecutionStep = (step) => {
+      setExecutionSteps(prev => {
+        // Avoid duplicate consecutive steps
+        if (prev.length > 0 && prev[prev.length - 1] === step) return prev
+        return [...prev, step]
+      })
+    }
 
     const sessionId = currentSession.id
 
@@ -831,7 +925,8 @@ export default function Chat() {
           const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
           setSessions(safe)
         }).catch(() => {})
-        // Auto-focus kembali ke textarea setelah AI selesai merespons
+        // Clear execution steps and auto-focus
+        setExecutionSteps([])
         setTimeout(() => { inputRef.current?.focus() }, 50)
       },
       (sessionData) => {
@@ -845,7 +940,10 @@ export default function Chat() {
         setStatusText('')
         setPendingConfirmation(pendingData)
       },
-      (status) => {} // Ignore intermediate status for natural chat
+      (status) => {
+        // Collect execution steps for display
+        if (status) addExecutionStep(status)
+      }
       )
     } else {
       // Use regular endpoint for text-only
@@ -883,7 +981,8 @@ export default function Chat() {
             const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
             setSessions(safe)
           }).catch(() => {})
-          // Auto-focus kembali ke textarea setelah AI selesai merespons
+          // Clear execution steps and auto-focus
+          setExecutionSteps([])
           setTimeout(() => { inputRef.current?.focus() }, 50)
         },
         (sessionData) => {
@@ -897,7 +996,10 @@ export default function Chat() {
           setStatusText('')
           setPendingConfirmation(pendingData)
         },
-        (status) => {} // Ignore intermediate status for natural chat
+        (status) => {
+          // Collect execution steps for display
+          if (status) addExecutionStep(status)
+        }
       )
     }
     
@@ -1269,32 +1371,63 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Thinking indicator - simple & clean */}
-          {streaming && !streamingText && (
-            <div className="flex gap-2.5">
+          {/* Execution Steps Panel with Toggle - shows AI's work progress */}
+          {streaming && executionSteps.length > 0 && (
+            <div className="flex gap-2.5 mb-4">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0">
                 <Bot size={13} className="text-white" />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <div className="px-3.5 py-3 bg-bg-4 border border-border rounded-xl rounded-tl-sm flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map(i => (
-                      <span
-                        key={i}
-                        className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse2"
-                        style={{ animationDelay: `${i * 0.2}s` }}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs text-ink-3">Thinking...</span>
-                </div>
-                {/* Stop button */}
+              <div className="flex-1 max-w-[80%]">
+                {/* Toggle Header */}
                 <button
-                  onClick={stopStreaming}
-                  className="self-start flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-xs font-medium transition-all"
+                  onClick={() => setShowExecutionSteps(!showExecutionSteps)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-colors"
                 >
-                  <Square size={11} fill="currentColor" /> Hentikan
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map(i => (
+                        <span
+                          key={i}
+                          className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse2"
+                          style={{ animationDelay: `${i * 0.2}s` }}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-xs text-ink-3">
+                      {executionSteps.length} steps • {executionSteps[executionSteps.length - 1]?.substring(0, 40)}...
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-ink-3">Proses Berpikir</span>
+                    {showExecutionSteps ? <ChevronUp size={14} className="text-ink-3" /> : <ChevronDown size={14} className="text-ink-3" />}
+                  </div>
                 </button>
+                
+                {/* Expandable Steps List */}
+                {showExecutionSteps && (
+                  <div className="mt-2 p-3 bg-bg-3 border border-border rounded-lg">
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {executionSteps.map((step, i) => (
+                        <div key={i} className="flex items-start gap-2 text-[11px]">
+                          <span className="text-accent flex-shrink-0 mt-0.5">•</span>
+                          <span className={clsx(
+                            "text-ink-3",
+                            i === executionSteps.length - 1 && "text-accent-2 font-medium"
+                          )}>
+                            {step}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Stop button */}
+                    <button
+                      onClick={stopStreaming}
+                      className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-xs font-medium transition-all"
+                    >
+                      <Square size={11} fill="currentColor" /> Hentikan
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

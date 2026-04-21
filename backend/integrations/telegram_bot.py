@@ -211,7 +211,9 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         
         try:
             # Add timeout wrapper for orchestrator processing
+            chunk_count = 0
             async def process_with_timeout():
+                nonlocal chunk_count, full_response
                 try:
                     async for event in orchestrator.process(
                         message=text,
@@ -225,11 +227,15 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                     ):
                         if event.type == "chunk":
                             full_response += event.content
+                            chunk_count += 1
+                            log.debug("Telegram chunk received", chat_id=chat_id, chunk_num=chunk_count, content_preview=event.content[:50])
                         elif event.type == "error":
                             full_response = f"⚠️ **Error:** {event.content}"
+                            log.error("Telegram orchestrator error", chat_id=chat_id, error=event.content)
                             break
                         elif event.type == "done":
                             # Normal completion — continue to send
+                            log.info("Telegram orchestrator done", chat_id=chat_id, total_chunks=chunk_count, response_length=len(full_response))
                             pass
                         elif event.type == "pending_confirmation":
                             # Should not happen with auto_execute=True, but handle gracefully
@@ -243,6 +249,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             
             # Set timeout to 300 seconds (5 minutes) for complex tasks like app development
             await asyncio.wait_for(process_with_timeout(), timeout=300.0)
+            
+            log.info("Telegram processing complete", chat_id=chat_id, total_chunks=chunk_count, response_length=len(full_response), has_content=bool(full_response.strip()))
             
         except asyncio.TimeoutError:
             full_response = "⏱️ Maaf, request terlalu lama diproses. Silakan coba lagi."
@@ -258,7 +266,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                 pass
 
         if not full_response.strip():
-            full_response = "Maaf, saya tidak bisa memproses permintaan itu. Coba lagi ya!"
+            log.warning("Telegram empty response", chat_id=chat_id, text=text[:50])
+            full_response = "⚠️ AI tidak memberikan respons. Ini mungkin karena:\n\n1. Model AI sedang sibuk\n2. Koneksi ke AI terputus\n3. Pertanyaan terlalu kompleks\n\nSilakan coba lagi dalam beberapa saat, atau hubungi admin jika masalah berlanjut."
 
         await _send(token, chat_id, full_response, include_drive_btn=True)
 

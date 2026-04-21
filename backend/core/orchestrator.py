@@ -172,21 +172,28 @@ class Orchestrator:
                 session_id, user_id, message, spec, [], None
             )
             
+            # Collect actual response from chunks
+            full_response = ""
+            chunk_count = 0
+            log.info("Starting _handle_simple", is_simple=spec.is_simple, message=message[:50])
             async for event in self._handle_simple(
                 spec, system_prompt, history, temperature, max_tokens,
                 user_model_choice, include_tool_logs, emit_thinking=emit_thinking,
                 auto_execute=auto_execute, session_id=session_id
             ):
                 if event.type == "chunk":
-                    # Potentially update result_summary here if needed
-                    pass
+                    full_response += event.content
+                    chunk_count += 1
+                    log.debug("Received chunk in fast path", count=chunk_count, preview=event.content[:50])
                 yield event
             
-            # Update simple task as completed
+            log.info("Finished _handle_simple", total_chunks=chunk_count, response_length=len(full_response))
+            
+            # Update simple task as completed with actual response
             if task_exec_id:
                 await self._update_task_execution(
                     task_exec_id, 
-                    AggregatedResult(final_response="Simple Response", overall_confidence=1.0), 
+                    AggregatedResult(final_response=full_response or "No response generated", overall_confidence=1.0), 
                     int((time.time() - start_time) * 1000), 
                     []
                 )
@@ -393,9 +400,24 @@ class Orchestrator:
                 spec.primary_intent, user_model_choice
             )
 
-        is_orchestrator = not user_model_choice or "orchestrator" in (user_model_choice or "").lower()
+        # For simple messages (like "hai", greetings), use direct model call for speed
+        # For complex tasks or when auto_execute is needed, use agent executor
+        is_complex_task = spec.primary_intent in ("system", "file_operation", "coding", "web_development")
+        
+        # Use agent executor only for complex tasks or when explicitly using orchestrator model
+        is_orchestrator = is_complex_task and auto_execute
+        
+        if not user_model_choice and not is_complex_task:
+            # Simple message without model choice - use direct model call for speed
+            is_orchestrator = False
+        elif user_model_choice and "orchestrator" not in user_model_choice.lower():
+            # User selected a specific model - use direct call
+            is_orchestrator = False
+        
+        log.debug("_handle_simple routing", is_orchestrator=is_orchestrator, 
+                  primary_intent=spec.primary_intent, is_complex=is_complex_task)
 
-        # Check if VPS safety protocol needed
+        # Check if VPS safety protocol needed for complex operations
         if spec.primary_intent in ("system", "file_operation"):
             if not auto_execute:
                 yield OrchestratorEvent("status", "⚠️ Tindakan sistem terdeteksi...")
