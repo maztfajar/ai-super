@@ -423,20 +423,18 @@ class Orchestrator:
 
         # For simple messages (like "hai", greetings), use direct model call for speed
         # For complex tasks or when auto_execute is needed, use agent executor
-        is_complex_task = spec.primary_intent in ("system", "file_operation", "coding", "web_development")
+        is_complex_intent = spec.primary_intent in ("system", "file_operation", "coding", "web_development")
         
-        # Use agent executor only for complex tasks or when explicitly using orchestrator model
-        is_orchestrator = is_complex_task and auto_execute
-        
-        if not user_model_choice and not is_complex_task:
-            # Simple message without model choice - use direct model call for speed
-            is_orchestrator = False
-        elif user_model_choice and "orchestrator" not in user_model_choice.lower():
-            # User selected a specific model - use direct call
-            is_orchestrator = False
+        # Determine if we should use orchestrator (agent executor) or direct chat
+        if auto_execute:
+            # Di Telegram/Auto mode, paksa eksekusi untuk semua intent kompleks agar tool benar-benar jalan
+            is_orchestrator = is_complex_intent
+        else:
+            # Di Web, gunakan orchestrator hanya jika user tidak pilih model spesifik
+            is_orchestrator = is_complex_intent and (not user_model_choice or "orchestrator" in user_model_choice.lower())
         
         log.debug("_handle_simple routing", is_orchestrator=is_orchestrator, 
-                  primary_intent=spec.primary_intent, is_complex=is_complex_task)
+                  primary_intent=spec.primary_intent, auto_execute=auto_execute)
 
         # Check if VPS safety protocol needed for complex operations
         if spec.primary_intent in ("system", "file_operation"):
@@ -452,11 +450,11 @@ class Orchestrator:
             else:
                 # Auto-execute mode (Telegram): bypass confirmation, go straight to agent executor
                 yield OrchestratorEvent("status", "⚙️ Mengeksekusi perintah sistem...")
-                is_orchestrator = True  # Force agent executor path for tool access
+                is_orchestrator = True  # Double check: force agent executor path for tool access
 
         # Build messages
         messages = [{"role": "system", "content": system_prompt}]
-        messages += history[-6:]  # Limit history to prevent context overflow
+        messages += history[-10:]  # Limit history to prevent context overflow
         messages.append({"role": "user", "content": spec.original_message})
 
         yield OrchestratorEvent("status", "Merespons...")
@@ -488,6 +486,9 @@ class Orchestrator:
                             await q.put(chunk)
                     except asyncio.CancelledError:
                         pass
+                    except Exception as e:
+                        log.error("Agent executor stream error", error=str(e))
+                        await q.put(f"\n\n❌ **Error Executor:** {str(e)}")
                     finally:
                         await q.put(None)  # sentinel
 
@@ -522,31 +523,18 @@ class Orchestrator:
                         producer_task.cancel()
                     try:
                         await asyncio.shield(producer_task)
-                    except (asyncio.CancelledError, Exception) as e:
-                        if not isinstance(e, asyncio.CancelledError):
-                            log.error("Producer task internal error", error=str(e))
-                            yield OrchestratorEvent("chunk", f"\n\n❌ **Error System:** {str(e)}")
+                    except:
+                        pass
 
                 if timed_out:
                     yield OrchestratorEvent("chunk",
-                        "\n\n⏱️ **Waktu habis (idle >2 menit).** "
-                        "Model berhenti merespons. Coba pertanyaan lebih sederhana "
-                        "atau pilih model yang lebih cepat."
+                        "\n\n⏱️ **Waktu habis.** Model berhenti merespons."
                     )
             else:
                 # Direct model call — no tools
                 from agents.executor import ResponseFilter
                 import re
                 
-                # Force tags to ensure internal thinking doesn't leak as raw chat
-                enforcement_prompt = (
-                    "\n\n**ABSOLUTE RULE — OUTPUT FORMAT:**\n"
-                    "You MUST wrap your internal reasoning inside <thinking>...</thinking> tags.\n"
-                    "Put ONLY your final answer inside <response>...</response> tags. NO text outside these tags."
-                )
-                if messages and messages[0]["role"] == "system":
-                    messages[0]["content"] += enforcement_prompt
-
                 response_filter = ResponseFilter(emit_thinking=emit_thinking)
                 buffer = ""
 

@@ -143,6 +143,8 @@ COMPLEX_TRIGGERS = [
     "berapa", "tampilkan", "lihat", "show", "info", "nginx", "docker",
     "jalankan", "execute", "run", "terminal", "perintah", "command",
     "hapus", "delete", "download", "upload", "update", "upgrade",
+    "spek", "spesifikasi", "memori", "df", "free", "top", "htop", "neofetch",
+    "hardisk", "space", "penyimpanan", "jaringan", "network", "ping", "ip",
 ]
 
 # Heuristic: detect image generation

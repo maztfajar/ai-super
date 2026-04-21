@@ -7,6 +7,8 @@ import asyncio
 import threading
 from typing import Optional
 import structlog
+import html
+import re
 
 log = structlog.get_logger()
 
@@ -27,7 +29,7 @@ async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = F
         try:
             async with httpx.AsyncClient(timeout=30) as c:  # Increased timeout
                 for idx, chunk in enumerate(chunks):
-                    payload = {"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"}
+                    payload = {"chat_id": chat_id, "text": chunk, "parse_mode": "HTML"}
                     if include_drive_btn and idx == len(chunks) - 1:
                         payload["reply_markup"] = {
                             "inline_keyboard": [
@@ -95,6 +97,45 @@ async def _send_typing(token: str, chat_id: int):
             )
     except Exception:
         pass
+
+async def _edit_status(token: str, chat_id: int, message_id: int, text: str):
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10) as c:
+            await c.post(
+                f"https://api.telegram.org/bot{token}/editMessageText",
+                json={
+                    "chat_id": chat_id,
+                    "message_id": message_id,
+                    "text": text,
+                    "parse_mode": "HTML"
+                }
+            )
+    except Exception:
+        pass
+
+def _escape(text: str) -> str:
+    """Helper to escape HTML for Telegram safety."""
+    if not text: return ""
+    return html.escape(text)
+
+def _format_for_tg(text: str) -> str:
+    """Convert common AI markdown to Telegram-safe HTML."""
+    if not text: return ""
+    # 1. Escape basic HTML tags
+    t = _escape(text)
+    # 2. Convert bold ** to <b>
+    t = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', t)
+    # 3. Convert single * to <i> (if not inside <b>)
+    t = re.sub(r'\*(.*?)\*', r'<i>\1</i>', t)
+    # 4. Convert inline code ` to <code>
+    t = re.sub(r'`\s*(.*?)\s*`', r'<code>\1</code>', t)
+    # 5. Convert code blocks ``` to <pre>
+    def code_block_sub(match):
+        content = match.group(2).strip()
+        return f'<pre>{content}</pre>'
+    t = re.sub(r'```(\w+)?\n?(.*?)```', code_block_sub, t, flags=re.DOTALL)
+    return t
 
 
 # ── Handle satu pesan (asyncio.Task terpisah) ─────────────────
@@ -186,6 +227,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         # Generate using Orchestrator for full monitoring and robustness
         full_response = ""
         session_id = "tg_" + str(chat_id)
+        status_msg_id = None
         
         # Ensure session exists in DB for monitoring
         async with AsyncSessionLocal() as db:
@@ -229,17 +271,46 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                             full_response += event.content
                             chunk_count += 1
                             log.debug("Telegram chunk received", chat_id=chat_id, chunk_num=chunk_count, content_preview=event.content[:50])
+                        elif event.type == "process":
+                            # Dynamic status updates
+                            action = event.data.get("action", "Thinking")
+                            detail = event.data.get("detail", "")
+                            status_text = f"⚙️ <b>{action}...</b>"
+                            if detail:
+                                status_text += f"\n<i>{_escape(detail)}</i>"
+                            
+                            # Initially send status message if it doesn't exist
+                            nonlocal status_msg_id
+                            if status_msg_id is None:
+                                try:
+                                    import httpx
+                                    async with httpx.AsyncClient(timeout=10) as c:
+                                        r = await c.post(f"https://api.telegram.org/bot{token}/sendMessage", 
+                                                    json={"chat_id": chat_id, "text": status_text, "parse_mode": "HTML"})
+                                        status_msg_id = r.json().get("result", {}).get("message_id")
+                                except Exception:
+                                    pass
+                            else:
+                                await _edit_status(token, chat_id, status_msg_id, status_text)
+
                         elif event.type == "error":
-                            full_response = f"⚠️ **Error:** {event.content}"
+                            full_response = f"⚠️ <b>Error:</b> {_escape(event.content)}"
                             log.error("Telegram orchestrator error", chat_id=chat_id, error=event.content)
                             break
                         elif event.type == "done":
-                            # Normal completion — continue to send
+                            # Clear status message if it exists
+                            if status_msg_id:
+                                try:
+                                    import httpx
+                                    async with httpx.AsyncClient(timeout=5) as c:
+                                        await c.post(f"https://api.telegram.org/bot{token}/deleteMessage", 
+                                                   json={"chat_id": chat_id, "message_id": status_msg_id})
+                                except Exception:
+                                    pass
                             log.info("Telegram orchestrator done", chat_id=chat_id, total_chunks=chunk_count, response_length=len(full_response))
-                            pass
                         elif event.type == "pending_confirmation":
                             # Should not happen with auto_execute=True, but handle gracefully
-                            full_response = f"⚠️ Perintah ini memerlukan konfirmasi: {event.data.get('command', text)}\n\nSilakan gunakan web dashboard untuk menjalankan perintah ini."
+                            full_response = f"⚠️ Perintah ini memerlukan konfirmasi: <code>{_escape(event.data.get('command', text))}</code>\n\nSilakan gunakan web dashboard untuk menjalankan perintah ini."
                             break
                 except asyncio.TimeoutError:
                     full_response = "⏱️ Maaf, response terlalu lama. Silakan coba lagi dengan pertanyaan yang lebih singkat."
@@ -267,9 +338,9 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
 
         if not full_response.strip():
             log.warning("Telegram empty response", chat_id=chat_id, text=text[:50])
-            full_response = "⚠️ AI tidak memberikan respons. Ini mungkin karena:\n\n1. Model AI sedang sibuk\n2. Koneksi ke AI terputus\n3. Pertanyaan terlalu kompleks\n\nSilakan coba lagi dalam beberapa saat, atau hubungi admin jika masalah berlanjut."
+            full_response = "⚠️ AI tidak memberikan respons. Ini mungkin karena model sedang sibuk atau pertanyaan terlalu kompleks."
 
-        await _send(token, chat_id, full_response, include_drive_btn=True)
+        await _send(token, chat_id, _format_for_tg(full_response), include_drive_btn=True)
 
         # Save Assistant Message to DB
         async with AsyncSessionLocal() as db:
