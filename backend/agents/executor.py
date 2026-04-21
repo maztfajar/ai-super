@@ -5,6 +5,7 @@ from typing import AsyncGenerator
 import structlog
 from core.model_manager import model_manager
 from core.smart_router import smart_router
+from core.process_emitter import process_emitter, PROCESS_EVENT_PREFIX
 from agents.tools import execute_bash, read_file, write_file, ask_model
 from agents.tools.web_search import web_search
 
@@ -13,6 +14,7 @@ log = structlog.get_logger()
 def build_agent_system_prompt(current_model: str, execution_mode: str = "execution") -> str:
     from core.model_manager import model_manager
     import datetime
+
     models = list(model_manager.available_models.keys())
     model_list_str = ", ".join(models)
     
@@ -477,7 +479,25 @@ class AgentExecutor:
                     args = tool_req.get("args", {})
                     
                     consecutive_errors = 0  # Reset on successful parse
-                    
+
+                    # ── Map cmd → structured process action ──────────
+                    _TOOL_ACTION_MAP = {
+                        "execute_bash":        ("Ran",      lambda a: a.get("command", "")[:60]),
+                        "read_file":           ("Reading",  lambda a: a.get("path", "").split("/")[-1]),
+                        "write_file":          ("Writing",  lambda a: a.get("path", "").split("/")[-1]),
+                        "write_multiple_files":("Writing",  lambda a: f"{len(a.get('files_data', []))} files"),
+                        "ask_model":           ("Analyzed", lambda a: a.get("model_id", "")),
+                        "web_search":          ("Searched", lambda a: a.get("query", "")[:60]),
+                        "find_safe_port":      ("Checked",  lambda a: "available port"),
+                    }
+                    _action, _detail_fn = _TOOL_ACTION_MAP.get(
+                        cmd, ("Worked", lambda a: cmd)
+                    )
+                    _detail = _detail_fn(args)
+
+                    # Emit structured process event BEFORE executing (via sentinel)
+                    yield process_emitter.to_sentinel(_action, _detail)
+
                     # Execute tool — each tool execution is individually wrapped
                     res = ""
                     try:
@@ -506,16 +526,17 @@ class AgentExecutor:
                         res = await asyncio.wait_for(_exec_tool(), timeout=90.0)
                     except asyncio.TimeoutError:
                         res = f"Tool {cmd} timed out after 90 seconds. The tool execution was too slow. Try a simpler command or break it into smaller steps."
-                        if include_tool_logs:
-                            yield f"\n> ⏱️ **Tool {cmd} timeout setelah 90 detik. Melanjutkan...**\n"
+                        yield process_emitter.to_sentinel("Error", f"{cmd} timeout (90s)")
                     except Exception as e:
                         res = f"Error executing tool {cmd}: {str(e)}. The tool encountered an error but the process continues."
-                        if include_tool_logs:
-                            yield f"\n> ⚠️ **Tool error (continuing):** {str(e)[:100]}\n"
+                        yield process_emitter.to_sentinel("Error", str(e)[:80])
                     
-                    if include_tool_logs and not res.startswith("Error") and not res.startswith("Tool "):
-                        yield f'\n\n<details class="tool-log">\n<summary><span>⚙️ **Executing {cmd}...**</span> <span class="toggle-icon">▼</span></summary>\n\n'
-                        yield f"**Result:**\n```\n{res[:1500]}{'...' if len(res)>1500 else ''}\n```\n\n</details>\n\n"
+                    # Emit a 'Found' step if result has useful content
+                    if include_tool_logs and res and not res.startswith("Error") and not res.startswith("Tool "):
+                        lines = res.strip().splitlines()
+                        n = len(lines)
+                        if n > 1:
+                            yield process_emitter.to_sentinel("Found", f"{n} lines", count=n)
                             
                     obs_text = f"\n<observation>\n{res}\n</observation>\n"
                     

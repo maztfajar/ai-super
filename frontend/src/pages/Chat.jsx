@@ -13,7 +13,9 @@ import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
   Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
   ImagePlus, Mic, MicOff, Camera, Volume2, Brain, ChevronDown, ChevronUp,
-  ExternalLink, FileCode2, Maximize2, Minimize2, PanelRightClose, PanelRightOpen
+  ExternalLink, FileCode2, Maximize2, Minimize2, PanelRightClose, PanelRightOpen,
+  Terminal, BookOpen, PenLine, List, Search, Globe, FilePlus, Trash, MoveRight,
+  ClipboardList, AlignLeft, CheckCircle2, Hash, AlertCircle, Wrench, RefreshCw
 } from 'lucide-react'
 import clsx from 'clsx'
 
@@ -80,6 +82,134 @@ function CodeBlock({ language, code, onOpenArtifact }) {
       <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none">
         <code className="text-inherit bg-transparent p-0">{code}</code>
       </pre>
+    </div>
+  )
+}
+
+// ── ProcessStepsPanel: Live structured thinking toggle ────────
+const ACTION_META = {
+  Thinking:   { icon: Brain,         color: 'text-purple-400',  bg: 'bg-purple-400/10' },
+  Thought:    { icon: Brain,         color: 'text-purple-400',  bg: 'bg-purple-400/10' },
+  Planned:    { icon: ClipboardList, color: 'text-blue-400',    bg: 'bg-blue-400/10'   },
+  Worked:     { icon: Wrench,        color: 'text-emerald-400', bg: 'bg-emerald-400/10'},
+  Explored:   { icon: RefreshCw,     color: 'text-cyan-400',    bg: 'bg-cyan-400/10'   },
+  Ran:        { icon: Terminal,      color: 'text-green-400',   bg: 'bg-green-400/10'  },
+  Edited:     { icon: PenLine,       color: 'text-yellow-400',  bg: 'bg-yellow-400/10' },
+  Modify:     { icon: PenLine,       color: 'text-yellow-400',  bg: 'bg-yellow-400/10' },
+  Analyzed:   { icon: Brain,         color: 'text-indigo-400',  bg: 'bg-indigo-400/10' },
+  Reading:    { icon: BookOpen,      color: 'text-sky-400',     bg: 'bg-sky-400/10'    },
+  Writing:    { icon: PenLine,       color: 'text-amber-400',   bg: 'bg-amber-400/10'  },
+  Listed:     { icon: List,          color: 'text-teal-400',    bg: 'bg-teal-400/10'   },
+  Searched:   { icon: Search,        color: 'text-violet-400',  bg: 'bg-violet-400/10' },
+  Fetched:    { icon: Globe,         color: 'text-blue-300',    bg: 'bg-blue-300/10'   },
+  Created:    { icon: FilePlus,      color: 'text-emerald-400', bg: 'bg-emerald-400/10'},
+  Deleted:    { icon: Trash,         color: 'text-red-400',     bg: 'bg-red-400/10'    },
+  Moved:      { icon: MoveRight,     color: 'text-orange-400',  bg: 'bg-orange-400/10' },
+  Copied:     { icon: Copy,          color: 'text-orange-300',  bg: 'bg-orange-300/10' },
+  Summarized: { icon: AlignLeft,     color: 'text-pink-400',    bg: 'bg-pink-400/10'   },
+  Checked:    { icon: CheckCircle2,  color: 'text-emerald-300', bg: 'bg-emerald-300/10'},
+  Found:      { icon: Hash,          color: 'text-cyan-300',    bg: 'bg-cyan-300/10'   },
+  Error:      { icon: AlertCircle,   color: 'text-red-400',     bg: 'bg-red-400/10'    },
+  Done:       { icon: CheckCircle2,  color: 'text-emerald-400', bg: 'bg-emerald-400/10'},
+}
+const DEFAULT_META = { icon: Zap, color: 'text-ink-3', bg: 'bg-bg-5' }
+
+function ProcessStepsPanel({ steps, isStreaming, onStop }) {
+  const [open, setOpen] = useState(false)
+  if (!steps || steps.length === 0) return null
+
+  const latest = steps[steps.length - 1]
+  const meta   = ACTION_META[latest?.action] || DEFAULT_META
+  const LatestIcon = meta.icon
+
+  return (
+    <div className="flex gap-2.5 mb-2 animate-fade">
+      {/* Avatar */}
+      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <Bot size={13} className="text-white" />
+      </div>
+
+      <div className="flex-1 max-w-[82%]">
+        {/* Toggle header */}
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-all group"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Pulsing dots while streaming */}
+            {isStreaming && (
+              <div className="flex gap-0.5 flex-shrink-0">
+                {[0,1,2].map(i => (
+                  <span key={i} className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse2"
+                    style={{ animationDelay: `${i * 0.18}s` }} />
+                ))}
+              </div>
+            )}
+            {/* Latest step icon + label */}
+            <div className={clsx('flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0', meta.bg, meta.color)}>
+              <LatestIcon size={10} />
+              <span>{latest?.action}</span>
+            </div>
+            {latest?.detail && (
+              <span className="text-[11px] text-ink-3 truncate">{latest.detail}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+            <span className="text-[10px] text-ink-3 tabular-nums">
+              {steps.length} step{steps.length !== 1 ? 's' : ''}
+            </span>
+            {open ? <ChevronUp size={13} className="text-ink-3" /> : <ChevronDown size={13} className="text-ink-3" />}
+          </div>
+        </button>
+
+        {/* Expanded steps list */}
+        {open && (
+          <div className="mt-1.5 border border-border bg-bg-3 rounded-xl rounded-tl-sm overflow-hidden">
+            <div className="max-h-60 overflow-y-auto divide-y divide-border/40">
+              {steps.map((step, i) => {
+                const m = ACTION_META[step.action] || DEFAULT_META
+                const Icon = m.icon
+                const isLast = i === steps.length - 1
+                return (
+                  <div key={i} className={clsx(
+                    'flex items-center gap-2.5 px-3 py-2 text-[11px] transition-colors',
+                    isLast ? 'bg-accent/5' : 'hover:bg-bg-4'
+                  )}>
+                    {/* Index */}
+                    <span className="text-[9px] text-ink-3 tabular-nums w-4 text-right flex-shrink-0">{i + 1}</span>
+                    {/* Action pill */}
+                    <div className={clsx('flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0', m.bg, m.color)}>
+                      <Icon size={9} />
+                      <span className="font-semibold text-[10px]">{step.action}</span>
+                    </div>
+                    {/* Detail */}
+                    <span className={clsx('truncate flex-1', isLast ? 'text-ink font-medium' : 'text-ink-3')}>
+                      {step.detail || '—'}
+                    </span>
+                    {/* Count badge */}
+                    {step.count != null && (
+                      <span className="ml-auto flex-shrink-0 tabular-nums text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-5 text-ink-3 border border-border">
+                        {step.count}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {/* Stop button */}
+            {isStreaming && onStop && (
+              <div className="px-3 py-2 border-t border-border bg-bg-4">
+                <button
+                  onClick={onStop}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-[11px] font-medium transition-all"
+                >
+                  <Square size={10} fill="currentColor" /> Hentikan
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -616,8 +746,7 @@ export default function Chat() {
 
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
   const [statusText, setStatusText] = useState('')
-  const [executionSteps, setExecutionSteps] = useState([])
-  const [showExecutionSteps, setShowExecutionSteps] = useState(false) // Default: collapsed
+  const [processSteps, setProcessSteps] = useState([])  // Structured { action, detail, count, ts }
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Artifacts Panel state
@@ -822,7 +951,7 @@ export default function Chat() {
     }
     clearStreaming()
     setStatusText('')
-    setExecutionSteps([])
+    setProcessSteps([])
     toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
   }
 
@@ -874,15 +1003,14 @@ export default function Chat() {
     setPendingImage(null)  // clear preview
     setStreaming(true)
     setStatusText('')
-    setExecutionSteps([])  // Reset execution steps
+    setProcessSteps([])  // Reset process steps
 
-    // Helper to add execution step
-    const addExecutionStep = (step) => {
-      setExecutionSteps(prev => {
-        // Avoid duplicate consecutive steps
-        if (prev.length > 0 && prev[prev.length - 1] === step) return prev
-        return [...prev, step]
-      })
+    // Helper: add structured process step from onProcess SSE event
+    const addProcessStep = (data) => {
+      setProcessSteps(prev => [
+        ...prev,
+        { action: data.action || 'Worked', detail: data.detail || '', count: data.count ?? null, ts: data.ts || Date.now() }
+      ])
     }
 
     const sessionId = currentSession.id
@@ -925,8 +1053,8 @@ export default function Chat() {
           const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
           setSessions(safe)
         }).catch(() => {})
-        // Clear execution steps and auto-focus
-        setExecutionSteps([])
+        // Clear process steps and auto-focus
+        setProcessSteps([])
         setTimeout(() => { inputRef.current?.focus() }, 50)
       },
       (sessionData) => {
@@ -940,10 +1068,8 @@ export default function Chat() {
         setStatusText('')
         setPendingConfirmation(pendingData)
       },
-      (status) => {
-        // Collect execution steps for display
-        if (status) addExecutionStep(status)
-      }
+      undefined,          // onStatus (legacy, not used)
+      (procData) => addProcessStep(procData)  // onProcess
       )
     } else {
       // Use regular endpoint for text-only
@@ -981,8 +1107,8 @@ export default function Chat() {
             const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
             setSessions(safe)
           }).catch(() => {})
-          // Clear execution steps and auto-focus
-          setExecutionSteps([])
+          // Clear process steps and auto-focus
+          setProcessSteps([])
           setTimeout(() => { inputRef.current?.focus() }, 50)
         },
         (sessionData) => {
@@ -996,10 +1122,8 @@ export default function Chat() {
           setStatusText('')
           setPendingConfirmation(pendingData)
         },
-        (status) => {
-          // Collect execution steps for display
-          if (status) addExecutionStep(status)
-        }
+        undefined,          // onStatus (legacy)
+        (procData) => addProcessStep(procData)  // onProcess
       )
     }
     
@@ -1371,65 +1495,13 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Execution Steps Panel with Toggle - shows AI's work progress */}
-          {streaming && executionSteps.length > 0 && (
-            <div className="flex gap-2.5 mb-4">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0">
-                <Bot size={13} className="text-white" />
-              </div>
-              <div className="flex-1 max-w-[80%]">
-                {/* Toggle Header */}
-                <button
-                  onClick={() => setShowExecutionSteps(!showExecutionSteps)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      {[0, 1, 2].map(i => (
-                        <span
-                          key={i}
-                          className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse2"
-                          style={{ animationDelay: `${i * 0.2}s` }}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-xs text-ink-3">
-                      {executionSteps.length} steps • {executionSteps[executionSteps.length - 1]?.substring(0, 40)}...
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-ink-3">Proses Berpikir</span>
-                    {showExecutionSteps ? <ChevronUp size={14} className="text-ink-3" /> : <ChevronDown size={14} className="text-ink-3" />}
-                  </div>
-                </button>
-                
-                {/* Expandable Steps List */}
-                {showExecutionSteps && (
-                  <div className="mt-2 p-3 bg-bg-3 border border-border rounded-lg">
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                      {executionSteps.map((step, i) => (
-                        <div key={i} className="flex items-start gap-2 text-[11px]">
-                          <span className="text-accent flex-shrink-0 mt-0.5">•</span>
-                          <span className={clsx(
-                            "text-ink-3",
-                            i === executionSteps.length - 1 && "text-accent-2 font-medium"
-                          )}>
-                            {step}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Stop button */}
-                    <button
-                      onClick={stopStreaming}
-                      className="mt-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-xs font-medium transition-all"
-                    >
-                      <Square size={11} fill="currentColor" /> Hentikan
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Process Steps Panel — structured live progress with icons */}
+          {streaming && processSteps.length > 0 && (
+            <ProcessStepsPanel
+              steps={processSteps}
+              isStreaming={streaming}
+              onStop={stopStreaming}
+            />
           )}
 
           {/* Real-time Routing Badge / Capability Indicator (HIDDEN) */}

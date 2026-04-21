@@ -230,6 +230,15 @@ async def chat_send(
                     full_response += event.content
                     yield event.to_sse()
 
+                elif event.type == "process":
+                    # Structured process step — forward directly to frontend
+                    yield event.to_sse()
+                    # Also collect for storage
+                    if event.data:
+                        action = event.data.get("action", "")
+                        detail = event.data.get("detail", "")
+                        thinking_steps.append(f"{action}: {detail}" if detail else action)
+
                 elif event.type == "status":
                     # Collect thinking steps
                     thinking_steps.append(event.content)
@@ -400,8 +409,17 @@ async def execute_pending(
                 temperature=0.4,
                 max_tokens=4096,
             ):
-                full_response += chunk
-                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+                # Detect process-event sentinels from executor
+                from core.process_emitter import PROCESS_EVENT_PREFIX
+                if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
+                    try:
+                        payload = json.loads(chunk[len(PROCESS_EVENT_PREFIX):])
+                        yield f"data: {json.dumps({'type': 'process', **payload})}\n\n"
+                    except Exception:
+                        pass # skip malformed
+                else:
+                    full_response += chunk
+                    yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
         except Exception as e:
             full_response = f"Error: {e}"
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"

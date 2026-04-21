@@ -8,6 +8,8 @@ Pipeline:
   Execute (parallel/sequential) → Validate → Aggregate → Response
 """
 import json
+from core.process_emitter import process_emitter
+from core.process_emitter import PROCESS_EVENT_PREFIX
 import time
 import asyncio
 from typing import AsyncGenerator, Dict, List, Optional, Any
@@ -33,16 +35,32 @@ log = structlog.get_logger()
 
 @dataclass
 class OrchestratorEvent:
-    """Event streamed back to the client during orchestration."""
-    type: str          # status | chunk | error | done | dag_update | agent_assigned
+    """Event streamed back to the client during orchestration.
+    type: status | chunk | error | done | process
+    """
+    type: str
     content: str = ""
     data: Optional[Dict] = None
 
     def to_sse(self) -> str:
+        if self.type == "process":
+            # Process events carry structured step data
+            payload = {"type": "process"}
+            if self.data:
+                payload.update(self.data)
+            return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
         payload = {"type": self.type, "content": self.content}
         if self.data:
             payload.update(self.data)
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+    @classmethod
+    def proc(cls, action: str, detail: str = "", count: int = None) -> "OrchestratorEvent":
+        """Shorthand for building a structured process-step event."""
+        return cls(
+            type="process",
+            data=process_emitter.make(action, detail, count),
+        )
 
 
 class Orchestrator:
@@ -85,6 +103,7 @@ class Orchestrator:
                     message_preview=message[:100])
 
         # ─── PHASE 1: PREPROCESSING ──────────────────────────────
+        yield OrchestratorEvent.proc("Thinking")
         yield OrchestratorEvent("status", "🔍 Menganalisa permintaan...")
 
         try:
@@ -200,6 +219,7 @@ class Orchestrator:
             return
 
         # ─── PHASE 2: TASK DECOMPOSITION ─────────────────────────
+        yield OrchestratorEvent.proc("Planned", "memecah tugas menjadi sub-tasks")
         yield OrchestratorEvent("status", "📋 Memecah tugas menjadi sub-tasks...")
 
         try:
@@ -238,6 +258,7 @@ class Orchestrator:
                 f"  → {agent_name}: {st.description[:80]}...")
 
         # ─── PHASE 5: EXECUTE ─────────────────────────────────────
+        yield OrchestratorEvent.proc("Worked", f"{len(subtasks)} sub-tasks", count=len(subtasks))
         yield OrchestratorEvent("status", "⚡ Mengeksekusi sub-tasks...")
 
         results: List[SubTaskResult] = []
@@ -483,7 +504,19 @@ class Orchestrator:
                             break
                         if chunk is None:
                             break
-                        yield OrchestratorEvent("chunk", chunk)
+                        # Detect process-event sentinels from executor
+                        if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
+                            try:
+                                payload = json.loads(chunk[len(PROCESS_EVENT_PREFIX):])
+                                yield OrchestratorEvent.proc(
+                                    action=payload.get("action", "Worked"),
+                                    detail=payload.get("detail", ""),
+                                    count=payload.get("count"),
+                                )
+                            except Exception:
+                                pass  # malformed sentinel — skip silently
+                        else:
+                            yield OrchestratorEvent("chunk", chunk)
                 finally:
                     if not producer_task.done():
                         producer_task.cancel()
@@ -502,13 +535,41 @@ class Orchestrator:
                     )
             else:
                 # Direct model call — no tools
+                from agents.executor import ResponseFilter
+                import re
+                
+                # Force tags to ensure internal thinking doesn't leak as raw chat
+                enforcement_prompt = (
+                    "\n\n**ABSOLUTE RULE — OUTPUT FORMAT:**\n"
+                    "You MUST wrap your internal reasoning inside <thinking>...</thinking> tags.\n"
+                    "Put ONLY your final answer inside <response>...</response> tags. NO text outside these tags."
+                )
+                if messages and messages[0]["role"] == "system":
+                    messages[0]["content"] += enforcement_prompt
+
+                response_filter = ResponseFilter(emit_thinking=emit_thinking)
+                buffer = ""
+
                 async for chunk in model_manager.chat_stream(
                     model=model,
                     messages=messages,
                     temperature=temperature,
                     max_tokens=max_tokens,
                 ):
-                    yield OrchestratorEvent("chunk", chunk)
+                    buffer += chunk
+                    filtered = response_filter.process(chunk)
+                    if filtered:
+                        yield OrchestratorEvent("chunk", filtered)
+
+                remaining = response_filter.flush()
+                if remaining:
+                    yield OrchestratorEvent("chunk", remaining)
+
+                if not response_filter.ever_emitted_response:
+                    fallback_text = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', buffer, flags=re.DOTALL)
+                    fallback_text = re.sub(r'</?(?:thinking|think|response|tool|observation)>', '', fallback_text).strip()
+                    if fallback_text:
+                        yield OrchestratorEvent("chunk", fallback_text)
         finally:
             agent_registry.mark_idle(active_agent, task_id)
 
@@ -726,6 +787,9 @@ class Orchestrator:
                     emit_thinking=False,
                     execution_mode="execution",
                 ):
+                    # Filter out process-event sentinels from subtask responses
+                    if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
+                        continue
                     full_response += chunk
                 return full_response
 
