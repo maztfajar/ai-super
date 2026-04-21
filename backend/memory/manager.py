@@ -6,6 +6,7 @@ AI SUPER ASSISTANT — Memory Manager (Enhanced)
   Layer 3: Behavioral  → Database (preferensi & kebiasaan user)
 """
 import json
+import asyncio
 from typing import Optional, List
 import structlog
 from core.config import settings
@@ -13,9 +14,12 @@ from core.config import settings
 log = structlog.get_logger()
 
 # Batas riwayat yang dibawa ke konteks AI
-CONTEXT_WINDOW   = 20   # maks pesan dibawa per request
-DB_HISTORY_LIMIT = 50   # maks pesan diambil dari DB untuk seed Redis
-REDIS_TTL        = 86400 * 7  # 7 hari (diperpanjang dari 1 hari)
+CONTEXT_WINDOW   = 30   # naik dari 20 → 30 agar AI lebih ingat konteks panjang
+DB_HISTORY_LIMIT = 60   # maks pesan diambil dari DB untuk seed Redis
+REDIS_TTL        = 86400 * 7  # 7 hari
+
+# Per-session asyncio locks untuk mencegah race condition di save_chat_to_redis
+_SESSION_LOCKS: dict = {}
 DEFAULT_AI_CORE_PROMPT = """# SYSTEM PROMPT: AI ORCHESTRATOR CORE ENGINE (AL FATIH)
 
 Anda adalah **Global AI Orchestrator**, otak pusat dari sistem manajemen AI tingkat tinggi. Anda bukan satu AI tunggal, melainkan pengendali orkestrasi yang mengoordinasikan berbagai model AI untuk menyelesaikan tugas kompleks.
@@ -205,9 +209,16 @@ class MemoryManager:
 
     # ── Save ke Redis + perpanjang TTL ────────────────────────
     async def save_chat_to_redis(self, session_id: str, role: str, content: str):
-        existing = await self.get_short_term(session_id)
-        existing.append({"role": role, "content": content})
-        await self.save_short_term(session_id, existing)
+        """Thread-safe save menggunakan per-session asyncio.Lock."""
+        # Dapatkan atau buat lock untuk session ini
+        if session_id not in _SESSION_LOCKS:
+            _SESSION_LOCKS[session_id] = asyncio.Lock()
+        lock = _SESSION_LOCKS[session_id]
+
+        async with lock:
+            existing = await self.get_short_term(session_id)
+            existing.append({"role": role, "content": content})
+            await self.save_short_term(session_id, existing)
 
     # ── Info memory untuk UI ──────────────────────────────────
     async def get_memory_info(self, session_id: str, user_id: str) -> dict:

@@ -844,17 +844,26 @@ class Orchestrator:
     async def _refine_result(self, result: SubTaskResult,
                                original_request: str,
                                system_prompt: str) -> Optional[str]:
-        """Attempt to refine a low-quality result using a different model."""
+        """Attempt to refine a low-quality result using a different (better) model."""
         try:
-            # Pick a premium model for refinement
+            # Pilih model yang berbeda dari yang sudah dipakai, preferensi model yang lebih kuat
+            quality_keywords = ["pro", "plus", "sonnet", "gpt-4o", "claude-3-5", "gemini-1.5-pro",
+                                 "deepseek-v3", "seed-2-0"]
             refine_model = None
-            for p in ["gpt-4o", "claude-3-5-sonnet", "seed-2-0-pro"]:
+            for keyword in quality_keywords:
                 for k in model_manager.available_models:
-                    if p in k and k != result.model_used:
+                    if keyword in k and k != result.model_used:
                         refine_model = k
                         break
                 if refine_model:
                     break
+
+            # Fallback: gunakan model manapun yang berbeda
+            if not refine_model:
+                for k in model_manager.available_models:
+                    if k != result.model_used:
+                        refine_model = k
+                        break
 
             if not refine_model:
                 return None

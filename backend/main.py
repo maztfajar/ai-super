@@ -92,23 +92,31 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
     """Middleware untuk prevent request timeout pada streaming responses"""
     
     async def dispatch(self, request: Request, call_next):
+        # Streaming endpoints (SSE) TIDAK diberi timeout di sini — mereka punya
+        # idle-timeout internal sendiri (IDLE_TIMEOUT di orchestrator).
+        # Middleware ini hanya melindungi non-streaming endpoints dari hang.
+        is_streaming = (
+            "/api/chat/send" in request.url.path
+            or "/execute_pending" in request.url.path
+            or "/images" in request.url.path
+        )
+        if is_streaming:
+            # Biarkan streaming berjalan tanpa wrapper timeout (ada guard internal)
+            return await call_next(request)
+
         try:
-            # Set longer timeout untuk chat creation/image generation (600s / 10 minutes)
-            # Set normal timeout untuk other requests (60s)
-            if "/api/chat/send" in request.url.path or "/images" in request.url.path or "/execute_pending" in request.url.path:
-                timeout = 600  # 10 minutes untuk agent orchestration
-            else:
-                timeout = 60  # 1 minute untuk normal requests
-            
-            # Execute dengan timeout
-            return await asyncio.wait_for(call_next(request), timeout=timeout)
+            return await asyncio.wait_for(call_next(request), timeout=60)
         except asyncio.TimeoutError:
-            log.warning(f"Request timeout: {request.url.path}")
-            return {
-                "error": "Request timeout - operasi terlalu lama",
-                "message": "Chat atau pembuatan konten memerlukan waktu lebih lama. Silakan coba lagi.",
-                "retry_after": 60
-            }
+            log.warning(f"Request timeout (non-stream): {request.url.path}")
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=408,
+                content={
+                    "error": "Request timeout",
+                    "message": "Operasi memerlukan waktu terlalu lama. Silakan coba lagi.",
+                    "retry_after": 30,
+                },
+            )
 
 
 @asynccontextmanager

@@ -6,6 +6,7 @@ entity recognition, and success criteria generation.
 """
 import json
 import time
+import hashlib
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field, asdict
 import structlog
@@ -13,6 +14,12 @@ import structlog
 from core.model_manager import model_manager
 
 log = structlog.get_logger()
+
+# In-memory cache untuk hasil klasifikasi LLM — menghindari panggil AI untuk pesan berulang
+# Format: { hash_pesan: (TaskSpecification, timestamp) }
+_CLASSIFICATION_CACHE: Dict[str, tuple] = {}
+_CACHE_TTL_SECONDS = 3600   # 1 jam
+_CACHE_MAX_SIZE = 512       # Maks 512 entri
 
 
 @dataclass
@@ -204,8 +211,9 @@ class RequestPreprocessor:
         """
         Full preprocessing pipeline:
         1. Fast heuristic check (skip LLM for trivial messages)
-        2. LLM-based deep analysis
-        3. Post-processing & enrichment
+        2. Cache check (skip LLM for repeated messages)
+        3. LLM-based deep analysis
+        4. Post-processing & enrichment
         """
         start = time.time()
         spec = TaskSpecification(
@@ -230,7 +238,7 @@ class RequestPreprocessor:
             spec.is_simple = True
             spec.complexity_score = 0.3
             spec.preprocessing_time_ms = int((time.time() - start) * 1000)
-            log.info("Preprocessor: vision intent detected (image present)", 
+            log.info("Preprocessor: vision intent detected (image present)",
                     image_mime=image_mime[:20], msg=message[:50])
             return spec
 
@@ -264,6 +272,27 @@ class RequestPreprocessor:
             log.debug("Preprocessor: trivial message detected", msg=message[:50])
             return spec
 
+        # Step 1b: In-memory cache check — skip LLM untuk pesan yang identik/berulang
+        cache_key = hashlib.md5(message.lower().strip().encode()).hexdigest()
+        now = time.time()
+        if cache_key in _CLASSIFICATION_CACHE:
+            cached_data, cached_ts = _CLASSIFICATION_CACHE[cache_key]
+            if (now - cached_ts) < _CACHE_TTL_SECONDS:
+                # Cache hit — rebuild spec dari data tersimpan
+                spec.intents = cached_data.get("intents", ["general"])
+                spec.primary_intent = cached_data.get("primary_intent", "general")
+                spec.complexity_score = cached_data.get("complexity_score", 0.3)
+                spec.requires_multi_agent = cached_data.get("requires_multi_agent", False)
+                spec.quality_priority = cached_data.get("quality_priority", "balanced")
+                spec.urgency = cached_data.get("urgency", "normal")
+                spec.is_simple = cached_data.get("is_simple", True)
+                spec.preprocessing_time_ms = int((time.time() - start) * 1000)
+                log.debug("Preprocessor: cache hit", key=cache_key[:8], msg=message[:40])
+                return spec
+            else:
+                # Stale — hapus dari cache
+                del _CLASSIFICATION_CACHE[cache_key]
+
         # Step 2: LLM-based classification — with 6s timeout to prevent hangs
         try:
             import asyncio as _asyncio
@@ -286,8 +315,22 @@ class RequestPreprocessor:
                     spec.intents.append("real_time_search")
 
             # Determine if simple (skip orchestration overhead)
-            # Threshold 0.55: single-deliverable tasks (coding, writing) skip pipeline
             spec.is_simple = spec.complexity_score < 0.55 and not spec.requires_multi_agent
+
+            # Simpan ke cache — jaga agar cache tidak kebesaran
+            if len(_CLASSIFICATION_CACHE) >= _CACHE_MAX_SIZE:
+                # Hapus entri tertua
+                oldest_key = min(_CLASSIFICATION_CACHE, key=lambda k: _CLASSIFICATION_CACHE[k][1])
+                del _CLASSIFICATION_CACHE[oldest_key]
+            _CLASSIFICATION_CACHE[cache_key] = ({
+                "intents": spec.intents,
+                "primary_intent": spec.primary_intent,
+                "complexity_score": spec.complexity_score,
+                "requires_multi_agent": spec.requires_multi_agent,
+                "quality_priority": spec.quality_priority,
+                "urgency": spec.urgency,
+                "is_simple": spec.is_simple,
+            }, now)
 
         except _asyncio.TimeoutError:
             log.warning("Preprocessor LLM classification timed out (>6s), using fallback")
@@ -443,8 +486,11 @@ class RequestPreprocessor:
 
     def _get_fast_model(self) -> str:
         """Pick the fastest available model for classification."""
-        priorities = ["gpt-4o-mini", "claude-3-haiku", "gemini-1.5-flash",
-                       "gemini-2.0-flash", "llama3.1"]
+        # Prefer ringan/cepat: flash atau haiku
+        priorities = [
+            "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash",
+            "qwen3.6-flash", "gpt-4o-mini", "claude-haiku", "llama3.1"
+        ]
         for p in priorities:
             for k in model_manager.available_models.keys():
                 if p in k:

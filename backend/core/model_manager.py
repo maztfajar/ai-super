@@ -20,9 +20,31 @@ CUSTOM_MODELS_FILE = Path(__file__).parent.parent.parent / ".custom_models.json"
 class ModelManager:
     def __init__(self):
         self.available_models: Dict[str, dict] = {}
+        # Singleton HTTP clients — dibuat sekali, direuse setiap request
+        self._openai_client = None
+        self._anthropic_client = None
 
     async def startup(self):
         await self._detect_models()
+        await self._init_clients()
+
+    async def _init_clients(self):
+        """Initialize singleton API clients."""
+        if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
+            try:
+                from openai import AsyncOpenAI
+                self._openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                log.info("OpenAI client (singleton) initialized")
+            except Exception as e:
+                log.warning("Failed to init OpenAI client", error=str(e)[:80])
+
+        if settings.ANTHROPIC_API_KEY and not settings.ANTHROPIC_API_KEY.startswith("sk-ant-..."):
+            try:
+                import anthropic
+                self._anthropic_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+                log.info("Anthropic client (singleton) initialized")
+            except Exception as e:
+                log.warning("Failed to init Anthropic client", error=str(e)[:80])
 
     async def shutdown(self):
         pass
@@ -273,9 +295,11 @@ class ModelManager:
     # ── OpenAI ───────────────────────────────────────────────
     async def _stream_openai(self, model, messages, temperature, max_tokens):
         try:
-            from openai import AsyncOpenAI
-            client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            stream = await client.chat.completions.create(
+            # Gunakan singleton client — bukan dibuat ulang tiap request
+            if self._openai_client is None:
+                from openai import AsyncOpenAI
+                self._openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+            stream = await self._openai_client.chat.completions.create(
                 model=model, messages=messages,
                 temperature=temperature, max_tokens=max_tokens, stream=True,
             )
@@ -290,7 +314,6 @@ class ModelManager:
             elif "401" in err_str or "unauthorized" in err_str.lower() or "invalid_api_key" in err_str.lower():
                 yield "\n❌ API Key OpenAI Anda tidak valid (401 Unauthorized). Silakan periksa kembali API Key di menu Integrasi."
             else:
-                # Bersihkan pesan error default agar lebih enak dibaca
                 import re
                 clean_err = re.sub(r"Error code: \d+ - ", "", err_str).strip()
                 if clean_err.startswith("{"):
@@ -306,11 +329,13 @@ class ModelManager:
     # ── Anthropic ─────────────────────────────────────────────
     async def _stream_anthropic(self, model, messages, temperature, max_tokens):
         try:
-            import anthropic
-            client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+            # Gunakan singleton client
+            if self._anthropic_client is None:
+                import anthropic
+                self._anthropic_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
             system = next((m["content"] for m in messages if m["role"] == "system"), "You are AI SUPER ASSISTANT, a helpful AI assistant.")
             chat_msgs = [m for m in messages if m["role"] != "system"]
-            async with client.messages.stream(
+            async with self._anthropic_client.messages.stream(
                 model=model, messages=chat_msgs, system=system,
                 temperature=temperature, max_tokens=max_tokens,
             ) as stream:
@@ -329,20 +354,59 @@ class ModelManager:
 
     # ── Google ────────────────────────────────────────────────
     async def _stream_google(self, model, messages, temperature, max_tokens):
+        """
+        Google Gemini streaming dengan format prompt yang benar.
+        Dijalankan di thread pool agar tidak memblokir event loop (SDK sync).
+        """
         try:
+            import asyncio
             import google.generativeai as genai
             genai.configure(api_key=settings.GOOGLE_API_KEY)
-            gmodel = genai.GenerativeModel(model)
-            prompt = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
-            response = gmodel.generate_content(
-                prompt, stream=True,
-                generation_config={"temperature": temperature, "max_output_tokens": max_tokens},
+
+            # Pisahkan system prompt dari history percakapan
+            system_parts = [m["content"] for m in messages if m["role"] == "system"]
+            system_instruction = "\n\n".join(system_parts) if system_parts else None
+
+            # Buat model dengan system instruction
+            gmodel = genai.GenerativeModel(
+                model,
+                system_instruction=system_instruction,
+                generation_config={
+                    "temperature": temperature,
+                    "max_output_tokens": max_tokens,
+                },
             )
-            for chunk in response:
-                if chunk.text:
-                    yield chunk.text
+
+            # Konversi history ke format Gemini (hanya role user/model)
+            history = []
+            chat_messages = [m for m in messages if m["role"] != "system"]
+            for i, m in enumerate(chat_messages[:-1]):
+                role = "user" if m["role"] == "user" else "model"
+                history.append({"role": role, "parts": [m["content"]]})
+
+            # Pesan terakhir dari user
+            last_msg = chat_messages[-1]["content"] if chat_messages else ""
+
+            # Jalankan di thread pool — SDK Gemini bersifat synchronous
+            loop = asyncio.get_event_loop()
+
+            def _generate_sync():
+                chat = gmodel.start_chat(history=history)
+                return chat.send_message(last_msg, stream=False)
+
+            response = await loop.run_in_executor(None, _generate_sync)
+            yield response.text or ""
+
         except Exception as e:
-            yield f"\n[Error Google: {e}]"
+            err_str = str(e)
+            if "API_KEY_INVALID" in err_str or "401" in err_str:
+                yield "\n❌ API Key Google Anda tidak valid. Silakan periksa kembali di menu Integrasi."
+            elif "QUOTA_EXCEEDED" in err_str or "429" in err_str:
+                yield "\n❌ Kuota Google API Anda telah habis. Silakan coba beberapa saat lagi."
+            elif "SAFETY" in err_str:
+                yield "\n❌ Respons diblokir oleh filter keamanan Google Gemini."
+            else:
+                yield f"\n❌ **Gagal menghubungi Google Gemini:** {str(e)[:200]}"
 
     # ── OpenAI-compatible (Sumopod, dll) ─────────────────────
     async def _stream_openai_compatible(

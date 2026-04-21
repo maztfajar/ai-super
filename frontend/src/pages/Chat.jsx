@@ -818,11 +818,14 @@ export default function Chat() {
 
   // ── Real-time sync: poll for new messages every 5s ───────
   // Enables cross-channel sync (Telegram/WhatsApp → Web)
+  // Pauses automatically when tab is not visible (Page Visibility API)
   useEffect(() => {
     if (!currentSession?.id) return
     const POLL_INTERVAL = 5000
 
     const pollNewMessages = async () => {
+      // Jangan poll saat tab tidak aktif — hemat bandwidth & server resource
+      if (document.visibilityState === 'hidden') return
       // Don't poll while streaming — we already get our own messages
       if (useChatStore.getState().streaming) return
 
@@ -856,8 +859,19 @@ export default function Chat() {
       }
     }
 
+    // Poll saat tab kembali aktif setelah lama di background
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        pollNewMessages()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     const interval = setInterval(pollNewMessages, POLL_INTERVAL)
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [currentSession?.id])
 
   // Cek apakah sesi aktif masih kosong (belum ada pesan)
