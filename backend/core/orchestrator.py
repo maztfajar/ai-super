@@ -430,8 +430,9 @@ class Orchestrator:
             # Di Telegram/Auto mode, paksa eksekusi untuk semua intent kompleks agar tool benar-benar jalan
             is_orchestrator = is_complex_intent
         else:
-            # Di Web, gunakan orchestrator hanya jika user tidak pilih model spesifik
-            is_orchestrator = is_complex_intent and (not user_model_choice or "orchestrator" in user_model_choice.lower())
+            # Di Web, selalu gunakan orchestrator untuk task kompleks agar fitur tool dan thinking tetap jalan
+            # meskipun user memilih model secara manual dari dropdown.
+            is_orchestrator = is_complex_intent
         
         log.debug("_handle_simple routing", is_orchestrator=is_orchestrator, 
                   primary_intent=spec.primary_intent, auto_execute=auto_execute)
@@ -452,10 +453,25 @@ class Orchestrator:
                 yield OrchestratorEvent("status", "⚙️ Mengeksekusi perintah sistem...")
                 is_orchestrator = True  # Double check: force agent executor path for tool access
 
-        # Build messages
-        messages = [{"role": "system", "content": system_prompt}]
+        if not is_orchestrator:
+            # STRICT: For ALL non-tool paths (simple or analysis), use a minimal
+            # conversation-only prompt. NEVER pass the full system_prompt (ai_core_prompt.md)
+            # which contains routing/model registry info that leaks into responses.
+            simple_prompt = (
+                "Anda adalah AL FATIH, AI Orchestrator tingkat tinggi yang merupakan inti dari sistem ini. "
+                "Jawab pertanyaan atau sapaan user secara langsung, natural, dan profesional dalam Bahasa Indonesia. "
+                "JANGAN PERNAH menyebutkan atau menjelaskan klasifikasi tugas, model yang digunakan, routing, atau arsitektur internal."
+            )
+            messages = [{"role": "system", "content": simple_prompt}]
+        else:
+            messages = [{"role": "system", "content": system_prompt}]
+
         messages += history[-10:]  # Limit history to prevent context overflow
         messages.append({"role": "user", "content": spec.original_message})
+
+        # Cap tokens for simple/general responses to avoid model wandering
+        if spec.primary_intent in ("general",) and spec.complexity_score < 0.3:
+            max_tokens = min(max_tokens, 1024)
 
         yield OrchestratorEvent("status", "Merespons...")
 
@@ -532,11 +548,34 @@ class Orchestrator:
                     )
             else:
                 # Direct model call — no tools
-                from agents.executor import ResponseFilter
+                # For simple/direct path, NEVER emit thinking to avoid leakage of
+                # internal classification/routing text that model may output without tags.
                 import re
-                
-                response_filter = ResponseFilter(emit_thinking=emit_thinking)
                 buffer = ""
+                response_started = False
+                
+                # Patterns that indicate leaked internal reasoning — must be stripped
+                _LEAK_PATTERNS = [
+                    r'\[THE RUNNER\][^\n]*\n?',
+                    r'\[BRAIN\][^\n]*\n?',
+                    r'\[ARCHITECT\][^\n]*\n?',
+                    r'\[VISION_GATE\][^\n]*\n?',
+                    r'\[THE EAR\][^\n]*\n?',
+                    r'\[THE POLISHER\][^\n]*\n?',
+                    r'(?i)This\s+(is\s+a\s+)?(simple\s+)?(greeting|general|coding|system|analysis)[^\n]*\n?',
+                    r'(?i)The\s+(primary|category|main)\s+model\s+(for|applies|is)[^\n]*\n?',
+                    r'(?i)The\s+user\s+(said|sent)[^\n]*(?:greeting|category|GREETING|GENERAL)[^\n]*\n?',
+                    r'(?i)No\s+special\s+considerations[^\n]*\n?',
+                    r'(?i)The\s+response\s+should\s+be\s+a[^\n]*\n?',
+                    r'</?(?:thinking|think|response|tool|observation)>',
+                ]
+                
+                def _strip_leaked_text(text: str) -> str:
+                    # Remove full <thinking>...</thinking> blocks first
+                    text = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', text, flags=re.DOTALL)
+                    for pattern in _LEAK_PATTERNS:
+                        text = re.sub(pattern, '', text)
+                    return text.strip()
 
                 async for chunk in model_manager.chat_stream(
                     model=model,
@@ -545,19 +584,59 @@ class Orchestrator:
                     max_tokens=max_tokens,
                 ):
                     buffer += chunk
-                    filtered = response_filter.process(chunk)
-                    if filtered:
-                        yield OrchestratorEvent("chunk", filtered)
+                    
+                    # Detect and skip <thinking> blocks
+                    # We buffer until we find </thinking> or enough clean text
+                    if not response_started:
+                        # Skip if we're inside a thinking block
+                        if '<thinking>' in buffer or '<think>' in buffer:
+                            # Find the end of thinking block
+                            end_tag = '</thinking>' if '</thinking>' in buffer else '</think>' if '</think>' in buffer else None
+                            if end_tag:
+                                # Found end of thinking block, strip it and continue
+                                after_think = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', buffer, flags=re.DOTALL)
+                                buffer = after_think
+                            else:
+                                # Still inside thinking block, skip
+                                continue
+                        
+                        # Check for response tag
+                        if '<response>' in buffer:
+                            response_started = True
+                            before_resp = buffer.split('<response>')[0]
+                            buffer = buffer[buffer.find('<response>') + len('<response>'):]
+                            # Emit anything already in buffer after <response>
+                            clean = _strip_leaked_text(buffer.split('</response>')[0])
+                            if clean:
+                                yield OrchestratorEvent("chunk", clean)
+                            continue
+                        
+                        # If buffer > 80 chars and no thinking tags, assume direct response
+                        if len(buffer) > 80:
+                            clean = _strip_leaked_text(buffer)
+                            if clean:
+                                response_started = True
+                                yield OrchestratorEvent("chunk", clean)
+                                buffer = ""
+                    else:
+                        # Already streaming — handle </response> termination
+                        if '</response>' in buffer:
+                            clean_part = _strip_leaked_text(buffer.split('</response>')[0])
+                            if clean_part:
+                                yield OrchestratorEvent("chunk", clean_part)
+                            buffer = ""
+                        else:
+                            # Stream cleaned chunk immediately
+                            clean = _strip_leaked_text(chunk)
+                            if clean:
+                                yield OrchestratorEvent("chunk", clean)
+                            buffer = ""
 
-                remaining = response_filter.flush()
-                if remaining:
-                    yield OrchestratorEvent("chunk", remaining)
-
-                if not response_filter.ever_emitted_response:
-                    fallback_text = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', buffer, flags=re.DOTALL)
-                    fallback_text = re.sub(r'</?(?:thinking|think|response|tool|observation)>', '', fallback_text).strip()
-                    if fallback_text:
-                        yield OrchestratorEvent("chunk", fallback_text)
+                # Flush remaining buffer
+                if buffer:
+                    clean = _strip_leaked_text(buffer)
+                    if clean:
+                        yield OrchestratorEvent("chunk", clean)
         finally:
             agent_registry.mark_idle(active_agent, task_id)
 
