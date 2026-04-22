@@ -12,7 +12,7 @@ import toast from 'react-hot-toast'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
   Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
-  ImagePlus, Mic, MicOff, Camera, Volume2, Brain, ChevronDown, ChevronUp,
+  ImagePlus, Mic, MicOff, Camera, Volume2, Brain, ChevronDown, ChevronUp, ChevronRight,
   ExternalLink, FileCode2, Maximize2, Minimize2, PanelRightClose, PanelRightOpen,
   Terminal, BookOpen, PenLine, List, Search, Globe, FilePlus, Trash, MoveRight,
   ClipboardList, AlignLeft, CheckCircle2, Hash, AlertCircle, Wrench, RefreshCw
@@ -38,6 +38,7 @@ const LANG_COLORS = {
 // ── CodeBlock: replaces default ReactMarkdown pre/code renders ─
 function CodeBlock({ language, code, onOpenArtifact }) {
   const [copied, setCopied] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false) // Custom state to hide/show code
   const lines = code.split('\n').length
   const isLong = lines > 25
   const langColor = LANG_COLORS[language?.toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
@@ -51,11 +52,20 @@ function CodeBlock({ language, code, onOpenArtifact }) {
   return (
     <div className="code-block-wrapper relative my-2 rounded-xl overflow-hidden border border-border-2 bg-bg-3">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border-2 bg-bg-4">
-        <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', langColor)}>
-          {language || 'code'}
-        </span>
-        <div className="flex items-center gap-1">
+      <div 
+        className="flex items-center justify-between px-3 py-1.5 border-b border-border-2 bg-bg-4 cursor-pointer hover:bg-bg-5 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center gap-2">
+          {isExpanded ? <ChevronDown size={14} className="text-ink-3" /> : <ChevronRight size={14} className="text-ink-3" />}
+          <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', langColor)}>
+            {language || 'code'}
+          </span>
+          {!isExpanded && (
+            <span className="text-[10px] text-ink-3">({lines} baris)</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
           {isLong && onOpenArtifact && (
             <button
               onClick={() => onOpenArtifact(code, language || 'txt')}
@@ -79,9 +89,11 @@ function CodeBlock({ language, code, onOpenArtifact }) {
         </div>
       </div>
       {/* Code content — automatically adapts to light/dark themes via CSS vars */}
-      <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none">
-        <code className="text-inherit bg-transparent p-0">{code}</code>
-      </pre>
+      {isExpanded && (
+        <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none">
+          <code className="text-inherit bg-transparent p-0">{code}</code>
+        </pre>
+      )}
     </div>
   )
 }
