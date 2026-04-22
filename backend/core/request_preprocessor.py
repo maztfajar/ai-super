@@ -187,6 +187,13 @@ FAST_CODING_PATTERNS = [
     "tampilkan kode lengkap", "kode lengkap", "full code", "complete code",
 ]
 
+# Fast-path untuk tugas kantor (Office) & operasi file
+OFFICE_FILE_PATTERNS = [
+    "buatkan laporan", "bikin laporan", "catatan rapat", "buatkan excel", 
+    "bikin excel", "buatkan word", "bikin word", "tugas kantor", 
+    "rekap data", "edit file", "pindahkan file", "hapus file", "bikin csv"
+]
+
 # Fast-path: skip LLM classifier untuk permintaan analisis sederhana
 FAST_ANALYSIS_PATTERNS = [
     "jelaskan", "explain", "apa itu", "what is", "bagaimana cara", "how to",
@@ -249,11 +256,28 @@ class RequestPreprocessor:
         if any(p in msg_lower_fast for p in FAST_CODING_PATTERNS):
             spec.primary_intent = "coding"
             spec.intents = ["coding"]
+            
+            # Jika user minta bikin full app/website, paksa dekomposisi agar tidak timeout/hit token limit
+            is_complex_app = any(p in msg_lower_fast for p in ["aplikasi", "app", "website", "program", "game", "sistem", "kalkulator", "todo", "full code"])
+            
+            spec.complexity_score = 0.8 if is_complex_app else 0.5
+            spec.is_simple = not is_complex_app
+            spec.requires_multi_agent = is_complex_app
+            spec.quality_priority = "balanced"
+            
+            spec.preprocessing_time_ms = int((time.time() - start) * 1000)
+            log.info("Preprocessor: fast-path coding detected", msg=message[:60], is_simple=spec.is_simple)
+            return spec
+
+        # Step 0c: Fast-path untuk tugas kantor & file operations
+        if any(p in msg_lower_fast for p in OFFICE_FILE_PATTERNS):
+            spec.primary_intent = "file_operation"
+            spec.intents = ["file_operation", "writing"]
             spec.complexity_score = 0.5
-            spec.is_simple = True  # Biarkan agent executor yang handle kompleksitasnya
+            spec.is_simple = True  # File operations usually don't need complex multi-agent breakdown
             spec.quality_priority = "balanced"
             spec.preprocessing_time_ms = int((time.time() - start) * 1000)
-            log.info("Preprocessor: fast-path coding detected", msg=message[:60])
+            log.info("Preprocessor: fast-path office/file detected", msg=message[:60])
             return spec
 
         if any(p in msg_lower_fast for p in FAST_ANALYSIS_PATTERNS) and len(message) < 300:

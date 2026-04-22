@@ -407,10 +407,10 @@ class AgentExecutor:
                 async for chunk in model_manager.chat_stream(base_model, agent_msgs, temperature, max_tokens):
                     buffer += chunk
                     
-                    # ALWAYS process chunk perfectly; the ResponseFilter is built to gracefully stop when it hits <tool>
-                    filtered = response_filter.process(chunk)
-                    if filtered:
-                        yield filtered
+                    if not has_tool_started:
+                        filtered = response_filter.process(chunk)
+                        if filtered:
+                            yield filtered
                     
                     if "<tool>" in buffer and not has_tool_started:
                         has_tool_started = True
