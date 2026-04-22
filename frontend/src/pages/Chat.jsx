@@ -340,24 +340,39 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
 
   // Helper: Split content into main text and thinking process
   const splitContent = (content) => {
-    if (!content) return { mainContent: '', thinkingContent: null, hasThinking: false }
+    let processedContent = content || ''
+    
+    // Auto-unwrap Sumopod API JSON wrapper if present
+    try {
+      const cleanJson = processedContent.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim()
+      if (cleanJson.startsWith('{') && cleanJson.endsWith('}')) {
+        const parsed = JSON.parse(cleanJson)
+        if (parsed.response && parsed.model_used) {
+          processedContent = parsed.response;
+        }
+      }
+    } catch(e) {
+      // Ignore if not valid JSON
+    }
+
+    if (!processedContent) return { mainContent: '', thinkingContent: null, hasThinking: false }
     
     // Find the thinking section: starts with 🤔 Proses Berpikir:
-    const thinkStart = content.indexOf('🤔 Proses Berpikir:')
+    const thinkStart = processedContent.indexOf('🤔 Proses Berpikir:')
     
     if (thinkStart === -1) {
-      return { mainContent: content, thinkingContent: null, hasThinking: false }
+      return { mainContent: processedContent, thinkingContent: null, hasThinking: false }
     }
     
     // Get everything before the thinking section (main content before thinking)
-    const beforeThink = content.substring(0, thinkStart).trim()
+    const beforeThink = processedContent.substring(0, thinkStart).trim()
     
     // Get the thinking section content (after the header)
-    let thinkEnd = content.length
+    let thinkEnd = processedContent.length
     const afterThinkStart = thinkStart + '🤔 Proses Berpikir:'.length
     
     // Find where thinking ends - look for double newline followed by non-bullet text
-    const remaining = content.substring(afterThinkStart)
+    const remaining = processedContent.substring(afterThinkStart)
     const lines = remaining.split('\n')
     
     let thinkLineEnd = 0
