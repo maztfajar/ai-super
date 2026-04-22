@@ -481,3 +481,48 @@ async def get_project_location(
         project_path = session.project_metadata.get("project_path")
     
     return {"project_path": project_path}
+
+
+class DirectoryListRequest(BaseModel):
+    path: str
+
+
+@router.post("/list_directories")
+async def list_directories(
+    req: DirectoryListRequest,
+    user: User = Depends(get_current_user),
+):
+    """List subdirectories for a given path to enable server-side directory browsing"""
+    import os
+    
+    try:
+        target_path = os.path.abspath(req.path) if req.path else os.path.expanduser("~")
+        
+        # Security check: Ensure we can only browse within allowed boundaries
+        # For a local AI app, we might allow browsing anywhere, but let's restrict to ~ or /home/
+        if not target_path.startswith(os.path.expanduser("~")) and not target_path.startswith("/home/"):
+            target_path = os.path.expanduser("~")
+            
+        if not os.path.exists(target_path) or not os.path.isdir(target_path):
+            return {"path": target_path, "directories": [], "parent": os.path.dirname(target_path)}
+            
+        directories = []
+        for item in sorted(os.listdir(target_path)):
+            item_path = os.path.join(target_path, item)
+            # Only include directories, ignore hidden folders
+            if os.path.isdir(item_path) and not item.startswith("."):
+                directories.append({
+                    "name": item,
+                    "path": item_path
+                })
+                
+        parent_dir = os.path.dirname(target_path) if target_path != "/" else "/"
+        
+        return {
+            "path": target_path,
+            "directories": directories,
+            "parent": parent_dir
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Error reading directory: {str(e)}")
+

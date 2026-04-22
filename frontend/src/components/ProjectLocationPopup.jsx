@@ -6,6 +6,10 @@ import toast from 'react-hot-toast'
 export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLocationSet }) {
   const [projectPath, setProjectPath] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [showBrowser, setShowBrowser] = useState(false)
+  const [browserPath, setBrowserPath] = useState('')
+  const [directories, setDirectories] = useState([])
+  const [browserLoading, setBrowserLoading] = useState(false)
 
   useEffect(() => {
     // Load existing project location when popup opens
@@ -49,23 +53,21 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
     }
   }
 
-  const handleBrowse = () => {
-    // Create a simple file input for directory selection
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.webkitdirectory = true
-    input.multiple = false
-    
-    input.onchange = (e) => {
-      if (e.target.files.length > 0) {
-        // Get the directory path from the first file
-        const fullPath = e.target.files[0].webkitRelativePath
-        const directoryPath = fullPath.split('/')[0]
-        setProjectPath(directoryPath)
-      }
+  const handleBrowse = async (path = '') => {
+    setBrowserLoading(true)
+    setShowBrowser(true)
+    try {
+      // Determine the path to browse, default to current projectPath or home
+      const targetPath = path || projectPath || getDefaultPath()
+      const response = await api.post('/chat/list_directories', { path: targetPath })
+      setBrowserPath(response.path)
+      setDirectories(response.directories)
+    } catch (error) {
+      console.error('Failed to load directories:', error)
+      toast.error('Gagal memuat daftar folder server')
+    } finally {
+      setBrowserLoading(false)
     }
-    
-    input.click()
   }
 
   const getDefaultPath = () => {
@@ -75,6 +77,75 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
   }
 
   if (!isOpen) return null
+
+  if (showBrowser) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-bg-2 border border-border rounded-xl p-6 w-full max-w-md mx-4 flex flex-col h-[500px]">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-ink">Pilih Folder Server</h3>
+            <button onClick={() => setShowBrowser(false)} className="p-2 rounded-lg hover:bg-bg-4 text-ink-2 transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="mb-2 text-sm font-mono text-ink-2 bg-bg-3 p-2 rounded truncate border border-border">
+            {browserPath}
+          </div>
+          
+          <div className="flex-1 overflow-y-auto space-y-1 mb-4 border border-border rounded-lg bg-bg-3 p-2">
+            {browserLoading ? (
+              <div className="text-center py-8 text-ink-3">Memuat folder...</div>
+            ) : (
+              <>
+                <div 
+                  className="p-2 hover:bg-bg-4 cursor-pointer rounded flex items-center gap-3 text-ink transition-colors"
+                  onClick={() => {
+                    const parentPath = browserPath.split('/').slice(0, -1).join('/') || '/'
+                    handleBrowse(parentPath)
+                  }}
+                >
+                  <FolderOpen size={16} className="text-accent shrink-0" /> 
+                  <span className="truncate">.. (Kembali)</span>
+                </div>
+                {directories.length === 0 && (
+                  <div className="text-center py-4 text-ink-3 text-sm">Folder kosong</div>
+                )}
+                {directories.map(dir => (
+                  <div 
+                    key={dir.path}
+                    className="p-2 hover:bg-bg-4 cursor-pointer rounded flex items-center gap-3 text-ink transition-colors"
+                    onClick={() => handleBrowse(dir.path)}
+                  >
+                    <FolderOpen size={16} className="text-accent shrink-0" /> 
+                    <span className="truncate">{dir.name}</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          
+          <div className="flex gap-3 mt-auto pt-2">
+            <button 
+              onClick={() => setShowBrowser(false)} 
+              className="flex-1 px-4 py-2 border border-border rounded-lg text-ink-2 hover:bg-bg-4 transition-colors"
+            >
+              Batal
+            </button>
+            <button 
+              onClick={() => { 
+                setProjectPath(browserPath); 
+                setShowBrowser(false);
+              }} 
+              className="flex-1 px-4 py-2 bg-accent hover:bg-accent/80 text-white rounded-lg transition-colors"
+            >
+              Pilih Folder Ini
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -107,9 +178,9 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
                 className="flex-1 px-3 py-2 border border-border rounded-lg bg-bg-3 text-ink placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
               />
               <button
-                onClick={handleBrowse}
+                onClick={() => handleBrowse('')}
                 className="px-3 py-2 bg-bg-4 hover:bg-bg-5 border border-border rounded-lg text-ink-2 transition-colors"
-                title="Pilih folder"
+                title="Pilih folder dari server"
               >
                 <FolderOpen size={18} />
               </button>
@@ -128,7 +199,7 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
               🏠 Folder Home
             </button>
             <button
-              onClick={() => setProjectPath('/home/ppidpengasih/Desktop')}
+              onClick={() => setProjectPath(getDefaultPath() + '/Desktop')}
               className="flex-1 px-3 py-2 bg-bg-4 hover:bg-bg-5 border border-border rounded-lg text-ink-2 transition-colors text-sm"
             >
               🖥️ Desktop
