@@ -32,7 +32,7 @@ async def reset_admin():
             admin_user = User(
                 username="admin",
                 email="admin@ai-super-assistant.local",
-                hashed_password=get_password_hash("ai-super-assistant2024"),
+                hashed_password=hash_password("ai-super-assistant2024"),
                 is_active=True,
                 is_admin=True,
                 role="admin"

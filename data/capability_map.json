@@ -1,44 +1,9 @@
 {
-  "ollama/llama3.1": [
+  "sumopod/qwen3.6-flash": [
     "coding",
-    "reasoning",
-    "text"
-  ],
-  "ollama/mistral": [
-    "coding",
-    "reasoning",
-    "text"
-  ],
-  "sumopod/seed-2-0-pro": [
-    "analysis",
-    "coding",
-    "reasoning",
-    "text"
-  ],
-  "sumopod/minimax/speech-2.8-hd": [
-    "audio",
-    "speed",
-    "tts"
-  ],
-  "sumopod/MiniMax-M2.7-highspeed": [
     "speed",
     "text",
-    "writing"
-  ],
-  "sumopod/big-pickle": [
-    "analysis",
-    "coding",
-    "text"
-  ],
-  "sumopod/minimax-m2.5-free": [
-    "speed"
-  ],
-  "sumopod/mimo-v2-pro": [
-    "analysis",
-    "coding",
-    "reasoning",
-    "text",
-    "writing"
+    "vision"
   ],
   "sumopod/deepseek-v3-2": [
     "coding",
@@ -50,12 +15,13 @@
     "text",
     "vision"
   ],
-  "sumopod/mimo-v2-omni": [
-    "analysis",
+  "sumopod/minimax/speech-2.8-hd": [
     "audio",
-    "reasoning",
-    "text",
-    "vision"
+    "speed",
+    "tts"
+  ],
+  "sumopod/claude-haiku-4-5": [
+    "speed"
   ],
   "sumopod/gpt-4o-mini": [
     "analysis",
@@ -65,136 +31,5 @@
     "text",
     "vision",
     "writing"
-  ],
-  "sumopod/qwen3.6-flash": [
-    "coding",
-    "speed",
-    "text",
-    "vision"
-  ],
-  "sumopod/claude-haiku-4-5": [
-    "speed"
-  ],
-  "sumopod/gpt-5-nano": [
-    "speed"
-  ],
-  "sumopod/gpt-5.2-codex": [
-    "coding"
-  ],
-  "sumopod/mimo-v2-flash": [
-    "speed"
-  ],
-  "sumopod/gpt-5.1": [
-    "text"
-  ],
-  "sumopod/gpt-5.2": [
-    "text"
-  ],
-  "sumopod/seed-2-0-lite": [
-    "text"
-  ],
-  "sumopod/qwen3.6-plus": [
-    "coding",
-    "text",
-    "vision"
-  ],
-  "sumopod/gemini/gemini-3.1-flash-lite-preview": [
-    "speed"
-  ],
-  "sumopod/gpt-5": [
-    "text"
-  ],
-  "sumopod/gpt-4.1-nano": [
-    "speed"
-  ],
-  "sumopod/gpt-4.1": [
-    "text"
-  ],
-  "sumopod/gpt-4o": [
-    "analysis",
-    "coding",
-    "reasoning",
-    "text",
-    "vision",
-    "writing"
-  ],
-  "sumopod/text-embedding-3-large": [
-    "text"
-  ],
-  "sumopod/text-embedding-3-small": [
-    "speed"
-  ],
-  "sumopod/gemini/gemini-2.0-flash-lite": [
-    "speed",
-    "text",
-    "vision"
-  ],
-  "sumopod/gemini/gemini-2.0-flash": [
-    "speed",
-    "text",
-    "vision"
-  ],
-  "sumopod/gpt-5-mini": [
-    "speed"
-  ],
-  "sumopod/glm-4-7": [
-    "text"
-  ],
-  "sumopod/seed-2-0-mini": [
-    "speed"
-  ],
-  "sumopod/kimi-k2-5-260127": [
-    "text"
-  ],
-  "sumopod/glm-5": [
-    "text"
-  ],
-  "sumopod/claude-sonnet-4-6": [
-    "text"
-  ],
-  "sumopod/claude-opus-4-6": [
-    "text"
-  ],
-  "sumopod/gemini/gemini-2.5-flash": [
-    "speed",
-    "text",
-    "vision"
-  ],
-  "sumopod/gemini/gemini-3.1-pro-preview": [
-    "speed"
-  ],
-  "sumopod/glm-5-turbo": [
-    "text"
-  ],
-  "sumopod/gemini/gemini-2.5-flash-lite": [
-    "speed",
-    "text",
-    "vision"
-  ],
-  "sumopod/gpt-5.1-codex-mini": [
-    "coding",
-    "speed"
-  ],
-  "sumopod/glm-5.1": [
-    "text"
-  ],
-  "sumopod/gemini/gemini-2.5-pro": [
-    "analysis",
-    "reasoning",
-    "speed",
-    "text",
-    "vision"
-  ],
-  "sumopod/gpt-5.1-codex": [
-    "coding"
-  ],
-  "sumopod/gemini/gemini-3-flash-preview": [
-    "speed"
-  ],
-  "sumopod/gemini/gemini-3-pro-preview": [
-    "speed"
-  ],
-  "sumopod/gpt-4.1-mini": [
-    "speed"
   ]
 }
