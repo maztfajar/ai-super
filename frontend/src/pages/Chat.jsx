@@ -1217,12 +1217,15 @@ export default function Chat() {
     messages, setMessages, addMessage,
     streaming, setStreaming,
     streamingText, appendStreamingText, clearStreaming,
+    processSteps, setProcessSteps, addProcessStep,
+    statusText, setStatusText,
+    actualModel, setActualModel,
+    abortRequest, setAbortRequest,
   } = useChatStore()
 
   const [input, setInput] = useState('')
   const [useRAG, setUseRAG] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
-  const [actualModel, setActualModel] = useState(null)
   const [speakingId, setSpeakingId] = useState(null)
   const audioRef = useRef(null)
 
@@ -1254,8 +1257,6 @@ export default function Chat() {
   }, [speakingId])
 
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
-  const [statusText, setStatusText] = useState('')
-  const [processSteps, setProcessSteps] = useState([])  // Structured { action, detail, count, ts }
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Artifacts Panel state
@@ -1300,7 +1301,6 @@ export default function Chat() {
   const imagePickerRef = useRef(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
-  const abortRef = useRef(null)
   const fileInputRef = useRef(null) // Untuk RAG
   const chatContextFileRef = useRef(null) // Untuk lampiran chat context (non-RAG)
   const scrollBottom = useCallback(() => {
@@ -1474,9 +1474,10 @@ export default function Chat() {
 
   // ── STOP streaming ────────────────────────────────────────
   function stopStreaming() {
-    if (abortRef.current && typeof abortRef.current === 'function') {
-      abortRef.current()
-      abortRef.current = null
+    const abortFn = useChatStore.getState().abortRequest
+    if (abortFn && typeof abortFn === 'function') {
+      abortFn()
+      useChatStore.getState().setAbortRequest(null)
     }
     const partial = useChatStore.getState().streamingText
     if (partial.trim()) {
@@ -1535,35 +1536,42 @@ export default function Chat() {
     }
 
     // Check if user wants to create an application/project
-    const isAppCreation = /buat|create|bikin|buatkan|create|develop|develop|make|build/i.test(text) && 
-                           (/aplikasi|application|web|website|project|proyek|sistem|system|app/i.test(text) ||
+    const isAppCreation = /buat|create|bikin|develop|make|build/i.test(text) && 
+                           (/aplik|apliaksi|application|web|website|project|proyek|sistem|system|app/i.test(text) ||
                             /react|vue|angular|node|python|php|javascript|typescript/i.test(text))
 
+    const sessionId = currentSession?.id || `new-${Date.now()}`
     if (isAppCreation) {
-      // Check if project location is set
-      try {
-        const projectLocation = await api.getProjectLocation(currentSession.id)
-        if (!projectLocation.project_path) {
-          // Show popup to set project location
-          openProjectLocationPopup(currentSession.id)
-          return
+      let hasLocation = false
+      if (currentSession?.id) {
+        try {
+          const projectLocation = await api.getProjectLocation(currentSession.id)
+          if (projectLocation && projectLocation.project_path) {
+            hasLocation = true
+          }
+        } catch (error) {
+          console.log('Project location not set or session not found')
         }
-      } catch (error) {
-        console.error('Failed to check project location:', error)
+      }
+      
+      if (!hasLocation) {
+        openProjectLocationPopup(currentSession.id)
+        return // Return early. The text stays in the input so the user can just press Enter again.
       }
     }
 
     setInput('')
     setActualModel(null)
+    useChatStore.getState().setActualModel(null)
     // Reset textarea height
     if (inputRef.current) inputRef.current.style.height = 'auto'
 
     const tempUserMsg = {
       id: Date.now(),
       role: 'user',
-      content: combinedText, // Show the combined text, or maybe we just want to show the original text? Wait, showing combinedText is good so the user knows exactly what the AI sees, but it can be very long. Let's show the original text and use attachedFiles.
-      original_content: text, // Optional
-      attachedFiles: currentFiles, // Save attached files metadata
+      content: combinedText,
+      original_content: text,
+      attachedFiles: currentFiles,
       model: selectedOrchestrator,
       created_at: new Date().toISOString(),
       _image_preview: imageToSend?.preview || pendingImage?.preview || null,
@@ -1572,129 +1580,128 @@ export default function Chat() {
 
     setPendingImage(null)  // clear preview
     setStreaming(true)
-    setStatusText('')
-    setProcessSteps([])  // Reset process steps
+    useChatStore.getState().setStatusText('')
+    useChatStore.getState().setProcessSteps([])  // Reset process steps
 
     // Helper: add structured process step from onProcess SSE event
-    const addProcessStep = (data) => {
-      setProcessSteps(prev => [
-        ...prev,
-        { action: data.action || 'Worked', detail: data.detail || '', count: data.count ?? null, ts: data.ts || Date.now() }
-      ])
+    const handleAddProcessStep = (data) => {
+      useChatStore.getState().addProcessStep({
+        action: data.action || 'Worked', 
+        detail: data.detail || '', 
+        count: data.count ?? null, 
+        ts: data.ts || Date.now() 
+      })
     }
-
-    const sessionId = currentSession.id
 
     // Use different endpoints based on whether image is present
     if (imageToSend) {
-      // Use multimodal endpoint for image + text
-      abortRef.current = api.chatStreamMultimodal(
+      // chatStreamMultimodal(payload, imageData, onChunk, onDone, onSession, onStatus, onProcess)
+      const abortFn = api.chatStreamMultimodal(
         {
           session_id: sessionId,
           message: combinedText,
           model: selectedOrchestrator,
           use_rag: useRAG,
         },
-        imageToSend,  // Pass image data (base64 + mime_type)
+        imageToSend,
         (chunk) => appendStreamingText(chunk),
         async (done) => {
           const fullText = useChatStore.getState().streamingText
           clearStreaming()
-          setStatusText('')
+          useChatStore.getState().setStatusText('')
 
           if (done.drive_prompt) {
             setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
           }
           if (done.model_used) setActiveModel(done.model_used)
           if (done.capability_used) setActiveCapability(done.capability_used)
-
-
-        addMessage({
-          id: Date.now() + 1,
-          role: 'assistant',
-          content: fullText,
-          model: abortRef.current?.actualModel || selectedOrchestrator,
-          rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
-          thinking_process: done.thinking_process || null,
-          created_at: new Date().toISOString(),
-        })
-        // Refresh session list — tapi hati-hati jangan restore sesi yang dihapus
-        api.listSessions().then((s) => {
-          const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-          setSessions(safe)
-        }).catch(() => {})
-        // Clear process steps and auto-focus
-        setProcessSteps([])
-        setTimeout(() => { inputRef.current?.focus() }, 50)
-      },
-      (sessionData) => {
-        if (sessionData && sessionData.model) {
-          setActualModel(sessionData.model)
-          if (abortRef.current) abortRef.current.actualModel = sessionData.model
-        }
-      },
-      (pendingData) => {
-        clearStreaming()
-        setStatusText('')
-        setPendingConfirmation(pendingData)
-      },
-      undefined,          // onStatus (legacy, not used)
-      (procData) => addProcessStep(procData)  // onProcess
-      )
-    } else {
-      // Use regular endpoint for text-only
-      abortRef.current = api.chatStream(
-        {
-          session_id: sessionId,
-          message: combinedText,
-          model: selectedOrchestrator,
-          use_rag: useRAG,
-        },
-        (chunk) => appendStreamingText(chunk),
-        async (done) => {
-          const fullText = useChatStore.getState().streamingText
-          clearStreaming()
-          setStatusText('')
-
-          if (done.drive_prompt) {
-            setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
-          }
-          if (done.model_used) setActiveModel(done.model_used)
-          if (done.capability_used) setActiveCapability(done.capability_used)
-
 
           addMessage({
             id: Date.now() + 1,
             role: 'assistant',
             content: fullText,
-            model: abortRef.current?.actualModel || selectedOrchestrator,
+            model: useChatStore.getState().actualModel || selectedOrchestrator,
             rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
             thinking_process: done.thinking_process || null,
             created_at: new Date().toISOString(),
           })
-          // Refresh session list — tapi hati-hati jangan restore sesi yang dihapus
           api.listSessions().then((s) => {
             const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
             setSessions(safe)
           }).catch(() => {})
-          // Clear process steps and auto-focus
-          setProcessSteps([])
+          useChatStore.getState().setProcessSteps([])
+          useChatStore.getState().setActualModel(null)
+          useChatStore.getState().setAbortRequest(null)
           setTimeout(() => { inputRef.current?.focus() }, 50)
         },
         (sessionData) => {
           if (sessionData && sessionData.model) {
-            setActualModel(sessionData.model)
-            if (abortRef.current) abortRef.current.actualModel = sessionData.model
+            useChatStore.getState().setActualModel(sessionData.model)
+          }
+          if (sessionData && sessionData.session_id && (!currentSession || !currentSession.id)) {
+            setCurrentSession({ id: sessionData.session_id })
+          }
+        },
+        (status) => useChatStore.getState().setStatusText(status),
+        (procData) => handleAddProcessStep(procData)
+      )
+      useChatStore.getState().setAbortRequest(() => abortFn)
+    } else {
+      // chatStream(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess)
+      const abortFn = api.chatStream(
+        {
+          session_id: sessionId,
+          message: combinedText,
+          model: selectedOrchestrator,
+          use_rag: useRAG,
+        },
+        (chunk) => appendStreamingText(chunk),
+        async (done) => {
+          const fullText = useChatStore.getState().streamingText
+          clearStreaming()
+          useChatStore.getState().setStatusText('')
+
+          if (done.drive_prompt) {
+            setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
+          }
+          if (done.model_used) setActiveModel(done.model_used)
+          if (done.capability_used) setActiveCapability(done.capability_used)
+
+          addMessage({
+            id: Date.now() + 1,
+            role: 'assistant',
+            content: fullText,
+            model: useChatStore.getState().actualModel || selectedOrchestrator,
+            rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
+            thinking_process: done.thinking_process || null,
+            created_at: new Date().toISOString(),
+          })
+          api.listSessions().then((s) => {
+            const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+            setSessions(safe)
+          }).catch(() => {})
+          useChatStore.getState().setProcessSteps([])
+          useChatStore.getState().setActualModel(null)
+          useChatStore.getState().setAbortRequest(null)
+          setTimeout(() => { inputRef.current?.focus() }, 50)
+        },
+        (sessionData) => {
+          if (sessionData && sessionData.model) {
+            useChatStore.getState().setActualModel(sessionData.model)
+          }
+          if (sessionData && sessionData.session_id && (!currentSession || !currentSession.id)) {
+            setCurrentSession({ id: sessionData.session_id })
           }
         },
         (pendingData) => {
           clearStreaming()
-          setStatusText('')
+          useChatStore.getState().setStatusText('')
           setPendingConfirmation(pendingData)
         },
-        undefined,          // onStatus (legacy)
-        (procData) => addProcessStep(procData)  // onProcess
+        (status) => useChatStore.getState().setStatusText(status),
+        (procData) => handleAddProcessStep(procData)
       )
+      useChatStore.getState().setAbortRequest(() => abortFn)
     }
     
     // Auto-focus input after sending
@@ -1709,7 +1716,7 @@ export default function Chat() {
     setPendingConfirmation(null)
     setStreaming(true)
 
-    abortRef.current = api.executePending(
+    const abortFn = api.executePending(
       {
         session_id: pendingData.session_id,
         command: pendingData.command,
@@ -1719,15 +1726,20 @@ export default function Chat() {
       async (done) => {
         const fullText = useChatStore.getState().streamingText
         clearStreaming()
+        useChatStore.getState().setStatusText('')
+        useChatStore.getState().setProcessSteps([])
+        useChatStore.getState().setActualModel(null)
+        useChatStore.getState().setAbortRequest(null)
         addMessage({
           id: Date.now() + 1,
           role: 'assistant',
           content: fullText,
-          model: abortRef.current?.actualModel || selectedOrchestrator,
+          model: useChatStore.getState().actualModel || selectedOrchestrator,
           created_at: new Date().toISOString(),
         })
       }
     )
+    useChatStore.getState().setAbortRequest(() => abortFn)
   }
 
   function handleKeyDown(e) {

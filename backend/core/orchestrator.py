@@ -262,6 +262,7 @@ class Orchestrator:
         yield OrchestratorEvent("status", "⚡ Mengeksekusi sub-tasks...")
 
         results: List[SubTaskResult] = []
+        phase5_streamed = False
         for group in dag.execution_order:
             group_tasks = [dag.subtasks[tid] for tid in group.task_ids if tid in dag.subtasks]
 
@@ -272,8 +273,9 @@ class Orchestrator:
                 agent_registry.mark_busy(agent_type, group_tasks[0].id)
                 
                 event_queue = asyncio.Queue()
+                phase5_streamed = True
                 exec_task = asyncio.create_task(self._execute_subtask(
-                    group_tasks[0], system_prompt, history, spec, event_queue
+                    group_tasks[0], system_prompt, history, spec, event_queue, stream_chunks=True
                 ))
                 
                 while not exec_task.done():
@@ -393,8 +395,8 @@ class Orchestrator:
 
         aggregated = agg_task.result()
 
-        if not streamed_chunks:
-            # Yield the final response as chunks if it wasn't streamed
+        if not streamed_chunks and not phase5_streamed:
+            # Yield the final response as chunks if it wasn't streamed in Phase 5 or Phase 7
             response = aggregated.final_response
             chunk_size = 50  # characters per chunk
             for i in range(0, len(response), chunk_size):
@@ -850,6 +852,7 @@ class Orchestrator:
         history: list,
         spec: TaskSpecification,
         event_queue: Optional[asyncio.Queue] = None,
+        stream_chunks: bool = False,
     ) -> SubTaskResult:
         """Execute a single subtask using its assigned agent and model."""
         start = time.time()
@@ -902,6 +905,10 @@ class Orchestrator:
                             except Exception:
                                 pass
                         continue
+                    
+                    if stream_chunks and event_queue is not None:
+                        event_queue.put_nowait(OrchestratorEvent("chunk", chunk))
+                        
                     full_response += chunk
                 return full_response
 

@@ -37,6 +37,18 @@ export const useChatStore = create((set, get) => ({
   appendStreamingText: (chunk) => set((s) => ({ streamingText: s.streamingText + chunk })),
   setSelectedModel: (m) => set({ selectedModel: m }),
   clearStreaming: () => set({ streaming: false, streamingText: '' }),
+
+  // Live progress states
+  processSteps: [],
+  statusText: '',
+  actualModel: null,
+  abortRequest: null,
+  
+  setProcessSteps: (steps) => set({ processSteps: steps }),
+  addProcessStep: (step) => set((s) => ({ processSteps: [...s.processSteps, step] })),
+  setStatusText: (t) => set({ statusText: t }),
+  setActualModel: (m) => set({ actualModel: m }),
+  setAbortRequest: (fn) => set({ abortRequest: fn }),
 }))
 
 export const useModelsStore = create((set) => ({
