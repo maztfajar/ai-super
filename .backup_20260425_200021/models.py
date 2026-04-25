@@ -1,6 +1,6 @@
 from sqlmodel import SQLModel, Field, Column, JSON
 from typing import Optional, List
-from datetime import datetime, timezone
+from datetime import datetime
 import uuid
 
 
@@ -21,7 +21,7 @@ class User(SQLModel, table=True):
     totp_secret: Optional[str] = None          # Base32 secret for TOTP/2FA
     totp_enabled: bool = False                 # 2FA aktif atau tidak
     telegram_chat_id: Optional[str] = None    # Chat ID Telegram untuk OTP
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ChatSession(SQLModel, table=True):
@@ -34,8 +34,8 @@ class ChatSession(SQLModel, table=True):
     total_tokens: int = 0
     total_cost_usd: float = 0.0
     project_metadata: Optional[dict] = Field(default=None, sa_column=Column(JSON))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class Message(SQLModel, table=True):
@@ -51,7 +51,7 @@ class Message(SQLModel, table=True):
     cost_usd: float = 0.0
     rag_sources: Optional[str] = None   # JSON list of source doc names
     thinking_process: Optional[str] = None  # Collected status/thinking steps for expandable section
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class KnowledgeDoc(SQLModel, table=True):
@@ -66,7 +66,7 @@ class KnowledgeDoc(SQLModel, table=True):
     status: str = "indexing"        # indexing | ready | error
     collection: str = "default"
     indexed_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class WorkflowDef(SQLModel, table=True):
@@ -82,7 +82,7 @@ class WorkflowDef(SQLModel, table=True):
     is_active: bool = True
     run_count: int = 0
     last_run_at: Optional[datetime] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class WorkflowRun(SQLModel, table=True):
@@ -94,7 +94,7 @@ class WorkflowRun(SQLModel, table=True):
     output: Optional[str] = None
     error: Optional[str] = None
     duration_ms: int = 0
-    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    started_at: datetime = Field(default_factory=datetime.utcnow)
     finished_at: Optional[datetime] = None
 
 
@@ -106,7 +106,7 @@ class UserMemoryEntry(SQLModel, table=True):
     content: str
     importance: float = 1.0
     source_session: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ModelConfig(SQLModel, table=True):
@@ -122,7 +122,7 @@ class ModelConfig(SQLModel, table=True):
     top_p: float = 0.9
     is_active: bool = True
     is_default: bool = False
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class ApiLog(SQLModel, table=True):
@@ -136,7 +136,7 @@ class ApiLog(SQLModel, table=True):
     model_used: Optional[str] = None
     tokens_used: int = 0
     cost_usd: float = 0.0
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class LoginLog(SQLModel, table=True):
@@ -148,7 +148,7 @@ class LoginLog(SQLModel, table=True):
     ip_address: str = ""
     user_agent: str = ""
     reason: str = ""          # "" | wrong_password | locked | inactive
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class RecoveryToken(SQLModel, table=True):
@@ -159,7 +159,7 @@ class RecoveryToken(SQLModel, table=True):
     token_hash: str           # SHA-256 dari token asli
     used: bool = False
     expires_at: datetime
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class AgentPerformance(SQLModel, table=True):
@@ -177,7 +177,7 @@ class AgentPerformance(SQLModel, table=True):
     tokens_output: int = 0
     cost_usd: float = 0.0
     error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class TaskExecution(SQLModel, table=True):
@@ -198,6 +198,6 @@ class TaskExecution(SQLModel, table=True):
     total_cost_usd: float = 0.0
     agents_used: Optional[str] = None         # JSON list of agent/model combos used
     error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
     completed_at: Optional[datetime] = None
     vps_deployment_at: Optional[datetime] = None  # Track VPS deployment timing
