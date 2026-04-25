@@ -454,7 +454,7 @@ export default function Security() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {[
             { label: 'Ganti SECRET_KEY dari default',              key: 'secret_key',  critical: true },
-            { label: 'Ganti password admin dari ai-super-assistant2024',    key: 'admin_pass',  critical: true },
+            { label: 'Ganti password admin dari admin',    key: 'admin_pass',  critical: true },
             { label: 'Gunakan password minimal 12 karakter',       key: 'pass_length', critical: true },
             { label: 'Aktifkan HTTPS via Cloudflare Tunnel',       key: 'https',       critical: true },
             { label: 'Jangan expose port 7860 ke internet',        key: 'port',        critical: false },

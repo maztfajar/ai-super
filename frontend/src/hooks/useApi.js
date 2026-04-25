@@ -112,6 +112,10 @@ export const api = {
   setProjectLocation: (sessionId, projectPath) => req('POST', '/chat/set_project_location', { session_id: sessionId, project_path: projectPath }),
   getProjectLocation: (sessionId) => req('GET', '/chat/get_project_location/' + sessionId),
 
+  // ── File Saving ───────────────────────────────────────────
+  saveFile: (directory, filename, content) => req('POST', '/chat/save-file', { directory, filename, content }),
+  listDirectories: (path) => req('POST', '/chat/list_directories', { path: path || '~' }),
+
   // ── RAG ───────────────────────────────────────────────────
   listDocs:   ()     => req('GET',    '/rag/documents'),
   deleteDoc:  (id)   => req('DELETE', '/rag/documents/' + id),

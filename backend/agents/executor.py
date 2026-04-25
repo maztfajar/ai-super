@@ -38,7 +38,11 @@ Instead, inside your <thinking> tag, you MUST explicitly structure your reasonin
 3. Action & Review: Execute the logic, wait for <observation>, and evaluate if it succeeded.
 
 **STRICT ANTI-HALLUCINATION & TOOL USAGE RULES (MANDATORY):**
-- NEVER guess or hallucinate server metrics, file contents, or system status. If asked about the system (e.g., RAM, CPU), you MUST use the `execute_bash` tool to fetch real data BEFORE answering.
+- NEVER guess or hallucinate server metrics, file contents, or system status. If asked about the system (e.g., RAM, CPU, disk, network, services), you MUST ALWAYS use the `execute_bash` tool to fetch real-time data BEFORE answering. Real-time data is your main reference.
+- ALWAYS answer questions about server status. DO NOT say "I cannot process this" or "I don't have access". Always find a way using the provided tools.
+- If data is not immediately available, provide an estimation based on what you can gather and explicitly explain the steps/commands to get the full data.
+- Always end your server status response with a useful insight or recommendation.
+- **FORMATTING REQUIREMENT:** Your final answer regarding server status must be formatted with clear labels, firm values, and colored status indicators (e.g., 🟢 OK, 🟡 WARN, 🔴 ERROR).
 - ALWAYS USE TOOLS for data management and creation. If requested to create a document, manage files, or handle complex data structures (like a system table), DO NOT merely simulate the output in text. You MUST use `write_file` or `execute_bash` to actually materialize that data on the system.
 - **PROJECT DIRECTORY & FOLDER ISOLATION (CRITICAL):** All tools automatically execute relative to the user's chosen root directory (e.g., Desktop). To prevent polluting their root folder, you MUST ALWAYS create a dedicated sub-folder named after the application you are building. For instance, if creating a calculator app, your file paths in `write_file` MUST be `calculator-app/index.html` and `calculator-app/style.css` instead of just `index.html` at the root. Ensure all your bash commands also point into this sub-folder (e.g., `cd calculator-app && npm init -y`).
 
@@ -77,6 +81,21 @@ Step 2 (SHOWN to user): Put ONLY your final answer inside:
 </response>
 
 CRITICAL: Do NOT write ANY text outside of these two tags. The system will BLOCK everything that is not inside `<response>` tags. If you write text without tags, it breaks the system.
+
+**FILE SAVING CAPABILITY:**
+When the user asks you to save results to a directory/folder/file, DO NOT refuse. Include the following special marker at the END of your `<response>` block:
+%%SAVE_FILE%%
+filename: nama-file-yang-relevan.txt
+content:
+[isi lengkap yang akan disimpan]
+%%END_SAVE%%
+
+The system will automatically detect this marker and show a "Save File" dialog to the user in their browser, where they can choose the destination folder.
+RULES:
+- Always include the %%SAVE_FILE%% marker if the user requests saving or exporting content.
+- Choose a descriptive filename based on context (e.g., server-report.txt, analysis.log, data-export.csv).
+- The content inside the marker must be complete and ready to be saved.
+- NEVER say "I cannot save to a directory" or "I don't have access to your file system".
 
 Available tools (use INSIDE <thinking> only):
 1. execute_bash — run a command. Args: command (string). NOTE: port collision protection is built-in.
@@ -415,10 +434,6 @@ class AgentExecutor:
                     if "<tool>" in buffer and not has_tool_started:
                         has_tool_started = True
                         
-                        # Auto-close <details> logic if interrupted during THINKING
-                        if response_filter.state == "THINKING" and emit_thinking:
-                            yield "\n\n</details>\n\n"
-                        
                         # Reset filter gracefully so next iteration starts fresh
                         response_filter.state = "WAITING"
                         response_filter.pending = ""
@@ -436,10 +451,31 @@ class AgentExecutor:
                 consecutive_errors += 1
                 err_msg = str(stream_err)[:200]
                 log.warning("Model stream error, recovering", error=err_msg, iteration=iteration)
-                
+
+                # Specific: Sumopod "model output empty" error → retry with simplified message
+                is_empty_output_err = (
+                    "model output must contain" in err_msg.lower() or
+                    "output text or tool calls" in err_msg.lower() or
+                    "cannot both be empty" in err_msg.lower()
+                )
+
+                if is_empty_output_err and consecutive_errors <= 2:
+                    log.warning("Sumopod empty output error, simplifying prompt and retrying")
+                    # Simplify: strip the heavy system prompt, keep only the last user message
+                    last_user = next(
+                        (m["content"] for m in reversed(agent_msgs) if m["role"] == "user"),
+                        spec_content if 'spec_content' in dir() else "Tolong jawab pertanyaan saya"
+                    )
+                    agent_msgs = [
+                        {"role": "system", "content": "Anda adalah asisten AI. Jawab dengan singkat dan jelas."},
+                        {"role": "user", "content": last_user[:1000]},
+                    ]
+                    await asyncio.sleep(1.0)
+                    continue
+
                 if include_tool_logs:
                     yield f"\n> ⚠️ **Stream error (auto-recovering):** {err_msg[:100]}\n"
-                
+
                 # If we got partial buffer with content, try to use it. Otherwise retry.
                 if not buffer.strip():
                     # Inject the error as observation so the model can adapt

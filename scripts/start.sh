@@ -24,6 +24,6 @@ echo $! > /tmp/ai-super-assistant-api.pid
 sleep 2
 echo -e "${GREEN}${BOLD}AI SUPER ASSISTANT berjalan!${NC}"
 echo -e "  🌐 http://localhost:7860"
-echo -e "  🔑 admin / ai-super-assistant2024"
+echo -e "  🔑 admin / admin"
 echo -e "\n  Ctrl+C untuk stop\n"
 wait $(cat /tmp/ai-super-assistant-api.pid)

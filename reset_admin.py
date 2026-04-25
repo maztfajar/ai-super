@@ -22,7 +22,7 @@ async def reset_admin():
         
         if admin_user:
             # Update password
-            admin_user.hashed_password = hash_password("ai-super-assistant2024")
+            admin_user.hashed_password = hash_password("admin")
             admin_user.is_active = True
             admin_user.is_admin = True
             await db.commit()
@@ -32,7 +32,7 @@ async def reset_admin():
             admin_user = User(
                 username="admin",
                 email="admin@ai-super-assistant.local",
-                hashed_password=hash_password("ai-super-assistant2024"),
+                hashed_password=hash_password("admin"),
                 is_active=True,
                 is_admin=True,
                 role="admin"
@@ -42,7 +42,7 @@ async def reset_admin():
             print("Admin user created successfully!")
         
         print(f"Username: admin")
-        print(f"Password: ai-super-assistant2024")
+        print(f"Password: admin")
 
 if __name__ == "__main__":
     asyncio.run(reset_admin())

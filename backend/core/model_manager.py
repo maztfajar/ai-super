@@ -109,7 +109,7 @@ class ModelManager:
             if not env_models:
                 try:
                     import httpx
-                    async with httpx.AsyncClient(timeout=5) as client:
+                    async with httpx.AsyncClient(timeout=10) as client:
                         resp = await client.get(
                             f"{settings.SUMOPOD_HOST}/models",
                             headers={"Authorization": f"Bearer {settings.SUMOPOD_API_KEY}"}
@@ -436,14 +436,18 @@ class ModelManager:
                     yield delta
         except Exception as e:
             err_str = str(e)
-            if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
-                yield f"\n❌ API Key ({provider_name}) Anda kehabisan saldo (Overdue Balance / Insufficient Quota). Silakan isi ulang saldo / ganti API Key di menu Integrations untuk melanjutkan."
+            # "Model output empty" — Sumopod-specific transient error, raise so executor can retry
+            if ("model output must contain" in err_str.lower() or
+                    "output text or tool calls" in err_str.lower() or
+                    "cannot both be empty" in err_str.lower()):
+                raise RuntimeError(f"model output error: {err_str}") from e
+            elif "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
+                yield f"\n❌ API Key ({provider_name}) Anda kehabisan saldo. Silakan isi ulang saldo / ganti API Key di menu Integrations."
             elif "401" in err_str or "user not found" in err_str.lower() or "unauthorized" in err_str.lower() or "invalid_api_key" in err_str.lower():
-                yield f"\n❌ API Key / Autentikasi ({provider_name}) Anda tidak valid (Akses Ditolak/401). Silakan periksa kembali API Key di menu Integrasi."
+                yield f"\n❌ API Key / Autentikasi ({provider_name}) tidak valid (401). Silakan periksa kembali API Key di menu Integrasi."
             else:
                 import re
                 clean_err = re.sub(r"Error code: \d+ - ", "", err_str).strip()
-                # Ekstrak pesan dari dictionary string python tunggal (format AsyncOpenAI)
                 if "{'error'" in clean_err or '{"error"' in clean_err:
                     import ast
                     try:

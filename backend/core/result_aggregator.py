@@ -4,6 +4,7 @@ Merges outputs from multiple agents/subtasks into a coherent final response.
 Handles: parallel result merging, conflict reconciliation, format standardization.
 """
 import json
+import asyncio
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass, field
 import structlog
@@ -70,6 +71,7 @@ class ResultAggregator:
         results: List[SubTaskResult],
         original_request: str = "",
         synthesis_model: Optional[str] = None,
+        event_queue: Optional[asyncio.Queue] = None,
     ) -> AggregatedResult:
         """
         Aggregate multiple subtask results into a final response.
@@ -114,7 +116,7 @@ class ResultAggregator:
         else:
             # Complex merge — use LLM synthesis
             agg.final_response = await self._synthesize_with_llm(
-                successful, original_request, synthesis_model
+                successful, original_request, synthesis_model, event_queue
             )
             agg.overall_confidence = sum(r.confidence for r in successful) / len(successful)
             agg.synthesis_method = "synthesize"
@@ -171,6 +173,7 @@ class ResultAggregator:
         results: List[SubTaskResult],
         original_request: str,
         synthesis_model: Optional[str] = None,
+        event_queue: Optional[asyncio.Queue] = None,
     ) -> str:
         """Use LLM to synthesize multiple results into one coherent response."""
         try:
@@ -192,12 +195,16 @@ class ResultAggregator:
                 )},
             ]
 
-            synthesized = await model_manager.chat_completion(
+            synthesized = ""
+            async for chunk in model_manager.chat_stream(
                 model=model,
                 messages=messages,
                 temperature=0.5,
                 max_tokens=4096,
-            )
+            ):
+                synthesized += chunk
+                if event_queue is not None:
+                    event_queue.put_nowait(chunk)
 
             return synthesized.strip()
 

@@ -9,6 +9,8 @@ import { useAuthStore, useChatStore, useModelsStore, useOrchestratorStore } from
 import ChannelSelector from '../components/ChannelSelector'
 import ProjectLocationPopup from '../components/ProjectLocationPopup'
 import toast from 'react-hot-toast'
+import { useChatFileHandler } from '../hooks/useChatFileHandler'
+import { extractFileContent } from '../utils/fileExtractor'
 import {
   Plus, Trash2, Send, Paperclip, Copy, Check, Download,
   Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
@@ -227,25 +229,30 @@ function ProcessStepsPanel({ steps, isStreaming, onStop }) {
 }
 
 // ── ArtifactsPanel: slideout panel di sebelah kanan ───────────
-function ArtifactsPanel({ code, language, onClose }) {
+function ArtifactsPanel({ code, language, title, onClose }) {
   const [activeTab, setActiveTab] = useState('code')
   const [copied, setCopied] = useState(false)
+  const [localCode, setLocalCode] = useState(code)
 
-  const isHtml = ['html', 'htm'].includes((language || '').toLowerCase())
+  useEffect(() => {
+    setLocalCode(code)
+  }, [code])
+
+  const isHtml = ['html', 'htm', 'svg'].includes((language || '').toLowerCase())
   const filename = `artifact.${language || 'txt'}`
 
   const iframeSrc = isHtml
-    ? `data:text/html;charset=utf-8,${encodeURIComponent(code)}`
+    ? `data:text/html;charset=utf-8,${encodeURIComponent(localCode)}`
     : null
 
   const handleCopy = () => {
-    copyToClipboard(code)
+    copyToClipboard(localCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   const handleDownload = () => {
-    const blob = new Blob([code], { type: 'text/plain' })
+    const blob = new Blob([localCode], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -255,14 +262,14 @@ function ArtifactsPanel({ code, language, onClose }) {
   }
 
   const langColor = LANG_COLORS[(language || '').toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
-  const lines = code.split('\n').length
+  const lines = localCode.split('\n').length
 
   return (
     <div className="flex flex-col border-l border-border bg-bg-2 animate-slide-in-right" style={{ width: '48%', flexShrink: 0 }}>
       {/* Header */}
       <div className="h-12 border-b border-border flex items-center px-3 gap-2 flex-shrink-0 bg-bg-3">
         <FileCode2 size={14} className="text-accent-2 flex-shrink-0" />
-        <span className="text-xs font-medium text-ink truncate flex-1">{filename}</span>
+        <span className="text-xs font-medium text-ink truncate flex-1">{title || filename}</span>
         <span className={clsx('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0', langColor)}>
           {language || 'txt'}
         </span>
@@ -322,25 +329,406 @@ function ArtifactsPanel({ code, language, onClose }) {
           title="Artifact Preview"
         />
       ) : (
-        <div className="flex-1 overflow-auto">
-          <pre className="artifact-code-view p-4 min-h-full" style={{ margin: 0 }}>
-            <code>{code}</code>
-          </pre>
+        <div className="flex-1 overflow-auto flex flex-col">
+          <textarea
+            value={localCode}
+            onChange={(e) => setLocalCode(e.target.value)}
+            className="flex-1 w-full p-4 font-mono text-[12.5px] leading-relaxed text-ink-2 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
+            spellCheck="false"
+            style={{ minHeight: '100%' }}
+          />
         </div>
       )}
     </div>
   )
 }
 
+// ── SaveFileDialog: dialog untuk simpan file ke server ────────
+function SaveFileDialog({ filename, content, onClose }) {
+  const [directory, setDirectory] = useState('')
+  const [dirs, setDirs] = useState([])
+  const [currentPath, setCurrentPath] = useState('')
+  const [parentPath, setParentPath] = useState('')
+  const [customFilename, setCustomFilename] = useState(filename || 'output.txt')
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  // Load initial directory
+  useEffect(() => {
+    loadDirs('~')
+  }, [])
+
+  async function loadDirs(path) {
+    setLoading(true)
+    try {
+      const result = await api.listDirectories(path)
+      setDirs(result.directories || [])
+      setCurrentPath(result.path || path)
+      setParentPath(result.parent || '')
+      setDirectory(result.path || path)
+    } catch (e) {
+      toast.error('Gagal memuat direktori')
+    }
+    setLoading(false)
+  }
+
+  async function handleSave() {
+    if (!directory) return toast.error('Pilih direktori tujuan')
+    setSaving(true)
+    try {
+      const result = await api.saveFile(directory, customFilename, content)
+      toast.success(`✅ Tersimpan: ${result.path}`, { duration: 4000 })
+      onClose()
+    } catch (e) {
+      toast.error(e.message || 'Gagal menyimpan file')
+    }
+    setSaving(false)
+  }
+
+  // Also support client-side download as fallback
+  function handleDownload() {
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = customFilename; a.click()
+    URL.revokeObjectURL(url)
+    toast.success('📥 File di-download ke browser')
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div className="bg-bg-2 border border-border rounded-2xl w-[500px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl animate-slide-in-up">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Download size={18} className="text-accent-2" />
+            <span className="text-sm font-semibold text-ink">Simpan File</span>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-bg-4 transition-colors">
+            <X size={16} className="text-ink-3" />
+          </button>
+        </div>
+
+        {/* Filename */}
+        <div className="px-5 py-3 border-b border-border/50">
+          <label className="text-[11px] text-ink-3 uppercase tracking-wider font-medium mb-1.5 block">Nama File</label>
+          <input
+            value={customFilename}
+            onChange={e => setCustomFilename(e.target.value)}
+            className="w-full px-3 py-2 bg-bg-3 border border-border rounded-lg text-sm text-ink font-mono focus:outline-none focus:border-accent"
+          />
+        </div>
+
+        {/* Directory Browser */}
+        <div className="px-5 py-3 flex-1 overflow-hidden flex flex-col">
+          <label className="text-[11px] text-ink-3 uppercase tracking-wider font-medium mb-1.5 block">Direktori Tujuan</label>
+          
+          {/* Current path */}
+          <div className="flex items-center gap-1.5 mb-2">
+            <div className="flex-1 px-3 py-1.5 bg-bg-3 border border-border rounded-lg text-xs text-ink font-mono truncate">
+              📁 {currentPath || '~'}
+            </div>
+            {parentPath && (
+              <button
+                onClick={() => loadDirs(parentPath)}
+                className="px-2 py-1.5 bg-bg-4 border border-border rounded-lg text-xs text-ink-3 hover:text-ink hover:bg-bg-5 transition-colors flex-shrink-0"
+                title="Naik ke folder induk"
+              >
+                ⬆️
+              </button>
+            )}
+          </div>
+
+          {/* Directory list */}
+          <div className="flex-1 overflow-y-auto border border-border rounded-lg bg-bg-3 min-h-[140px] max-h-[200px]">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 size={18} className="animate-spin text-accent-2" />
+              </div>
+            ) : dirs.length === 0 ? (
+              <div className="text-center text-xs text-ink-3 py-8">Tidak ada subdirektori</div>
+            ) : (
+              dirs.map((d, i) => (
+                <button
+                  key={i}
+                  onClick={() => loadDirs(d.path)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent/10 transition-colors border-b border-border/30 last:border-b-0"
+                >
+                  <span className="text-amber-400">📂</span>
+                  <span className="text-ink truncate">{d.name}</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between px-5 py-4 border-t border-border gap-2">
+          <button
+            onClick={handleDownload}
+            className="px-3 py-2 text-xs font-medium rounded-lg bg-bg-4 border border-border text-ink-2 hover:bg-bg-5 hover:text-ink transition-all flex items-center gap-1.5"
+          >
+            <Download size={13} /> Download
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-xs font-medium rounded-lg bg-bg-4 border border-border text-ink-3 hover:text-ink transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !directory}
+              className="px-4 py-2 text-xs font-semibold rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+            >
+              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+              Simpan ke Server
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Parse %%SAVE_FILE%% marker from AI response ───────────────
+function parseSaveFileMarker(content) {
+  if (!content) return null
+  const markerStart = content.indexOf('%%SAVE_FILE%%')
+  const markerEnd = content.indexOf('%%END_SAVE%%')
+  if (markerStart === -1 || markerEnd === -1) return null
+
+  const block = content.substring(markerStart + '%%SAVE_FILE%%'.length, markerEnd).trim()
+  const lines = block.split('\n')
+  let filename = 'output.txt'
+  let saveContent = ''
+  let contentStarted = false
+
+  for (const line of lines) {
+    if (!contentStarted && line.trim().toLowerCase().startsWith('filename:')) {
+      filename = line.trim().substring('filename:'.length).trim()
+    } else if (!contentStarted && line.trim().toLowerCase().startsWith('content:')) {
+      contentStarted = true
+      const firstLine = line.trim().substring('content:'.length).trim()
+      if (firstLine) saveContent += firstLine + '\n'
+    } else if (contentStarted) {
+      saveContent += line + '\n'
+    }
+  }
+
+  return { filename, content: saveContent.trimEnd() }
+}
+
+// ── Strip %%SAVE_FILE%% markers from display content ──────────
+function stripSaveMarkers(content) {
+  if (!content) return content
+  return content.replace(/%%SAVE_FILE%%[\s\S]*?%%END_SAVE%%/g, '').trim()
+}
+
+// ── Parse %%ARTIFACT%% markers OR auto-detect large code blocks ─
+function parseArtifacts(content) {
+  if (!content) return { artifacts: [], cleanContent: content }
+  const artifacts = []
+  let cleanContent = content
+
+  // 1. Explicit markers: %%ARTIFACT%% title:... language:... \n code \n %%END_ARTIFACT%%
+  const markerRegex = /%%ARTIFACT%%([\s\S]*?)%%END_ARTIFACT%%/g
+  let match
+  let markerIndex = 0
+  while ((match = markerRegex.exec(content)) !== null) {
+    const block = match[1].trim()
+    const lines = block.split('\n')
+    let title = `Artifact ${markerIndex + 1}`
+    let language = 'txt'
+    let codeStartIdx = 0
+
+    for (let i = 0; i < Math.min(lines.length, 5); i++) {
+      const line = lines[i].trim()
+      if (line.toLowerCase().startsWith('title:')) {
+        title = line.substring('title:'.length).trim()
+        codeStartIdx = i + 1
+      } else if (line.toLowerCase().startsWith('language:') || line.toLowerCase().startsWith('lang:')) {
+        language = line.substring(line.indexOf(':') + 1).trim().toLowerCase()
+        codeStartIdx = i + 1
+      } else if (line.toLowerCase().startsWith('type:')) {
+        // type: code | html | document | svg
+        const t = line.substring('type:'.length).trim().toLowerCase()
+        if (['html', 'svg'].includes(t)) language = t
+        codeStartIdx = i + 1
+      } else {
+        break
+      }
+    }
+
+    const code = lines.slice(codeStartIdx).join('\n').trim()
+    if (code) {
+      artifacts.push({ id: `art-${Date.now()}-${markerIndex}`, title, language, code })
+      markerIndex++
+    }
+  }
+  // Remove markers from display
+  cleanContent = cleanContent.replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '').trim()
+
+  // 2. Auto-detect large fenced code blocks (```lang\n...```) with >15 lines
+  if (artifacts.length === 0) {
+    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
+    let codeMatch
+    let autoIndex = 0
+    while ((codeMatch = codeBlockRegex.exec(content)) !== null) {
+      const lang = codeMatch[1] || 'txt'
+      const code = codeMatch[2].trim()
+      const lineCount = code.split('\n').length
+      if (lineCount >= 15) {
+        // Determine a smart title
+        let title = `${lang.toUpperCase()} Code`
+        if (['html', 'htm'].includes(lang.toLowerCase())) title = 'Web Page'
+        else if (lang.toLowerCase() === 'svg') title = 'SVG Graphic'
+        else if (['jsx', 'tsx'].includes(lang.toLowerCase())) title = 'React Component'
+        else if (lang.toLowerCase() === 'python') title = 'Python Script'
+        else if (lang.toLowerCase() === 'javascript') title = 'JavaScript'
+        else if (lang.toLowerCase() === 'css') title = 'Stylesheet'
+        else if (lang.toLowerCase() === 'sql') title = 'SQL Query'
+
+        artifacts.push({ id: `auto-${Date.now()}-${autoIndex}`, title, language: lang, code })
+        autoIndex++
+      }
+    }
+    // For auto-detected, we keep the code blocks in cleanContent (they render via CodeBlock too)
+  }
+
+  return { artifacts, cleanContent }
+}
+
+// ── Strip artifact markers from display content ───────────────
+function stripArtifactMarkers(content) {
+  if (!content) return content
+  return content.replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '').trim()
+}
+
+// ── ARTIFACT TYPES — icons & color mapping ────────────────────
+const ARTIFACT_TYPE_META = {
+  html:       { icon: Globe,     label: 'Web Page',        color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' },
+  htm:        { icon: Globe,     label: 'Web Page',        color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' },
+  svg:        { icon: Globe,     label: 'SVG Graphic',     color: 'text-pink-400',   bg: 'bg-pink-400/10',   border: 'border-pink-400/20' },
+  jsx:        { icon: FileCode2, label: 'React Component', color: 'text-cyan-400',   bg: 'bg-cyan-400/10',   border: 'border-cyan-400/20' },
+  tsx:        { icon: FileCode2, label: 'React Component', color: 'text-cyan-400',   bg: 'bg-cyan-400/10',   border: 'border-cyan-400/20' },
+  javascript: { icon: FileCode2, label: 'JavaScript',     color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20' },
+  typescript: { icon: FileCode2, label: 'TypeScript',     color: 'text-blue-400',   bg: 'bg-blue-400/10',   border: 'border-blue-400/20' },
+  python:     { icon: FileCode2, label: 'Python Script',  color: 'text-blue-300',   bg: 'bg-blue-300/10',   border: 'border-blue-300/20' },
+  css:        { icon: FileCode2, label: 'Stylesheet',     color: 'text-pink-400',   bg: 'bg-pink-400/10',   border: 'border-pink-400/20' },
+  sql:        { icon: FileCode2, label: 'SQL Query',      color: 'text-emerald-400',bg: 'bg-emerald-400/10',border: 'border-emerald-400/20' },
+  json:       { icon: FileCode2, label: 'JSON Data',      color: 'text-amber-400',  bg: 'bg-amber-400/10',  border: 'border-amber-400/20' },
+  bash:       { icon: Terminal,  label: 'Shell Script',   color: 'text-green-400',  bg: 'bg-green-400/10',  border: 'border-green-400/20' },
+  sh:         { icon: Terminal,  label: 'Shell Script',   color: 'text-green-400',  bg: 'bg-green-400/10',  border: 'border-green-400/20' },
+  markdown:   { icon: BookOpen,  label: 'Document',       color: 'text-violet-400', bg: 'bg-violet-400/10', border: 'border-violet-400/20' },
+  md:         { icon: BookOpen,  label: 'Document',       color: 'text-violet-400', bg: 'bg-violet-400/10', border: 'border-violet-400/20' },
+}
+const DEFAULT_ARTIFACT_META = { icon: FileCode2, label: 'Code', color: 'text-accent-2', bg: 'bg-accent/10', border: 'border-accent/20' }
+
+// ── ArtifactCard: inline card di dalam pesan ──────────────────
+function ArtifactCard({ artifact, onOpen }) {
+  const [copied, setCopied] = useState(false)
+  const meta = ARTIFACT_TYPE_META[artifact.language?.toLowerCase()] || DEFAULT_ARTIFACT_META
+  const ArtIcon = meta.icon
+  const lines = artifact.code.split('\n')
+  const previewLines = lines.slice(0, 6).join('\n')
+  const isPreviewable = ['html', 'htm', 'svg'].includes((artifact.language || '').toLowerCase())
+
+  const handleCopy = (e) => {
+    e.stopPropagation()
+    copyToClipboard(artifact.code)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDownload = (e) => {
+    e.stopPropagation()
+    const blob = new Blob([artifact.code], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${artifact.title.replace(/\s+/g, '_').toLowerCase()}.${artifact.language || 'txt'}`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div
+      className="artifact-card my-3 cursor-pointer animate-slide-in-up hover:animate-artifact-glow"
+      onClick={() => onOpen(artifact)}
+    >
+      {/* Header */}
+      <div className="artifact-card-header">
+        <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', meta.bg)}>
+          <ArtIcon size={14} className={meta.color} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-semibold text-ink truncate">{artifact.title}</div>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className={clsx('text-[9px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', meta.bg, meta.color, meta.border)}>
+              {artifact.language || 'txt'}
+            </span>
+            <span className="text-[10px] text-ink-3">{lines.length} baris</span>
+            {isPreviewable && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">
+                ✦ Live Preview
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleCopy}
+            className="p-1.5 rounded-lg hover:bg-bg-5 transition-colors"
+            title="Copy"
+          >
+            {copied ? <Check size={12} className="text-success" /> : <Copy size={12} className="text-ink-3" />}
+          </button>
+          <button
+            onClick={handleDownload}
+            className="p-1.5 rounded-lg hover:bg-bg-5 transition-colors"
+            title="Download"
+          >
+            <Download size={12} className="text-ink-3" />
+          </button>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div className="artifact-card-preview">
+        <code>{previewLines}</code>
+      </div>
+
+      {/* Footer / Open button */}
+      <div className="artifact-card-actions">
+        <button
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 text-[11px] font-medium transition-all flex-1 justify-center"
+          onClick={(e) => { e.stopPropagation(); onOpen(artifact) }}
+        >
+          <Maximize2 size={11} />
+          Buka & Edit di Panel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+
 // ── Message bubble ────────────────────────────────────────────
-function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpenArtifact }) {
+function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpenArtifact, onOpenArtifactCard }) {
   const [copied, setCopied] = useState(false)
   const [showThinking, setShowThinking] = useState(false) // Default: collapsed
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
   const isUser = msg.role === 'user'
 
+  // Detect %%SAVE_FILE%% marker
+  const saveFileData = !isUser ? parseSaveFileMarker(msg.content) : null
   // Helper: Split content into main text and thinking process
   const splitContent = (content) => {
-    let processedContent = content || ''
+    let processedContent = stripSaveMarkers(content || '')
     
     // Auto-unwrap Sumopod API JSON wrapper if present
     try {
@@ -371,58 +759,73 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
     let thinkEnd = processedContent.length
     const afterThinkStart = thinkStart + '🤔 Proses Berpikir:'.length
     
-    // Find where thinking ends - look for double newline followed by non-bullet text
+    // Find where thinking ends - backend sends `---` to mark the end
     const remaining = processedContent.substring(afterThinkStart)
-    const lines = remaining.split('\n')
+    const endMarkerIndex = remaining.indexOf('---')
     
-    let thinkLineEnd = 0
-    let foundThinkEnd = false
+    let thinkingContent = ''
+    let mainContentAfterThink = ''
     
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i]
-      const trimmed = line.trim()
+    if (endMarkerIndex !== -1) {
+      thinkingContent = remaining.substring(0, endMarkerIndex).trim()
+      mainContentAfterThink = remaining.substring(endMarkerIndex + 3).trim()
+    } else {
+      // Fallback heuristic if --- is not found (e.g., legacy messages or streaming cutoffs)
+      const lines = remaining.split('\n')
+      let thinkLineEnd = lines.length
+      let foundThinkEnd = false
       
-      // Check if this line marks the end of thinking (actual response)
-      const isResponseStart = (
-        trimmed &&
-        !trimmed.startsWith('Plan') &&
-        !trimmed.startsWith('Tool') &&
-        !trimmed.startsWith('Action') &&
-        !trimmed.startsWith('Thought') &&
-        !trimmed.startsWith('Analysis') &&
-        !trimmed.startsWith('Step') &&
-        !trimmed.startsWith('-') &&
-        !trimmed.startsWith('•') &&
-        !trimmed.match(/^[A-Z][a-z]+:/) && // Not a label like "Key: value"
-        (trimmed.startsWith('I\'') || trimmed.startsWith('The ') || trimmed.startsWith('Here') || 
-         trimmed.startsWith('Let') || trimmed.startsWith('I will') || trimmed.startsWith('Sure') ||
-         /^(Okay|Alright|Got it|Understood|Yes|No|Great|Perfect)/i.test(trimmed))
-      )
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        const trimmed = line.trim()
+        
+        // Check if this line marks the end of thinking (actual response)
+        const isResponseStart = (
+          trimmed &&
+          !trimmed.startsWith('Plan') &&
+          !trimmed.startsWith('Tool') &&
+          !trimmed.startsWith('Action') &&
+          !trimmed.startsWith('Thought') &&
+          !trimmed.startsWith('Analysis') &&
+          !trimmed.startsWith('Step') &&
+          !trimmed.startsWith('-') &&
+          !trimmed.startsWith('•') &&
+          !trimmed.match(/^[A-Z][a-z]+:/) && // Not a label like "Key: value"
+          (trimmed.startsWith('I\'') || trimmed.startsWith('The ') || trimmed.startsWith('Here') || 
+           trimmed.startsWith('Let') || trimmed.startsWith('I will') || trimmed.startsWith('Sure') ||
+           /^(Okay|Alright|Got it|Understood|Yes|No|Great|Perfect|Baik|Oke|Tentu|Saya|Ini|Berikut|Sebagai|Data|Hasil)/i.test(trimmed))
+        )
+        
+        if (isResponseStart && i > 0) {
+          thinkLineEnd = i
+          foundThinkEnd = true
+          break
+        }
+      }
       
-      if (isResponseStart && i > 0) {
-        thinkLineEnd = i
-        foundThinkEnd = true
-        break
+      thinkingContent = lines.slice(0, thinkLineEnd).join('\n').trim()
+      if (foundThinkEnd) {
+        mainContentAfterThink = lines.slice(thinkLineEnd).join('\n').trim()
       }
     }
     
-    // Extract thinking content
-    const thinkingLines = foundThinkEnd ? lines.slice(0, thinkLineEnd) : lines
-    let thinkingContent = thinkingLines.join('\n').trim()
-    
-    // Extract main content (after thinking + before thinking)
     let mainContent = beforeThink
-    if (foundThinkEnd) {
-      const afterThink = lines.slice(thinkLineEnd).join('\n').trim()
-      if (afterThink) {
-        mainContent = (beforeThink ? beforeThink + '\n\n' : '') + afterThink
-      }
+    if (mainContentAfterThink) {
+      mainContent = (beforeThink ? beforeThink + '\n\n' : '') + mainContentAfterThink
     }
     
     return { mainContent: mainContent.trim(), thinkingContent, hasThinking: true }
   }
 
   const { mainContent, thinkingContent, hasThinking } = splitContent(msg.content || '')
+
+  // ── Parse artifacts from mainContent (explicit markers + auto-detect large code blocks)
+  const { artifacts: parsedArtifacts, cleanContent: artifactCleanContent } = !isUser
+    ? parseArtifacts(mainContent)
+    : { artifacts: [], cleanContent: mainContent }
+  // Use cleanContent for markdown render when explicit %%ARTIFACT%% markers were found
+  const hasExplicitArtifacts = parsedArtifacts.length > 0 && (mainContent || '').includes('%%ARTIFACT%%')
+  const displayContent = hasExplicitArtifacts ? artifactCleanContent : mainContent
 
   const copy = () => {
     copyToClipboard(msg.content)
@@ -502,14 +905,26 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
             />
           )}
           {isUser ? (
-            <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+            <div className="flex flex-col gap-2">
+              {msg.attachedFiles?.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-1">
+                  {msg.attachedFiles.map((f) => (
+                    <span key={f.id} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/20 text-white text-[10px] border border-white/30 backdrop-blur-sm">
+                      <span className="flex-shrink-0">{f.meta?.icon || '📄'}</span>
+                      <span className="truncate max-w-[100px]">{f.name}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="whitespace-pre-wrap leading-relaxed">{msg.original_content || msg.content}</p>
+            </div>
           ) : (
             <div className="prose prose-sm max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
                 components={markdownComponents}
-              >{mainContent}</ReactMarkdown>
+              >{displayContent}</ReactMarkdown>
               {isStreaming && (
                 <span className="inline-block w-1.5 h-4 bg-accent-2 animate-pulse2 ml-0.5 align-middle" />
               )}
@@ -539,10 +954,44 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
                   )}
                 </div>
               )}
+
+              {/* ── Inline Artifact Cards ── */}
+              {parsedArtifacts.length > 0 && !isStreaming && parsedArtifacts.map(art => (
+                <ArtifactCard
+                  key={art.id}
+                  artifact={art}
+                  onOpen={(artifact) => {
+                    if (onOpenArtifactCard) {
+                      onOpenArtifactCard(artifact.code, artifact.language, artifact.title)
+                    } else if (onOpenArtifact) {
+                      onOpenArtifact(artifact.code, artifact.language)
+                    }
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
 
+        {/* Save File Button — appears when AI includes %%SAVE_FILE%% marker */}
+        {saveFileData && !isStreaming && (
+          <button
+            onClick={() => setShowSaveDialog(true)}
+            className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-accent/20 to-accent-2/20 border border-accent/30 text-accent-2 text-xs font-semibold hover:from-accent/30 hover:to-accent-2/30 transition-all group"
+          >
+            <Download size={14} className="group-hover:animate-bounce" />
+            💾 Simpan File: <span className="font-mono text-[11px] text-ink">{saveFileData.filename}</span>
+          </button>
+        )}
+
+        {/* SaveFileDialog portal */}
+        {showSaveDialog && saveFileData && (
+          <SaveFileDialog
+            filename={saveFileData.filename}
+            content={saveFileData.content}
+            onClose={() => setShowSaveDialog(false)}
+          />
+        )}
         {/* Action row */}
         <div className="flex items-center gap-2 mt-1 px-1">
           <span className="text-[10px] text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -685,6 +1134,39 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
   )
 }
 
+// ── Komponen FileChip ────────────────────────────────────────────────────────
+function FileChip({ file, onRemove }) {
+  return (
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-4 border border-border-2 text-[11px] animate-fade">
+      <span className="flex-shrink-0">{file.meta?.icon || '📄'}</span>
+      <span className="truncate max-w-[120px] text-ink">{file.name}</span>
+      <span className="text-ink-3 text-[9px]">({(file.size / 1024).toFixed(1)} KB)</span>
+      <button 
+        onClick={() => onRemove(file.id)}
+        className="ml-1 p-0.5 rounded-full hover:bg-danger/10 hover:text-danger text-ink-3 transition-colors"
+      >
+        <X size={10} />
+      </button>
+    </div>
+  );
+}
+
+// ── Komponen DragOverlay ─────────────────────────────────────────────────────
+function DragOverlay({ isVisible }) {
+  if (!isVisible) return null;
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm border-2 border-dashed border-accent m-4 rounded-2xl animate-fade">
+      <div className="flex flex-col items-center p-6 bg-bg-3 border border-accent/20 rounded-xl shadow-2xl">
+        <div className="text-4xl mb-2 animate-bounce">📂</div>
+        <p className="text-sm font-bold text-ink">Lepaskan file di sini</p>
+        <p className="text-xs text-ink-3 mt-1 text-center">
+          PDF, DOCX, XLSX, CSV, TXT, Gambar
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Session item ──────────────────────────────────────────────
 function SessionItem({ session, active, onClick, onDelete }) {
   return (
@@ -777,9 +1259,12 @@ export default function Chat() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Artifacts Panel state
-  const [artifact, setArtifact] = useState({ open: false, code: '', language: '' })
+  const [artifact, setArtifact] = useState({ open: false, code: '', language: '', title: '' })
   const openArtifact = useCallback((code, language) => {
-    setArtifact({ open: true, code, language })
+    setArtifact({ open: true, code, language, title: '' })
+  }, [])
+  const openArtifactCard = useCallback((code, language, title) => {
+    setArtifact({ open: true, code, language, title: title || '' })
   }, [])
   const closeArtifact = useCallback(() => {
     setArtifact(a => ({ ...a, open: false }))
@@ -796,6 +1281,18 @@ export default function Chat() {
   const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
+  
+  // Drag and drop attachment handler
+  const {
+    attachedFiles,
+    isDragOver,
+    fileError,
+    addFiles,
+    removeFile,
+    clearFiles,
+    dragHandlers,
+  } = useChatFileHandler()
+
   // Deletion guard: set of session IDs sedang dalam proses hapus
   // Mencegah polling 5 detik mengembalikan sesi yang baru dihapus
   const deletingIdsRef = useRef(new Set())
@@ -804,7 +1301,8 @@ export default function Chat() {
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const abortRef = useRef(null)
-  const fileInputRef = useRef(null)
+  const fileInputRef = useRef(null) // Untuk RAG
+  const chatContextFileRef = useRef(null) // Untuk lampiran chat context (non-RAG)
   const scrollBottom = useCallback(() => {
 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -999,13 +1497,42 @@ export default function Chat() {
   // ── SEND message ─────────────────────────────────────────
   async function sendMessage() {
     const text = input.trim()
-    const imageToSend = pendingImage
-    if (!text && !imageToSend) return
+    let imageToSend = pendingImage
+    if (!text && !imageToSend && attachedFiles.length === 0) return
     if (streaming) return
     if (!currentSession) { await newSession(); return }
 
     clearActiveRouting()
     clearDrivePrompt()
+
+    // Proses attached files
+    const currentFiles = [...attachedFiles]
+    clearFiles()
+    let combinedText = text
+
+    if (currentFiles.length > 0) {
+      toast.loading("Mengekstrak file...", { id: "extract-file" })
+      for (const file of currentFiles) {
+        try {
+          const extracted = await extractFileContent(file)
+          if (extracted.type === 'image' && !imageToSend) {
+            imageToSend = {
+               base64: extracted.base64,
+               mime_type: extracted.mime_type,
+               preview: extracted.dataUrl,
+               filename: extracted.name
+            }
+          } else if (extracted.type === 'text') {
+            combinedText += `\n\n[FILE: ${extracted.name}]\n${extracted.text}\n[/FILE]`
+          } else if (extracted.type === 'error') {
+            combinedText += `\n\n[ERROR MEMBACA FILE: ${extracted.name}]\n${extracted.text}`
+          }
+        } catch(err) {
+           combinedText += `\n\n[ERROR MEMBACA FILE: ${file.name}]\n${err.message}`
+        }
+      }
+      toast.dismiss("extract-file")
+    }
 
     // Check if user wants to create an application/project
     const isAppCreation = /buat|create|bikin|buatkan|create|develop|develop|make|build/i.test(text) && 
@@ -1034,10 +1561,12 @@ export default function Chat() {
     const tempUserMsg = {
       id: Date.now(),
       role: 'user',
-      content: text,
+      content: combinedText, // Show the combined text, or maybe we just want to show the original text? Wait, showing combinedText is good so the user knows exactly what the AI sees, but it can be very long. Let's show the original text and use attachedFiles.
+      original_content: text, // Optional
+      attachedFiles: currentFiles, // Save attached files metadata
       model: selectedOrchestrator,
       created_at: new Date().toISOString(),
-      _image_preview: pendingImage?.preview || null,
+      _image_preview: imageToSend?.preview || pendingImage?.preview || null,
     }
     addMessage(tempUserMsg)
 
@@ -1062,7 +1591,7 @@ export default function Chat() {
       abortRef.current = api.chatStreamMultimodal(
         {
           session_id: sessionId,
-          message: text,
+          message: combinedText,
           model: selectedOrchestrator,
           use_rag: useRAG,
         },
@@ -1117,7 +1646,7 @@ export default function Chat() {
       abortRef.current = api.chatStream(
         {
           session_id: sessionId,
-          message: text,
+          message: combinedText,
           model: selectedOrchestrator,
           use_rag: useRAG,
         },
@@ -1377,10 +1906,14 @@ export default function Chat() {
       </div>
 
       {/* Chat area */}
-      <div className={clsx(
-        'flex flex-col min-w-0 transition-all duration-300',
-        artifact.open ? 'flex-1' : 'flex-1'
-      )}>
+      <div 
+        className={clsx(
+          'flex flex-col min-w-0 transition-all duration-300 relative',
+          artifact.open ? 'flex-1' : 'flex-1'
+        )}
+        {...dragHandlers}
+      >
+        <DragOverlay isVisible={isDragOver} />
 
         {/* Topbar */}
         <div className="h-12 border-b border-border flex items-center px-4 gap-3 flex-shrink-0 bg-bg-2">
@@ -1483,6 +2016,7 @@ export default function Chat() {
               onSpeak={handleSpeak}
               speakingId={speakingId}
               onOpenArtifact={openArtifact}
+              onOpenArtifactCard={openArtifactCard}
             />
           ))}
 
@@ -1495,6 +2029,7 @@ export default function Chat() {
               onSpeak={handleSpeak}
               speakingId={speakingId}
               onOpenArtifact={openArtifact}
+              onOpenArtifactCard={openArtifactCard}
             />
           )}
 
@@ -1656,6 +2191,19 @@ export default function Chat() {
               </div>
             )}
 
+            {/* Lampiran file context chat */}
+            {attachedFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2 px-1 animate-fade">
+                {attachedFiles.map((f) => (
+                  <FileChip key={f.id} file={f} onRemove={removeFile} />
+                ))}
+              </div>
+            )}
+
+            {fileError && (
+              <div className="text-[11px] text-danger mb-2 px-1 animate-fade">⚠️ {fileError}</div>
+            )}
+
             <div className="flex gap-2 items-end">
               {/* Upload dokumen (paperclip) */}
               <input
@@ -1665,6 +2213,18 @@ export default function Chat() {
                 onChange={handleFileUpload}
                 accept=".pdf,.docx,.txt,.csv,.md"
               />
+              {/* Lampiran Context Chat */}
+              <input
+                ref={chatContextFileRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files) addFiles(e.target.files);
+                  e.target.value = '';
+                }}
+                accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.png,.jpg,.jpeg,.webp"
+              />
               {/* Image picker hidden input */}
               <input
                 ref={imagePickerRef}
@@ -1673,6 +2233,16 @@ export default function Chat() {
                 onChange={handleImagePick}
                 accept="image/*"
               />
+
+              {/* Tombol Lampirkan File ke Chat */}
+              <button
+                onClick={() => chatContextFileRef.current?.click()}
+                disabled={streaming}
+                className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-colors disabled:opacity-40"
+                title="Lampirkan file (PDF, Excel, Word) ke chat"
+              >
+                <FilePlus size={15} />
+              </button>
 
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -1746,6 +2316,22 @@ export default function Chat() {
                     e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'
                   }}
                   onKeyDown={handleKeyDown}
+                  onPaste={(e) => {
+                    const items = e.clipboardData?.items;
+                    if (items) {
+                      const filesToAttach = [];
+                      for (let i = 0; i < items.length; i++) {
+                        if (items[i].kind === 'file') {
+                          const file = items[i].getAsFile();
+                          if (file) filesToAttach.push(file);
+                        }
+                      }
+                      if (filesToAttach.length > 0) {
+                        e.preventDefault();
+                        addFiles(filesToAttach);
+                      }
+                    }
+                  }}
                   onFocus={(e) => {
                     e.currentTarget.parentElement?.classList.remove('ring-2', 'ring-accent', 'bg-accent/5')
                   }}
@@ -1790,6 +2376,7 @@ export default function Chat() {
         <ArtifactsPanel
           code={artifact.code}
           language={artifact.language}
+          title={artifact.title}
           onClose={closeArtifact}
         />
       )}

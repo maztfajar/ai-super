@@ -526,3 +526,55 @@ async def list_directories(
     except Exception as e:
         raise HTTPException(500, f"Error reading directory: {str(e)}")
 
+
+class SaveFileRequest(BaseModel):
+    directory: str
+    filename: str
+    content: str
+
+
+@router.post("/save-file")
+async def save_file_to_directory(
+    req: SaveFileRequest,
+    user: User = Depends(get_current_user),
+):
+    """Save AI-generated content to a user-chosen directory on the server."""
+    import os
+    import structlog
+    log = structlog.get_logger()
+
+    # Sanitize filename — strip path separators to prevent directory traversal
+    safe_name = os.path.basename(req.filename)
+    if not safe_name:
+        raise HTTPException(400, "Nama file tidak valid")
+
+    # Resolve and validate directory
+    target_dir = os.path.abspath(req.directory)
+
+    # Security: only allow saving inside user home directory
+    home = os.path.expanduser("~")
+    allowed_prefixes = [home, "/home/", "/data/"]
+    if not any(target_dir.startswith(p) for p in allowed_prefixes):
+        raise HTTPException(403, f"Akses ditolak: hanya boleh menyimpan di dalam direktori home ({home})")
+
+    full_path = os.path.join(target_dir, safe_name)
+
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+        with open(full_path, "w", encoding="utf-8") as f:
+            f.write(req.content)
+
+        file_size = os.path.getsize(full_path)
+        log.info("File saved via API", path=full_path, size=file_size, user=user.username)
+
+        return {
+            "ok": True,
+            "path": full_path,
+            "size": file_size,
+            "message": f"File berhasil disimpan ke {full_path}"
+        }
+    except PermissionError:
+        raise HTTPException(403, f"Tidak memiliki izin menulis ke {target_dir}")
+    except Exception as e:
+        raise HTTPException(500, f"Gagal menyimpan file: {str(e)}")
+

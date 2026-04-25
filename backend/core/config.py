@@ -107,7 +107,7 @@ class Settings(BaseSettings):
 
     # Admin
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "ai-super-assistant2024"
+    ADMIN_PASSWORD: str = "admin"
     ADMIN_EMAIL: str = "admin@ai-super-assistant.local"
 
     # Files

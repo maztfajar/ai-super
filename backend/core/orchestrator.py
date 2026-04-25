@@ -270,9 +270,21 @@ class Orchestrator:
                 # Mark agent as active for monitoring
                 agent_type = group_tasks[0].assigned_agent or "general"
                 agent_registry.mark_busy(agent_type, group_tasks[0].id)
-                result = await self._execute_subtask(
-                    group_tasks[0], system_prompt, history, spec
-                )
+                
+                event_queue = asyncio.Queue()
+                exec_task = asyncio.create_task(self._execute_subtask(
+                    group_tasks[0], system_prompt, history, spec, event_queue
+                ))
+                
+                while not exec_task.done():
+                    try:
+                        event = await asyncio.wait_for(event_queue.get(), timeout=0.2)
+                        yield event
+                    except asyncio.TimeoutError:
+                        continue
+                
+                result = exec_task.result()
+                
                 agent_registry.mark_idle(agent_type, group_tasks[0].id)
                 results.append(result)
                 # Stream progress
@@ -291,10 +303,20 @@ class Orchestrator:
                 for st in group_tasks:
                     agent_registry.mark_busy(st.assigned_agent or "general", st.id)
 
-                parallel_results = await asyncio.gather(*(
-                    self._execute_subtask(st, system_prompt, history, spec)
+                event_queue = asyncio.Queue()
+                gather_task = asyncio.create_task(asyncio.gather(*(
+                    self._execute_subtask(st, system_prompt, history, spec, event_queue)
                     for st in group_tasks
-                ), return_exceptions=True)
+                ), return_exceptions=True))
+
+                while not gather_task.done():
+                    try:
+                        event = await asyncio.wait_for(event_queue.get(), timeout=0.2)
+                        yield event
+                    except asyncio.TimeoutError:
+                        continue
+                
+                parallel_results = gather_task.result()
 
                 # Mark all agents as idle
                 for st in group_tasks:
@@ -347,18 +369,37 @@ class Orchestrator:
         # ─── PHASE 7: AGGREGATE ───────────────────────────────────
         yield OrchestratorEvent("status", "📝 Menyusun jawaban akhir...")
 
-        aggregated = await result_aggregator.aggregate(
+        event_queue = asyncio.Queue()
+        agg_task = asyncio.create_task(result_aggregator.aggregate(
             results=results,
             original_request=message,
-        )
+            event_queue=event_queue
+        ))
 
-        # Yield the final response as chunks
-        # Split into manageable chunks for streaming feel
-        response = aggregated.final_response
-        chunk_size = 50  # characters per chunk
-        for i in range(0, len(response), chunk_size):
-            yield OrchestratorEvent("chunk", response[i:i + chunk_size])
-            await asyncio.sleep(0.01)  # small delay for streaming feel
+        streamed_chunks = False
+        while not agg_task.done():
+            try:
+                chunk = await asyncio.wait_for(event_queue.get(), timeout=0.2)
+                yield OrchestratorEvent("chunk", chunk)
+                streamed_chunks = True
+            except asyncio.TimeoutError:
+                continue
+                
+        # Flush any remaining chunks
+        while not event_queue.empty():
+            chunk = event_queue.get_nowait()
+            yield OrchestratorEvent("chunk", chunk)
+            streamed_chunks = True
+
+        aggregated = agg_task.result()
+
+        if not streamed_chunks:
+            # Yield the final response as chunks if it wasn't streamed
+            response = aggregated.final_response
+            chunk_size = 50  # characters per chunk
+            for i in range(0, len(response), chunk_size):
+                yield OrchestratorEvent("chunk", response[i:i + chunk_size])
+                await asyncio.sleep(0.01)  # small delay for streaming feel
 
         # ─── PHASE 8: RECORD METRICS ─────────────────────────────
         total_time = int((time.time() - start_time) * 1000)
@@ -439,19 +480,10 @@ class Orchestrator:
 
         # Check if VPS safety protocol needed for complex operations
         if spec.primary_intent in ("system", "file_operation"):
-            if not auto_execute:
-                yield OrchestratorEvent("status", "⚠️ Tindakan sistem terdeteksi...")
-                # Will be handled by chat.py confirmation flow
-                yield OrchestratorEvent("pending_confirmation", "", {
-                    "command": spec.original_message,
-                    "purpose": f"Detected {spec.primary_intent} action",
-                    "risk": "MEDIUM",
-                })
-                return
-            else:
-                # Auto-execute mode (Telegram): bypass confirmation, go straight to agent executor
-                yield OrchestratorEvent("status", "⚙️ Mengeksekusi perintah sistem...")
-                is_orchestrator = True  # Double check: force agent executor path for tool access
+            # Always auto-execute system commands via agent executor (with tool access)
+            # The old pending_confirmation flow caused messages to stop silently
+            yield OrchestratorEvent("status", "⚙️ Mengeksekusi perintah sistem via Agent...")
+            is_orchestrator = True  # Force agent executor path so tools are available
 
         if not is_orchestrator:
             # STRICT: For ALL non-tool paths (simple or analysis), use a minimal
@@ -817,6 +849,7 @@ class Orchestrator:
         system_prompt: str,
         history: list,
         spec: TaskSpecification,
+        event_queue: Optional[asyncio.Queue] = None,
     ) -> SubTaskResult:
         """Execute a single subtask using its assigned agent and model."""
         start = time.time()
@@ -856,6 +889,18 @@ class Orchestrator:
                 ):
                     # Filter out process-event sentinels from subtask responses
                     if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
+                        if event_queue is not None:
+                            try:
+                                payload = json.loads(chunk[len(PROCESS_EVENT_PREFIX):])
+                                action = payload.get("action", "Worked")
+                                detail = payload.get("detail", "")
+                                if detail:
+                                    detail = f"[{subtask.description[:20]}...] {detail}"
+                                else:
+                                    detail = f"[{subtask.description[:20]}...]"
+                                event_queue.put_nowait(OrchestratorEvent.proc(action, detail, payload.get("count")))
+                            except Exception:
+                                pass
                         continue
                     full_response += chunk
                 return full_response

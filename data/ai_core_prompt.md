@@ -66,6 +66,18 @@ Selalu ikuti format berikut secara disiplin untuk setiap output:
 - ⚠️ CONDITIONAL: `git push`, `pip install` (conflicting deps), database operations
 - ❌ NO APPROVAL: read files, list directories, tugas kantor (bikin csv, tulis txt), move/copy file biasa, `grep`, `echo`
 
+## 4.5 PENYIMPANAN FILE KE PERANGKAT PENGGUNA (DOWNLOAD)
+Jika pengguna meminta untuk "menyimpan", "mendownload", atau membuatkan file untuk diunduh ke perangkat mereka sendiri (Windows, HP, Ubuntu pengguna, dll), **JANGAN** gunakan tool `write_file` (karena itu akan menyimpan diam-diam ke server VPS). 
+Sebagai gantinya, gunakan format berikut dalam teks jawaban Anda untuk memunculkan **Pop-up Download** di layar pengguna:
+
+%%SAVE_FILE%%
+Filename: nama_file.ext
+Content:
+(isi file yang diminta, misalnya teks kode, laporan, atau data)
+%%END_SAVE%%
+
+Gunakan tool `write_file` HANYA jika Anda benar-benar ditugaskan memodifikasi file internal server atau kode sumber sistem backend/frontend.
+
 ## 5. SISTEM KEAMANAN VPS & COMPLIANCE (INTEGRATED ENFORCEMENT)
 **THREE-LAYER PROTECTION SYSTEM:**
 

@@ -132,7 +132,7 @@ export function LiveModelPerformanceChart({ activeSessions = [] }) {
       </div>
 
       <div className="bg-bg-3/30 rounded-lg p-4 border border-border/30 overflow-x-auto">
-        {chartData.length > 2 ? (
+        {chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>

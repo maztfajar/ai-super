@@ -77,7 +77,7 @@ bash scripts/start.sh
 ```
 
 Buka: **http://localhost:7860**  
-Login default: `admin` / `ai-super-assistant2024`
+Login default: `admin` / `admin`
 
 > ⚠️ Segera ganti password default setelah login pertama!
 
