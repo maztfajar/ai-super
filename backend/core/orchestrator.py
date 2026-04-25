@@ -824,7 +824,15 @@ class Orchestrator:
             )
 
             # Stream response in chunks
-            for chunk in [response]:  # Simple line-by-line for now
+            import re
+            def wrap_thinking(match):
+                content = match.group(1).strip()
+                formatted = "\n".join(f"> {line}" for line in content.split("\n"))
+                return f'\n\n<details class="thinking-process">\n<summary>💭 Proses Pemikiran</summary>\n\n{formatted}\n</details>\n\n'
+                
+            formatted_response = re.sub(r'<(?:thinking|think)>(.*?)</(?:thinking|think)>', wrap_thinking, response, flags=re.DOTALL)
+            
+            for chunk in [formatted_response]:  # Simple line-by-line for now
                 yield OrchestratorEvent("chunk", chunk)
 
             yield OrchestratorEvent("done", "", {

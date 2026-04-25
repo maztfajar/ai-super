@@ -240,6 +240,12 @@ PACKAGES=(
     "gTTS>=2.5.1"
     "psutil>=5.9.0"
     "python-pptx>=0.6.23"
+    "asyncpg>=0.29.0"
+    "psycopg2-binary>=2.9.9"
+    "pandas>=2.0.0"
+    "tabulate>=0.9.0"
+    "pdfplumber>=0.11.0"
+    "docx2txt>=0.8"
 )
 
 TOTAL=${#PACKAGES[@]}

@@ -499,12 +499,12 @@ function RecoveryPanel({ onBack }) {
       {[
         {
           n: 'A', color: 'bg-success/15 text-success border-success/30',
-          title: 'Edit .env (paling mudah)',
+          title: 'Jalankan Skrip Reset (Opsi Pertama)',
           steps: [
-            'nano ~/Downloads/ai-super-assistant/.env',
-            'Ubah baris: ADMIN_PASSWORD=passwordbaru',
-            'Simpan: Ctrl+O → Enter → Ctrl+X',
-            'Restart: bash scripts/start.sh',
+            'Buka Terminal Server',
+            'Masuk folder aplikasi (cd /path/ke/ai-super)',
+            'Jalankan: python reset_admin.py',
+            'Login dengan username: admin, password: admin',
           ],
         },
         {
