@@ -50,6 +50,9 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 7860
 
+    # ── PATCH: Flag untuk allow/disable registrasi publik ──────
+    ALLOW_PUBLIC_REGISTER: bool = False
+
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./data/ai-super-assistant.db"
 
@@ -71,14 +74,13 @@ class Settings(BaseSettings):
     # Ollama (Local)
     OLLAMA_HOST: str = "http://localhost:11434"
     OLLAMA_DEFAULT_MODEL: str = ""
-    OLLAMA_AVAILABLE_MODELS: str = ""   # comma-separated, kosong = auto-detect
+    OLLAMA_AVAILABLE_MODELS: str = ""
 
     # ── SUMOPOD ───────────────────────────────────────────────
     SUMOPOD_API_KEY: Optional[str] = None
     SUMOPOD_HOST: str = "https://ai.sumopod.com/v1"
     SUMOPOD_DEFAULT_MODEL: str = ""
     SUMOPOD_AVAILABLE_MODELS: str = ""
-    # Embedding via Sumopod (OpenAI-compatible endpoint)
     SUMOPOD_EMBEDDING_MODEL: str = "text-embedding-3-small"
 
     # Default model
@@ -132,7 +134,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "IMPORTANT"
     LOG_FILE: str = "./data/logs/ai-super-assistant.log"
 
-    # Tunnel / Cloudflare (fields diakui agar tidak crash dengan extra="ignore")
+    # Tunnel / Cloudflare
     CLOUDFLARE_TUNNEL_ID: Optional[str] = None
     CLOUDFLARE_TUNNEL_TOKEN: Optional[str] = None
     CLOUDFLARE_API_TOKEN: Optional[str] = None
@@ -143,14 +145,12 @@ class Settings(BaseSettings):
 
     @property
     def sumopod_models_list(self) -> list:
-        """Return list of Sumopod models from env"""
         if not self.SUMOPOD_AVAILABLE_MODELS:
             return [self.SUMOPOD_DEFAULT_MODEL] if self.SUMOPOD_DEFAULT_MODEL else []
         return [m.strip() for m in self.SUMOPOD_AVAILABLE_MODELS.split(",") if m.strip()]
 
     @property
     def ollama_models_list(self) -> list:
-        """Return Ollama models dari env (jika diset manual)"""
         if not self.OLLAMA_AVAILABLE_MODELS:
             return []
         return [m.strip() for m in self.OLLAMA_AVAILABLE_MODELS.split(",") if m.strip()]
@@ -167,3 +167,50 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# ══════════════════════════════════════════════════════════════
+# PATCH 1: Validasi keamanan konfigurasi saat startup
+# Mencegah aplikasi berjalan dengan kredensial default berbahaya
+# ══════════════════════════════════════════════════════════════
+_DANGEROUS_DEFAULTS = {
+    "SECRET_KEY": ("change-me-in-production",
+                   "SECRET_KEY masih menggunakan nilai default! "
+                   "Ganti dengan string acak 32+ karakter di file .env Anda. "
+                   "Contoh: python3 -c \"import secrets; print(secrets.token_hex(32))\""),
+    "ADMIN_PASSWORD": ("admin",
+                       "ADMIN_PASSWORD masih 'admin'! "
+                       "Ganti dengan password yang kuat di file .env Anda."),
+}
+
+
+def validate_security_config() -> None:
+    """
+    Validasi konfigurasi keamanan kritis saat startup.
+    Raise RuntimeError jika ada nilai default berbahaya yang belum diganti.
+    Hanya aktif jika DEBUG=False (production mode).
+    """
+    if settings.DEBUG:
+        # Di mode debug/development, hanya tampilkan peringatan
+        import warnings
+        for field, (default_val, msg) in _DANGEROUS_DEFAULTS.items():
+            current = getattr(settings, field, "")
+            if current == default_val:
+                warnings.warn(
+                    f"\n⚠️  PERINGATAN KEAMANAN [{field}]: {msg}\n",
+                    stacklevel=2,
+                )
+        return
+
+    errors = []
+    for field, (default_val, msg) in _DANGEROUS_DEFAULTS.items():
+        current = getattr(settings, field, "")
+        if current == default_val:
+            errors.append(f"\n  ❌ [{field}]: {msg}")
+
+    if errors:
+        raise RuntimeError(
+            "\n\n🔴 STARTUP DITOLAK — Konfigurasi keamanan tidak aman:"
+            + "".join(errors)
+            + "\n\nEdit file .env Anda dan restart aplikasi.\n"
+        )

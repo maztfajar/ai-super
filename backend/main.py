@@ -121,6 +121,10 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # ✅ PATCH 1: Validasi konfigurasi keamanan sebelum apapun berjalan
+    from core.config import validate_security_config
+    validate_security_config()
+
     log.info("Starting AI SUPER ASSISTANT...")
 
     # Buat direktori data
