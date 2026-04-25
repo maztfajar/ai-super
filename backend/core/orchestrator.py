@@ -84,6 +84,7 @@ class Orchestrator:
         image_mime: Optional[str] = None,
         emit_thinking: bool = True,
         auto_execute: bool = False,
+        project_path: str = None,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """
         Main orchestration pipeline. Yields events as the orchestration progresses.
@@ -275,7 +276,7 @@ class Orchestrator:
                 event_queue = asyncio.Queue()
                 phase5_streamed = True
                 exec_task = asyncio.create_task(self._execute_subtask(
-                    group_tasks[0], system_prompt, history, spec, event_queue, stream_chunks=True
+                    group_tasks[0], system_prompt, history, spec, event_queue, stream_chunks=True, project_path=project_path
                 ))
                 
                 while not exec_task.done():
@@ -307,7 +308,7 @@ class Orchestrator:
 
                 event_queue = asyncio.Queue()
                 gather_task = asyncio.create_task(asyncio.gather(*(
-                    self._execute_subtask(st, system_prompt, history, spec, event_queue)
+                    self._execute_subtask(st, system_prompt, history, spec, event_queue, project_path=project_path)
                     for st in group_tasks
                 ), return_exceptions=True))
 
@@ -447,6 +448,7 @@ class Orchestrator:
         emit_thinking: bool = True,
         auto_execute: bool = False,
         session_id: str = None,
+        project_path: str = None,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """Handle simple messages without full orchestration overhead."""
 
@@ -532,6 +534,7 @@ class Orchestrator:
                             include_tool_logs=include_tool_logs,
                             emit_thinking=emit_thinking,
                             session_id=session_id,
+                            project_path=project_path,
                         ):
                             await q.put(chunk)
                     except asyncio.CancelledError:
@@ -853,6 +856,7 @@ class Orchestrator:
         spec: TaskSpecification,
         event_queue: Optional[asyncio.Queue] = None,
         stream_chunks: bool = False,
+        project_path: str = None,
     ) -> SubTaskResult:
         """Execute a single subtask using its assigned agent and model."""
         start = time.time()
@@ -889,6 +893,7 @@ class Orchestrator:
                     include_tool_logs=False,
                     emit_thinking=False,
                     execution_mode="execution",
+                    project_path=project_path,
                 ):
                     # Filter out process-event sentinels from subtask responses
                     if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):

@@ -210,6 +210,11 @@ async def chat_send(
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': final_model})}\n\n"
 
         try:
+            # Get project path if set
+            project_path = None
+            if session.project_metadata:
+                project_path = session.project_metadata.get("project_path")
+
             # ═══════════════════════════════════════════════════════
             # DELEGATE TO ORCHESTRATOR — all intelligence lives there
             # ═══════════════════════════════════════════════════════
@@ -225,6 +230,7 @@ async def chat_send(
                 use_rag=req.use_rag,
                 image_b64=req.image_b64,
                 image_mime=req.image_mime,
+                project_path=project_path,
             ):
                 if event.type == "chunk":
                     full_response += event.content

@@ -11,7 +11,7 @@ from agents.tools.web_search import web_search
 
 log = structlog.get_logger()
 
-def build_agent_system_prompt(current_model: str, execution_mode: str = "execution") -> str:
+def build_agent_system_prompt(current_model: str, execution_mode: str = "execution", project_path: str = None) -> str:
     from core.model_manager import model_manager
     import datetime
 
@@ -26,7 +26,15 @@ def build_agent_system_prompt(current_model: str, execution_mode: str = "executi
         mode_instructions = "\n**ANALYSIS MODE ACTIVE:** You are in read-only analysis mode. Destructive actions (execute_bash, write_file) will be simulated or blocked. Focus on understanding and planning.\n"
     elif execution_mode == "execution":
         mode_instructions = "\n**EXECUTION MODE ACTIVE:** You have full permission to use tools. Execute your plan carefully, but do not destroy the system.\n"
-    
+        
+    project_instruction = ""
+    if project_path:
+        project_instruction = f"""
+- **PROJECT DIRECTORY (CRITICAL):** The user has EXPLICITLY set the working directory to `{project_path}`. You MUST execute all your bash commands (`cd {project_path} && ...`) and create all files (`write_file` path should be relative to this or absolute within it) inside this directory. NEVER write files to `/root` or outside of this directory!"""
+    else:
+        project_instruction = """
+- **PROJECT DIRECTORY & FOLDER ISOLATION (CRITICAL):** All tools automatically execute relative to the user's chosen root directory (e.g., Desktop). To prevent polluting their root folder, you MUST ALWAYS create a dedicated sub-folder named after the application you are building. For instance, if creating a calculator app, your file paths in `write_file` MUST be `calculator-app/index.html` and `calculator-app/style.css` instead of just `index.html` at the root. Ensure all your bash commands also point into this sub-folder (e.g., `cd calculator-app && npm init -y`)."""
+
     return f"""You are AI SUPER ASSISTANT, an advanced autonomous agent currently running as '{current_model}'.
 CURRENT SYSTEM TIME: {current_time}. You MUST accept this as the true current date and time. Do NOT rely on your training cutoff date.
 {mode_instructions}
@@ -43,8 +51,7 @@ Instead, inside your <thinking> tag, you MUST explicitly structure your reasonin
 - If data is not immediately available, provide an estimation based on what you can gather and explicitly explain the steps/commands to get the full data.
 - Always end your server status response with a useful insight or recommendation.
 - **FORMATTING REQUIREMENT:** Your final answer regarding server status must be formatted with clear labels, firm values, and colored status indicators (e.g., 🟢 OK, 🟡 WARN, 🔴 ERROR).
-- ALWAYS USE TOOLS for data management and creation. If requested to create a document, manage files, or handle complex data structures (like a system table), DO NOT merely simulate the output in text. You MUST use `write_file` or `execute_bash` to actually materialize that data on the system.
-- **PROJECT DIRECTORY & FOLDER ISOLATION (CRITICAL):** All tools automatically execute relative to the user's chosen root directory (e.g., Desktop). To prevent polluting their root folder, you MUST ALWAYS create a dedicated sub-folder named after the application you are building. For instance, if creating a calculator app, your file paths in `write_file` MUST be `calculator-app/index.html` and `calculator-app/style.css` instead of just `index.html` at the root. Ensure all your bash commands also point into this sub-folder (e.g., `cd calculator-app && npm init -y`).
+- ALWAYS USE TOOLS for data management and creation. If requested to create a document, manage files, or handle complex data structures (like a system table), DO NOT merely simulate the output in text. You MUST use `write_file` or `execute_bash` to actually materialize that data on the system.{project_instruction}
 
 **PORT SAFETY (CRITICAL — NEVER VIOLATE):**
 - The AI Orchestrator runs on port 7860. Reserved ports: 7860, 6379 (Redis), 5432 (Postgres), 3306 (MySQL), 11434 (Ollama).
@@ -58,12 +65,17 @@ If a user asks for news, recent events, or information beyond your training data
 
 **TASK COMPLETION MANDATE:**
 When asked to create applications, systems, or any complex task:
-1. Create ALL necessary files and components
-2. Implement testing procedures 
-3. Run tests and verify functionality
-4. Fix any issues found during testing
-5. Re-run tests until everything works correctly
-6. Provide working example or demo
+1. Create ALL necessary files and components using `write_file` or `write_multiple_files`.
+2. Implement testing procedures.
+3. If it is a web application (e.g. Streamlit, React, Node.js, Python Flask/FastAPI, etc.), you MUST find a safe port using `find_safe_port` and then IMMEDIATELY START THE SERVER in the background using `execute_bash` (e.g. `nohup streamlit run app.py --server.port 8100 > app.log 2>&1 &`). Do NOT just tell the user to run it; YOU MUST RUN IT.
+4. Verify functionality and fix any issues found during testing.
+5. Provide a working example or demo.
+6. **APP PREVIEW (CRITICAL):** If you started a background server for a web application, you MUST include the following marker at the end of your `<response>` block so the user can preview it in the UI:
+%%APP_PREVIEW%%
+http://localhost:<PORT>
+%%END_PREVIEW%%
+(Replace <PORT> with the actual safe port you used).
+
 DO NOT stop after initial creation - continue through testing and validation until successful completion.
 
 **ABSOLUTE RULE — OUTPUT FORMAT:**
@@ -389,9 +401,10 @@ class AgentExecutor:
         emit_thinking: bool = True,
         execution_mode: str = "execution",
         session_id: str = None,
+        project_path: str = None,
     ) -> AsyncGenerator[str, None]:
         
-        system_prompt = build_agent_system_prompt(base_model, execution_mode)
+        system_prompt = build_agent_system_prompt(base_model, execution_mode, project_path)
         
         # Inject our agent system prompt
         agent_msgs = list(messages)

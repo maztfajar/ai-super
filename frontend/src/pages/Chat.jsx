@@ -229,8 +229,8 @@ function ProcessStepsPanel({ steps, isStreaming, onStop }) {
 }
 
 // ── ArtifactsPanel: slideout panel di sebelah kanan ───────────
-function ArtifactsPanel({ code, language, title, onClose }) {
-  const [activeTab, setActiveTab] = useState('code')
+function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
+  const [activeTab, setActiveTab] = useState(isPreviewUrl || ['html', 'htm', 'svg'].includes((language || '').toLowerCase()) ? 'preview' : 'code')
   const [copied, setCopied] = useState(false)
   const [localCode, setLocalCode] = useState(code)
 
@@ -241,9 +241,11 @@ function ArtifactsPanel({ code, language, title, onClose }) {
   const isHtml = ['html', 'htm', 'svg'].includes((language || '').toLowerCase())
   const filename = `artifact.${language || 'txt'}`
 
-  const iframeSrc = isHtml
-    ? `data:text/html;charset=utf-8,${encodeURIComponent(localCode)}`
-    : null
+  const iframeSrc = isPreviewUrl 
+    ? localCode // if it's a preview URL, the code itself IS the URL
+    : isHtml 
+      ? `data:text/html;charset=utf-8,${encodeURIComponent(localCode)}`
+      : null
 
   const handleCopy = () => {
     copyToClipboard(localCode)
@@ -300,7 +302,7 @@ function ArtifactsPanel({ code, language, title, onClose }) {
       </div>
 
       {/* Tabs — hanya tampil jika bisa di-preview */}
-      {isHtml && (
+      {(isHtml || isPreviewUrl) && (
         <div className="flex border-b border-border flex-shrink-0">
           {['preview', 'code'].map(tab => (
             <button
@@ -569,8 +571,19 @@ function parseArtifacts(content) {
       markerIndex++
     }
   }
+
+  // 1.5. Parse %%APP_PREVIEW%% url %%END_PREVIEW%%
+  const previewRegex = /%%APP_PREVIEW%%\s*(https?:\/\/[^\s]+)\s*%%END_PREVIEW%%/g
+  let previewMatch
+  while ((previewMatch = previewRegex.exec(content)) !== null) {
+    const url = previewMatch[1].trim()
+    artifacts.push({ id: `preview-${Date.now()}-${markerIndex}`, title: 'App Preview', language: 'preview', code: url, isPreviewUrl: true })
+    markerIndex++
+  }
+
   // Remove markers from display
-  cleanContent = cleanContent.replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '').trim()
+  cleanContent = cleanContent.replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '')
+                             .replace(/%%APP_PREVIEW%%[\s\S]*?%%END_PREVIEW%%/g, '').trim()
 
   // 2. Auto-detect large fenced code blocks (```lang\n...```) with >15 lines
   if (artifacts.length === 0) {
@@ -962,7 +975,7 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
                   artifact={art}
                   onOpen={(artifact) => {
                     if (onOpenArtifactCard) {
-                      onOpenArtifactCard(artifact.code, artifact.language, artifact.title)
+                      onOpenArtifactCard(artifact.code, artifact.language, artifact.title, artifact.isPreviewUrl)
                     } else if (onOpenArtifact) {
                       onOpenArtifact(artifact.code, artifact.language)
                     }
@@ -1264,8 +1277,8 @@ export default function Chat() {
   const openArtifact = useCallback((code, language) => {
     setArtifact({ open: true, code, language, title: '' })
   }, [])
-  const openArtifactCard = useCallback((code, language, title) => {
-    setArtifact({ open: true, code, language, title: title || '' })
+  const openArtifactCard = useCallback((code, language, title, isPreviewUrl = false) => {
+    setArtifact({ open: true, code, language, title: title || '', isPreviewUrl })
   }, [])
   const closeArtifact = useCallback(() => {
     setArtifact(a => ({ ...a, open: false }))
@@ -2389,6 +2402,7 @@ export default function Chat() {
           code={artifact.code}
           language={artifact.language}
           title={artifact.title}
+          isPreviewUrl={artifact.isPreviewUrl}
           onClose={closeArtifact}
         />
       )}
