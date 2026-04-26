@@ -28,6 +28,7 @@ class ChatRequest(BaseModel):
     max_tokens: int = 4096
     image_b64: Optional[str] = None  # Base64 encoded image
     image_mime: Optional[str] = None  # MIME type (image/png, image/jpeg, etc)
+    channel: Optional[str] = None  # Channel source (e.g. 'web', 'telegram')
 
 
 class NewSessionRequest(BaseModel):
@@ -162,10 +163,28 @@ async def chat_send(
         if not session:
             raise HTTPException(404, "Session not found")
     else:
-        session = ChatSession(user_id=user.id, title=req.message[:50])
+        platform = req.channel if req.channel in ["web", "telegram", "whatsapp"] else "web"
+        session = ChatSession(user_id=user.id, title=req.message[:50], platform=platform)
         db.add(session)
         await db.commit()
         await db.refresh(session)
+
+    # ─── Forward Web User Message to Telegram (If applicable) ───
+    is_telegram_sync = (session.platform == "telegram" or req.channel == "telegram")
+    if is_telegram_sync and getattr(user, "telegram_chat_id", None):
+        import os
+        from integrations.telegram_bot import _send
+        telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        if telegram_token:
+            try:
+                # Forward user's message to their Telegram App
+                asyncio.create_task(_send(
+                    telegram_token, 
+                    int(user.telegram_chat_id), 
+                    f"💻 *Dari Web:* {req.message}"
+                ))
+            except Exception as e:
+                log.warning("Gagal forward pesan ke Telegram", error=str(e))
 
     # Build system prompt + RAG context
     system_prompt = await memory_manager.build_system_prompt(user.id, session.id)
@@ -357,6 +376,20 @@ async def chat_send(
         if not error_occurred and not full_response.startswith("Error"):
             pass  # done already yielded by orchestrator
 
+        # ─── Forward AI Response to Telegram (If applicable) ───
+        if is_telegram_sync and getattr(user, "telegram_chat_id", None) and not error_occurred:
+            import os
+            from integrations.telegram_bot import _send
+            telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+            if telegram_token:
+                try:
+                    asyncio.create_task(_send(
+                        telegram_token, 
+                        int(user.telegram_chat_id), 
+                        f"🤖 *AI:* {full_response[:4000]}"  # Telegram limits to 4096
+                    ))
+                except Exception as e:
+                    log.warning("Gagal forward balasan AI ke Telegram", error=str(e))
 
     return StreamingResponse(
         generate(),

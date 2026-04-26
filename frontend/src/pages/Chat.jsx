@@ -1219,6 +1219,8 @@ export default function Chat() {
   // Global state
   const appName = useOrchestratorStore(s => s.appName)
   const selectedOrchestrator = useOrchestratorStore(s => s.selectedOrchestrator)
+  const connectedChannels = useOrchestratorStore(s => s.connectedChannels)
+  const selectedChannel = useOrchestratorStore(s => s.selectedChannel)
   const { 
     activeModel, activeCapability, setActiveModel, setActiveCapability, clearActiveRouting,
     drivePromptContent, drivePromptTitle, setDrivePromptContent, clearDrivePrompt 
@@ -1241,6 +1243,10 @@ export default function Chat() {
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [speakingId, setSpeakingId] = useState(null)
   const audioRef = useRef(null)
+
+  // Derived: Filter sessions by currently selected channel
+  const channelType = connectedChannels.find(c => c.id === selectedChannel)?.type || 'web'
+  const filteredSessions = sessions.filter(s => (s.platform || 'web') === channelType)
 
   // ── TTS Logic ──
   const handleSpeak = useCallback((msg) => {
@@ -1432,6 +1438,17 @@ export default function Chat() {
     } catch { toast.error('Gagal membuat sesi baru') }
   }
 
+  // Auto-reset when changing channel
+  useEffect(() => {
+    if (currentSession?.id && currentSession.platform && currentSession.platform !== channelType) {
+      if (filteredSessions.length > 0) {
+        navigate(`/chat/${filteredSessions[0].id}`)
+      } else {
+        newSession()
+      }
+    }
+  }, [channelType, currentSession?.platform])
+
   async function deleteSession(id) {
     // 1. Tandai sebagai sedang dihapus (cegah polling mengembalikannya)
     deletingIdsRef.current.add(id)
@@ -1615,6 +1632,7 @@ export default function Chat() {
           message: combinedText,
           model: selectedOrchestrator,
           use_rag: useRAG,
+          channel: channelType,
         },
         imageToSend,
         (chunk) => appendStreamingText(chunk),
@@ -1667,6 +1685,7 @@ export default function Chat() {
           message: combinedText,
           model: selectedOrchestrator,
           use_rag: useRAG,
+          channel: channelType,
         },
         (chunk) => appendStreamingText(chunk),
         async (done) => {
@@ -1913,12 +1932,12 @@ export default function Chat() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          {sessions.length === 0 && (
+          {filteredSessions.length === 0 && (
             <p className="text-xs text-ink-3 text-center py-6">
               Belum ada sesi.<br />Buat chat pertama!
             </p>
           )}
-          {sessions.map((s) => (
+          {filteredSessions.map((s) => (
             <SessionItem
               key={s.id}
               session={s}

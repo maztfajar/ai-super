@@ -17,6 +17,22 @@ _bot_running = False
 _bot_loop:   Optional[asyncio.AbstractEventLoop] = None
 
 
+async def _resolve_web_user(chat_id: int, fallback_user_id: str) -> str:
+    """Mencari Web User ID berdasarkan telegram_chat_id. Fallback ke ID Telegram jika tidak ada."""
+    try:
+        from db.database import AsyncSessionLocal
+        from db.models import User
+        from sqlmodel import select
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(User).where(User.telegram_chat_id == str(chat_id)))
+            user = result.scalar_one_or_none()
+            if user:
+                return user.id
+    except Exception:
+        pass
+    return fallback_user_id
+
+
 # ── Helper kirim pesan ────────────────────────────────────────
 async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = False, max_retries: int = 3):
     """Kirim pesan Markdown, auto-split > 4000 char dengan retry mechanism."""
@@ -142,6 +158,8 @@ def _format_for_tg(text: str) -> str:
 async def _handle_message(chat_id: int, user_id: str, text: str,
                            from_name: str, token: str):
     try:
+        # Resolve to Web User ID if linked
+        user_id = await _resolve_web_user(chat_id, user_id)
 
         # /start
         if text == "/start":
@@ -387,6 +405,9 @@ async def _handle_photo(chat_id: int, user_id: str, photo_list: list, caption: s
                         from_name: str, token: str):
     """Download foto terbesar dari Telegram, kirim ke model vision."""
     try:
+        # Resolve to Web User ID if linked
+        user_id = await _resolve_web_user(chat_id, user_id)
+        
         import httpx, base64
         # Foto terbesar = index terakhir
         best_photo = photo_list[-1]
@@ -449,6 +470,9 @@ async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
                         from_name: str, token: str):
     """Download voice note dari Telegram, transkrip via Whisper, lanjutkan sebagai teks."""
     try:
+        # Resolve to Web User ID if linked
+        user_id = await _resolve_web_user(chat_id, user_id)
+        
         import httpx
         file_id = voice_obj["file_id"]
 
