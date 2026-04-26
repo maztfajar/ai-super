@@ -145,6 +145,7 @@ COMPLEX_TRIGGERS = [
     "hapus", "delete", "download", "upload", "update", "upgrade",
     "spek", "spesifikasi", "memori", "df", "free", "top", "htop", "neofetch",
     "hardisk", "space", "penyimpanan", "jaringan", "network", "ping", "ip",
+    "cuaca", "weather", "iklim", "cari", "search",
 ]
 
 # Heuristic: detect image generation
@@ -161,6 +162,7 @@ REAL_TIME_PATTERNS = [
     "today", "latest", "current price", "stock price", "crypto", "bitcoin",
     "btc", "eth", "saham", "kurs", "nilai tukar", "update terbaru",
     "news", "breaking", "trending", "real time", "real-time",
+    "cuaca", "weather", "iklim",
 ]
 
 # Heuristic: detect audio/TTS generation requests
@@ -216,6 +218,7 @@ class RequestPreprocessor:
         user_model_choice: Optional[str] = None,
         image_b64: Optional[str] = None,
         image_mime: Optional[str] = None,
+        history: List[Dict] = None,
     ) -> TaskSpecification:
         """
         Full preprocessing pipeline:
@@ -290,7 +293,8 @@ class RequestPreprocessor:
             return spec
 
         # Step 1: Fast heuristic check
-        if self._is_trivial(message):
+        # If there is history, NEVER treat a message as trivial. Context is key!
+        if self._is_trivial(message, history):
             spec.is_simple = True
             spec.primary_intent = "general"
             spec.complexity_score = 0.1
@@ -323,7 +327,7 @@ class RequestPreprocessor:
         try:
             import asyncio as _asyncio
             classification = await _asyncio.wait_for(
-                self._classify_with_llm(message), timeout=6.0
+                self._classify_with_llm(message, history), timeout=6.0
             )
             spec.intents = classification.get("intents", ["general"])
             spec.primary_intent = classification.get("primary_intent", "general")
@@ -398,8 +402,11 @@ class RequestPreprocessor:
 
         return spec
 
-    def _is_trivial(self, message: str) -> bool:
+    def _is_trivial(self, message: str, history: List[Dict] = None) -> bool:
         """Fast check: is this a trivial/light message that needs no analysis?"""
+        if history and len(history) > 0:
+            return False  # If there is a conversation context, it is not trivial.
+
         msg = message.lower().strip()
 
         # Very short messages
@@ -420,12 +427,26 @@ class RequestPreprocessor:
 
         return False
 
-    async def _classify_with_llm(self, message: str) -> Dict:
-        """Use a fast LLM to classify the request."""
+    async def _classify_with_llm(self, message: str, history: List[Dict] = None) -> Dict:
+        """Use a fast LLM to classify the request, injecting context if available."""
         fast_model = self._get_fast_model()
+        
+        context_str = ""
+        if history:
+            # Append last 4 messages to give context for ambiguous short messages
+            recent_hist = history[-4:]
+            context_str = "\n[CONVERSATION CONTEXT]\n"
+            for m in recent_hist:
+                role = "User" if m["role"] == "user" else "AI"
+                content = m["content"]
+                if len(content) > 100:
+                    content = content[:100] + "..."
+                context_str += f"{role}: {content}\n"
+            context_str += "\n"
+
         messages = [
             {"role": "system", "content": PREPROCESSOR_PROMPT},
-            {"role": "user", "content": f"User Request:\n{message}"},
+            {"role": "user", "content": f"{context_str}User Request (Newest):\n{message}"},
         ]
 
         result_str = await model_manager.chat_completion(

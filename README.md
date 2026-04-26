@@ -305,11 +305,11 @@ Lihat file **AI ORCHESTRATOR_Dokumentasi.docx** untuk panduan lengkap:
 
 - **Brute Force Protection**: 5x gagal login → kunci 5 menit
 - **Two-Factor Authentication**: TOTP (Google Authenticator) + Telegram OTP
-- **JWT Security**: Token expiry 7 hari dengan refresh mechanism
-- **Password Recovery**: Email / Telegram OTP / Recovery Token / Manual
-- **Data Encryption**: AES-256 untuk sensitive data
-- **Audit Logging**: Semua aktivitas tercatat untuk compliance
-- **Role-Based Access**: Multi-level permissions system
+- **API Rate Limiting**: Redis-backed rate limiting (30 requests/min) untuk endpoint chat
+- **Network Security**: Smart CORS Middleware dinamis & JWT Expiry ketat (24 jam)
+- **Agent Sandbox**: Eksekusi perintah bash dibatasi regex multi-layer, pemblokiran path absolut berbahaya (mis. `/etc/shadow`)
+- **System Hardening**: Auto-chmod 600 untuk `.env` dan log, filter masking Token Telegram pada log
+- **Secure OTA Updates**: Verifikasi SSL wajib, pencegahan RCE & Zip Slip, limit ukuran update 200MB
 
 ---
 
@@ -347,10 +347,10 @@ You may not use, copy, modify, merge, publish, distribute, sublicense, or sell c
 *AI ORCHESTRATOR v2.1 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
 *Built with ❤️ using FastAPI, React, and cutting-edge AI models*
 
-## 🆕 **Recent Updates (v2.1)**
+## 🆕 **Recent Updates (v2.2)**
+- 🔒 **Enterprise Security Hardening**: Smart CORS, Zip Slip protection, Rate Limiting API, Regex Agent Sandboxing.
+- 🧠 **Context-Aware Preprocessor**: Router pesan AI kini membaca konteks riwayat percakapan secara cerdas (tidak kaku dengan *keywords*).
+- 🛡️ **Telegram Watchdog**: Sistem *auto-restart* di *background* untuk mencegah bot Telegram berhenti merespons secara diam-diam.
 - ✅ **Project Management System**: Auto-deteksi lokasi proyek untuk aplikasi
 - ✅ **Enhanced Session Reliability**: Timeout improvements dengan partial responses
-- ✅ **Fixed Model Management**: Mencegah deleted models muncul di monitoring
-- ✅ **Better Error Recovery**: Increased iterations dan timeout handling
 - ✅ **Smart File Organization**: Path relatif otomatis ke lokasi proyek
-- ✅ **Improved Code Styling**: Code block background sesuai tema aplikasi

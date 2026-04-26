@@ -115,6 +115,7 @@ class Orchestrator:
                 user_model_choice=user_model_choice,
                 image_b64=image_b64,
                 image_mime=image_mime,
+                history=history,
             )
         except Exception as e:
             log.error("Preprocessing failed", error=str(e)[:100])
