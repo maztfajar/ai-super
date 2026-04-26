@@ -73,12 +73,15 @@ async def _fetch_recent_logs_helper(lines: int = 100, level: str = ""):
                         line = line.strip()
                         if not line:
                             continue
+                        import re
+                        clean_line = re.sub(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])', '', line)
+                        
                         lvl = "INFO"
-                        if "ERROR" in line or "error" in line.lower():
+                        if " ERROR " in clean_line or "[ERROR]" in clean_line or "level=error" in clean_line.lower():
                             lvl = "ERROR"
-                        elif "WARN" in line or "warn" in line.lower():
+                        elif " WARN" in clean_line or "[WARN" in clean_line or "level=warn" in clean_line.lower():
                             lvl = "WARN"
-                        elif "DEBUG" in line:
+                        elif " DEBUG " in clean_line or "[DEBUG]" in clean_line or "level=debug" in clean_line.lower():
                             lvl = "DEBUG"
 
                         if level and lvl != level.upper():
