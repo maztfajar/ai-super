@@ -347,10 +347,16 @@ This source code is licensed strictly for viewing purposes only. You may not use
 *AI ORCHESTRATOR v2.1 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
 *Built with ❤️ using FastAPI, React, and cutting-edge AI models*
 
-## 🆕 **Recent Updates (v2.2)**
+## 🆕 **Recent Updates (v2.3)**
+- 🧠 **Procedural Memory**: AI kini otomatis menyimpan "Buku Resep" dari tugas-tugas sukses sebelumnya untuk mempercepat pengerjaan tugas serupa.
+- ♻️ **Self-Correction Loop**: Validasi otomatis di *sandbox* internal. AI mengoreksi error kode atau logika sendiri sebelum memberikannya ke pengguna.
+- 👁️ **Project-Wide Awareness**: Fitur `ProjectIndexer` yang membaca seluruh struktur kode di latar belakang, membuat AI jauh lebih paham keterkaitan antar-file.
+- 🎯 **Optimized Core Routing**: Peralihan mesin pengambil keputusan (Router, Voting, Decomposer) agar secara *native* mendukung model andalan seperti `deepseek-v3-2`, `qwen3.6-flash`, dan `gemini-2.5-flash-lite`.
+
+## 🆕 **Previous Updates (v2.2)**
 - 🔒 **Enterprise Security Hardening**: Smart CORS, Zip Slip protection, Rate Limiting API, Regex Agent Sandboxing.
-- 🧠 **Context-Aware Preprocessor**: Router pesan AI kini membaca konteks riwayat percakapan secara cerdas (tidak kaku dengan *keywords*).
+- 🧠 **Context-Aware Preprocessor**: Router pesan AI kini membaca konteks riwayat percakapan secara cerdas.
 - 🛡️ **Telegram Watchdog**: Sistem *auto-restart* di *background* untuk mencegah bot Telegram berhenti merespons secara diam-diam.
-- ✅ **Project Management System**: Auto-deteksi lokasi proyek untuk aplikasi
-- ✅ **Enhanced Session Reliability**: Timeout improvements dengan partial responses
-- ✅ **Smart File Organization**: Path relatif otomatis ke lokasi proyek
+- ✅ **Project Management System**: Auto-deteksi lokasi proyek untuk aplikasi.
+- ✅ **Enhanced Session Reliability**: Timeout improvements dengan partial responses.
+- ✅ **Smart File Organization**: Path relatif otomatis ke lokasi proyek.
