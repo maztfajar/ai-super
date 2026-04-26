@@ -229,6 +229,7 @@ class SmartCORSMiddleware(_BHMW):
         if host in self._SAFE_HOSTS:
             return True
         # Allow configured tunnel/custom domain
+        import os
         tunnel_domain = os.environ.get("TUNNEL_DOMAIN", "").strip()
         if tunnel_domain and (host == tunnel_domain or host.endswith("." + tunnel_domain)):
             return True
