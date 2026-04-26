@@ -609,43 +609,16 @@ async def restart_server(user: User = Depends(get_current_user)):
         for k, v in env.items():
             os.environ[k] = v
 
-        # Strategy 1: If running under systemd, use systemctl restart
+        import subprocess
+        log.info("Restart requested via pkill uvicorn (systemd will handle the reboot)")
         try:
-            check = await asyncio.create_subprocess_exec(
-                "systemctl", "is-active", "ai-orchestrator-api",
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            out, _ = await asyncio.wait_for(check.communicate(), timeout=5)
-            if out.decode().strip() == "active":
-                proc = await asyncio.create_subprocess_exec(
-                    "sudo", "-n", "systemctl", "restart", "ai-orchestrator-api",
-                    stdout=asyncio.subprocess.DEVNULL,
-                    stderr=asyncio.subprocess.DEVNULL,
-                )
-                await asyncio.wait_for(proc.communicate(), timeout=15)
-                return  # systemd will handle the restart
+            subprocess.run(["pkill", "-f", "uvicorn main:app"])
         except Exception:
             pass
-
-        # Strategy 2: Trigger uvicorn reload (works safely because uvicorn runs with --reload)
-        try:
-            main_py = Path(__file__).resolve().parent.parent / "main.py"
-            if main_py.exists():
-                main_py.touch()
-                return  # The reloader will gracefully terminate and respawn this worker
-        except Exception as e:
-            log.error("Touch reload failed", error=str(e))
-
-        # Strategy 3 (Fallback): In-place process replacement
-        import sys
-        try:
-            log.info("Attempting in-place restart via os.execv")
-            os.execv(sys.executable, [sys.executable] + sys.argv)
-        except Exception as e:
-            log.error("os.execv restart failed", error=str(e))
-            # Last resort: kill the process (only safe if monitored by PM2 or similar)
-            os.kill(os.getpid(), signal.SIGTERM)
+        
+        # Fallback
+        import os, signal
+        os.kill(os.getpid(), signal.SIGTERM)
 
     asyncio.create_task(do_restart())
     return {"status": "restarting", "message": "Server restart dalam 1 detik..."}
@@ -793,23 +766,15 @@ async def apply_update(user: User = Depends(get_current_user)):
         except:
             pass
             
-        # Restart the API Server (mirrors /restart endpoint logic)
+        import subprocess
         try:
-            check = await asyncio.create_subprocess_exec("systemctl", "is-active", "ai-orchestrator-api", stdout=asyncio.subprocess.PIPE)
-            out, _ = await asyncio.wait_for(check.communicate(), timeout=5)
-            if out.decode().strip() == "active":
-                proc = await asyncio.create_subprocess_exec("sudo", "-n", "systemctl", "restart", "ai-orchestrator-api")
-                await asyncio.wait_for(proc.communicate(), timeout=15)
-                return 
-        except:
+            subprocess.run(["pkill", "-f", "uvicorn main:app"])
+        except Exception:
             pass
             
         # Fallback restart
-        import sys
-        try:
-            os.execv(sys.executable, [sys.executable] + sys.argv)
-        except:
-            os.kill(os.getpid(), signal.SIGTERM)
+        import os, signal
+        os.kill(os.getpid(), signal.SIGTERM)
 
     asyncio.create_task(do_installation_and_reboot())
     

@@ -261,23 +261,16 @@ async def restart_server(user: User = Depends(get_current_user)):
         for k, v in env.items():
             os.environ[k] = v
         
-        # Trigger uvicorn reload (paling aman jika pakai dev.sh / --reload)
+        import subprocess
+        log.info("Restart requested via pkill uvicorn (systemd will handle the reboot)")
         try:
-            main_py = Path(__file__).resolve().parent.parent / "main.py"
-            if main_py.exists():
-                main_py.touch()
-                return
-        except Exception as e:
-            log.error("Touch reload failed", error=str(e))
-
-        import sys
-        try:
-            log.info("Attempting in-place restart via os.execv")
-            os.execv(sys.executable, [sys.executable] + sys.argv)
-        except Exception as e:
-            log.error("os.execv restart failed", error=str(e))
-            # Fallback to kill (only if external daemon like pm2/systemctl is monitoring)
-            os.kill(os.getpid(), signal.SIGTERM)
+            subprocess.run(["pkill", "-f", "uvicorn main:app"])
+        except Exception:
+            pass
+        
+        # Fallback
+        import os, signal
+        os.kill(os.getpid(), signal.SIGTERM)
 
     asyncio.create_task(do_restart())
     return {"status": "restarting", "message": "Server akan restart dalam 1 detik..."}
