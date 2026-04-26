@@ -129,12 +129,16 @@ const ACTION_META = {
 const DEFAULT_META = { icon: Zap, color: 'text-ink-3', bg: 'bg-bg-5' }
 
 function ProcessStepsPanel({ steps, isStreaming, onStop }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(true)          // header expanded by default
+  const [expandedIdx, setExpandedIdx] = useState(null) // index of step expanded for detail
+
   if (!steps || steps.length === 0) return null
 
-  const latest = steps[steps.length - 1]
-  const meta   = ACTION_META[latest?.action] || DEFAULT_META
+  const latest  = steps[steps.length - 1]
+  const meta    = ACTION_META[latest?.action] || DEFAULT_META
   const LatestIcon = meta.icon
+
+  const toggleStep = (i) => setExpandedIdx(prev => prev === i ? null : i)
 
   return (
     <div className="flex gap-2.5 mb-2 animate-fade">
@@ -150,16 +154,18 @@ function ProcessStepsPanel({ steps, isStreaming, onStop }) {
           className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-all group"
         >
           <div className="flex items-center gap-2 min-w-0">
-            {/* Pulsing dots while streaming */}
-            {isStreaming && (
+            {/* Pulsing dots while streaming, checkmark when done */}
+            {isStreaming ? (
               <div className="flex gap-0.5 flex-shrink-0">
                 {[0,1,2].map(i => (
                   <span key={i} className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse2"
                     style={{ animationDelay: `${i * 0.18}s` }} />
                 ))}
               </div>
+            ) : (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-400/15 text-emerald-400 border border-emerald-400/20 flex-shrink-0">✓ Selesai</span>
             )}
-            {/* Latest step icon + label */}
+            {/* Latest step pill */}
             <div className={clsx('flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0', meta.bg, meta.color)}>
               <LatestIcon size={10} />
               <span>{latest?.action}</span>
@@ -179,38 +185,58 @@ function ProcessStepsPanel({ steps, isStreaming, onStop }) {
         {/* Expanded steps list */}
         {open && (
           <div className="mt-1.5 border border-border bg-bg-3 rounded-xl rounded-tl-sm overflow-hidden">
-            <div className="max-h-60 overflow-y-auto divide-y divide-border/40">
+            <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
               {steps.map((step, i) => {
                 const m = ACTION_META[step.action] || DEFAULT_META
                 const Icon = m.icon
                 const isLast = i === steps.length - 1
+                const isExpanded = expandedIdx === i
                 return (
-                  <div key={i} className={clsx(
-                    'flex items-center gap-2.5 px-3 py-2 text-[11px] transition-colors',
-                    isLast ? 'bg-accent/5' : 'hover:bg-bg-4'
-                  )}>
-                    {/* Index */}
-                    <span className="text-[9px] text-ink-3 tabular-nums w-4 text-right flex-shrink-0">{i + 1}</span>
-                    {/* Action pill */}
-                    <div className={clsx('flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0', m.bg, m.color)}>
-                      <Icon size={9} />
-                      <span className="font-semibold text-[10px]">{step.action}</span>
-                    </div>
-                    {/* Detail */}
-                    <span className={clsx('truncate flex-1', isLast ? 'text-ink font-medium' : 'text-ink-3')}>
-                      {step.detail || '—'}
-                    </span>
-                    {/* Count badge */}
-                    {step.count != null && (
-                      <span className="ml-auto flex-shrink-0 tabular-nums text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-5 text-ink-3 border border-border">
-                        {step.count}
+                  <div key={i}>
+                    {/* Step row — clickable to expand detail */}
+                    <button
+                      className={clsx(
+                        'w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-colors text-left',
+                        isLast && isStreaming ? 'bg-accent/5' : 'hover:bg-bg-4',
+                        isExpanded ? 'bg-bg-4' : ''
+                      )}
+                      onClick={() => toggleStep(i)}
+                    >
+                      {/* Index */}
+                      <span className="text-[9px] text-ink-3 tabular-nums w-4 text-right flex-shrink-0">{i + 1}</span>
+                      {/* Action pill */}
+                      <div className={clsx('flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0', m.bg, m.color)}>
+                        <Icon size={9} />
+                        <span className="font-semibold text-[10px]">{step.action}</span>
+                      </div>
+                      {/* Detail — truncated; full shown on expand */}
+                      <span className={clsx('truncate flex-1', isLast && isStreaming ? 'text-ink font-medium' : 'text-ink-3')}>
+                        {step.detail || '—'}
                       </span>
+                      {/* Count badge */}
+                      {step.count != null && (
+                        <span className="ml-auto flex-shrink-0 tabular-nums text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-5 text-ink-3 border border-border">
+                          {step.count}
+                        </span>
+                      )}
+                      {/* Expand indicator */}
+                      {step.detail && step.detail.length > 30 && (
+                        <span className="ml-1 flex-shrink-0">
+                          {isExpanded ? <ChevronUp size={10} className="text-ink-3" /> : <ChevronDown size={10} className="text-ink-3" />}
+                        </span>
+                      )}
+                    </button>
+                    {/* Full detail expansion */}
+                    {isExpanded && step.detail && (
+                      <div className="px-10 py-2 pb-3 bg-bg-2 border-t border-border/40">
+                        <p className="text-[11px] text-ink-2 leading-relaxed whitespace-pre-wrap">{step.detail}</p>
+                      </div>
                     )}
                   </div>
                 )
               })}
             </div>
-            {/* Stop button */}
+            {/* Stop button — only during streaming */}
             {isStreaming && onStop && (
               <div className="px-3 py-2 border-t border-border bg-bg-4">
                 <button
@@ -1230,9 +1256,11 @@ export default function Chat() {
     sessions, setSessions,
     currentSession, setCurrentSession,
     messages, setMessages, addMessage,
+    clearMessages,
     streaming, setStreaming,
     streamingText, appendStreamingText, clearStreaming,
     processSteps, setProcessSteps, addProcessStep,
+    lastProcessSteps, finalizeProcessSteps, clearProcessSteps,
     statusText, setStatusText,
     actualModel, setActualModel,
     abortRequest, setAbortRequest,
@@ -1352,6 +1380,7 @@ export default function Chat() {
 
   async function loadSession(session) {
     setCurrentSession(session)
+    clearMessages()
     setLoadingMsgs(true)
     try {
       const msgs = await api.getMessages(session.id)
@@ -1462,7 +1491,7 @@ export default function Chat() {
     const wasActive = currentSession?.id === id
     if (wasActive) {
       setCurrentSession(null)
-      setMessages([])
+      clearMessages()
       navigate('/chat')
     }
 
@@ -1521,7 +1550,7 @@ export default function Chat() {
     }
     clearStreaming()
     setStatusText('')
-    setProcessSteps([])
+    useChatStore.getState().finalizeProcessSteps()  // Keep steps visible after stop
     toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
   }
 
@@ -1611,7 +1640,7 @@ export default function Chat() {
     setPendingImage(null)  // clear preview
     setStreaming(true)
     useChatStore.getState().setStatusText('')
-    useChatStore.getState().setProcessSteps([])  // Reset process steps
+    clearProcessSteps()  // Reset process steps for new task
 
     // Helper: add structured process step from onProcess SSE event
     const handleAddProcessStep = (data) => {
@@ -1660,7 +1689,7 @@ export default function Chat() {
             const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
             setSessions(safe)
           }).catch(() => {})
-          useChatStore.getState().setProcessSteps([])
+          useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
           setTimeout(() => { inputRef.current?.focus() }, 50)
@@ -1712,7 +1741,7 @@ export default function Chat() {
             const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
             setSessions(safe)
           }).catch(() => {})
-          useChatStore.getState().setProcessSteps([])
+          useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
           setTimeout(() => { inputRef.current?.focus() }, 50)
@@ -1759,7 +1788,7 @@ export default function Chat() {
         const fullText = useChatStore.getState().streamingText
         clearStreaming()
         useChatStore.getState().setStatusText('')
-        useChatStore.getState().setProcessSteps([])
+        useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
         useChatStore.getState().setActualModel(null)
         useChatStore.getState().setAbortRequest(null)
         addMessage({
@@ -2115,12 +2144,19 @@ export default function Chat() {
             </div>
           )}
 
-          {/* Process Steps Panel — structured live progress with icons */}
+          {/* Process Steps Panel — live during streaming, review-able after */}
           {streaming && processSteps.length > 0 && (
             <ProcessStepsPanel
               steps={processSteps}
               isStreaming={streaming}
               onStop={stopStreaming}
+            />
+          )}
+          {!streaming && lastProcessSteps && lastProcessSteps.length > 0 && (
+            <ProcessStepsPanel
+              steps={lastProcessSteps}
+              isStreaming={false}
+              onStop={null}
             />
           )}
 

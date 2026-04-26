@@ -29,7 +29,10 @@ export const useChatStore = create((set, get) => ({
   selectedModel: null,
 
   setSessions: (sessions) => set({ sessions }),
-  setCurrentSession: (s) => set({ currentSession: s, messages: [] }),
+  // NOTE: setCurrentSession does NOT clear messages — call clearMessages() separately
+  // to avoid wiping messages on page navigation / re-render.
+  setCurrentSession: (s) => set({ currentSession: s }),
+  clearMessages: () => set({ messages: [] }),
   setMessages: (messages) => set({ messages }),
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   setStreaming: (v) => set({ streaming: v }),
@@ -39,13 +42,19 @@ export const useChatStore = create((set, get) => ({
   clearStreaming: () => set({ streaming: false, streamingText: '' }),
 
   // Live progress states
+  // processSteps is intentionally NOT cleared on stream end so users can review
+  // what the orchestrator did. It is reset on new sendMessage().
   processSteps: [],
+  lastProcessSteps: [],   // Snapshot of steps from the last completed task
   statusText: '',
   actualModel: null,
   abortRequest: null,
   
   setProcessSteps: (steps) => set({ processSteps: steps }),
   addProcessStep: (step) => set((s) => ({ processSteps: [...s.processSteps, step] })),
+  // Called on task completion: save a snapshot, then keep steps visible
+  finalizeProcessSteps: () => set((s) => ({ lastProcessSteps: s.processSteps })),
+  clearProcessSteps: () => set({ processSteps: [], lastProcessSteps: [] }),
   setStatusText: (t) => set({ statusText: t }),
   setActualModel: (m) => set({ actualModel: m }),
   setAbortRequest: (fn) => set({ abortRequest: fn }),
