@@ -18,7 +18,7 @@ cd "$DIR"
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════╗"
 echo "  ║   AI ORCHESTRATOR — Installer      ║"
-echo "  ║   AI Orchestrator         ║"
+echo "  ║   AI ORCHESTRATOR         ║"
 echo "  ╚══════════════════════════════╝"
 echo -e "${NC}"
 

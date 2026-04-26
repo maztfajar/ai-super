@@ -1,6 +1,6 @@
 #!/bin/bash
 # ══════════════════════════════════════════════════════════════
-# AI SUPER ASSISTANT — Security Patch Installer
+# AI ORCHESTRATOR — Security Patch Installer
 # Jalankan dari root direktori project: bash apply_security_patches.sh
 # ══════════════════════════════════════════════════════════════
 

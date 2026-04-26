@@ -10,7 +10,7 @@ git reset --hard origin/main
 cd "$APP_DIR/backend"
 ./venv/bin/pip install -r requirements.txt
 
-echo "Restarting AI Orchestrator service..."
+echo "Restarting AI ORCHESTRATOR service..."
 sudo systemctl restart ai-super-assistant-api.service
 
 echo "Waiting for service to become healthy..."
@@ -25,4 +25,4 @@ until curl -s http://localhost:7860/api/health > /dev/null; do
     fi
 done
 
-echo "✅ AI Orchestrator Berhasil Diupdate dan Berjalan Normal!"
+echo "✅ AI ORCHESTRATOR Berhasil Diupdate dan Berjalan Normal!"
