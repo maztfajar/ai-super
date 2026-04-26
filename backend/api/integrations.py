@@ -218,6 +218,19 @@ async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
             "message": f"{len(saved)} key disimpan dan {len(models)} model dimuat"
         }
 
+    # Auto-restart telegram polling
+    if req.provider == "telegram" and "TELEGRAM_BOT_TOKEN" in saved:
+        from integrations.telegram_bot import stop_polling, start_polling, is_running
+        if is_running():
+            stop_polling()
+        token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        if token and not token.startswith("1234567890"):
+            try:
+                start_polling(token)
+                log.info("Telegram polling restarted with new token")
+            except Exception as e:
+                log.error("Failed to restart telegram polling", error=str(e))
+
     return {"status": "saved", "keys": saved, "message": f"{len(saved)} key disimpan ke .env"}
 
 

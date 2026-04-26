@@ -835,11 +835,28 @@ def _run_in_thread(token: str):
         _bot_loop = None
 
 
+import fcntl
+import os
+
+_lock_fd = None
+
 # ── Public API ────────────────────────────────────────────────
 def start_polling(token: str) -> bool:
-    global _bot_thread, _bot_running
+    global _bot_thread, _bot_running, _lock_fd
     if _bot_running:
         return False
+
+    # Ensure only one worker runs the polling using a file lock
+    try:
+        lock_file = "/tmp/telegram_bot_polling.lock"
+        _lock_fd = os.open(lock_file, os.O_CREAT | os.O_RDWR)
+        fcntl.flock(_lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        log.info("Telegram polling already running in another worker process")
+        return False
+    except Exception as e:
+        log.warning("Could not acquire lock for telegram polling", error=str(e))
+
     _bot_running = True
     _bot_thread  = threading.Thread(
         target=_run_in_thread,
@@ -853,13 +870,22 @@ def start_polling(token: str) -> bool:
 
 
 def stop_polling():
-    global _bot_running, _bot_thread, _bot_loop
+    global _bot_running, _bot_thread, _bot_loop, _lock_fd
     _bot_running = False
     if _bot_loop and _bot_loop.is_running():
         _bot_loop.call_soon_threadsafe(_bot_loop.stop)
     if _bot_thread and _bot_thread.is_alive():
         _bot_thread.join(timeout=8)
     _bot_thread = None
+
+    if _lock_fd is not None:
+        try:
+            fcntl.flock(_lock_fd, fcntl.LOCK_UN)
+            os.close(_lock_fd)
+        except Exception:
+            pass
+        _lock_fd = None
+
     log.info("Telegram polling stopped")
 
 
