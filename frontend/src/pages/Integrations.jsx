@@ -326,10 +326,18 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                         {polling.running ? 'Bot Aktif (Polling)' : 'Bot Tidak Aktif'}
                       </span>
                     </div>
-                    {polling.running
-                      ? <Btn label="Stop Bot" onClick={handleStop} loading={pollingLoading} variant="danger" icon={Square} small/>
-                      : <Btn label="Start Bot" onClick={handleStart} loading={pollingLoading} variant="success" icon={Play} small disabled={!configured}/>
-                    }
+                    <label className={clsx("flex items-center gap-2", (!configured || pollingLoading) ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}>
+                      <span className="text-[10px] font-medium text-ink-3 mr-1">
+                        {pollingLoading ? 'Memproses...' : (polling.running ? 'On' : 'Off')}
+                      </span>
+                      <div onClick={() => {
+                        if (!configured || pollingLoading) return;
+                        if (polling.running) handleStop(); else handleStart();
+                      }}
+                        className={clsx('w-8 h-4 rounded-full relative transition-colors', polling.running ? 'bg-success' : 'bg-bg-5 border border-border')}>
+                        <div className={clsx('absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform', polling.running ? 'translate-x-4' : 'translate-x-0.5')}/>
+                      </div>
+                    </label>
                   </div>
 
                   {polling.running && botInfo && (
