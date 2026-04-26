@@ -1,4 +1,4 @@
-# 🧠 AI ORCHESTRATOR — AI Orchestrator
+# 🧠 AI ORCHESTRATOR — AI ORCHESTRATOR
 
 Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration, knowledge base RAG, workflow otomatis, integrasi Telegram/WhatsApp, dan keamanan 2FA.
 
@@ -6,7 +6,7 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 
 ## ✨ Fitur Utama
 
-### 🤖 **AI Orchestrator Engine**
+### 🤖 **AI ORCHESTRATOR Engine**
 - **Multi-Model Intelligence**: Otomatis routing ke model terbaik berdasarkan tugas
 - **VISION_GATE Engine**: Analisis gambar lengkap - objek, aktivitas, situasi, konteks
 - **Multimodal Chat**: Chat dengan gambar + teks secara bersamaan
@@ -147,7 +147,7 @@ ai-orchestrator/
 
 ```env
 # Basic Configuration
-APP_NAME=AI Orchestrator    # Nama tampil di sidebar
+APP_NAME=AI ORCHESTRATOR    # Nama tampil di sidebar
 SECRET_KEY=random-32-chars    # WAJIB diganti untuk keamanan
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=passwordbaru

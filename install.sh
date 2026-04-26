@@ -49,8 +49,8 @@ step "Interactive Configuration Wizard"
 
 echo -e "${CYAN}Tekan ENTER untuk menggunakan nilai [Default].${NC}\n"
 
-read -p "1. Nama Aplikasi [Default: AI Orchestrator]: " WZ_APP_NAME
-WZ_APP_NAME=${WZ_APP_NAME:-"AI Orchestrator"}
+read -p "1. Nama Aplikasi [Default: AI ORCHESTRATOR]: " WZ_APP_NAME
+WZ_APP_NAME=${WZ_APP_NAME:-"AI ORCHESTRATOR"}
 
 echo -e "\n2. Konfigurasi Database (dijalankan otomatis oleh sistem)"
 echo "   [1] SQLite (Ringan, Tanpa Konfigurasi Ekstra)"
