@@ -55,12 +55,14 @@ class OrchestratorEvent:
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
     @classmethod
-    def proc(cls, action: str, detail: str = "", count: int = None) -> "OrchestratorEvent":
-        """Shorthand for building a structured process-step event."""
-        return cls(
-            type="process",
-            data=process_emitter.make(action, detail, count),
-        )
+    def proc(cls, action: str, detail: str = "", count: int = None, **extra) -> "OrchestratorEvent":
+        """Shorthand for building a structured process-step event.
+        extra kwargs (code, language, truncated) are passed through to the SSE payload.
+        """
+        data = process_emitter.make(action, detail, count)
+        if extra:
+            data.update(extra)
+        return cls(type="process", data=data)
 
 
 class Orchestrator:
@@ -601,10 +603,13 @@ class Orchestrator:
                         if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
                             try:
                                 payload = json.loads(chunk[len(PROCESS_EVENT_PREFIX):])
+                                # Forward ALL payload fields (including code/language for artifacts)
                                 yield OrchestratorEvent.proc(
                                     action=payload.get("action", "Worked"),
                                     detail=payload.get("detail", ""),
                                     count=payload.get("count"),
+                                    **{k: v for k, v in payload.items()
+                                       if k not in ("action", "detail", "count", "ts")}
                                 )
                             except Exception:
                                 pass  # malformed sentinel — skip silently
@@ -953,7 +958,12 @@ class Orchestrator:
                                     detail = f"[{subtask.description[:20]}...] {detail}"
                                 else:
                                     detail = f"[{subtask.description[:20]}...]"
-                                event_queue.put_nowait(OrchestratorEvent.proc(action, detail, payload.get("count")))
+                                # Forward code/language for artifact display
+                                event_queue.put_nowait(OrchestratorEvent.proc(
+                                    action, detail, payload.get("count"),
+                                    **{k: v for k, v in payload.items()
+                                       if k not in ("action", "detail", "count", "ts")}
+                                ))
                             except Exception:
                                 pass
                         continue

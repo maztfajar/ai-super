@@ -113,6 +113,7 @@ const ACTION_META = {
   Analyzed:   { icon: Brain,         color: 'text-indigo-400',  bg: 'bg-indigo-400/10' },
   Reading:    { icon: BookOpen,      color: 'text-sky-400',     bg: 'bg-sky-400/10'    },
   Writing:    { icon: PenLine,       color: 'text-amber-400',   bg: 'bg-amber-400/10'  },
+  Written:    { icon: FileCode2,     color: 'text-emerald-300', bg: 'bg-emerald-300/10'},
   Listed:     { icon: List,          color: 'text-teal-400',    bg: 'bg-teal-400/10'   },
   Searched:   { icon: Search,        color: 'text-violet-400',  bg: 'bg-violet-400/10' },
   Fetched:    { icon: Globe,         color: 'text-blue-300',    bg: 'bg-blue-300/10'   },
@@ -1758,8 +1759,7 @@ export default function Chat() {
     lastChunkRef.current = Date.now()  // Reset watchdog
 
     // Helper: add structured process step from onProcess SSE event.
-    // Captures the current streamingText offset so each step can show
-    // the text streamed during its execution.
+    // If event has code payload (Written action), also auto-opens artifact panel.
     const handleAddProcessStep = (data) => {
       const currentOffset = useChatStore.getState().streamingText.length
       const steps = useChatStore.getState().processSteps
@@ -1769,7 +1769,6 @@ export default function Chat() {
         const lastStep = steps[steps.length - 1]
         if (lastStep._textOffset != null && lastStep.liveContent == null) {
           const endContent = useChatStore.getState().streamingText.substring(lastStep._textOffset)
-          // Patch last step with its captured content
           const updatedSteps = steps.map((s, i) =>
             i === steps.length - 1 ? { ...s, liveContent: endContent } : s
           )
@@ -1782,9 +1781,22 @@ export default function Chat() {
         detail: data.detail || '',
         count: data.count ?? null,
         ts: data.ts || Date.now(),
-        _textOffset: currentOffset,   // where in streamingText this step started
-        liveContent: null,            // will be filled when next step starts
+        _textOffset: currentOffset,
+        liveContent: null,
       })
+
+      // ── Live Artifact: auto-open panel when agent writes a file ──
+      if (data.action === 'Written' && data.code && data.detail) {
+        const lang = (data.language || data.detail.split('.').pop() || 'txt').toLowerCase()
+        const filename = data.detail.split('/').pop() || data.detail
+        const truncNote = data.truncated ? '\n\n// [konten dipotong untuk performa]' : ''
+        openArtifactCard(
+          data.code + truncNote,
+          lang,
+          `✍️ ${filename}`,
+          false
+        )
+      }
     }
 
     // Chunk handler: reset watchdog + append text

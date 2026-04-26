@@ -97,6 +97,15 @@ http://localhost:<PORT>
 
 DO NOT stop after initial creation - continue through testing and validation until successful completion.
 
+**RESUME RULE (CRITICAL — prevents wasted tokens):**
+If the user says "lanjutkan", "continue", "teruskan", "next", or similar continuation commands:
+1. FIRST run `execute_bash` with `ls -la <project_dir>` to see what files already exist.
+2. THEN read key existing files (index.html, main.py, package.json, etc.) to understand the current state.
+3. ONLY create or write files that are MISSING or incomplete — NEVER re-create files that already exist and are correct.
+4. Continue from exactly where you stopped. Do NOT restart the project from scratch.
+5. If unsure what was done, check git log or file timestamps: `ls -lt <project_dir> | head -20`
+Violating this rule wastes tokens and frustrates the user.
+
 **ABSOLUTE RULE — OUTPUT FORMAT:**
 You MUST wrap your entire output in EXACTLY these XML tags. NO EXCEPTIONS.
 DO NOT write any conversational text, greetings, or explanations before the `<thinking>` or `<think>` tag. Your response MUST start exactly with `<thinking>` or `<think>`.
@@ -610,8 +619,34 @@ class AgentExecutor:
                         res = f"Error executing tool {cmd}: {str(e)}. The tool encountered an error but the process continues."
                         yield process_emitter.to_sentinel("Error", str(e)[:80])
                     
-                    # Emit a 'Found' step if result has useful content
-                    if include_tool_logs and res and not res.startswith("Error") and not res.startswith("Tool "):
+                    # After successful write_file: emit file content so frontend can show artifact
+                    if cmd == "write_file" and not res.startswith("Error") and not res.startswith("Tool "):
+                        file_path    = args.get("path", "")
+                        file_content = args.get("content", "")
+                        if file_path and file_content:
+                            ext  = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else "txt"
+                            # Emit Written sentinel carrying file content (cap at 8000 chars)
+                            yield process_emitter.to_sentinel(
+                                "Written", file_path,
+                                extra={"code": file_content[:8000], "language": ext, "truncated": len(file_content) > 8000}
+                            )
+
+                    # After write_multiple_files: emit last file so artifact panel updates
+                    elif cmd == "write_multiple_files" and not res.startswith("Error") and not res.startswith("Tool "):
+                        files_data = args.get("files_data", [])
+                        if files_data:
+                            last_file = files_data[-1]
+                            fp = last_file.get("path", "")
+                            fc = last_file.get("content", "")
+                            if fp and fc:
+                                ext = fp.rsplit(".", 1)[-1].lower() if "." in fp else "txt"
+                                yield process_emitter.to_sentinel(
+                                    "Written", fp,
+                                    extra={"code": fc[:8000], "language": ext, "truncated": len(fc) > 8000}
+                                )
+
+                    # Emit a 'Found' step if result has useful content (non-write tools)
+                    if cmd not in ("write_file", "write_multiple_files") and include_tool_logs and res and not res.startswith("Error") and not res.startswith("Tool "):
                         lines = res.strip().splitlines()
                         n = len(lines)
                         if n > 1:
