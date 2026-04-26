@@ -336,7 +336,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
       <Btn label="Nonaktifkan Telegram OTP" onClick={async () => {
         if (!confirm('Yakin ingin menonaktifkan Telegram OTP?')) return;
         try {
-          await api.post('/auth/telegram-otp/disable');
+          await api.post('/auth2fa/telegram-otp/disable');
           toast.success('Telegram OTP dinonaktifkan');
           setDone(false); setStep(1); setChatId(''); setOtp(''); onRefresh();
         } catch(e) { toast.error(e.message); }
