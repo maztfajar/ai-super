@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Install Cloudflare Tunnel (cloudflared)
+# AI ORCHESTRATOR — Install Cloudflare Tunnel (cloudflared)
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; NC='\033[0m'; BOLD='\033[1m'
 log()  { echo -e "${GREEN}[✓]${NC} $1"; }
@@ -37,11 +37,11 @@ echo ""
 echo -e "${GREEN}${BOLD}Cara pakai Cloudflare Tunnel:${NC}"
 echo ""
 echo -e "  ${CYAN}Mode Cepat (tanpa akun):${NC}"
-echo -e "  Klik tombol 'Start Tunnel' di AI SUPER ASSISTANT Settings"
+echo -e "  Klik tombol 'Start Tunnel' di AI ORCHESTRATOR Settings"
 echo -e "  URL publik otomatis akan muncul (*.trycloudflare.com)"
 echo ""
 echo -e "  ${CYAN}Mode Permanen (pakai domain sendiri):${NC}"
 echo -e "  1. Login: cloudflared tunnel login"
-echo -e "  2. Buat tunnel: cloudflared tunnel create ai-super-assistant"
-echo -e "  3. Copy token → tempel di AI SUPER ASSISTANT Settings"
+echo -e "  2. Buat tunnel: cloudflared tunnel create ai-orchestrator"
+echo -e "  3. Copy token → tempel di AI ORCHESTRATOR Settings"
 echo -e "  4. Set domain di Cloudflare DNS"

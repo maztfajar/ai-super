@@ -1,11 +1,11 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — VPS Troubleshooting Script
+# AI ORCHESTRATOR — VPS Troubleshooting Script
 # Run this on VPS to diagnose and fix dashboard loading issues
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'; BOLD='\033[1m'
 
-echo -e "${BOLD}🔍 AI SUPER ASSISTANT — VPS Troubleshooting${NC}"
+echo -e "${BOLD}🔍 AI ORCHESTRATOR — VPS Troubleshooting${NC}"
 echo "========================================"
 
 # 1. Check if backend is running
@@ -51,7 +51,7 @@ fi
 
 # 5. Check database
 echo -e "\n${BOLD}5. Checking Database${NC}"
-if [ -f "$DIR/backend/data/ai-super-assistant.db" ]; then
+if [ -f "$DIR/backend/data/ai-orchestrator.db" ]; then
     echo -e "${GREEN}✅ Database file exists${NC}"
     DB_EXISTS=true
 else
@@ -76,11 +76,11 @@ fi
 
 # 7. Check database schema
 echo -e "\n${BOLD}7. Checking Database Schema${NC}"
-if [ -f "$DIR/backend/data/ai-super-assistant.db" ]; then
+if [ -f "$DIR/backend/data/ai-orchestrator.db" ]; then
     # Check if thinking_process column exists
     if python3 -c "
 import sqlite3
-conn = sqlite3.connect('$DIR/backend/data/ai-super-assistant.db')
+conn = sqlite3.connect('$DIR/backend/data/ai-orchestrator.db')
 cursor = conn.cursor()
 cursor.execute('PRAGMA table_info(messages)')
 columns = [row[1] for row in cursor.fetchall()]

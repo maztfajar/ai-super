@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Email Service
+AI ORCHESTRATOR — Email Service
 Kirim email via SMTP untuk reset password
 """
 import smtplib
@@ -21,8 +21,8 @@ def _html_template(title: str, body_html: str, app_url: str) -> str:
     <!-- Header -->
     <div style="background:linear-gradient(135deg,#5b63f7,#7c3aed);padding:28px 32px;text-align:center;">
       <div style="font-size:32px;margin-bottom:8px;">🧠</div>
-      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">AI SUPER ASSISTANT</h1>
-      <p style="margin:4px 0 0;color:rgba(255,255,255,0.7);font-size:12px;">AI Super Assistant</p>
+      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">AI ORCHESTRATOR</h1>
+      <p style="margin:4px 0 0;color:rgba(255,255,255,0.7);font-size:12px;">AI Orchestrator</p>
     </div>
     <!-- Body -->
     <div style="padding:32px;">
@@ -31,7 +31,7 @@ def _html_template(title: str, body_html: str, app_url: str) -> str:
     <!-- Footer -->
     <div style="padding:16px 32px;border-top:1px solid #2a2d3e;text-align:center;">
       <p style="margin:0;color:#4a5568;font-size:11px;">
-        Email ini dikirim otomatis oleh AI SUPER ASSISTANT.<br>
+        Email ini dikirim otomatis oleh AI ORCHESTRATOR.<br>
         Jika Anda tidak merasa meminta ini, abaikan saja.
       </p>
       <a href="{app_url}" style="color:#5b63f7;font-size:11px;text-decoration:none;">{app_url}</a>
@@ -51,7 +51,7 @@ def send_email(to: str, subject: str, html: str) -> tuple[bool, str]:
     from_addr = settings.SMTP_FROM or settings.SMTP_USER
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"]    = f"AI SUPER ASSISTANT <{from_addr}>"
+    msg["From"]    = f"AI ORCHESTRATOR <{from_addr}>"
     msg["To"]      = to
     msg.attach(MIMEText(html, "html", "utf-8"))
 
@@ -88,7 +88,7 @@ def send_password_reset(to: str, username: str, reset_link: str) -> tuple[bool, 
       <h2 style="color:#d4d8f0;margin:0 0 16px;">Reset Password</h2>
       <p style="color:#9ca3af;font-size:14px;line-height:1.6;margin:0 0 24px;">
         Halo <strong style="color:#fff;">{username}</strong>,<br>
-        Permintaan reset password untuk akun AI SUPER ASSISTANT Anda diterima.
+        Permintaan reset password untuk akun AI ORCHESTRATOR Anda diterima.
       </p>
       <div style="text-align:center;margin:28px 0;">
         <a href="{reset_link}"
@@ -110,7 +110,7 @@ def send_password_reset(to: str, username: str, reset_link: str) -> tuple[bool, 
       </div>
     """
     return send_email(
-        to, "Reset Password AI SUPER ASSISTANT",
+        to, "Reset Password AI ORCHESTRATOR",
         _html_template("Reset Password", body, settings.APP_URL)
     )
 
@@ -134,7 +134,7 @@ def send_otp_email(to: str, username: str, otp: str) -> tuple[bool, str]:
       </div>
     """
     return send_email(
-        to, "Kode OTP Login AI SUPER ASSISTANT",
+        to, "Kode OTP Login AI ORCHESTRATOR",
         _html_template("Kode OTP", body, settings.APP_URL)
     )
 

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 def migrate_database():
-    db_path = Path(__file__).parent / "backend" / "data" / "ai-super-assistant.db"
+    db_path = Path(__file__).parent / "backend" / "data" / "ai-orchestrator.db"
 
     if not db_path.exists():
         print(f"❌ Database not found at {db_path}")

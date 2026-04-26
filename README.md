@@ -1,4 +1,4 @@
-# 🧠 AI SUPER ASSISTANT — AI Super Assistant
+# 🧠 AI ORCHESTRATOR — AI Orchestrator
 
 Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration, knowledge base RAG, workflow otomatis, integrasi Telegram/WhatsApp, dan keamanan 2FA.
 
@@ -71,7 +71,7 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 ## ⚡ Instalasi Cepat
 
 ```bash
-cd ai-super-assistant
+cd ai-orchestrator
 bash scripts/install.sh
 bash scripts/start.sh
 ```
@@ -99,7 +99,7 @@ Login default: `admin` / `admin`
 ## 🗂️ Struktur Folder
 
 ```
-ai-super-assistant/
+ai-orchestrator/
 ├── backend/          # FastAPI Python backend
 │   ├── api/          # REST API endpoints
 │   │   ├── chat.py           # Chat & multimodal endpoints
@@ -147,7 +147,7 @@ ai-super-assistant/
 
 ```env
 # Basic Configuration
-APP_NAME=AI Super Assistant    # Nama tampil di sidebar
+APP_NAME=AI Orchestrator    # Nama tampil di sidebar
 SECRET_KEY=random-32-chars    # WAJIB diganti untuk keamanan
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=passwordbaru
@@ -291,7 +291,7 @@ Lihat **TROUBLESHOOTING.md** untuk panduan lengkap.
 
 ## 📖 Dokumentasi Lengkap
 
-Lihat file **PITAKONKU_Dokumentasi.docx** untuk panduan lengkap:
+Lihat file **AI ORCHESTRATOR_Dokumentasi.docx** untuk panduan lengkap:
 - Instalasi step-by-step dengan screenshots
 - Konfigurasi semua fitur (Vision, RAG, Workflow)
 - Panduan setiap menu dan fitur
@@ -344,7 +344,7 @@ This source code is licensed under the copyright strictly for viewing purposes o
 You may not use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Software without explicit written permission from the author.
 
 
-*AI SUPER ASSISTANT v2.1 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
+*AI ORCHESTRATOR v2.1 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
 *Built with ❤️ using FastAPI, React, and cutting-edge AI models*
 
 ## 🆕 **Recent Updates (v2.1)**

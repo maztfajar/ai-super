@@ -2,7 +2,7 @@ const BASE = '/api'
 
 function getToken() {
   try {
-    const s = JSON.parse(localStorage.getItem('ai-super-assistant-auth') || '{}')
+    const s = JSON.parse(localStorage.getItem('ai-orchestrator-auth') || '{}')
     return s?.state?.token
   } catch { return null }
 }
@@ -20,7 +20,7 @@ async function req(method, path, body, opts = {}) {
   })
 
   if (res.status === 401) {
-    localStorage.removeItem('ai-super-assistant-auth')
+    localStorage.removeItem('ai-orchestrator-auth')
     window.location.href = '/login'
     return
   }

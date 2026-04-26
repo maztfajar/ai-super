@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Settings API
+AI ORCHESTRATOR — Settings API
 Kelola konfigurasi server, tunnel Cloudflare, domain dari UI
 """
 import os
@@ -126,7 +126,7 @@ async def get_settings(user: User = Depends(get_current_user)):
     env = read_env()
     return {
         "app": {
-            "name":      env.get("APP_NAME", "AI SUPER ASSISTANT"),
+            "name":      env.get("APP_NAME", "AI ORCHESTRATOR"),
             "version":   env.get("APP_VERSION", "1.0.0"),
             "build":     env.get("APP_BUILD", "1001"),
             "host":      env.get("HOST", "0.0.0.0"),
@@ -612,14 +612,14 @@ async def restart_server(user: User = Depends(get_current_user)):
         # Strategy 1: If running under systemd, use systemctl restart
         try:
             check = await asyncio.create_subprocess_exec(
-                "systemctl", "is-active", "ai-super-assistant-api",
+                "systemctl", "is-active", "ai-orchestrator-api",
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.DEVNULL,
             )
             out, _ = await asyncio.wait_for(check.communicate(), timeout=5)
             if out.decode().strip() == "active":
                 proc = await asyncio.create_subprocess_exec(
-                    "sudo", "-n", "systemctl", "restart", "ai-super-assistant-api",
+                    "sudo", "-n", "systemctl", "restart", "ai-orchestrator-api",
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
                 )
@@ -659,7 +659,7 @@ async def get_client_update():
     """
     env = read_env()
     version = env.get("APP_VERSION", "1.0.0")
-    domain = env.get("TUNNEL_DOMAIN", "eai-super-assistant.kapanewonpengasih.my.id")
+    domain = env.get("TUNNEL_DOMAIN", "eai-orchestrator.kapanewonpengasih.my.id")
     dl_url = env.get("CLIENT_DOWNLOAD_URL", f"https://{domain}")
     
     return {
@@ -676,7 +676,7 @@ import urllib.request
 @router.get("/download-update")
 async def download_update():
     """Endpoint untuk server utama (Master) menyediakan file update ke server Client."""
-    zip_path = "/tmp/ai-super-assistant_update.zip"
+    zip_path = "/tmp/ai-orchestrator_update.zip"
     
     # Generate on the fly if it doesn't exist or is older than 5 minutes
     build_script = Path(__file__).parent.parent.parent / "scripts" / "build-update.sh"
@@ -699,7 +699,7 @@ async def download_update():
     return FileResponse(
         zip_path,
         media_type="application/zip",
-        filename="ai-super-assistant_update.zip"
+        filename="ai-orchestrator_update.zip"
     )
 
 # ── POST: apply update OTA (Client Server) ────────────────────
@@ -707,7 +707,7 @@ async def download_update():
 async def apply_update(user: User = Depends(get_current_user)):
     """Endpoint untuk server Client mengunduh dan memasang update secara otomatis OTA."""
     env = read_env()
-    domain = env.get("TUNNEL_DOMAIN", "eai-super-assistant.kapanewonpengasih.my.id")
+    domain = env.get("TUNNEL_DOMAIN", "eai-orchestrator.kapanewonpengasih.my.id")
     dl_base = env.get("CLIENT_DOWNLOAD_URL", f"https://{domain}")
     
     # Normalize dl base
@@ -768,10 +768,10 @@ async def apply_update(user: User = Depends(get_current_user)):
             
         # Restart the API Server (mirrors /restart endpoint logic)
         try:
-            check = await asyncio.create_subprocess_exec("systemctl", "is-active", "ai-super-assistant-api", stdout=asyncio.subprocess.PIPE)
+            check = await asyncio.create_subprocess_exec("systemctl", "is-active", "ai-orchestrator-api", stdout=asyncio.subprocess.PIPE)
             out, _ = await asyncio.wait_for(check.communicate(), timeout=5)
             if out.decode().strip() == "active":
-                proc = await asyncio.create_subprocess_exec("sudo", "-n", "systemctl", "restart", "ai-super-assistant-api")
+                proc = await asyncio.create_subprocess_exec("sudo", "-n", "systemctl", "restart", "ai-orchestrator-api")
                 await asyncio.wait_for(proc.communicate(), timeout=15)
                 return 
         except:

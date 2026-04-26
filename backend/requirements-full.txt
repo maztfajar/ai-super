@@ -1,4 +1,4 @@
-# AI SUPER ASSISTANT — Full Requirements (RAG + Vector DB + Embeddings)
+# AI ORCHESTRATOR — Full Requirements (RAG + Vector DB + Embeddings)
 # Install SETELAH requirements.txt berhasil:
 #   pip install -r requirements-full.txt
 #

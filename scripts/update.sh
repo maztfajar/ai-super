@@ -1,12 +1,12 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Update & Rebuild Script
+# AI ORCHESTRATOR — Update & Rebuild Script
 # Jalankan ini setelah extract zip baru
 # Usage: bash scripts/update.sh
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'; BOLD='\033[1m'
 
-echo -e "${CYAN}${BOLD}🔄 AI SUPER ASSISTANT — Update & Rebuild${NC}\n"
+echo -e "${CYAN}${BOLD}🔄 AI ORCHESTRATOR — Update & Rebuild${NC}\n"
 
 # ── 1. Migrate DB ─────────────────────────────────────────────
 echo -e "${CYAN}[1/3]${NC} Migrasi database..."
@@ -37,10 +37,10 @@ echo -e "${GREEN}[✓]${NC} Frontend berhasil di-build"
 echo -e "\n${CYAN}[3/3]${NC} Restart server..."
 
 # Stop server lama jika ada
-if [ -f /tmp/ai-super-assistant-api.pid ]; then
-    PID=$(cat /tmp/ai-super-assistant-api.pid)
+if [ -f /tmp/ai-orchestrator-api.pid ]; then
+    PID=$(cat /tmp/ai-orchestrator-api.pid)
     kill $PID 2>/dev/null && echo "Server lama dihentikan (PID $PID)"
-    rm -f /tmp/ai-super-assistant-api.pid
+    rm -f /tmp/ai-orchestrator-api.pid
 fi
 # Coba pkill sebagai fallback
 pkill -f "uvicorn main:app" 2>/dev/null || true

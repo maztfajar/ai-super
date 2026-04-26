@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Dev/Quick Start
+# AI ORCHESTRATOR — Dev/Quick Start
 # Usage: bash scripts/dev.sh
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -10,7 +10,7 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step() { echo -e "\n${BOLD}${CYAN}━━━ $1 ━━━${NC}"; }
 
-echo -e "${CYAN}${BOLD}  🧠 AI SUPER ASSISTANT — Starting...${NC}\n"
+echo -e "${CYAN}${BOLD}  🧠 AI ORCHESTRATOR — Starting...${NC}\n"
 
 # ── Load nvm ─────────────────────────────────────────────────
 export NVM_DIR="$HOME/.nvm"
@@ -86,7 +86,7 @@ PYEOF
 # ── Start server ──────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════╗"
-echo -e "║  AI SUPER ASSISTANT berjalan!                         ║"
+echo -e "║  AI ORCHESTRATOR berjalan!                         ║"
 echo -e "║  → http://localhost:7860                     ║"
 echo -e "║  Login: admin / admin                                   ║"
 echo -e "╚══════════════════════════════════════════════╝${NC}"

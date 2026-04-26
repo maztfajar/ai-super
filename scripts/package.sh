@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Package Script
+# AI ORCHESTRATOR — Package Script
 # Script to create a clean, ready-to-install package
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -8,17 +8,17 @@ BASE_DIR="$(basename "$DIR")"
 OUTPUT_DIR="/home/maztfajar/Downloads/MENTAH"
 mkdir -p "$OUTPUT_DIR"
 
-NAME="ai-super-assistant"
+NAME="ai-orchestrator"
 VERSION="1.0"
 FILE="$OUTPUT_DIR/${NAME}-ready-to-install.tar.gz"
 
-echo -e "\033[0;36m━━━ Packaging AI SUPER ASSISTANT ━━━\033[0m"
+echo -e "\033[0;36m━━━ Packaging AI ORCHESTRATOR ━━━\033[0m"
 
 # Ensure all scripts are executable before packaging
 chmod +x "$DIR/install.sh" "$DIR/scripts/"*.sh
 
 # Create the archive
-# We rename the root folder from 'pitakonku' to 'ai-super-assistant' inside the tar
+# We rename the root folder from 'ai_orchestrator' to 'ai-orchestrator' inside the tar
 tar -czf "$FILE" \
     --exclude="*/venv" \
     --exclude="*/node_modules" \

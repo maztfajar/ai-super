@@ -392,7 +392,7 @@ function RecoveryPanel({ onBack }) {
             <CheckCircle2 size={14} className="text-success flex-shrink-0"/>
             <div className="text-[11px] text-ink-2">
               <strong className="text-success block mb-0.5">OTP Terkirim!</strong>
-              Cek Telegram Anda — kode 6 digit sudah dikirim ke bot AI SUPER ASSISTANT
+              Cek Telegram Anda — kode 6 digit sudah dikirim ke bot AI ORCHESTRATOR
             </div>
           </div>
 
@@ -511,7 +511,7 @@ function RecoveryPanel({ onBack }) {
           n: 'B', color: 'bg-warn/15 text-warn border-warn/30',
           title: 'Reset via Python (hash baru)',
           steps: [
-            'cd ~/Downloads/ai-super-assistant/backend',
+            'cd ~/Downloads/ai-orchestrator/backend',
             'source venv/bin/activate',
             'python3 -c "from core.auth import hash_password; print(hash_password(\'PasswordBaru!\'))"',
             'Copy hash → lanjut ke langkah C',
@@ -521,7 +521,7 @@ function RecoveryPanel({ onBack }) {
           n: 'C', color: 'bg-danger/15 text-danger border-danger/30',
           title: 'Update database langsung',
           steps: [
-            'sqlite3 data/ai-super-assistant.db',
+            'sqlite3 data/ai-orchestrator.db',
             "UPDATE users SET hashed_password='[HASH_DARI_B]' WHERE username='admin';",
             '.quit',
           ],
@@ -567,7 +567,7 @@ export default function Login() {
   const [otpLoading, setOtpLoad]  = useState(false)
 
   // App profile untuk logo
-  const [appName, setAppName] = useState('AI SUPER ASSISTANT')
+  const [appName, setAppName] = useState('AI ORCHESTRATOR')
   const [logoUrl, setLogoUrl] = useState('')
 
   const { setAuth } = useAuthStore()
@@ -656,7 +656,7 @@ export default function Login() {
             }
           </div>
           <h1 className="text-2xl font-bold text-ink">{appName}</h1>
-          <p className="text-ink-3 text-sm mt-1">AI Super Assistant</p>
+          <p className="text-ink-3 text-sm mt-1">AI Orchestrator</p>
         </div>
 
         {/* Card */}

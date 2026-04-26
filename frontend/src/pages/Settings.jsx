@@ -357,7 +357,7 @@ function DomainManager() {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <Label>Subdomain</Label>
-              <Inp value={sub} onChange={setSub} placeholder="eai-super-assistant" mono/>
+              <Inp value={sub} onChange={setSub} placeholder="eai-orchestrator" mono/>
             </div>
             <div>
               <Label>Root Domain *</Label>
@@ -717,7 +717,7 @@ export default function SettingsPage() {
     try {
       const s = await sApi.get()
       setSettings(s)
-      setAppName(s.app?.name||'AI SUPER ASSISTANT')
+      setAppName(s.app?.name||'AI ORCHESTRATOR')
       setAppPort(s.app?.port||'7860')
       setLogLevel(s.app?.log_level||'INFO')
       setDebug(s.app?.debug==='true')
@@ -747,7 +747,7 @@ export default function SettingsPage() {
     finally { setSaving(s=>({...s,aiCore:false})) }
   }
   const restart = async () => {
-    if(!confirm('Restart AI SUPER ASSISTANT server?')) return
+    if(!confirm('Restart AI ORCHESTRATOR server?')) return
     setRestarting(true)
     try { await sApi.restart(); toast.loading('Restarting...',{duration:4000}); await new Promise(r=>setTimeout(r,4500)); toast.success('✓ Server restart selesai!'); await load() }
     catch(e){ toast.error(e.message) }
@@ -813,7 +813,7 @@ export default function SettingsPage() {
 
         <Section title={t('app_settings')} icon="⚙" defaultOpen={false}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-            <div><Label>{t('app_name')}</Label><Inp value={appName} onChange={setAppName} placeholder="AI SUPER ASSISTANT"/></div>
+            <div><Label>{t('app_name')}</Label><Inp value={appName} onChange={setAppName} placeholder="AI ORCHESTRATOR"/></div>
             <div><Label>{t('port')}</Label><Inp value={appPort} onChange={setAppPort} placeholder="7860" mono/></div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">

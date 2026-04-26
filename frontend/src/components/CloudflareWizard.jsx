@@ -1,5 +1,5 @@
 /**
- * AI SUPER ASSISTANT — Cloudflare Tunnel Setup Wizard
+ * AI ORCHESTRATOR — Cloudflare Tunnel Setup Wizard
  */
 import { useState, useEffect } from 'react'
 import { api } from '../hooks/useApi'
@@ -207,7 +207,7 @@ function Step1({ onDone, alreadyDone }) {
 function Step2({ accounts, savedAccountId, savedTunnelId, onDone }) {
   const [mode, setMode]           = useState('create')
   const [accountId, setAccountId] = useState(accounts[0]?.id || savedAccountId || '')
-  const [name, setName]           = useState('ai-super-assistant')
+  const [name, setName]           = useState('ai-orchestrator')
   const [tunnels, setTunnels]     = useState([])
   const [selTunnel, setSelTunnel] = useState(savedTunnelId || '')
   const [loading, setLoad]        = useState(false)
@@ -293,7 +293,7 @@ function Step2({ accounts, savedAccountId, savedTunnelId, onDone }) {
       {mode === 'create' ? (
         <div className="space-y-2">
           <Label>Nama Tunnel</Label>
-          <Inp value={name} onChange={setName} placeholder="ai-super-assistant" mono />
+          <Inp value={name} onChange={setName} placeholder="ai-orchestrator" mono />
           <div className="text-[10px] text-ink-3">Nama unik untuk tunnel ini di Cloudflare Dashboard</div>
           <ErrorBox error={error} onRetry={() => setError(null)} />
           <Btn label="Buat Tunnel" onClick={handleCreate} loading={loading} variant="primary" icon={Plus} full />
@@ -402,7 +402,7 @@ function Step3({ accountId, tunnelId, savedDomain, onDone }) {
     <div className="space-y-3">
       <div className="bg-accent/8 border border-accent/20 rounded-xl p-2.5 text-[10px] text-ink-2 flex items-start gap-2">
         <Info size={12} className="text-accent-2 flex-shrink-0 mt-0.5" />
-        AI SUPER ASSISTANT akan otomatis membuat DNS record CNAME dan mengkonfigurasi routing di tunnel Cloudflare Anda.
+        AI ORCHESTRATOR akan otomatis membuat DNS record CNAME dan mengkonfigurasi routing di tunnel Cloudflare Anda.
       </div>
 
       {loadZones ? (
@@ -421,14 +421,14 @@ function Step3({ accountId, tunnelId, savedDomain, onDone }) {
 
           <div>
             <Label>Subdomain (opsional)</Label>
-            <Inp value={sub} onChange={setSub} placeholder="ai-super-assistant  ← subdomain.domain.com" mono />
+            <Inp value={sub} onChange={setSub} placeholder="ai-orchestrator  ← subdomain.domain.com" mono />
             <div className="text-[10px] text-ink-3 mt-1">
               Kosongkan untuk pakai apex: <code className="font-mono">{zone?.name}</code>
             </div>
           </div>
 
           <div>
-            <Label>Port Lokal AI SUPER ASSISTANT</Label>
+            <Label>Port Lokal AI ORCHESTRATOR</Label>
             <Inp value={port} onChange={setPort} placeholder="7860" mono />
           </div>
 
@@ -742,7 +742,7 @@ export default function CloudflareWizard({ onClose }) {
     <div className="space-y-4 py-2 text-center">
       <div className="text-5xl mb-2">🎉</div>
       <div className="text-sm font-bold text-ink">Cloudflare Tunnel Aktif!</div>
-      <div className="text-xs text-ink-3">AI SUPER ASSISTANT dapat diakses dari internet</div>
+      <div className="text-xs text-ink-3">AI ORCHESTRATOR dapat diakses dari internet</div>
       {status?.tunnel_domain && (
         <div className="flex items-center justify-center gap-2 p-3 bg-success/8 border border-success/25 rounded-xl">
           <Wifi size={14} className="text-success" />

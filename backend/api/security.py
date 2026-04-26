@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Security API
+AI ORCHESTRATOR — Security API
 Recovery token (DB-persisted), audit log, login history, session management.
 
 PATCH 5: Recovery token sekarang disimpan di database (bukan dict memory)

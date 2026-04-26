@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Telegram Bot (Polling Mode)
+AI ORCHESTRATOR — Telegram Bot (Polling Mode)
 Setiap pesan diproses sebagai asyncio.Task terpisah
 agar polling loop tidak terblokir saat AI generate.
 """
@@ -146,7 +146,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         # /start
         if text == "/start":
             await _send(token, chat_id,
-                "Halo " + from_name + "! Saya *AI SUPER ASSISTANT*, AI Super Assistant kamu.\n\n"
+                "Halo " + from_name + "! Saya *AI ORCHESTRATOR*, AI Orchestrator kamu.\n\n"
                 "Ketik pertanyaan apa saja dan saya akan menjawab!\n\n"
                 "Perintah:\n"
                 "/start - Mulai\n"
@@ -159,7 +159,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         # /help
         if text == "/help":
             await _send(token, chat_id,
-                "*AI SUPER ASSISTANT Bot*\n\n"
+                "*AI ORCHESTRATOR Bot*\n\n"
                 "Kirim pesan teks biasa untuk chat dengan AI.\n\n"
                 "Fitur:\n"
                 "- Chat dengan AI (auto-pilih model terbaik)\n"

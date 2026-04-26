@@ -1,13 +1,13 @@
 #!/bin/bash
 # scripts/build-update.sh
-# Creates an OTA update package for AI SUPER ASSISTANT (Master Server action)
+# Creates an OTA update package for AI ORCHESTRATOR (Master Server action)
 # Auto-increments APP_BUILD setiap kali dijalankan.
 
 cd "$(dirname "$0")/.." || exit
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'; BOLD='\033[1m'
 
-echo -e "${CYAN}${BOLD}📦 AI SUPER ASSISTANT — Build Update Package${NC}\n"
+echo -e "${CYAN}${BOLD}📦 AI ORCHESTRATOR — Build Update Package${NC}\n"
 
 # ── 1. Auto-increment APP_BUILD ──────────────────────────────
 
@@ -48,11 +48,11 @@ echo -e "\n${CYAN}[2/3]${NC} Building update zip..."
 
 SERVE_DIR="$(pwd)/backend/data/updates"
 mkdir -p "$SERVE_DIR"
-ZIP_DEST="$SERVE_DIR/ai-super-assistant_update.zip"
+ZIP_DEST="$SERVE_DIR/ai-orchestrator_update.zip"
 rm -f "$ZIP_DEST"
 
 # Juga copy ke /tmp untuk backward compatibility
-TMP_DEST="/tmp/ai-super-assistant_update.zip"
+TMP_DEST="/tmp/ai-orchestrator_update.zip"
 
 # Zip the contents, excluding sensitive and cache directories
 zip -r "$ZIP_DEST" . \

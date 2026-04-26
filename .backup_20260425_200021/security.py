@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Security API
+AI ORCHESTRATOR — Security API
 Recovery token, audit log, login history, session management
 """
 import secrets

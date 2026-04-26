@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Auth 2FA API
+AI ORCHESTRATOR — Auth 2FA API
 Email reset, Telegram OTP, TOTP setup & verify
 """
 import time
@@ -264,7 +264,7 @@ async def _send_telegram_otp(chat_id: str, username: str, otp: str) -> bool:
         return False
 
     msg = (
-        "Kode OTP AI SUPER ASSISTANT\n\n"
+        "Kode OTP AI ORCHESTRATOR\n\n"
         f"Halo {username}!\n\n"
         f"Kode verifikasi Anda:\n{otp}\n\n"
         "Berlaku 5 menit. Jangan bagikan ke siapapun."

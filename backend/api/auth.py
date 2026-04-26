@@ -393,7 +393,7 @@ async def get_app_profile():
     if LOGO_PATH.exists():
         logo_b64 = "data:image/png;base64," + base64.b64encode(LOGO_PATH.read_bytes()).decode()
     return {
-        "app_name": env.get("APP_NAME", "AI SUPER ASSISTANT"),
+        "app_name": env.get("APP_NAME", "AI ORCHESTRATOR"),
         "logo_url": "/app-logo.png" if LOGO_PATH.exists() else "",
         "logo_b64": logo_b64,
     }

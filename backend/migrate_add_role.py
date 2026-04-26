@@ -5,7 +5,7 @@ Jalankan sekali: python migrate_add_role.py
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "data" / "ai-super-assistant.db"
+DB_PATH = Path(__file__).parent / "data" / "ai-orchestrator.db"
 
 if not DB_PATH.exists():
     print(f"Database tidak ditemukan di {DB_PATH}")

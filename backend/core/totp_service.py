@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — TOTP Service
+AI ORCHESTRATOR — TOTP Service
 Two-Factor Authentication via Google Authenticator / Authy / FreeOTP
 Tidak butuh library pihak ketiga — implementasi TOTP RFC 6238 murni Python
 """
@@ -47,7 +47,7 @@ def new_secret() -> str:
     return base64.b32encode(raw).decode().rstrip("=")
 
 
-def get_qr_uri(secret: str, username: str, issuer: str = "AI SUPER ASSISTANT") -> str:
+def get_qr_uri(secret: str, username: str, issuer: str = "AI ORCHESTRATOR") -> str:
     """
     Buat otpauth:// URI yang bisa di-scan oleh Google Authenticator.
     QR code di-render di frontend menggunakan library qrcode.js

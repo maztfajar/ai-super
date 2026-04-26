@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Capability Map Engine
+AI ORCHESTRATOR — Capability Map Engine
 Automatically discovers and maps AI model capabilities.
 
 Flow:

@@ -246,7 +246,7 @@ export default function Memory() {
             },
             {
               q: 'Bagaimana jika Redis tidak aktif?',
-              a: 'AI SUPER ASSISTANT tetap bekerja. Short-term memory (Redis) akan di-bypass, dan AI mengambil riwayat langsung dari database. Performa sedikit lebih lambat tapi fungsional.',
+              a: 'AI ORCHESTRATOR tetap bekerja. Short-term memory (Redis) akan di-bypass, dan AI mengambil riwayat langsung dari database. Performa sedikit lebih lambat tapi fungsional.',
               ok: true,
             },
             {

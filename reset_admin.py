@@ -31,7 +31,7 @@ async def reset_admin():
             # Create new admin
             admin_user = User(
                 username="admin",
-                email="admin@ai-super-assistant.local",
+                email="admin@ai-orchestrator.local",
                 hashed_password=hash_password("admin"),
                 is_active=True,
                 is_admin=True,

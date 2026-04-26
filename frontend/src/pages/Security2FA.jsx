@@ -222,7 +222,7 @@ function EmailResetSection({ isAdmin }) {
       <div className="bg-bg-4 border border-border rounded-xl p-3 text-[10px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja reset via email:</div>
         <div>1. User klik "Lupa Password?" di halaman login → masukkan email</div>
-        <div>2. AI SUPER ASSISTANT kirim link reset ke email terdaftar</div>
+        <div>2. AI ORCHESTRATOR kirim link reset ke email terdaftar</div>
         <div>3. User klik link → set password baru (link berlaku 15 menit)</div>
         <div className="text-warn pt-1">⚠ Butuh konfigurasi SMTP di bawah. Cocok untuk Gmail, Outlook, Mailtrap.</div>
       </div>
@@ -250,11 +250,11 @@ function EmailResetSection({ isAdmin }) {
             </div>
             <div>
               <Label>From Address (opsional)</Label>
-              <Inp value={from_} onChange={setFrom} placeholder="AI SUPER ASSISTANT <no-reply@domain.com>" mono/>
+              <Inp value={from_} onChange={setFrom} placeholder="AI ORCHESTRATOR <no-reply@domain.com>" mono/>
             </div>
             <div>
               <Label>App URL (untuk link reset)</Label>
-              <Inp value={appUrl} onChange={setAppUrl} placeholder="https://ai-super-assistant.domain.com" mono/>
+              <Inp value={appUrl} onChange={setAppUrl} placeholder="https://ai-orchestrator.domain.com" mono/>
             </div>
           </div>
 
@@ -341,7 +341,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
     <div className="mt-3 space-y-4">
       <div className="bg-bg-4 border border-border rounded-xl p-3 text-[10px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja Telegram OTP:</div>
-        <div>1. Setelah password benar saat login, AI SUPER ASSISTANT kirim kode 6 digit ke Telegram</div>
+        <div>1. Setelah password benar saat login, AI ORCHESTRATOR kirim kode 6 digit ke Telegram</div>
         <div>2. Masukkan kode tersebut untuk melanjutkan login</div>
         <div>3. Kode berlaku 5 menit dan hanya sekali pakai</div>
         <div className="text-accent-2 pt-1">✓ Tidak perlu aplikasi tambahan — cukup Telegram!</div>
@@ -374,7 +374,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
             <div className="text-[10px] text-ink-3 space-y-1">
               <div>1. Buka Telegram → cari <span className="font-mono text-accent-2">@userinfobot</span></div>
               <div>2. Kirim pesan apa saja → bot akan balas dengan ID Anda</div>
-              <div>3. Atau: buka bot AI SUPER ASSISTANT Anda → kirim <span className="font-mono text-accent-2">/start</span> → catat angka ID yang muncul</div>
+              <div>3. Atau: buka bot AI ORCHESTRATOR Anda → kirim <span className="font-mono text-accent-2">/start</span> → catat angka ID yang muncul</div>
             </div>
           </div>
           <Btn label="Lanjut →" onClick={() => setStep(2)} variant="primary" icon={MessageSquare}/>
@@ -581,7 +581,7 @@ function TotpSection({ status, onRefresh }) {
                   <div className="bg-bg-4 rounded-xl p-3 text-[10px] text-ink-3 space-y-1">
                     <div className="font-semibold text-ink-2 mb-1">Manual entry di Google Authenticator:</div>
                     <div>1. Ketuk "+" → "Enter a setup key"</div>
-                    <div>2. Account: <span className="font-mono text-accent-2">AI SUPER ASSISTANT</span></div>
+                    <div>2. Account: <span className="font-mono text-accent-2">AI ORCHESTRATOR</span></div>
                     <div>3. Key: copy dari kotak di atas</div>
                     <div>4. Type: Time-based</div>
                   </div>
@@ -595,7 +595,7 @@ function TotpSection({ status, onRefresh }) {
           {step === 3 && (
             <div className="space-y-3">
               <div className="text-[10px] text-ink-3 bg-bg-4 rounded-xl p-3">
-                Buka Google Authenticator → cari AI SUPER ASSISTANT → masukkan kode 6 digit yang muncul
+                Buka Google Authenticator → cari AI ORCHESTRATOR → masukkan kode 6 digit yang muncul
               </div>
               <div>
                 <Label>Kode 6 Digit dari Authenticator</Label>

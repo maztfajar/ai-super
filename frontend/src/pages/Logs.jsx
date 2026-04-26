@@ -54,7 +54,7 @@ export default function Logs() {
     const txt = logs.map(l => l.text).join('\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }))
-    a.download = 'ai-super-assistant-logs.txt'
+    a.download = 'ai-orchestrator-logs.txt'
     a.click()
   }
 

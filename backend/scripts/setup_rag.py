@@ -197,7 +197,7 @@ def print_next_steps(all_ok: bool):
      → API: GET /api/rag/status
 
   🔁 Restart server setelah setup:
-     → sudo systemctl restart pitakonku
+     → sudo systemctl restart ai_orchestrator
      → atau: cd backend && python main.py
 """)
     else:
@@ -209,7 +209,7 @@ def print_next_steps(all_ok: bool):
      pip install -r requirements.txt
 
   Cek konfigurasi .env:
-     nano /home/maztfajar/Downloads/pitakonku/.env
+     nano /home/maztfajar/Downloads/ai_orchestrator/.env
 
   Test ulang koneksi Sumopod:
      python scripts/test_sumopod_connection.py
@@ -218,7 +218,7 @@ def print_next_steps(all_ok: bool):
 
 def main():
     print("\n" + "█" * 55)
-    print("  PITAKONKU — RAG System Setup")
+    print("  AI ORCHESTRATOR — RAG System Setup")
     print("█" * 55)
 
     r1 = setup_folders()

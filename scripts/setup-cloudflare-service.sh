@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  AI SUPER ASSISTANT — Setup Cloudflare Tunnel sebagai System Service
+#  AI ORCHESTRATOR — Setup Cloudflare Tunnel sebagai System Service
 #  Tunnel otomatis berjalan saat server boot
 # ============================================================
 
@@ -13,7 +13,7 @@ step() { echo -e "\n${BOLD}${CYAN}━━━ $1 ━━━${NC}"; }
 TOKEN="${1:-}"
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo -e "${CYAN}${BOLD}AI SUPER ASSISTANT — Cloudflare Tunnel Service Setup${NC}\n"
+echo -e "${CYAN}${BOLD}AI ORCHESTRATOR — Cloudflare Tunnel Service Setup${NC}\n"
 
 # ── 1. Cek / install cloudflared ─────────────────────────────
 step "1. Cek cloudflared"
@@ -37,7 +37,7 @@ if [ -z "$TOKEN" ]; then
     echo "Cara pakai:"
     echo "  bash scripts/setup-cloudflare-service.sh <TOKEN>"
     echo ""
-    echo "Atau set dulu di AI SUPER ASSISTANT Settings → Cloudflare Tunnel → Simpan"
+    echo "Atau set dulu di AI ORCHESTRATOR Settings → Cloudflare Tunnel → Simpan"
     echo "Lalu jalankan script ini tanpa argumen."
     exit 1
 fi
@@ -94,7 +94,7 @@ echo -e "  Uninstall: ${CYAN}sudo cloudflared service uninstall${NC}"
 echo ""
 echo -e "  ${YELLOW}Langkah berikutnya di Cloudflare Dashboard:${NC}"
 echo -e "  1. Buka tunnel → tab 'Hostname routes'"
-echo -e "  2. Add route: subdomain=eai-super-assistant, domain=kapanewonpengasih.my.id"
+echo -e "  2. Add route: subdomain=eai-orchestrator, domain=kapanewonpengasih.my.id"
 echo -e "  3. Path: kosongkan | Type: HTTP | URL: localhost:7860"
 echo -e "  4. Save hostname"
 echo ""

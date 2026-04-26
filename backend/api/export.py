@@ -1,6 +1,6 @@
 """
 Chat Export — Multi-format download (PDF, DOCX, XLSX, TXT)
-Exports chat session messages into downloadable files with AL FATIH branding.
+Exports chat session messages into downloadable files with AI ORCHESTRATOR branding.
 """
 import io
 import re
@@ -17,7 +17,7 @@ from core.auth import get_current_user
 
 router = APIRouter()
 
-BRAND = "AL FATIH AI Orchestrator"
+BRAND = "AI ORCHESTRATOR AI Orchestrator"
 
 
 def _safe_filename(title: str) -> str:

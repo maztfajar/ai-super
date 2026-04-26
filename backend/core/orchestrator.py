@@ -494,7 +494,7 @@ class Orchestrator:
             # conversation-only prompt. NEVER pass the full system_prompt (ai_core_prompt.md)
             # which contains routing/model registry info that leaks into responses.
             simple_prompt = (
-                "Anda adalah AL FATIH, AI Orchestrator tingkat tinggi yang merupakan inti dari sistem ini. "
+                "Anda adalah AI ORCHESTRATOR, AI Orchestrator tingkat tinggi yang merupakan inti dari sistem ini. "
                 "Jawab pertanyaan atau sapaan user secara langsung, natural, dan profesional dalam Bahasa Indonesia. "
                 "JANGAN PERNAH menyebutkan atau menjelaskan klasifikasi tugas, model yang digunakan, routing, atau arsitektur internal."
             )

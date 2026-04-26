@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Capability API
+AI ORCHESTRATOR — Capability API
 Endpoints to view and manage the AI model capability map.
 """
 from typing import Optional

@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Media API
+AI ORCHESTRATOR — Media API
 Endpoint untuk multimodal: upload gambar dan transkrip audio/suara.
 """
 import io

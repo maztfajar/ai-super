@@ -1,12 +1,12 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Rebuild Frontend
+# AI ORCHESTRATOR — Rebuild Frontend
 # Jalankan ini setelah update file dari zip baru
 # Usage: bash scripts/rebuild-frontend.sh
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'; BOLD='\033[1m'
 
-echo -e "${CYAN}${BOLD}🔨 Rebuild Frontend AI SUPER ASSISTANT...${NC}\n"
+echo -e "${CYAN}${BOLD}🔨 Rebuild Frontend AI ORCHESTRATOR...${NC}\n"
 
 # Cek node
 if ! command -v node &>/dev/null; then

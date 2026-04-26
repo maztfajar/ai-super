@@ -1,9 +1,9 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Database Migration Script
+# AI ORCHESTRATOR — Database Migration Script
 # Usage: bash scripts/migrate-db.sh
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DB="$DIR/backend/data/ai-super-assistant.db"
+DB="$DIR/backend/data/ai-orchestrator.db"
 
 echo "📂 Folder: $DIR"
 echo "🗄️  Database: $DB"

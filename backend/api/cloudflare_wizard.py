@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Cloudflare Tunnel Wizard API
+AI ORCHESTRATOR — Cloudflare Tunnel Wizard API
 Setup lengkap tunnel, DNS record, dan service via Cloudflare API.
 """
 import os
@@ -493,7 +493,7 @@ async def deploy_service(user: User = Depends(get_current_user)):
         steps[-1].update({"status": "warn", "msg": "sudo memerlukan password — membuat unit file manual..."})
         try:
             unit = f"""[Unit]
-Description=Cloudflare Tunnel for AI SUPER ASSISTANT
+Description=Cloudflare Tunnel for AI ORCHESTRATOR
 After=network.target
 
 [Service]

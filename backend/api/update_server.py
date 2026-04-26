@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Public Update Server API
+AI ORCHESTRATOR — Public Update Server API
 Menyediakan endpoint publik (tanpa auth) untuk OTA update system.
 Client app akan mengecek versi terbaru dan mengunduh update dari sini.
 """
@@ -32,7 +32,7 @@ async def get_latest_version(request: Request):
     build = int(getattr(settings, "APP_BUILD", 0))
 
     # Cek apakah file update zip tersedia
-    zip_path = UPDATE_DIR / "ai-super-assistant_update.zip"
+    zip_path = UPDATE_DIR / "ai-orchestrator_update.zip"
     has_package = zip_path.exists()
 
     # Bangun download URL dari request yang masuk (portabel)
@@ -54,7 +54,7 @@ async def get_latest_version(request: Request):
     return {
         "version": version,
         "build": build,
-        "app_name": getattr(settings, "APP_NAME", "AI SUPER ASSISTANT"),
+        "app_name": getattr(settings, "APP_NAME", "AI ORCHESTRATOR"),
         "changelog": f"Update ke versi {version} (build {build})",
         "download_url": download_url,
         "has_package": has_package,
@@ -67,7 +67,7 @@ async def download_update():
     Public endpoint: Mengunduh file zip update terbaru.
     Client app akan memanggil ini setelah mengecek latest-version.
     """
-    zip_path = UPDATE_DIR / "ai-super-assistant_update.zip"
+    zip_path = UPDATE_DIR / "ai-orchestrator_update.zip"
 
     if not zip_path.exists():
         log.warning("Update download requested but no package available")
@@ -81,5 +81,5 @@ async def download_update():
     return FileResponse(
         path=str(zip_path),
         media_type="application/zip",
-        filename="ai-super-assistant_update.zip",
+        filename="ai-orchestrator_update.zip",
     )

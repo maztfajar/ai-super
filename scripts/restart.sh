@@ -1,11 +1,11 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Restart & Rebuild
+# AI ORCHESTRATOR — Restart & Rebuild
 # Build frontend and restart backend services
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'; BOLD='\033[1m'
 
-echo -e "${CYAN}${BOLD}🔄 Memulai ulang AI SUPER ASSISTANT...${NC}\n"
+echo -e "${CYAN}${BOLD}🔄 Memulai ulang AI ORCHESTRATOR...${NC}\n"
 
 # 1. Rebuild Frontend
 bash "$DIR/scripts/rebuild-frontend.sh"

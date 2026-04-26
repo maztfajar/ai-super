@@ -292,7 +292,7 @@ export default function Profile() {
         if (fresh?.logo_b64) setLogoSrc(fresh.logo_b64)
         if (fresh?.app_name) { const n=fresh.app_name.replace(/^["']|["']$/g,''); setAppName(n); setOrigName(n) }
         // Trigger sidebar update
-        window.dispatchEvent(new Event('ai-super-assistant:profile-updated'))
+        window.dispatchEvent(new Event('ai-orchestrator:profile-updated'))
         toast.success(logoFile ? 'Logo & nama disimpan!' : 'Nama aplikasi disimpan!')
       }
     } catch(e) {
@@ -405,7 +405,7 @@ export default function Profile() {
                   label="Nama Aplikasi"
                   value={appName}
                   onChange={setAppName}
-                  placeholder="AI SUPER ASSISTANT"
+                  placeholder="AI ORCHESTRATOR"
                   maxLength={24}
                 />
                 <p className="text-[10px] text-ink-3 -mt-2">Tampil di sidebar & header. Maks 24 karakter.</p>
@@ -435,7 +435,7 @@ export default function Profile() {
                     {logoSrc ? <img src={logoSrc} className="w-full h-full object-contain" alt="logo"/> : <span className="text-2xl">🧠</span>}
                   </div>
                   <div>
-                    <div className="font-semibold text-ink">{appName || 'AI SUPER ASSISTANT'}</div>
+                    <div className="font-semibold text-ink">{appName || 'AI ORCHESTRATOR'}</div>
                     <div className="text-[10px] text-ink-3">AI Orchestrator</div>
                   </div>
                 </div>

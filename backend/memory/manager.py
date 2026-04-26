@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Memory Manager (Enhanced)
+AI ORCHESTRATOR — Memory Manager (Enhanced)
 3-Layer Memory System:
   Layer 1: Short-term  → Redis (active context, TTL 24 jam)
   Layer 2: Long-term   → Database (riwayat chat permanen, fallback Redis)
@@ -20,7 +20,7 @@ REDIS_TTL        = 86400 * 7  # 7 hari
 
 # Per-session asyncio locks untuk mencegah race condition di save_chat_to_redis
 _SESSION_LOCKS: dict = {}
-DEFAULT_AI_CORE_PROMPT = """# SYSTEM PROMPT: AI ORCHESTRATOR CORE ENGINE (AL FATIH)
+DEFAULT_AI_CORE_PROMPT = """# SYSTEM PROMPT: AI ORCHESTRATOR CORE ENGINE (AI ORCHESTRATOR)
 
 Anda adalah **Global AI Orchestrator**, otak pusat dari sistem manajemen AI tingkat tinggi. Anda bukan satu AI tunggal, melainkan pengendali orkestrasi yang mengoordinasikan berbagai model AI untuk menyelesaikan tugas kompleks.
 
@@ -53,7 +53,7 @@ Setiap permintaan diproses melalui tahapan:
 3. Hindari pengulangan informasi dari pesan sebelumnya secara berlebihan agar file yang diunduh per-pesan tetap ringkas dan relevan. Tujuan akhirnya adalah menghasilkan output yang jika dikonversi menjadi file Excel, setiap baris Markdown akan menjadi baris Excel yang rapi, dan setiap kolom Markdown akan terpisah menjadi kolom Excel (A, B, C, dst) secara akurat.
 
 ## IDENTITAS
-Nama Sistem: **AL FATIH Core Engine**
+Nama Sistem: **AI ORCHESTRATOR Core Engine**
 Bahasa: **Bahasa Indonesia (Utama)**, teknis tetap presisi.
 Sikap: **Profesional, Waspada (Security-first), Efisien.**"""
 

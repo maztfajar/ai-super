@@ -186,7 +186,7 @@ function PsutilInstallGuide({ onRetry }) {
     { id: 'apt',    label: 'apt (Ubuntu)' },
   ]
   const cmds = {
-    venv:   'cd ~/Downloads/ai-super-assistant/backend && source venv/bin/activate && pip install psutil',
+    venv:   'cd ~/Downloads/ai-orchestrator/backend && source venv/bin/activate && pip install psutil',
     system: 'pip3 install psutil --break-system-packages',
     apt:    'sudo apt install -y python3-psutil',
   }
@@ -214,7 +214,7 @@ function PsutilInstallGuide({ onRetry }) {
         {/* Command */}
         <div className="space-y-1.5">
           <div className="text-[10px] text-ink-3">
-            {tab === 'venv'   && 'Install ke virtualenv AI SUPER ASSISTANT (paling aman):'}
+            {tab === 'venv'   && 'Install ke virtualenv AI ORCHESTRATOR (paling aman):'}
             {tab === 'system' && 'Jika virtualenv tidak ditemukan atau pakai Python sistem:'}
             {tab === 'apt'    && 'Sudah install via apt tapi masih error? Aktifkan akses ke sistem:'}
           </div>
@@ -225,7 +225,7 @@ function PsutilInstallGuide({ onRetry }) {
           <div className="text-[10px] text-ink-3 bg-bg-4 rounded-lg p-2.5 space-y-1.5">
             <div>✅ Sudah install via apt tapi masih error? Virtualenv tidak bisa akses paket sistem.</div>
             <div>Aktifkan akses paket sistem ke virtualenv:</div>
-            <code className="block font-mono text-accent-2 bg-bg-2 px-2 py-1 rounded">cd ~/Downloads/ai-super-assistant/backend && source venv/bin/activate && pip install psutil --break-system-packages</code>
+            <code className="block font-mono text-accent-2 bg-bg-2 px-2 py-1 rounded">cd ~/Downloads/ai-orchestrator/backend && source venv/bin/activate && pip install psutil --break-system-packages</code>
             <div className="pt-1">Atau jalankan langsung tanpa venv:</div>
             <code className="block font-mono text-accent-2 bg-bg-2 px-2 py-1 rounded">pip3 install psutil --break-system-packages</code>
           </div>

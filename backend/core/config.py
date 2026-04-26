@@ -41,10 +41,10 @@ class Settings(BaseSettings):
     )
 
     # App
-    APP_NAME: str = "AI SUPER ASSISTANT"
+    APP_NAME: str = "AI ORCHESTRATOR"
     APP_VERSION: str = "1.0.0"
     APP_BUILD: int = 1009
-    UPDATE_SERVER_URL: str = "https://eai-super-assistant.kapanewonpengasih.my.id"
+    UPDATE_SERVER_URL: str = "https://eai-orchestrator.kapanewonpengasih.my.id"
     SECRET_KEY: str = "change-me-in-production"
     DEBUG: bool = False
     HOST: str = "0.0.0.0"
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     ALLOW_PUBLIC_REGISTER: bool = False
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./data/ai-super-assistant.db"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./data/ai-orchestrator.db"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -105,12 +105,12 @@ class Settings(BaseSettings):
     # WhatsApp
     WHATSAPP_ACCESS_TOKEN: Optional[str] = None
     WHATSAPP_PHONE_NUMBER_ID: Optional[str] = None
-    WHATSAPP_VERIFY_TOKEN: str = "ai-super-assistant-verify"
+    WHATSAPP_VERIFY_TOKEN: str = "ai-orchestrator-verify"
 
     # Admin
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "admin"
-    ADMIN_EMAIL: str = "admin@ai-super-assistant.local"
+    ADMIN_EMAIL: str = "admin@ai-orchestrator.local"
 
     # Files
     UPLOAD_DIR: str = "./data/uploads"
@@ -132,7 +132,7 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "IMPORTANT"
-    LOG_FILE: str = "./data/logs/ai-super-assistant.log"
+    LOG_FILE: str = "./data/logs/ai-orchestrator.log"
 
     # Tunnel / Cloudflare
     CLOUDFLARE_TUNNEL_ID: Optional[str] = None

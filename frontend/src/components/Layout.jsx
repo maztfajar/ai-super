@@ -133,7 +133,7 @@ export default function Layout() {
       }).catch(() => {})
     }
     load()
-    window.addEventListener('ai-super-assistant:profile-updated', load)
+    window.addEventListener('ai-orchestrator:profile-updated', load)
 
     // Fetch models and sync to orchestrator store so dropdowns have data on first load
     const setActiveConfiguredModels = useOrchestratorStore.getState().setActiveConfiguredModels
@@ -149,7 +149,7 @@ export default function Layout() {
       }
     }).catch(() => {})
 
-    return () => window.removeEventListener('ai-super-assistant:profile-updated', load)
+    return () => window.removeEventListener('ai-orchestrator:profile-updated', load)
   }, [setAppName])
 
   useEffect(() => {

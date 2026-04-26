@@ -557,7 +557,7 @@ async def setup_log_rotation(user: User = Depends(get_current_user)):
     copytruncate
 }}
 """
-    config_path = _Path("/etc/logrotate.d/ai-super-assistant")
+    config_path = _Path("/etc/logrotate.d/ai-orchestrator")
     try:
         import subprocess
         proc = subprocess.run(

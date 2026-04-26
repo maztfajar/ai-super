@@ -72,7 +72,7 @@ class RAGEngine:
             self.vectorstore = Chroma(
                 persist_directory=settings.CHROMA_PERSIST_DIR,
                 embedding_function=self.embeddings,
-                collection_name="ai-super-assistant",
+                collection_name="ai-orchestrator",
             )
         except Exception as e:
             log.error("Gagal init Chroma vectorstore", error=str(e))

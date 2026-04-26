@@ -8,7 +8,7 @@ import { Play, Loader2 } from 'lucide-react'
 
 export default function Playground() {
   const { models } = useModelsStore()
-  const [system, setSystem] = useState('Kamu adalah AI SUPER ASSISTANT, asisten AI yang cerdas dan membantu.')
+  const [system, setSystem] = useState('Kamu adalah AI ORCHESTRATOR, asisten AI yang cerdas dan membantu.')
   const [prompt, setPrompt] = useState('')
   const [model, setModel] = useState('')
   const [temp, setTemp] = useState(0.7)

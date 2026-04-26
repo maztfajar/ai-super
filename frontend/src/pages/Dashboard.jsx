@@ -461,7 +461,7 @@ export default function Dashboard() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `ai-super-assistant-report-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `ai-orchestrator-report-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
   }
 

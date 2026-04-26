@@ -417,7 +417,7 @@ async def _handle_whatsapp_message(phone: str, text: str):
         token = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
         phone_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
         route = smart_router.route(text)
-        msgs = [{"role": "system", "content": "You are AI SUPER ASSISTANT."}, {"role": "user", "content": text}]
+        msgs = [{"role": "system", "content": "You are AI ORCHESTRATOR."}, {"role": "user", "content": text}]
         full = ""
         from agents.executor import agent_executor
         async for chunk in agent_executor.stream_chat(
@@ -600,18 +600,18 @@ async def test_webhook(webhook_id: str, user: User = Depends(get_current_user)):
 
     test_payload = {
         "event":   "test",
-        "source":  "ai-super-assistant",
+        "source":  "ai-orchestrator",
         "hook_id": hook["id"],
         "message": {
             "role":    "user",
-            "content": "Halo! Ini pesan test dari AI SUPER ASSISTANT.",
+            "content": "Halo! Ini pesan test dari AI ORCHESTRATOR.",
             "model":   "test",
         },
         "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
     }
 
     try:
-        headers = {"Content-Type": "application/json", "X-Source": "ai-super-assistant"}
+        headers = {"Content-Type": "application/json", "X-Source": "ai-orchestrator"}
         if hook.get("secret"):
             headers["X-Webhook-Secret"] = hook["secret"]
         try:
@@ -663,7 +663,7 @@ async def trigger_webhooks(event: str, payload: dict):
         if event not in hook.get("events", []):
             continue
         try:
-            headers = {"Content-Type": "application/json", "X-Source": "ai-super-assistant", "X-Event": event}
+            headers = {"Content-Type": "application/json", "X-Source": "ai-orchestrator", "X-Event": event}
             if hook.get("secret"):
                 headers["X-Webhook-Secret"] = hook["secret"]
             try:
@@ -681,7 +681,7 @@ async def trigger_webhooks(event: str, payload: dict):
                         body = body.replace(f"{{{{{k}}}}}", str(v))
                     r = await c.post(hook["url"], headers=headers, content=body)
                 else:
-                    r = await c.post(hook["url"], headers=headers, json={"event": event, "source": "ai-super-assistant", **payload})
+                    r = await c.post(hook["url"], headers=headers, json={"event": event, "source": "ai-orchestrator", **payload})
 
             hook["last_triggered"] = __import__("datetime").datetime.utcnow().isoformat()
             hook["trigger_count"]  = hook.get("trigger_count", 0) + 1
@@ -714,7 +714,7 @@ async def webhook_templates(user: User = Depends(get_current_user)):
         {
             "provider": "n8n",
             "name": "n8n Webhook",
-            "description": "Trigger workflow n8n dari AI SUPER ASSISTANT",
+            "description": "Trigger workflow n8n dari AI ORCHESTRATOR",
             "url_hint": "https://n8n-anda.com/webhook/xxxx",
             "method": "POST",
             "headers": "{}",

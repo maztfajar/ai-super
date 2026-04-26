@@ -1,5 +1,5 @@
 #!/bin/bash
-# AI SUPER ASSISTANT — Install RAG (Opsional)
+# AI ORCHESTRATOR — Install RAG (Opsional)
 # Jalankan setelah server berjalan normal
 # Estimasi: 10-20 menit, ~500MB
 
@@ -10,7 +10,7 @@ log()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 step() { echo -e "\n${BOLD}${CYAN}━━━ $1 ━━━${NC}"; }
 
-echo -e "${CYAN}${BOLD}AI SUPER ASSISTANT — Install RAG & Vector DB${NC}"
+echo -e "${CYAN}${BOLD}AI ORCHESTRATOR — Install RAG & Vector DB${NC}"
 echo ""
 echo "Package: chromadb, langchain, sentence-transformers"
 echo "Estimasi: 10-20 menit"

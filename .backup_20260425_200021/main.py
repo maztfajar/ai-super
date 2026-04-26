@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — AI Super Assistant
+AI ORCHESTRATOR — AI Orchestrator
 Main FastAPI Application
 """
 import sys
@@ -121,7 +121,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    log.info("Starting AI SUPER ASSISTANT...")
+    log.info("Starting AI ORCHESTRATOR...")
 
     # Buat direktori data
     for d in ["./data/uploads", "./data/chroma_db", "./data/logs", "./data/audit_logs"]:
@@ -160,14 +160,14 @@ async def lifespan(app: FastAPI):
         from integrations.telegram_bot import start_polling
         start_polling(settings.TELEGRAM_BOT_TOKEN)
 
-    log.info(f"AI SUPER ASSISTANT ready! http://{settings.HOST}:{settings.PORT}")
+    log.info(f"AI ORCHESTRATOR ready! http://{settings.HOST}:{settings.PORT}")
     yield
-    log.info("Shutting down AI SUPER ASSISTANT...")
+    log.info("Shutting down AI ORCHESTRATOR...")
 
 
 app = FastAPI(
-    title="AI SUPER ASSISTANT API",
-    description="AI Super Assistant — Personal Orchestrator",
+    title="AI ORCHESTRATOR API",
+    description="AI Orchestrator — Personal Orchestrator",
     version=settings.APP_VERSION,
     lifespan=lifespan,
 )
@@ -239,7 +239,7 @@ if frontend_dist.exists():
 else:
     @app.get("/")
     async def root():
-        return {"message": "AI SUPER ASSISTANT API OK. Build frontend: cd frontend && npm run build"}
+        return {"message": "AI ORCHESTRATOR API OK. Build frontend: cd frontend && npm run build"}
 
 
 if __name__ == "__main__":

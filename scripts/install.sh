@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  AI SUPER ASSISTANT — Installer Otomatis
+#  AI ORCHESTRATOR — Installer Otomatis
 #  Mendukung: Ubuntu 20.04/22.04/24.04, Debian, Linux Mint
 # ============================================================
 set -e
@@ -17,8 +17,8 @@ cd "$DIR"
 
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════╗"
-echo "  ║   AI SUPER ASSISTANT — Installer      ║"
-echo "  ║   AI Super Assistant         ║"
+echo "  ║   AI ORCHESTRATOR — Installer      ║"
+echo "  ║   AI Orchestrator         ║"
 echo "  ╚══════════════════════════════╝"
 echo -e "${NC}"
 
@@ -83,7 +83,7 @@ if [ ! -f "$DIR/.env" ]; then
     cp "$DIR/.env.example" "$DIR/.env"
     # Generate random SECRET_KEY
     SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
-    sed -i "s/ai-super-assistant-secret-key-ganti-ini-dengan-random-string-panjang/$SECRET/" "$DIR/.env"
+    sed -i "s/ai-orchestrator-secret-key-ganti-ini-dengan-random-string-panjang/$SECRET/" "$DIR/.env"
     success ".env dibuat dengan SECRET_KEY random"
 fi
 

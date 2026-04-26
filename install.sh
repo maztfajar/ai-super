@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  AI SUPER ASSISTANT — Install Script
+#  AI ORCHESTRATOR — Install Script
 #  Usage: bash install.sh
 # ============================================================
 
@@ -49,8 +49,8 @@ step "Interactive Configuration Wizard"
 
 echo -e "${CYAN}Tekan ENTER untuk menggunakan nilai [Default].${NC}\n"
 
-read -p "1. Nama Aplikasi [Default: AL FATIH]: " WZ_APP_NAME
-WZ_APP_NAME=${WZ_APP_NAME:-"AL FATIH"}
+read -p "1. Nama Aplikasi [Default: AI Orchestrator]: " WZ_APP_NAME
+WZ_APP_NAME=${WZ_APP_NAME:-"AI Orchestrator"}
 
 echo -e "\n2. Konfigurasi Database (dijalankan otomatis oleh sistem)"
 echo "   [1] SQLite (Ringan, Tanpa Konfigurasi Ekstra)"
@@ -59,11 +59,11 @@ read -p "   Pilih tipe database [1/2, Default: 1]: " WZ_DB_TYPE
 WZ_DB_TYPE=${WZ_DB_TYPE:-1}
 
 if [ "$WZ_DB_TYPE" = "2" ]; then
-    read -p "   Nama User DB [Default: pitakonku]: " WZ_DB_USER
-    WZ_DB_USER=${WZ_DB_USER:-pitakonku}
+    read -p "   Nama User DB [Default: ai_orchestrator]: " WZ_DB_USER
+    WZ_DB_USER=${WZ_DB_USER:-ai_orchestrator}
     
-    read -p "   Nama Database [Default: pitakonku_db]: " WZ_DB_NAME
-    WZ_DB_NAME=${WZ_DB_NAME:-pitakonku_db}
+    read -p "   Nama Database [Default: ai_orchestrator_db]: " WZ_DB_NAME
+    WZ_DB_NAME=${WZ_DB_NAME:-ai_orchestrator_db}
     
     read -p "   Password DB [Default: admin]: " WZ_DB_PASS
     WZ_DB_PASS=${WZ_DB_PASS:-admin}
@@ -110,7 +110,7 @@ if [ -f "$APP_DIR/.env" ]; then
         sed -i -e "s/^DATABASE_URL=.*/DATABASE_URL=$DB_URL/" "$APP_DIR/.env"
     else
         # SQLite
-        DB_URL="sqlite+aiosqlite:\/\/\/.\/data\/ai-super-assistant.db"
+        DB_URL="sqlite+aiosqlite:\/\/\/.\/data\/ai-orchestrator.db"
         sed -i -e "s/^DATABASE_URL=.*/DATABASE_URL=$DB_URL/" "$APP_DIR/.env"
     fi
 fi
@@ -304,9 +304,9 @@ log "Frontend built"
 
 # ── Systemd services ─────────────────────────────────────────
 step "Installing System Services"
-cat > /tmp/ai-super-assistant-api.service << EOF
+cat > /tmp/ai-orchestrator-api.service << EOF
 [Unit]
-Description=AI SUPER ASSISTANT API Server
+Description=AI ORCHESTRATOR API Server
 After=network.target redis.service postgresql.service
 
 [Service]
@@ -323,16 +323,16 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-sudo cp /tmp/ai-super-assistant-api.service /etc/systemd/system/
+sudo cp /tmp/ai-orchestrator-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable ai-super-assistant-api 2>/dev/null || true
+sudo systemctl enable ai-orchestrator-api 2>/dev/null || true
 log "Systemd service installed"
 
 # ── Done ──────────────────────────────────────────────────────
 echo -e "\n${GREEN}${BOLD}"
 cat << 'EOF'
   ╔═════════════════════════════════════════════════╗
-  ║    AI SUPER ASSISTANT Installation Complete! 🎉 ║
+  ║    AI ORCHESTRATOR Installation Complete! 🎉 ║
   ╚═════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"

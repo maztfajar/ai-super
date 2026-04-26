@@ -9,7 +9,7 @@ export const useAuthStore = create(
       setAuth: (token, user) => set({ token, user }),
       logout: () => set({ token: null, user: null }),
     }),
-    { name: 'ai-super-assistant-auth' }
+    { name: 'ai-orchestrator-auth' }
   )
 )
 
@@ -66,7 +66,7 @@ export const useOrchestratorStore = create(
   persist(
     (set) => ({
       // → Application name (editable from Profile/Settings)
-      appName: 'AI SUPER ASSISTANT',
+      appName: 'AI ORCHESTRATOR',
       setAppName: (name) => set({ appName: name }),
 
       // → Models configured via Integrasi page (start empty = "belum ada model")
@@ -121,7 +121,7 @@ export const useOrchestratorStore = create(
       clearDrivePrompt: () => set({ drivePromptContent: null, drivePromptTitle: null }),
     }),
     { 
-      name: 'ai-super-assistant-orchestrator',
+      name: 'ai-orchestrator-orchestrator',
       partialize: (state) => ({
         appName: state.appName,
         savedWorkflows: state.savedWorkflows,
@@ -148,6 +148,6 @@ export const useThemeStore = create(
         document.documentElement.setAttribute('data-theme', t)
       },
     }),
-    { name: 'ai-super-assistant-theme' }
+    { name: 'ai-orchestrator-theme' }
   )
 )

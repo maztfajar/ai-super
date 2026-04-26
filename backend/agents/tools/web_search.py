@@ -1,5 +1,5 @@
 """
-AI SUPER ASSISTANT — Web Search Tool (Upgraded)
+AI ORCHESTRATOR — Web Search Tool (Upgraded)
 Multi-engine web search with real-time results support.
 """
 import asyncio

@@ -193,7 +193,7 @@ def test_folders():
 
 def main():
     print("\n" + "█" * 55)
-    print("  PITAKONKU — Test Sumopod RAG Connection")
+    print("  AI ORCHESTRATOR — Test Sumopod RAG Connection")
     print("█" * 55)
 
     # 1. Check env
@@ -226,7 +226,7 @@ def main():
         print()
         print("  Langkah selanjutnya:")
         print("  1. Set EMBEDDING_PROVIDER=sumopod di .env")
-        print("  2. Restart server: sudo systemctl restart pitakonku")
+        print("  2. Restart server: sudo systemctl restart ai_orchestrator")
         print("  3. Upload dokumen lewat UI → Knowledge > Upload")
         print("  4. Atau taruh file di /rag_documents/ lalu scan lewat UI")
     else:

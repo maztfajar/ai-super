@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-#  AI SUPER ASSISTANT — Reset Password Admin via Terminal
+#  AI ORCHESTRATOR — Reset Password Admin via Terminal
 #  Gunakan ini jika lupa password dan tidak bisa login
 #  Usage: bash scripts/reset-password.sh
 # ============================================================
@@ -9,7 +9,7 @@ RED='\033[0;31m'; BOLD='\033[1m'; NC='\033[0m'
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo -e "${CYAN}${BOLD}AI SUPER ASSISTANT — Reset Password${NC}\n"
+echo -e "${CYAN}${BOLD}AI ORCHESTRATOR — Reset Password${NC}\n"
 
 # Aktifkan venv
 if [ -f "$DIR/backend/venv/bin/activate" ]; then
@@ -34,7 +34,7 @@ async def reset():
         from core.auth import hash_password
         from sqlmodel import select
         import os
-        os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./data/ai-super-assistant.db")
+        os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///./data/ai-orchestrator.db")
 
         await init_db()
 
