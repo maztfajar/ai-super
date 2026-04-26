@@ -1649,8 +1649,32 @@ export default function Chat() {
     const text = input.trim()
     let imageToSend = pendingImage
     if (!text && !imageToSend && attachedFiles.length === 0) return
-    if (streaming) return
     if (!currentSession) { await newSession(); return }
+
+    // If agent is currently streaming, interrupt it first then send new message
+    // This allows the user to answer agent questions mid-stream
+    if (streaming) {
+      const abortFn = useChatStore.getState().abortRequest
+      if (abortFn && typeof abortFn === 'function') {
+        abortFn()
+        useChatStore.getState().setAbortRequest(null)
+      }
+      const partial = useChatStore.getState().streamingText
+      if (partial.trim()) {
+        addMessage({
+          id: Date.now() - 1,
+          role: 'assistant',
+          content: partial,
+          model: useChatStore.getState().actualModel || selectedOrchestrator,
+          created_at: new Date().toISOString(),
+        })
+      }
+      clearStreaming()
+      useChatStore.getState().setStatusText('')
+      useChatStore.getState().finalizeProcessSteps()
+      // Small delay to let state settle before sending new message
+      await new Promise(r => setTimeout(r, 80))
+    }
 
     clearActiveRouting()
     clearDrivePrompt()
@@ -2552,17 +2576,17 @@ export default function Chat() {
                   }}
                   placeholder={
                     streaming
-                      ? 'AI sedang merespons... (Esc untuk stop)'
+                      ? 'Ketik jawaban atau pesan baru... (Enter untuk kirim & interrupt)'
                       : 'Ketik pesan, perintah, atau minta analisa data... (atau drag & drop gambar)'
                   }
-                  disabled={streaming}
                   rows={1}
-                  className="w-full bg-bg-4 border border-border-2 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-bg-4 border border-border-2 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none"
                 />
               </div>
 
-              {/* STOP button — saat streaming */}
-              {streaming ? (
+              {/* Action button — Stop (always visible during streaming), Send (when has text) */}
+              {streaming && !input.trim() ? (
+                // Pure stop button — no input typed
                 <button
                   onClick={stopStreaming}
                   className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-danger hover:bg-danger/80 text-white transition-all shadow-lg shadow-danger/20"
@@ -2570,8 +2594,18 @@ export default function Chat() {
                 >
                   <Square size={16} fill="white" />
                 </button>
+              ) : streaming && input.trim() ? (
+                // Interrupt + Send button — user typed a reply while streaming
+                <button
+                  onClick={sendMessage}
+                  className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-accent hover:bg-accent/80 text-white transition-all shadow-lg shadow-accent/20 relative"
+                  title="Interrupt & Kirim jawaban"
+                >
+                  <Send size={15} />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-danger border border-bg-2" />
+                </button>
               ) : (
-                /* SEND button — saat tidak streaming */
+                /* SEND button — normal */
                 <button
                   onClick={sendMessage}
                   disabled={!input.trim() || !currentSession}
