@@ -325,7 +325,7 @@ Lihat file **AI ORCHESTRATOR_Dokumentasi.docx** untuk panduan lengkap:
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+**All Rights Reserved.** This project is proprietary and closed-source. See the `LICENSE` file for details.
 
 ---
 
@@ -337,11 +337,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-## License
-Copyright (c) 2026 maztfajarwahyudi
-All rights reserved.
-This source code is licensed under the copyright strictly for viewing purposes only.
-You may not use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Software without explicit written permission from the author.
+## Copyright & Legal
+
+Copyright (c) 2026 maztfajarwahyudi. All rights reserved.
+
+This source code is licensed strictly for viewing purposes only. You may not use, copy, modify, merge, publish, distribute, sublicense, or sell copies of the Software without explicit written permission from the author. Any unauthorized use, reproduction, or distribution is strictly prohibited and may result in severe civil and criminal penalties.
 
 
 *AI ORCHESTRATOR v2.1 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
