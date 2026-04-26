@@ -20,45 +20,66 @@ export const useUIStore = create((set) => ({
   setPage: (page) => set({ currentPage: page }),
 }))
 
-export const useChatStore = create((set, get) => ({
-  sessions: [],
-  currentSession: null,
-  messages: [],
-  streaming: false,
-  streamingText: '',
-  selectedModel: null,
+export const useChatStore = create(
+  persist(
+    (set, get) => ({
+      sessions: [],
+      currentSession: null,
+      messages: [],
+      streaming: false,
+      streamingText: '',
+      selectedModel: null,
 
-  setSessions: (sessions) => set({ sessions }),
-  // NOTE: setCurrentSession does NOT clear messages — call clearMessages() separately
-  // to avoid wiping messages on page navigation / re-render.
-  setCurrentSession: (s) => set({ currentSession: s }),
-  clearMessages: () => set({ messages: [] }),
-  setMessages: (messages) => set({ messages }),
-  addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
-  setStreaming: (v) => set({ streaming: v }),
-  setStreamingText: (t) => set({ streamingText: t }),
-  appendStreamingText: (chunk) => set((s) => ({ streamingText: s.streamingText + chunk })),
-  setSelectedModel: (m) => set({ selectedModel: m }),
-  clearStreaming: () => set({ streaming: false, streamingText: '' }),
+      setSessions: (sessions) => set({ sessions }),
+      // NOTE: setCurrentSession does NOT clear messages — call clearMessages() separately
+      setCurrentSession: (s) => set({ currentSession: s }),
+      clearMessages: () => set({ messages: [] }),
+      setMessages: (messages) => set({ messages }),
+      addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+      setStreaming: (v) => set({ streaming: v }),
+      setStreamingText: (t) => set({ streamingText: t }),
+      appendStreamingText: (chunk) => set((s) => ({ streamingText: s.streamingText + chunk })),
+      setSelectedModel: (m) => set({ selectedModel: m }),
+      clearStreaming: () => set({ streaming: false, streamingText: '' }),
 
-  // Live progress states
-  // processSteps is intentionally NOT cleared on stream end so users can review
-  // what the orchestrator did. It is reset on new sendMessage().
-  processSteps: [],
-  lastProcessSteps: [],   // Snapshot of steps from the last completed task
-  statusText: '',
-  actualModel: null,
-  abortRequest: null,
-  
-  setProcessSteps: (steps) => set({ processSteps: steps }),
-  addProcessStep: (step) => set((s) => ({ processSteps: [...s.processSteps, step] })),
-  // Called on task completion: save a snapshot, then keep steps visible
-  finalizeProcessSteps: () => set((s) => ({ lastProcessSteps: s.processSteps })),
-  clearProcessSteps: () => set({ processSteps: [], lastProcessSteps: [] }),
-  setStatusText: (t) => set({ statusText: t }),
-  setActualModel: (m) => set({ actualModel: m }),
-  setAbortRequest: (fn) => set({ abortRequest: fn }),
-}))
+      // Live progress states
+      processSteps: [],
+      lastProcessSteps: [],
+      statusText: '',
+      actualModel: null,
+      abortRequest: null,
+
+      setProcessSteps: (steps) => set({ processSteps: steps }),
+      addProcessStep: (step) => set((s) => ({ processSteps: [...s.processSteps, step] })),
+      finalizeProcessSteps: () => set((s) => ({ lastProcessSteps: s.processSteps })),
+      clearProcessSteps: () => set({ processSteps: [], lastProcessSteps: [] }),
+      setStatusText: (t) => set({ statusText: t }),
+      setActualModel: (m) => set({ actualModel: m }),
+      setAbortRequest: (fn) => set({ abortRequest: fn }),
+    }),
+    {
+      name: 'ai-orchestrator-chat',
+      // Only persist what's needed for navigation restore — skip streaming/ephemeral state
+      partialize: (state) => ({
+        currentSession: state.currentSession,
+        // Limit messages to last 100 to avoid localStorage overflow
+        messages: state.messages.slice(-100),
+        sessions: state.sessions.slice(0, 50), // keep session list too
+      }),
+      // Reset ephemeral state (streaming, streamingText) after hydration
+      // so a crash/reload never leaves the app stuck in "streaming" mode
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.streaming     = false
+          state.streamingText = ''
+          state.abortRequest  = null
+          state.statusText    = ''
+          state.processSteps  = []
+        }
+      },
+    }
+  )
+)
 
 export const useModelsStore = create((set) => ({
   models: [],

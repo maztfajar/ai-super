@@ -1456,20 +1456,40 @@ export default function Chat() {
     }).catch(() => { })
   }, [])
 
+  // Auto-redirect /chat → /chat/:id when we already have an active session in store
+  // This handles the case where user navigates to /chat (no ID) after switching menus
+  useEffect(() => {
+    if (!urlSessionId && currentSession?.id) {
+      navigate(`/chat/${currentSession.id}`, { replace: true })
+    }
+  }, [urlSessionId, currentSession?.id])
+
   // Load session from URL
   useEffect(() => {
     if (urlSessionId) {
       const s = sessions.find((x) => x.id === urlSessionId)
-      // Don't reload if:
-      // 1. Already on this session AND we have messages loaded
+      // Skip reload if:
+      // 1. Already on this exact session AND messages are in store (navigated away + back)
       // 2. Currently streaming (would wipe in-progress messages)
-      const alreadyLoaded = currentSession?.id === s?.id && useChatStore.getState().messages.length > 0
+      const storeMessages = useChatStore.getState().messages
+      const alreadyLoaded = currentSession?.id === urlSessionId && storeMessages.length > 0
       const isStreaming   = useChatStore.getState().streaming
-      if (s && !alreadyLoaded && !isStreaming) loadSession(s)
+      if (alreadyLoaded || isStreaming) return  // messages intact — nothing to do
+      if (s) loadSession(s)
+      // sessions not yet loaded but we have currentSession from store with same ID
+      else if (currentSession?.id === urlSessionId && storeMessages.length > 0) return
     }
   }, [urlSessionId, sessions])
 
   async function loadSession(session) {
+    // Skip if already displaying this session with messages (e.g. returning from another menu)
+    const storeMessages = useChatStore.getState().messages
+    const storeSession  = useChatStore.getState().currentSession
+    if (storeSession?.id === session.id && storeMessages.length > 0) {
+      // Just make sure currentSession is set correctly, messages already in store
+      setCurrentSession(session)
+      return
+    }
     setCurrentSession(session)
     clearMessages()
     setLoadingMsgs(true)
