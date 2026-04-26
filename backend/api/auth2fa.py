@@ -190,6 +190,19 @@ async def verify_telegram_otp_setup(
     return {"status": "ok", "message": "OTP Telegram aktif!"}
 
 
+@router.post("/telegram-otp/disable")
+async def disable_telegram_otp(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Nonaktifkan Telegram OTP dengan menghapus chat ID."""
+    user.telegram_chat_id = None
+    db.add(user)
+    db.add(LoginLog(username=user.username, success=True, reason="telegram_otp_disabled"))
+    await db.commit()
+    return {"status": "ok", "message": "Telegram OTP berhasil dinonaktifkan"}
+
+
 @router.post("/telegram-otp/send")
 async def send_telegram_otp_login(
     username: str,

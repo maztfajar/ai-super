@@ -333,7 +333,14 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
           <div className="text-[10px] text-ink-3">Saat login, kode OTP akan dikirim ke Telegram Anda</div>
         </div>
       </div>
-      <Btn label="Reset Setup Telegram OTP" onClick={() => { setDone(false); setStep(1); setChatId(''); setOtp('') }} variant="danger" icon={XCircle}/>
+      <Btn label="Nonaktifkan Telegram OTP" onClick={async () => {
+        if (!confirm('Yakin ingin menonaktifkan Telegram OTP?')) return;
+        try {
+          await api.post('/auth/telegram-otp/disable');
+          toast.success('Telegram OTP dinonaktifkan');
+          setDone(false); setStep(1); setChatId(''); setOtp(''); onRefresh();
+        } catch(e) { toast.error(e.message); }
+      }} variant="danger" icon={XCircle}/>
     </div>
   )
 
