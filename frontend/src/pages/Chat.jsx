@@ -128,33 +128,39 @@ const ACTION_META = {
 }
 const DEFAULT_META = { icon: Zap, color: 'text-ink-3', bg: 'bg-bg-5' }
 
-function ProcessStepsPanel({ steps, isStreaming, onStop }) {
-  const [open, setOpen] = useState(true)          // header expanded by default
-  const [expandedIdx, setExpandedIdx] = useState(null) // index of step expanded for detail
+function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText }) {
+  const [open, setOpen] = useState(true)
+  const [expandedIdx, setExpandedIdx] = useState(null)
 
   if (!steps || steps.length === 0) return null
 
-  const latest  = steps[steps.length - 1]
-  const meta    = ACTION_META[latest?.action] || DEFAULT_META
+  const latest     = steps[steps.length - 1]
+  const meta       = ACTION_META[latest?.action] || DEFAULT_META
   const LatestIcon = meta.icon
 
   const toggleStep = (i) => setExpandedIdx(prev => prev === i ? null : i)
 
+  // For the active (last) step during streaming, compute live content from streamingText
+  const getLiveContent = (step, stepIdx) => {
+    const isLastStep = stepIdx === steps.length - 1
+    if (isLastStep && isStreaming && step._textOffset != null && streamingText) {
+      return streamingText.substring(step._textOffset)
+    }
+    return step.liveContent || null
+  }
+
   return (
     <div className="flex gap-2.5 mb-2 animate-fade">
-      {/* Avatar */}
       <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0 mt-0.5">
         <Bot size={13} className="text-white" />
       </div>
 
       <div className="flex-1 max-w-[82%]">
-        {/* Toggle header */}
         <button
           onClick={() => setOpen(o => !o)}
           className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-all group"
         >
           <div className="flex items-center gap-2 min-w-0">
-            {/* Pulsing dots while streaming, checkmark when done */}
             {isStreaming ? (
               <div className="flex gap-0.5 flex-shrink-0">
                 {[0,1,2].map(i => (
@@ -165,7 +171,6 @@ function ProcessStepsPanel({ steps, isStreaming, onStop }) {
             ) : (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-400/15 text-emerald-400 border border-emerald-400/20 flex-shrink-0">✓ Selesai</span>
             )}
-            {/* Latest step pill */}
             <div className={clsx('flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0', meta.bg, meta.color)}>
               <LatestIcon size={10} />
               <span>{latest?.action}</span>
@@ -182,61 +187,67 @@ function ProcessStepsPanel({ steps, isStreaming, onStop }) {
           </div>
         </button>
 
-        {/* Expanded steps list */}
         {open && (
           <div className="mt-1.5 border border-border bg-bg-3 rounded-xl rounded-tl-sm overflow-hidden">
-            <div className="max-h-72 overflow-y-auto divide-y divide-border/40">
+            <div className="max-h-80 overflow-y-auto divide-y divide-border/40">
               {steps.map((step, i) => {
-                const m = ACTION_META[step.action] || DEFAULT_META
-                const Icon = m.icon
-                const isLast = i === steps.length - 1
+                const m          = ACTION_META[step.action] || DEFAULT_META
+                const Icon       = m.icon
+                const isLast     = i === steps.length - 1
                 const isExpanded = expandedIdx === i
+                const liveContent = getLiveContent(step, i)
+                const hasContent  = liveContent && liveContent.trim().length > 0
+
                 return (
                   <div key={i}>
-                    {/* Step row — clickable to expand detail */}
                     <button
                       className={clsx(
                         'w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-colors text-left',
                         isLast && isStreaming ? 'bg-accent/5' : 'hover:bg-bg-4',
                         isExpanded ? 'bg-bg-4' : ''
                       )}
-                      onClick={() => toggleStep(i)}
+                      onClick={() => hasContent && toggleStep(i)}
                     >
-                      {/* Index */}
                       <span className="text-[9px] text-ink-3 tabular-nums w-4 text-right flex-shrink-0">{i + 1}</span>
-                      {/* Action pill */}
+                      {/* Live pulse for the currently active step */}
+                      {isLast && isStreaming && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse flex-shrink-0" />
+                      )}
                       <div className={clsx('flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0', m.bg, m.color)}>
                         <Icon size={9} />
                         <span className="font-semibold text-[10px]">{step.action}</span>
                       </div>
-                      {/* Detail — truncated; full shown on expand */}
-                      <span className={clsx('truncate flex-1', isLast && isStreaming ? 'text-ink font-medium' : 'text-ink-3')}>
+                      <span className={clsx('truncate flex-1 min-w-0', isLast && isStreaming ? 'text-ink font-medium' : 'text-ink-3')}>
                         {step.detail || '—'}
                       </span>
-                      {/* Count badge */}
                       {step.count != null && (
                         <span className="ml-auto flex-shrink-0 tabular-nums text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-5 text-ink-3 border border-border">
                           {step.count}
                         </span>
                       )}
-                      {/* Expand indicator */}
-                      {step.detail && step.detail.length > 30 && (
-                        <span className="ml-1 flex-shrink-0">
-                          {isExpanded ? <ChevronUp size={10} className="text-ink-3" /> : <ChevronDown size={10} className="text-ink-3" />}
+                      {/* Expand chevron — only if content available */}
+                      {hasContent && (
+                        <span className="ml-1 flex-shrink-0 text-ink-3">
+                          {isExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
                         </span>
                       )}
                     </button>
-                    {/* Full detail expansion */}
-                    {isExpanded && step.detail && (
-                      <div className="px-10 py-2 pb-3 bg-bg-2 border-t border-border/40">
-                        <p className="text-[11px] text-ink-2 leading-relaxed whitespace-pre-wrap">{step.detail}</p>
+
+                    {/* Expandable content: live streaming for active step, captured for past steps */}
+                    {isExpanded && hasContent && (
+                      <div className="px-3 py-2 pb-3 bg-bg-2 border-t border-border/40">
+                        <pre className="text-[10.5px] text-ink-2 leading-relaxed whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
+                          {liveContent}
+                          {isLast && isStreaming && (
+                            <span className="inline-block w-1 h-3 bg-accent-2 animate-pulse2 ml-0.5 align-middle" />
+                          )}
+                        </pre>
                       </div>
                     )}
                   </div>
                 )
               })}
             </div>
-            {/* Stop button — only during streaming */}
             {isStreaming && onStop && (
               <div className="px-3 py-2 border-t border-border bg-bg-4">
                 <button
@@ -1357,6 +1368,26 @@ export default function Chat() {
 
   useEffect(() => { scrollBottom() }, [messages, streamingText])
 
+  // ── Streaming watchdog: auto-stop after 90s with no new content ──
+  const lastChunkRef = useRef(Date.now())
+  const watchdogRef  = useRef(null)
+  useEffect(() => {
+    if (streaming) {
+      lastChunkRef.current = Date.now()
+      watchdogRef.current = setInterval(() => {
+        if (Date.now() - lastChunkRef.current > 90000) {
+          console.warn('[watchdog] No stream activity for 90s — auto stopping')
+          clearInterval(watchdogRef.current)
+          stopStreaming()
+          toast.error('⏱ Koneksi AI timeout. Respons dihentikan otomatis.', { duration: 4000 })
+        }
+      }, 5000)
+    } else {
+      clearInterval(watchdogRef.current)
+    }
+    return () => clearInterval(watchdogRef.current)
+  }, [streaming])
+
   // Load models + sessions
   useEffect(() => {
     api.listSessions().then(setSessions).catch(() => { })
@@ -1374,7 +1405,12 @@ export default function Chat() {
   useEffect(() => {
     if (urlSessionId) {
       const s = sessions.find((x) => x.id === urlSessionId)
-      if (s && s.id !== currentSession?.id) loadSession(s)
+      // Don't reload if:
+      // 1. Already on this session AND we have messages loaded
+      // 2. Currently streaming (would wipe in-progress messages)
+      const alreadyLoaded = currentSession?.id === s?.id && useChatStore.getState().messages.length > 0
+      const isStreaming   = useChatStore.getState().streaming
+      if (s && !alreadyLoaded && !isStreaming) loadSession(s)
     }
   }, [urlSessionId, sessions])
 
@@ -1641,15 +1677,42 @@ export default function Chat() {
     setStreaming(true)
     useChatStore.getState().setStatusText('')
     clearProcessSteps()  // Reset process steps for new task
+    lastChunkRef.current = Date.now()  // Reset watchdog
 
-    // Helper: add structured process step from onProcess SSE event
+    // Helper: add structured process step from onProcess SSE event.
+    // Captures the current streamingText offset so each step can show
+    // the text streamed during its execution.
     const handleAddProcessStep = (data) => {
+      const currentOffset = useChatStore.getState().streamingText.length
+      const steps = useChatStore.getState().processSteps
+
+      // Finalize content slice for the previous step
+      if (steps.length > 0) {
+        const lastStep = steps[steps.length - 1]
+        if (lastStep._textOffset != null && lastStep.liveContent == null) {
+          const endContent = useChatStore.getState().streamingText.substring(lastStep._textOffset)
+          // Patch last step with its captured content
+          const updatedSteps = steps.map((s, i) =>
+            i === steps.length - 1 ? { ...s, liveContent: endContent } : s
+          )
+          useChatStore.getState().setProcessSteps(updatedSteps)
+        }
+      }
+
       useChatStore.getState().addProcessStep({
-        action: data.action || 'Worked', 
-        detail: data.detail || '', 
-        count: data.count ?? null, 
-        ts: data.ts || Date.now() 
+        action: data.action || 'Worked',
+        detail: data.detail || '',
+        count: data.count ?? null,
+        ts: data.ts || Date.now(),
+        _textOffset: currentOffset,   // where in streamingText this step started
+        liveContent: null,            // will be filled when next step starts
       })
+    }
+
+    // Chunk handler: reset watchdog + append text
+    const handleChunk = (chunk) => {
+      lastChunkRef.current = Date.now()
+      appendStreamingText(chunk)
     }
 
     // Use different endpoints based on whether image is present
@@ -1664,7 +1727,7 @@ export default function Chat() {
           channel: channelType,
         },
         imageToSend,
-        (chunk) => appendStreamingText(chunk),
+        (chunk) => handleChunk(chunk),
         async (done) => {
           const fullText = useChatStore.getState().streamingText
           clearStreaming()
@@ -1716,7 +1779,7 @@ export default function Chat() {
           use_rag: useRAG,
           channel: channelType,
         },
-        (chunk) => appendStreamingText(chunk),
+        (chunk) => handleChunk(chunk),
         async (done) => {
           const fullText = useChatStore.getState().streamingText
           clearStreaming()
@@ -1783,7 +1846,7 @@ export default function Chat() {
         command: pendingData.command,
         model: selectedOrchestrator,
       },
-      (chunk) => appendStreamingText(chunk),
+      (chunk) => handleChunk(chunk),
       async (done) => {
         const fullText = useChatStore.getState().streamingText
         clearStreaming()
@@ -2150,6 +2213,7 @@ export default function Chat() {
               steps={processSteps}
               isStreaming={streaming}
               onStop={stopStreaming}
+              streamingText={streamingText}
             />
           )}
           {!streaming && lastProcessSteps && lastProcessSteps.length > 0 && (
@@ -2157,8 +2221,10 @@ export default function Chat() {
               steps={lastProcessSteps}
               isStreaming={false}
               onStop={null}
+              streamingText=""
             />
           )}
+
 
           {/* Real-time Routing Badge / Capability Indicator (HIDDEN) */}
           {false && (activeModel || activeCapability) && !streaming && !pendingConfirmation && (
