@@ -16,6 +16,7 @@ log = structlog.get_logger()
 _bot_thread: Optional[threading.Thread] = None
 _bot_running = False
 _bot_loop:   Optional[asyncio.AbstractEventLoop] = None
+_chat_tasks: dict[int, asyncio.Task] = {}
 
 # ── Telegram Token Masking ────────────────────────────────────
 # Prevents Bot Token from leaking into logs (httpx logs URLs with token)
@@ -154,7 +155,10 @@ async def _edit_status(token: str, chat_id: int, message_id: int, text: str):
                     "chat_id": chat_id,
                     "message_id": message_id,
                     "text": text,
-                    "parse_mode": "HTML"
+                    "parse_mode": "HTML",
+                    "reply_markup": {
+                        "inline_keyboard": [[{"text": "❌ Berhenti", "callback_data": "cancel_process"}]]
+                    }
                 }
             )
     except Exception:
@@ -258,6 +262,9 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             model = model_manager.get_default_model() if available_models else available_models[0]
         system = await memory_manager.build_system_prompt(user_id, "tg_" + str(chat_id))
 
+        # Telegram context
+        system += "\n\n[PENTING: SUMBER TELEGRAM]\nAnda sedang berkomunikasi melalui bot Telegram. Jika pengguna meminta untuk membuat file, script, atau aplikasi, JANGAN menyimpannya di root direktori AI Orchestrator. Selalu simpan file-file yang dihasilkan ke dalam folder terpisah (misalnya /home/bamuskal/Documents/ai-super/data/generated_apps/). Selalu buat folder tujuan menggunakan command line dengan format absolut dan gunakan path absolut tersebut di semua perintah file/folder selanjutnya (contoh: `mkdir -p /absolute/path/nama-app` lalu `cd /absolute/path/nama-app`). DILARANG KERAS menggunakan perintah `cd` dengan path relatif karena sesi eksekusi terminal tidak persisten antar-langkah."
+
         # RAG context
         try:
             rag_results = await rag_engine.query(text, user_id=user_id)
@@ -300,6 +307,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         typing_task = asyncio.create_task(keep_typing())
         
         try:
+            _chat_tasks[chat_id] = asyncio.current_task()
             # Add timeout wrapper for orchestrator processing
             chunk_count = 0
             async def process_with_timeout():
@@ -327,14 +335,19 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                             if detail:
                                 status_text += f"\n<i>{_escape(detail)}</i>"
                             
-                            # Initially send status message if it doesn't exist
-                            nonlocal status_msg_id
                             if status_msg_id is None:
                                 try:
                                     import httpx
                                     async with httpx.AsyncClient(timeout=10) as c:
                                         r = await c.post(f"https://api.telegram.org/bot{token}/sendMessage", 
-                                                    json={"chat_id": chat_id, "text": status_text, "parse_mode": "HTML"})
+                                                    json={
+                                                        "chat_id": chat_id, 
+                                                        "text": status_text, 
+                                                        "parse_mode": "HTML",
+                                                        "reply_markup": {
+                                                            "inline_keyboard": [[{"text": "❌ Berhenti", "callback_data": "cancel_process"}]]
+                                                        }
+                                                    })
                                         status_msg_id = r.json().get("result", {}).get("message_id")
                                 except Exception:
                                     pass
@@ -378,6 +391,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             log.error("Telegram message processing failed", error=str(e), chat_id=chat_id)
             full_response = f"⚠️ Maaf, terjadi kesalahan: {str(e)[:80]}..."
         finally:
+            if _chat_tasks.get(chat_id) == asyncio.current_task():
+                del _chat_tasks[chat_id]
             typing_active = False
             try:
                 typing_task.cancel()
@@ -409,7 +424,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         log.info("Telegram reply sent (Orchestrated)", chat_id=chat_id, model=model, chars=len(full_response))
 
     except asyncio.CancelledError:
-        raise
+        log.info("Telegram task cancelled by user", chat_id=chat_id)
+        return
     except Exception as e:
             log.error("Telegram handle_message error", error=str(e), chat_id=chat_id)
             err = str(e).lower()
@@ -567,6 +583,21 @@ async def _handle_callback_query(callback_query: dict, token: str):
         await _send(token, chat_id, text)
 
     try:
+        if data == "cancel_process":
+            await _answer()
+            task = _chat_tasks.get(chat_id)
+            if task and not task.done():
+                task.cancel()
+                await _send_text("❌ Proses telah dibatalkan.")
+                try:
+                    import httpx
+                    async with httpx.AsyncClient(timeout=5) as c:
+                        await c.post(f"https://api.telegram.org/bot{token}/deleteMessage", 
+                                   json={"chat_id": chat_id, "message_id": msg_id})
+                except Exception:
+                    pass
+            return
+
         if data == "voice_reply":
             await _answer("Menyiapkan suara...")
             history = await memory_manager.get_context("tg_" + str(chat_id), user_id)
