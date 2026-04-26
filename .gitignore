@@ -23,3 +23,4 @@ scripts/venv/
 
 cloudflared*.log
 *.swp
+.vite/

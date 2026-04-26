@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup script untuk sistem RAG Pitakonku.
+Setup script untuk sistem RAG AI ORCHESTRATOR.
 Membuat semua folder yang diperlukan, verifikasi dependencies, dan print panduan setup.
 Jalankan: python scripts/setup_rag.py
 """

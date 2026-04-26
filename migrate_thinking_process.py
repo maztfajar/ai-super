@@ -1,45 +1,31 @@
 #!/usr/bin/env python3
 """
-Migration script to add thinking_process column to messages table
-Run this after git pull to update database schema
+Migration script wrapper
+Calls the built-in SQLAlchemy safe_migrate function that supports both SQLite and PostgreSQL.
 """
-import sqlite3
 import sys
+import asyncio
 from pathlib import Path
 
-def migrate_database():
-    db_path = Path(__file__).parent / "backend" / "data" / "ai-orchestrator.db"
+# Add backend to path so we can import modules
+backend_dir = Path(__file__).parent / "backend"
+sys.path.append(str(backend_dir))
 
-    if not db_path.exists():
-        print(f"❌ Database not found at {db_path}")
-        return False
+from db.database import engine, _safe_migrate
 
+async def migrate_database():
     try:
-        conn = sqlite3.connect(str(db_path))
-        cursor = conn.cursor()
-
-        # Check if thinking_process column exists
-        cursor.execute("PRAGMA table_info(messages)")
-        columns = [row[1] for row in cursor.fetchall()]
-
-        if "thinking_process" not in columns:
-            print("📝 Adding thinking_process column to messages table...")
-            cursor.execute("ALTER TABLE messages ADD COLUMN thinking_process TEXT")
-            conn.commit()
+        async with engine.begin() as conn:
+            await conn.run_sync(_safe_migrate)
             print("✅ Migration completed successfully")
-        else:
-            print("ℹ️  thinking_process column already exists")
-
-        conn.close()
         return True
-
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         return False
 
 if __name__ == "__main__":
-    print("🔄 Starting database migration...")
-    success = migrate_database()
+    print("🔄 Starting database migration (PostgreSQL/SQLite safe)...")
+    success = asyncio.run(migrate_database())
     if success:
         print("🎉 Database migration completed!")
         sys.exit(0)

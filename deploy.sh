@@ -3,9 +3,6 @@
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 echo "Deploying application from $APP_DIR..."
 
-# Safely kill only the specific uvicorn instance for this app
-pkill -f "uvicorn main:app --host 0.0.0.0 --port 7860" || true
-
 git fetch origin main
 git reset --hard origin/main
 
@@ -13,6 +10,19 @@ git reset --hard origin/main
 cd "$APP_DIR/backend"
 ./venv/bin/pip install -r requirements.txt
 
-# Jalankan uvicorn
-./venv/bin/python3 -m uvicorn main:app --host 0.0.0.0 --port 7860 --workers 2 &
-echo "AI Orchestrator Berhasil Diupdate dan Library Diperbarui!"
+echo "Restarting AI Orchestrator service..."
+sudo systemctl restart ai-super-assistant-api.service
+
+echo "Waiting for service to become healthy..."
+max_retries=15
+counter=0
+until curl -s http://localhost:7860/api/health > /dev/null; do
+    sleep 2
+    counter=$((counter+1))
+    if [ $counter -ge $max_retries ]; then
+        echo "❌ Service did not become healthy within 30 seconds. Check logs with: sudo journalctl -u ai-super-assistant-api.service -n 50 --no-pager"
+        exit 1
+    fi
+done
+
+echo "✅ AI Orchestrator Berhasil Diupdate dan Berjalan Normal!"

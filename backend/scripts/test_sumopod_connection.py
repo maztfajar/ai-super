@@ -58,7 +58,7 @@ def test_connection(api_key, host, model):
     }
     payload = {
         "model": model,
-        "input": ["Halo, ini adalah test embedding dari Pitakonku AI."],
+        "input": ["Halo, ini adalah test embedding dari AI ORCHESTRATOR."],
     }
 
     try:
