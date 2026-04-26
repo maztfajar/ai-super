@@ -267,67 +267,105 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText }) {
 
 // ── ArtifactsPanel: slideout panel di sebelah kanan ───────────
 function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
-  const [activeTab, setActiveTab] = useState(isPreviewUrl || ['html', 'htm', 'svg'].includes((language || '').toLowerCase()) ? 'preview' : 'code')
+  const isAppPreview = isPreviewUrl || language === 'preview'
+  const isHtml = ['html', 'htm', 'svg'].includes((language || '').toLowerCase())
+
+  const [activeTab, setActiveTab] = useState(isAppPreview || isHtml ? 'preview' : 'code')
   const [copied, setCopied] = useState(false)
   const [localCode, setLocalCode] = useState(code)
+  const [iframeKey, setIframeKey] = useState(0)  // force reload
+  const [appOnline, setAppOnline] = useState(true)
 
-  useEffect(() => {
-    setLocalCode(code)
-  }, [code])
+  useEffect(() => { setLocalCode(code) }, [code])
 
-  const isHtml = ['html', 'htm', 'svg'].includes((language || '').toLowerCase())
-  const filename = `artifact.${language || 'txt'}`
-
-  const iframeSrc = isPreviewUrl 
-    ? localCode // if it's a preview URL, the code itself IS the URL
-    : isHtml 
+  const filename  = `artifact.${language || 'txt'}`
+  const iframeSrc = isAppPreview
+    ? localCode   // code IS the URL for app previews
+    : isHtml
       ? `data:text/html;charset=utf-8,${encodeURIComponent(localCode)}`
       : null
 
   const handleCopy = () => {
-    copyToClipboard(localCode)
+    copyToClipboard(isAppPreview ? localCode : localCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
   const handleDownload = () => {
+    if (isAppPreview) { window.open(localCode, '_blank'); return }
     const blob = new Blob([localCode], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
+    a.href = url; a.download = filename; a.click()
     URL.revokeObjectURL(url)
   }
 
   const langColor = LANG_COLORS[(language || '').toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
-  const lines = localCode.split('\n').length
+  const lines     = isAppPreview ? 0 : localCode.split('\n').length
 
   return (
     <div className="flex flex-col border-l border-border bg-bg-2 animate-slide-in-right" style={{ width: '48%', flexShrink: 0 }}>
       {/* Header */}
       <div className="h-12 border-b border-border flex items-center px-3 gap-2 flex-shrink-0 bg-bg-3">
-        <FileCode2 size={14} className="text-accent-2 flex-shrink-0" />
+        {isAppPreview
+          ? <span className="text-base flex-shrink-0">🚀</span>
+          : <FileCode2 size={14} className="text-accent-2 flex-shrink-0" />}
         <span className="text-xs font-medium text-ink truncate flex-1">{title || filename}</span>
-        <span className={clsx('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0', langColor)}>
-          {language || 'txt'}
-        </span>
-        <span className="text-[10px] text-ink-3 flex-shrink-0">{lines} baris</span>
+
+        {/* Running indicator for app previews */}
+        {isAppPreview && (
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/15 border border-success/25 text-success text-[10px] font-semibold flex-shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+            Running
+          </span>
+        )}
+
+        {!isAppPreview && (
+          <>
+            <span className={clsx('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0', langColor)}>
+              {language || 'txt'}
+            </span>
+            <span className="text-[10px] text-ink-3 flex-shrink-0">{lines} baris</span>
+          </>
+        )}
+
         <div className="flex items-center gap-0.5 flex-shrink-0">
+          {/* Reload — for app previews */}
+          {isAppPreview && (
+            <button
+              onClick={() => setIframeKey(k => k + 1)}
+              className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+              title="Reload aplikasi"
+            >
+              <RefreshCw size={13} className="text-ink-3" />
+            </button>
+          )}
+          {/* Open in new tab — for app previews */}
+          {isAppPreview && (
+            <button
+              onClick={() => window.open(localCode, '_blank')}
+              className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+              title="Buka di tab baru"
+            >
+              <ExternalLink size={13} className="text-ink-3" />
+            </button>
+          )}
           <button
             onClick={handleCopy}
             className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
-            title="Copy semua"
+            title={isAppPreview ? 'Copy URL' : 'Copy semua'}
           >
             {copied ? <Check size={13} className="text-success" /> : <Copy size={13} className="text-ink-3" />}
           </button>
-          <button
-            onClick={handleDownload}
-            className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
-            title={`Download ${filename}`}
-          >
-            <Download size={13} className="text-ink-3" />
-          </button>
+          {!isAppPreview && (
+            <button
+              onClick={handleDownload}
+              className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+              title={`Download ${filename}`}
+            >
+              <Download size={13} className="text-ink-3" />
+            </button>
+          )}
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-danger/10 hover:text-danger transition-colors"
@@ -338,8 +376,22 @@ function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
         </div>
       </div>
 
-      {/* Tabs — hanya tampil jika bisa di-preview */}
-      {(isHtml || isPreviewUrl) && (
+      {/* URL bar for app previews */}
+      {isAppPreview && (
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-bg-3 flex-shrink-0">
+          <span className="text-[10px] text-ink-3 flex-shrink-0">URL:</span>
+          <span className="flex-1 text-[11px] font-mono text-accent-2 truncate">{localCode}</span>
+          <button
+            onClick={() => window.open(localCode, '_blank')}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 text-[10px] font-medium transition-all flex-shrink-0"
+          >
+            <ExternalLink size={9} /> Buka
+          </button>
+        </div>
+      )}
+
+      {/* Tabs — for HTML/SVG code artifacts */}
+      {isHtml && !isAppPreview && (
         <div className="flex border-b border-border flex-shrink-0">
           {['preview', 'code'].map(tab => (
             <button
@@ -359,13 +411,15 @@ function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
       )}
 
       {/* Content */}
-      {activeTab === 'preview' && iframeSrc ? (
+      {(isAppPreview || (isHtml && activeTab === 'preview')) && iframeSrc ? (
         <iframe
+          key={iframeKey}
           src={iframeSrc}
           className="flex-1 w-full"
           style={{ background: 'white', border: 'none' }}
-          sandbox="allow-scripts allow-same-origin"
-          title="Artifact Preview"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
+          title="App Preview"
+          onError={() => setAppOnline(false)}
         />
       ) : (
         <div className="flex-1 overflow-auto flex flex-col">
@@ -1715,6 +1769,19 @@ export default function Chat() {
       appendStreamingText(chunk)
     }
 
+    // Auto-open artifact panel when APP_PREVIEW detected in completed response
+    const autoOpenAppPreview = (fullText) => {
+      const m = /%%APP_PREVIEW%%\s*(https?:\/\/[^\s]+)\s*%%END_PREVIEW%%/i.exec(fullText)
+      if (m) {
+        const url = m[1].trim()
+        // Small delay so the message bubble renders first
+        setTimeout(() => {
+          openArtifactCard(url, 'preview', '🚀 App Preview — Jalankan Aplikasi', true)
+          toast.success('🚀 Aplikasi berhasil dibuat! Klik Preview untuk melihat.', { duration: 5000 })
+        }, 400)
+      }
+    }
+
     // Use different endpoints based on whether image is present
     if (imageToSend) {
       // chatStreamMultimodal(payload, imageData, onChunk, onDone, onSession, onStatus, onProcess)
@@ -1755,6 +1822,7 @@ export default function Chat() {
           useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
+          autoOpenAppPreview(fullText)  // Auto-open preview if app was built
           setTimeout(() => { inputRef.current?.focus() }, 50)
         },
         (sessionData) => {
@@ -1807,6 +1875,7 @@ export default function Chat() {
           useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
+          autoOpenAppPreview(fullText)  // Auto-open preview if app was built
           setTimeout(() => { inputRef.current?.focus() }, 50)
         },
         (sessionData) => {
