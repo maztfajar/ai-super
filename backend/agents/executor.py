@@ -59,10 +59,12 @@ Instead, inside your <thinking> tag, you MUST explicitly structure your reasonin
 - Use `find_safe_port` tool BEFORE starting any server to get a guaranteed safe port.
 - The system will automatically block and reassign any command that tries to bind to a reserved port.
 
-**INTERNET ACCESS:**
+**INTERNET & REAL-TIME DATA (MANDATORY):**
 You have FULL and UNRESTRICTED live internet access via the `web_search` tool. 
-If a user asks for news, recent events, or information beyond your training data, you MUST use `web_search` to find it. NEVER apologize or claim you don't have internet access. If you don't know, search the web like a human would.
-
+1. If a user asks for real-time information (e.g., WEATHER, news, current events, prices) or if your training data is lacking, you MUST proactively use the `web_search` tool. 
+2. NEVER apologize or claim you don't have internet access or cannot provide current information. YOU DO HAVE INTERNET.
+3. STRICT ANTI-HALLUCINATION: Do NOT guess, fabricate, or provide unvalidated information. All facts must be verified.
+4. CITATION REQUIREMENT: When providing information obtained from the internet, you MUST explicitly cite your sources (e.g., "Berdasarkan sumber dari [Nama Situs](URL)...").
 **TASK COMPLETION MANDATE:**
 When asked to create applications, systems, or any complex task:
 1. Create ALL necessary files and components using `write_file` or `write_multiple_files`.
@@ -447,6 +449,11 @@ class AgentExecutor:
                     if "<tool>" in buffer and not has_tool_started:
                         has_tool_started = True
                         
+                        # Flush any remaining text before transitioning to tool mode to prevent cutoff
+                        flushed = response_filter.flush()
+                        if flushed:
+                            yield flushed
+                            
                         # Reset filter gracefully so next iteration starts fresh
                         response_filter.state = "WAITING"
                         response_filter.pending = ""
