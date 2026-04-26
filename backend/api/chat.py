@@ -1,4 +1,5 @@
 import json
+import time as _time
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +18,51 @@ from rag.engine import rag_engine
 from memory.manager import memory_manager
 
 router = APIRouter()
+
+# ── Chat Rate Limiter ─────────────────────────────────────────
+# 30 requests per minute per user (prevents API quota abuse)
+_CHAT_RATE_LIMIT   = 30    # max requests
+_CHAT_RATE_WINDOW  = 60    # seconds
+_chat_mem_counters: dict = {}  # fallback in-memory tracker
+
+async def _check_chat_rate_limit(user_id: str) -> None:
+    """Raise 429 if user exceeds chat rate limit. Redis-first, memory fallback."""
+    key = f"chat:rl:{user_id}"
+    try:
+        redis = None
+        if memory_manager._redis_available and memory_manager.redis:
+            redis = memory_manager.redis
+        if redis:
+            count = await redis.incr(key)
+            if count == 1:
+                await redis.expire(key, _CHAT_RATE_WINDOW)
+            if count > _CHAT_RATE_LIMIT:
+                ttl = await redis.ttl(key)
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"Terlalu banyak pesan. Batas {_CHAT_RATE_LIMIT} pesan/{_CHAT_RATE_WINDOW}s. Coba lagi dalam {ttl} detik.",
+                    headers={"Retry-After": str(ttl)},
+                )
+            return
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # Redis unavailable — fall through to memory tracker
+
+    # In-memory fallback (per-worker, resets on restart)
+    now = _time.time()
+    rec = _chat_mem_counters.get(user_id, {"count": 0, "reset_at": now + _CHAT_RATE_WINDOW})
+    if now > rec["reset_at"]:
+        rec = {"count": 0, "reset_at": now + _CHAT_RATE_WINDOW}
+    rec["count"] += 1
+    _chat_mem_counters[user_id] = rec
+    if rec["count"] > _CHAT_RATE_LIMIT:
+        wait = int(rec["reset_at"] - now)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Terlalu banyak pesan. Batas {_CHAT_RATE_LIMIT} pesan/{_CHAT_RATE_WINDOW}s. Coba lagi dalam {wait} detik.",
+            headers={"Retry-After": str(wait)},
+        )
 
 
 class ChatRequest(BaseModel):
@@ -148,6 +194,9 @@ async def chat_send(
 ):
     """Chat endpoint — returns streaming response via Orchestrator pipeline"""
 
+    # ── Rate limiting: 30 requests/minute per user ────────────
+    await _check_chat_rate_limit(user.id)
+
     # Debug: Log image data
     if req.image_b64 or req.image_mime:
         import structlog
@@ -156,6 +205,7 @@ async def chat_send(
                 image_mime=req.image_mime,
                 image_b64_len=len(req.image_b64) if req.image_b64 else 0,
                 message_preview=req.message[:100])
+
 
     # Get or create session
     if req.session_id:
@@ -313,11 +363,14 @@ async def chat_send(
 
         except Exception as e:
             import traceback
+            import uuid as _uuid
             traceback.print_exc()
             err_str = str(e)
-            log.error("Chat error", error=err_str[:200])
+            # Generate an error ID for debugging — full details stay server-side
+            err_id = _uuid.uuid4().hex[:8].upper()
+            log.error("Chat error", error=err_str[:300], error_id=err_id)
 
-            # Provide user-friendly error messages
+            # Provide user-friendly error messages — never expose raw internals to client
             if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
                 user_friendly_err = "❌ API Key Anda kehabisan saldo. Silakan isi ulang di menu Integrations."
                 yield f"data: {json.dumps({'type': 'chunk', 'content': user_friendly_err})}\n\n"
@@ -330,12 +383,18 @@ async def chat_send(
                 user_friendly_err = "🛑 Terlalu banyak request - silakan tunggu beberapa detik sebelum mencoba lagi"
                 yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
                 full_response = user_friendly_err
+            elif "connection" in err_str.lower() or "network" in err_str.lower():
+                user_friendly_err = "🌐 Gagal terhubung ke layanan AI. Periksa koneksi dan coba lagi."
+                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
+                full_response = user_friendly_err
             else:
-                yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
-                full_response = f"Error: {err_str}"
-            
+                # Generic safe message — include error ID so admin can trace in logs
+                user_friendly_err = f"⚠️ Terjadi kesalahan internal (ID: {err_id}). Silakan coba lagi atau hubungi admin."
+                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
+                full_response = f"Error [{err_id}]: Internal error"
+
             error_occurred = True
-            thinking_steps.append(f"❌ Error: {err_str[:100]}")
+            thinking_steps.append(f"❌ Error [{err_id}]: {err_str[:100]}")
 
         # ─── Save response & update session ───────────────────
         try:

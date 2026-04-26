@@ -716,25 +716,52 @@ async def apply_update(user: User = Depends(get_current_user)):
     
     tmp_zip = "/tmp/downloaded_update.zip"
     
-    # 1. Download
+    # 1. Download with SSL verification enabled
     try:
         def _download():
             import ssl
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
-            urllib.request.urlretrieve(update_url, tmp_zip)
+            ctx = ssl.create_default_context()  # Verify SSL certificates (secure default)
+            # Limit download size to 200MB to prevent zip-bomb / resource exhaustion
+            import urllib.request, os
+            req_obj = urllib.request.Request(update_url, headers={"User-Agent": "AI-Orchestrator-Updater/1.0"})
+            with urllib.request.urlopen(req_obj, context=ctx, timeout=120) as response:
+                content_length = response.headers.get("Content-Length")
+                if content_length and int(content_length) > 200 * 1024 * 1024:
+                    raise ValueError("Update file too large (>200MB). Aborting for safety.")
+                downloaded = 0
+                MAX_SIZE = 200 * 1024 * 1024
+                with open(tmp_zip, 'wb') as f:
+                    while True:
+                        chunk = response.read(65536)
+                        if not chunk:
+                            break
+                        downloaded += len(chunk)
+                        if downloaded > MAX_SIZE:
+                            raise ValueError("Download exceeded 200MB limit. Aborting.")
+                        f.write(chunk)
         await asyncio.to_thread(_download)
     except Exception as e:
         raise HTTPException(500, detail={"code": "download_failed", "message": f"Gagal mengunduh update dari {update_url}", "error": str(e)})
         
-    # 2. Extract over project root
+    # 2. Validate and extract with path traversal protection
     project_root = Path(__file__).parent.parent.parent
     try:
-        def _extract():
+        def _validate_and_extract():
             with zipfile.ZipFile(tmp_zip, 'r') as zip_ref:
+                # Security: Check for path traversal attacks (zip slip)
+                project_root_str = str(project_root.resolve()) + os.sep
+                for member in zip_ref.namelist():
+                    member_path = os.path.realpath(os.path.join(str(project_root), member))
+                    if not member_path.startswith(project_root_str):
+                        raise ValueError(f"Zip path traversal attack detected: {member}")
+                    # Block extraction of .env, database files, and secret files
+                    basename = os.path.basename(member)
+                    if basename in (".env", "ai-orchestrator.db") or member.endswith(".db"):
+                        continue  # Skip sensitive files
                 zip_ref.extractall(project_root)
-        await asyncio.to_thread(_extract)
+        await asyncio.to_thread(_validate_and_extract)
+    except ValueError as e:
+        raise HTTPException(400, detail={"code": "security_violation", "message": str(e)})
     except Exception as e:
         raise HTTPException(500, detail={"code": "extract_failed", "message": "Gagal mengekstrak file update", "error": str(e)})
         

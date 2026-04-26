@@ -62,11 +62,29 @@ async def get_latest_version(request: Request):
 
 
 @router.get("/download-update")
-async def download_update():
+async def download_update(request: Request):
     """
-    Public endpoint: Mengunduh file zip update terbaru.
-    Client app akan memanggil ini setelah mengecek latest-version.
+    Protected endpoint: Mengunduh file zip update terbaru.
+    Membutuhkan autentikasi valid (Bearer token atau API key).
     """
+    # Verify Bearer token — allows both browser sessions and machine-to-machine calls
+    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+    from core.auth import get_current_user
+    from db.database import get_db
+    from fastapi import Depends
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Authentication required to download update package.")
+    try:
+        from jose import jwt, JWTError
+        from core.config import settings
+        token = auth_header.split(" ", 1)[1]
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+        if not payload.get("sub"):
+            raise ValueError("Invalid token payload")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token.")
+
     zip_path = UPDATE_DIR / "ai-orchestrator_update.zip"
 
     if not zip_path.exists():

@@ -5,10 +5,10 @@ Main FastAPI Application
 import sys
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import structlog
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -131,9 +131,22 @@ async def lifespan(app: FastAPI):
     for d in ["./data/uploads", "./data/chroma_db", "./data/logs", "./data/audit_logs"]:
         Path(d).mkdir(parents=True, exist_ok=True)
 
+    # ── Security: Harden file permissions at startup ──────────
+    import stat, glob as _glob
+    _env_file = Path(__file__).parent.parent / ".env"
+    if _env_file.exists():
+        _env_file.chmod(0o600)  # Owner read/write only
+    for _lf in _glob.glob("./data/logs/*.log"):
+        try:
+            Path(_lf).chmod(0o600)
+        except Exception:
+            pass
+    log.info("File permissions hardened (.env + logs → 600)")
+
     # Init database tables
     await init_db()
     log.info("Database ready")
+
 
     # Buat admin user (di sini — bukan di router)
     from db.database import AsyncSessionLocal
@@ -161,12 +174,22 @@ async def lifespan(app: FastAPI):
     log.info("Capability Map ready", models=len(capability_map._map))
 
     if settings.TELEGRAM_BOT_TOKEN:
-        from integrations.telegram_bot import start_polling
-        start_polling(settings.TELEGRAM_BOT_TOKEN)
+        from integrations.telegram_bot import start_polling, start_watchdog, stop_watchdog, stop_polling
+        started = start_polling(settings.TELEGRAM_BOT_TOKEN)
+        if started:
+            start_watchdog(settings.TELEGRAM_BOT_TOKEN, check_interval=60)
+            log.info("Telegram polling watchdog started")
 
     log.info(f"AI ORCHESTRATOR ready! http://{settings.HOST}:{settings.PORT}")
     yield
     log.info("Shutting down AI ORCHESTRATOR...")
+    if settings.TELEGRAM_BOT_TOKEN:
+        try:
+            from integrations.telegram_bot import stop_watchdog, stop_polling
+            stop_watchdog()
+            stop_polling()
+        except Exception:
+            pass
 
 
 app = FastAPI(
@@ -180,13 +203,54 @@ app = FastAPI(
 app.add_middleware(TimeoutMiddleware)
 app.add_middleware(APIMetricsMiddleware)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ── CORS: Dynamic origin validation ──────────────────────────
+# Allows localhost (dev), same-host requests, and any configured tunnel domain.
+# Replaces dangerous allow_origins=["*"] + allow_credentials=True combination.
+from starlette.middleware.base import BaseHTTPMiddleware as _BHMW
+
+class SmartCORSMiddleware(_BHMW):
+    """
+    Allows:
+      - localhost / 127.0.0.1 (development)
+      - Same host as the server
+      - TUNNEL_DOMAIN from .env (e.g. your Cloudflare domain)
+    Blocks all other cross-origin requests with credentials.
+    """
+    _SAFE_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0"}
+
+    def _is_allowed(self, origin: str) -> bool:
+        if not origin:
+            return True  # Same-origin requests have no Origin header
+        try:
+            from urllib.parse import urlparse
+            host = urlparse(origin).hostname or ""
+        except Exception:
+            return False
+        if host in self._SAFE_HOSTS:
+            return True
+        # Allow configured tunnel/custom domain
+        tunnel_domain = os.environ.get("TUNNEL_DOMAIN", "").strip()
+        if tunnel_domain and (host == tunnel_domain or host.endswith("." + tunnel_domain)):
+            return True
+        return False
+
+    async def dispatch(self, request: Request, call_next):
+        origin = request.headers.get("origin", "")
+        if origin and not self._is_allowed(origin):
+            # Reject cross-origin requests from unknown origins
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CORS: origin not allowed"},
+            )
+        response = await call_next(request)
+        if origin and self._is_allowed(origin):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Requested-With"
+        return response
+
+app.add_middleware(SmartCORSMiddleware)
 
 app.include_router(auth_router,          prefix="/api/auth",         tags=["Auth"])
 app.include_router(chat_router,          prefix="/api/chat",         tags=["Chat"])

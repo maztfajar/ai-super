@@ -12,7 +12,7 @@ from core.config import settings
 
 security = HTTPBearer(auto_error=False)
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 hari
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 jam (dikurangi dari 7 hari untuk keamanan)
 
 
 def hash_password(password: str) -> str:

@@ -1,8 +1,12 @@
 import asyncio
 import os
 import json
+import re
 import re as _re
 import socket
+import structlog
+
+log = structlog.get_logger()
 
 
 # ─── Port Safety System ─────────────────────────────────────────────────────
@@ -118,14 +122,48 @@ async def execute_bash(command: str, session_id: str = None) -> str:
             
         os.makedirs(project_base_path, exist_ok=True)
 
-        # Agent Safeguards: Blocklist to prevent catastrophic mistakes
-        RESTRICTED_COMMANDS = [
-            "rm -rf /", "mkfs", "dd if=", "shutdown", "reboot", "halt", 
-            "mv /", ":(){:|:&};:"
+        # ── Agent Safeguards: Multi-layer command security ───────────
+        # Layer 1: Normalize whitespace to prevent bypass via double-spaces
+        normalized_cmd = re.sub(r'\s+', ' ', command.lower().strip())
+
+        # Layer 2: Dangerous command pattern detection (regex-based, bypass-resistant)
+        RESTRICTED_PATTERNS = [
+            # Disk destruction
+            (r'\brm\s+-rf\s+[/~]', "Destructive rm -rf on root/home"),
+            (r'\brm\s+-r\s+[/~]', "Destructive rm -r on root/home"),
+            (r'\brmdir\s+/', "rmdir on root"),
+            (r'\bmkfs\b', "Disk format command"),
+            (r'\bdd\s+if=', "Raw disk write via dd"),
+            # System control
+            (r'\b(shutdown|reboot|halt|poweroff)\b', "System power control"),
+            (r'\bsystemctl\s+(stop|disable)\s+.*orchestrator', "Stopping AI Orchestrator service"),
+            # Fork bomb
+            (r':\(\)\s*\{', "Fork bomb pattern"),
+            (r':\s*\(\s*\)\s*\{', "Fork bomb pattern"),
+            # Sensitive file access (read or write to secrets)
+            (r'cat\s+.*\.env\b', "Reading .env secrets"),
+            (r'cat\s+.*/\.ssh/', "Reading SSH keys"),
+            (r'cat\s+.*/etc/shadow', "Reading shadow passwords"),
+            (r'>\s*.*\.env\b', "Overwriting .env"),
+            # Network-based attacks
+            (r'nc\s+.*-e\s+/bin', "Netcat reverse shell"),
+            (r'curl\s+.*\|\s*(bash|sh)', "Remote code execution via curl pipe"),
+            (r'wget\s+.*\|\s*(bash|sh)', "Remote code execution via wget pipe"),
+            # Privilege escalation  
+            (r'\bchmod\s+[0-7]*[67][0-7]\s+/(etc|bin|usr)', "Privilege escalation via chmod"),
         ]
+
+        for pattern, reason in RESTRICTED_PATTERNS:
+            if re.search(pattern, normalized_cmd):
+                log.warning("Blocked dangerous command", reason=reason, cmd=command[:80])
+                return f"Security Exception: Command blocked — {reason}. If you need this operation, please perform it manually."
+
+        # Layer 3: Protect critical files from any modification
+        PROTECTED_PATHS = [".env", "/etc/passwd", "/etc/shadow", "/.ssh/id_", "ai-orchestrator.db"]
         cmd_lower = command.lower()
-        if any(bad_cmd in cmd_lower for bad_cmd in RESTRICTED_COMMANDS):
-            return f"Security Exception: Command '{command}' contains restricted patterns and is blocked by system safeguards."
+        for protected in PROTECTED_PATHS:
+            if protected in cmd_lower and any(op in cmd_lower for op in [" > ", ">>", "tee ", "write", "echo "]):
+                return f"Security Exception: Writing to protected file '{protected}' is blocked."
 
         # ── Port Collision Prevention ─────────────────────────────
         port_warning = ""
@@ -214,7 +252,28 @@ async def read_file(path: str, session_id: str = None) -> str:
             abs_path = os.path.join(project_base_path, path)
         else:
             abs_path = os.path.abspath(path)
-            
+
+        # ── Security: Block access to sensitive absolute paths ────
+        abs_real = os.path.realpath(abs_path)
+        _BLOCKED_READ_PATTERNS = [
+            "/etc/shadow", "/etc/passwd", "/etc/sudoers",
+            "/.ssh/", "/.gnupg/",
+            "/.env",
+            "/proc/", "/sys/",
+        ]
+        _BLOCKED_READ_EXTENSIONS = [".db", ".sqlite", ".sqlite3", ".pem", ".key", ".p12", ".pfx"]
+        _is_blocked = any(p in abs_real for p in _BLOCKED_READ_PATTERNS)
+        _is_blocked = _is_blocked or any(abs_real.endswith(ext) for ext in _BLOCKED_READ_EXTENSIONS)
+        # Also block the project's own .env file
+        _env_path = os.path.realpath(
+            os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
+        )
+        if abs_real == _env_path:
+            _is_blocked = True
+        if _is_blocked:
+            log.warning("Blocked read_file on sensitive path", path=abs_real[:100])
+            return f"Security Exception: Reading '{os.path.basename(abs_real)}' is blocked for security reasons."
+
         if not os.path.exists(abs_path):
             return f"Error: File {abs_path} not found."
         async def _read():
@@ -225,6 +284,7 @@ async def read_file(path: str, session_id: str = None) -> str:
         return f"Error: Reading file {path} timed out after 30 seconds."
     except Exception as e:
         return f"Error reading file {path}: {str(e)}"
+
 
 async def write_file(path: str, content: str, session_id: str = None) -> str:
     """Write content to a file."""

@@ -5,6 +5,7 @@ agar polling loop tidak terblokir saat AI generate.
 """
 import asyncio
 import threading
+import logging
 from typing import Optional
 import structlog
 import html
@@ -15,6 +16,35 @@ log = structlog.get_logger()
 _bot_thread: Optional[threading.Thread] = None
 _bot_running = False
 _bot_loop:   Optional[asyncio.AbstractEventLoop] = None
+
+# ── Telegram Token Masking ────────────────────────────────────
+# Prevents Bot Token from leaking into logs (httpx logs URLs with token)
+_current_token: Optional[str] = None
+
+def _mask_token(text: str) -> str:
+    """Replace bot token in any string with masked version."""
+    if not _current_token or not text:
+        return text
+    return text.replace(_current_token, _current_token[:8] + "***MASKED***")
+
+class _TelegramLogFilter(logging.Filter):
+    """Filter that masks the Telegram Bot Token from httpx HTTP log lines."""
+    def filter(self, record: logging.LogRecord) -> bool:
+        if _current_token and isinstance(record.msg, str):
+            record.msg = _mask_token(record.msg)
+        if _current_token and record.args:
+            try:
+                record.args = tuple(
+                    _mask_token(str(a)) if isinstance(a, str) else a
+                    for a in record.args
+                )
+            except Exception:
+                pass
+        return True
+
+# Apply filter to httpx logger so token never appears in logs
+_httpx_logger = logging.getLogger("httpx")
+_httpx_logger.addFilter(_TelegramLogFilter())
 
 
 async def _resolve_web_user(chat_id: int, fallback_user_id: str) -> str:
@@ -842,9 +872,12 @@ _lock_fd = None
 
 # ── Public API ────────────────────────────────────────────────
 def start_polling(token: str) -> bool:
-    global _bot_thread, _bot_running, _lock_fd
+    global _bot_thread, _bot_running, _lock_fd, _current_token
     if _bot_running:
         return False
+
+    # Activate token masking before any network activity
+    _current_token = token
 
     # Ensure only one worker runs the polling using a file lock
     try:
@@ -870,7 +903,7 @@ def start_polling(token: str) -> bool:
 
 
 def stop_polling():
-    global _bot_running, _bot_thread, _bot_loop, _lock_fd
+    global _bot_running, _bot_thread, _bot_loop, _lock_fd, _current_token
     _bot_running = False
     if _bot_loop and _bot_loop.is_running():
         _bot_loop.call_soon_threadsafe(_bot_loop.stop)
@@ -886,6 +919,7 @@ def stop_polling():
             pass
         _lock_fd = None
 
+    _current_token = None  # Clear token masking
     log.info("Telegram polling stopped")
 
 
@@ -895,3 +929,66 @@ def is_running() -> bool:
         and _bot_thread is not None
         and _bot_thread.is_alive()
     )
+
+
+# ── Polling Watchdog ──────────────────────────────────────────
+# Monitors the polling thread and auto-restarts it if it dies unexpectedly.
+_watchdog_thread: Optional[threading.Thread] = None
+_watchdog_running = False
+
+
+def _watchdog_loop(token: str, check_interval: int = 60):
+    """Background loop that checks polling health and restarts if dead."""
+    global _bot_running, _bot_thread
+    import time
+    log.info("Telegram polling watchdog started", interval=check_interval)
+
+    while _watchdog_running:
+        time.sleep(check_interval)
+
+        if not _watchdog_running:
+            break
+
+        # Only act if we SHOULD be running but the thread is dead
+        if _bot_running and (_bot_thread is None or not _bot_thread.is_alive()):
+            log.warning("Telegram polling thread died unexpectedly — restarting")
+            try:
+                # Release stale lock before restarting
+                global _lock_fd
+                if _lock_fd is not None:
+                    try:
+                        import fcntl as _fcntl
+                        _fcntl.flock(_lock_fd, _fcntl.LOCK_UN)
+                        os.close(_lock_fd)
+                    except Exception:
+                        pass
+                    _lock_fd = None
+
+                _bot_running = False  # Reset so start_polling can proceed
+                start_polling(token)
+                log.info("Telegram polling restarted by watchdog")
+            except Exception as e:
+                log.error("Watchdog failed to restart polling", error=str(e))
+
+    log.info("Telegram polling watchdog stopped")
+
+
+def start_watchdog(token: str, check_interval: int = 60):
+    """Start the watchdog thread. Call after start_polling()."""
+    global _watchdog_thread, _watchdog_running
+    if _watchdog_running and _watchdog_thread and _watchdog_thread.is_alive():
+        return  # Already running
+    _watchdog_running = True
+    _watchdog_thread = threading.Thread(
+        target=_watchdog_loop,
+        args=(token, check_interval),
+        daemon=True,
+        name="telegram-watchdog",
+    )
+    _watchdog_thread.start()
+
+
+def stop_watchdog():
+    """Stop the watchdog thread."""
+    global _watchdog_running
+    _watchdog_running = False
