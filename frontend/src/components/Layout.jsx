@@ -30,7 +30,9 @@ function TopbarNewChatButton() {
       toast('Sesi ini masih kosong. Mulai chat dulu!', { icon: '💬', duration: 2000 })
       return
     }
-    navigate('/chat')
+    useChatStore.getState().setCurrentSession(null)
+    useChatStore.getState().clearMessages()
+    navigate('/chat', { replace: true })
   }
 
   return (

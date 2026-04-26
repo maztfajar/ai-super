@@ -1332,7 +1332,8 @@ export default function Chat() {
     abortRequest, setAbortRequest,
   } = useChatStore()
 
-  const [input, setInput] = useState('')
+  const input = useChatStore(s => s.draftInput)
+  const setInput = useChatStore(s => s.setDraftInput)
   const [useRAG, setUseRAG] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [speakingId, setSpeakingId] = useState(null)
@@ -1430,11 +1431,11 @@ export default function Chat() {
     if (streaming) {
       lastChunkRef.current = Date.now()
       watchdogRef.current = setInterval(() => {
-        if (Date.now() - lastChunkRef.current > 90000) {
-          console.warn('[watchdog] No stream activity for 90s — auto stopping')
+        if (Date.now() - lastChunkRef.current > 300000) {
+          console.warn('[watchdog] No stream activity for 5m — auto stopping')
           clearInterval(watchdogRef.current)
           stopStreaming()
-          toast.error('⏱ Koneksi AI timeout. Respons dihentikan otomatis.', { duration: 4000 })
+          toast.error('⏱ Koneksi AI timeout (5 menit tanpa aktivitas). Respons dihentikan otomatis.', { duration: 4000 })
         }
       }, 5000)
     } else {
@@ -1796,6 +1797,8 @@ export default function Chat() {
         }
       }
 
+      lastChunkRef.current = Date.now() // Reset watchdog on process steps
+      
       useChatStore.getState().addProcessStep({
         action: data.action || 'Worked',
         detail: data.detail || '',

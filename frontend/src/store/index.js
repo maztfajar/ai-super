@@ -29,6 +29,7 @@ export const useChatStore = create(
       streaming: false,
       streamingText: '',
       selectedModel: null,
+      draftInput: '',
 
       setSessions: (sessions) => set({ sessions }),
       // NOTE: setCurrentSession does NOT clear messages — call clearMessages() separately
@@ -40,6 +41,7 @@ export const useChatStore = create(
       setStreamingText: (t) => set({ streamingText: t }),
       appendStreamingText: (chunk) => set((s) => ({ streamingText: s.streamingText + chunk })),
       setSelectedModel: (m) => set({ selectedModel: m }),
+      setDraftInput: (text) => set((s) => ({ draftInput: typeof text === 'function' ? text(s.draftInput) : text })),
       clearStreaming: () => set({ streaming: false, streamingText: '' }),
 
       // Live progress states

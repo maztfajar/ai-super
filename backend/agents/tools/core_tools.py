@@ -203,7 +203,7 @@ async def execute_bash(command: str, session_id: str = None) -> str:
             err, err_trunc = await stderr_task
             return out, out_trunc, err, err_trunc
 
-        out, out_trunc, err, err_trunc = await asyncio.wait_for(run_with_timeout(), timeout=120.0)
+        out, out_trunc, err, err_trunc = await asyncio.wait_for(run_with_timeout(), timeout=300.0)
         
         output = f"📁 [Working Directory: {project_base_path}]\n"
         output += port_warning  # Prepend port warning if any

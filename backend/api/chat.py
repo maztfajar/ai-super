@@ -253,7 +253,7 @@ async def chat_send(
     # Get conversation history from memory
     history = await memory_manager.get_context(session.id, user.id)
 
-    # Save user message to DB
+    # Save user message to DB immediately so it's not lost on stream abort
     user_msg = Message(
         session_id=session.id,
         user_id=user.id,
@@ -262,6 +262,7 @@ async def chat_send(
         model=req.model or "orchestrator",
     )
     db.add(user_msg)
+    await db.commit()
 
     async def generate():
         full_response = ""
@@ -360,6 +361,12 @@ async def chat_send(
                 full_response = err_str
             error_occurred = True
             thinking_steps.append(f"❌ Timeout error: {err_str}")
+
+        except asyncio.CancelledError:
+            log.info("Chat stream cancelled by client", session_id=session.id)
+            error_occurred = True
+            if full_response.strip():
+                thinking_steps.append("⚠️ Klien terputus, menyimpan sebagian respons...")
 
         except Exception as e:
             import traceback
