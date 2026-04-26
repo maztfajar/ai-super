@@ -167,8 +167,8 @@ Analysis:
 
     def _get_decomposition_model(self) -> str:
         """Pick a good model for decomposition (needs to be smart but reasonably fast)."""
-        priorities = ["gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet",
-                       "gemini-1.5-flash", "gemini-2.0-flash"]
+        priorities = ["gpt-4o-mini", "deepseek-v3-2", "qwen3.6-flash",
+                       "gemini-2.5-flash-lite"]
         for p in priorities:
             for k in model_manager.available_models.keys():
                 if p in k:

@@ -214,7 +214,7 @@ class ResultAggregator:
 
     def _get_synthesis_model(self) -> str:
         """Pick a model for synthesis (needs to be good at summarization)."""
-        priorities = ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro", "seed-2-0-pro"]
+        priorities = ["deepseek-v3-2", "qwen3.6-flash", "gemini-2.5-flash-lite"]
         for p in priorities:
             for k in model_manager.available_models.keys():
                 if p in k:

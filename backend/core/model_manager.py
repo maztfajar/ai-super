@@ -502,8 +502,8 @@ class ModelManager:
         if not model_to_use:
             vision_candidates = [
                 m for m in self.available_models
-                if any(v in m for v in ["gpt-4o", "gpt-4-vision", "gemini", "pixtral",
-                                         "llava", "vision", "claude-3", "qwen"])
+                if any(v in m for v in ["deepseek-v3", "qwen", "gemini", "pixtral",
+                                         "llava", "vision", "claude-3"])
             ]
             if vision_candidates:
                 model_to_use = vision_candidates[0]
@@ -568,7 +568,7 @@ class ModelManager:
             log.error("chat_with_image error", model=model_to_use, error=str(e))
             return f"❌ Gagal memproses gambar via {model_to_use}: {e}"
 
-        return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini-2.5-flash, gpt-4o) di menu Integrasi."
+        return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini-2.5-flash, qwen3.6-flash) di menu Integrasi."
 
     # ── Image Generation: teks → gambar ───────────────────────
     async def generate_image(

@@ -11,7 +11,7 @@ from agents.tools.web_search import web_search
 
 log = structlog.get_logger()
 
-def build_agent_system_prompt(current_model: str, execution_mode: str = "execution", project_path: str = None) -> str:
+def build_agent_system_prompt(current_model: str, execution_mode: str = "execution", project_path: str = None, session_id: str = None) -> str:
     from core.model_manager import model_manager
     import datetime
 
@@ -34,6 +34,23 @@ def build_agent_system_prompt(current_model: str, execution_mode: str = "executi
     else:
         project_instruction = """
 - **PROJECT DIRECTORY & FOLDER ISOLATION (CRITICAL):** All tools automatically execute relative to the user's chosen root directory (e.g., Desktop). To prevent polluting their root folder, you MUST ALWAYS create a dedicated sub-folder named after the application you are building. For instance, if creating a calculator app, your file paths in `write_file` MUST be `calculator-app/index.html` and `calculator-app/style.css` instead of just `index.html` at the root. Ensure all your bash commands also point into this sub-folder (e.g., `cd calculator-app && npm init -y`)."""
+
+    # ── Project-Wide Awareness: Inject project context if available ──
+    project_context = ""
+    if session_id:
+        try:
+            import asyncio
+            from core.project_indexer import project_indexer
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're already in an async context, use a future
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as pool:
+                    project_context = pool.submit(
+                        lambda: asyncio.run(project_indexer.get_project_summary(session_id))
+                    ).result(timeout=3)
+        except Exception:
+            project_context = ""
 
     return f"""You are AI ORCHESTRATOR, an advanced autonomous agent currently running as '{current_model}'.
 CURRENT SYSTEM TIME: {current_time}. You MUST accept this as the true current date and time. Do NOT rely on your training cutoff date.
@@ -158,6 +175,12 @@ Example for asking another model:
 <response>
 Here is the poem written by the other model...
 </response>
+
+**PROJECT-WIDE AWARENESS:**
+When modifying files in a project, you MUST consider the impact on other files.
+If you change File A and File B depends on it, you MUST also update File B.
+Always think about import/dependency relationships between files.
+{project_context}
 """
 
 
@@ -406,7 +429,7 @@ class AgentExecutor:
         project_path: str = None,
     ) -> AsyncGenerator[str, None]:
         
-        system_prompt = build_agent_system_prompt(base_model, execution_mode, project_path)
+        system_prompt = build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
         
         # Inject our agent system prompt
         agent_msgs = list(messages)
@@ -624,7 +647,23 @@ class AgentExecutor:
                     # Remove any loose tags remaining
                     fallback_text = re.sub(r'</?(?:thinking|think|response|tool|observation)>', '', fallback_text).strip()
                     if fallback_text:
-                        yield fallback_text
+                        # ── Self-Correction Loop: review code before yielding ──
+                        try:
+                            from core.self_correction import self_correction_engine
+                            corrected, report = await self_correction_engine.review_and_correct(
+                                fallback_text, base_model, agent_msgs[0].get("content", "")[:300] if agent_msgs else ""
+                            )
+                            if report.total_issues_fixed > 0:
+                                log.info("Self-correction applied",
+                                         fixed=report.total_issues_fixed,
+                                         found=report.total_issues_found)
+                                yield corrected
+                                yield f"\n\n✅ *Self-Correction: {report.total_issues_fixed} error otomatis diperbaiki.*"
+                            else:
+                                yield fallback_text
+                        except Exception as sc_err:
+                            log.debug("Self-correction skipped", error=str(sc_err)[:80])
+                            yield fallback_text
                     elif not stream_error:
                         yield "⚠️ Proses selesai namun tidak ada respons yang dihasilkan. Silakan ulangi pertanyaan Anda."
                 

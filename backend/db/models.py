@@ -201,3 +201,32 @@ class TaskExecution(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     completed_at: Optional[datetime] = None
     vps_deployment_at: Optional[datetime] = None  # Track VPS deployment timing
+
+
+class ProceduralMemory(SQLModel, table=True):
+    """Buku Resep: menyimpan pola tugas yang berhasil untuk referensi di masa depan."""
+    __tablename__ = "procedural_memories"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    category: str = Field(index=True)              # coding, system, analysis, web_dev, dll
+    task_summary: str = ""                          # ringkasan tugas asli
+    steps_json: str = "[]"                          # JSON: langkah-langkah sukses terstruktur
+    tools_used: Optional[str] = None                # JSON: list tool yang dipakai
+    model_used: str = ""                            # model ID yang digunakan
+    success_count: int = 1                          # berapa kali pattern ini berhasil digunakan
+    avg_confidence: float = 0.8                     # rata-rata confidence score
+    keywords: str = ""                              # space-separated keywords for search
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class ProjectIndex(SQLModel, table=True):
+    """Context Index: peta file & dependency per session/project."""
+    __tablename__ = "project_indexes"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    session_id: str = Field(index=True)
+    project_path: str = ""                          # absolute path ke project root
+    file_tree_json: str = "[]"                      # JSON: daftar file dengan metadata
+    dependencies_json: str = "{}"                   # JSON: dependency graph {file: [depends_on]}
+    file_count: int = 0                             # total files indexed
+    last_scanned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

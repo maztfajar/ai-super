@@ -35,7 +35,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Complex logic, math, deep analysis, and strategic planning",
         skills=["logic", "math", "analysis", "planning", "strategy", "reasoning",
                 "problem_solving", "critical_thinking"],
-        preferred_models=["deepseek-v3", "qwen3.6-flash", "claude-haiku", "gpt-4o"],
+        preferred_models=["deepseek-v3-2", "qwen3.6-flash", "claude-haiku-4-5", "gemini-2.5-flash-lite"],
         default_temperature=0.3,
         system_prompt_addon="Focus on logical reasoning. Show your thought process step by step. "
                             "Prioritize accuracy over speed.",
@@ -46,7 +46,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Software development, debugging, code review, and refactoring",
         skills=["python", "javascript", "typescript", "sql", "bash", "api",
                 "debug", "refactor", "code_review", "testing"],
-        preferred_models=["deepseek-v3", "qwen3.6-flash", "gpt-4o"],
+        preferred_models=["deepseek-v3-2", "qwen3.6-flash", "gemini-2.5-flash-lite"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         default_max_tokens=8192,
@@ -59,7 +59,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Information gathering, web search, data collection, and comparison",
         skills=["search", "gather", "compare", "summarize", "fact_check",
                 "data_collection"],
-        preferred_models=["gemini-2.5-flash-lite", "claude-haiku", "qwen3.6-flash", "gpt-4o-mini"],
+        preferred_models=["gemini-2.5-flash-lite", "claude-haiku-4-5", "qwen3.6-flash", "gpt-4o-mini"],
         default_temperature=0.5,
         system_prompt_addon="Be thorough in your research. Cite sources when possible. "
                             "Present findings in a structured format.",
@@ -81,7 +81,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="VPS management, server admin, terminal commands, DevOps",
         skills=["bash", "linux", "docker", "nginx", "systemd", "networking",
                 "monitoring", "deployment"],
-        preferred_models=["deepseek-v3", "qwen3.6-flash", "gpt-4o"],
+        preferred_models=["deepseek-v3-2", "qwen3.6-flash", "gemini-2.5-flash-lite"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         system_prompt_addon="Prioritize safety. Always explain what a command does before executing. "
@@ -114,7 +114,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         display_name="💬 General Agent",
         description="General conversation, FAQs, simple questions, greetings",
         skills=["conversation", "faq", "general_knowledge"],
-        preferred_models=["gemini-2.5-flash-lite", "gpt-4o-mini", "claude-haiku"],
+        preferred_models=["gemini-2.5-flash-lite", "gpt-4o-mini", "claude-haiku-4-5"],
         default_temperature=0.7,
         system_prompt_addon="",
     ),
@@ -144,7 +144,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         display_name="🌐 Multimodal Agent",
         description="Handle text, image, and audio inputs simultaneously",
         skills=["vision", "audio", "text", "analysis", "reasoning"],
-        preferred_models=["mimo-v2-omni", "gpt-4o", "gemini-1.5-pro"],
+        preferred_models=["mimo-v2-omni", "deepseek-v3-2", "qwen3.6-flash"],
         default_temperature=0.7,
         system_prompt_addon="You can process text, images, and audio. Handle multimodal inputs accurately.",
     ),
@@ -279,7 +279,7 @@ class AgentRegistryManager:
         # Try preferred models in order
         available = set(mm.available_models.keys())
         for preferred in agent.preferred_models:
-            # Pattern match (e.g., "gpt-4o" matches "gpt-4o" or "sumopod/gpt-4o")
+            # Pattern match (e.g., "deepseek-v3-2" matches "deepseek-v3-2" or "sumopod/deepseek-v3-2")
             for model_id in available:
                 if preferred in model_id:
                     return model_id

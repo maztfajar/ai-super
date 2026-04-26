@@ -328,6 +328,12 @@ async def write_file(path: str, content: str, session_id: str = None) -> str:
         result = f"Successfully wrote to {display_path}"
         if project_base_path:
             result = f"📁 Project: {project_base_path}\n{result}"
+            # ── Project-Wide Awareness: trigger background index update ──
+            try:
+                from core.project_indexer import project_indexer
+                asyncio.create_task(project_indexer.scan_project(session_id or "", project_base_path))
+            except Exception:
+                pass
         
         return result
     except asyncio.TimeoutError:
@@ -388,6 +394,12 @@ async def write_multiple_files(files_data: list, session_id: str = None) -> str:
         # Add project location info if available
         if project_base_path:
             project_info = f"\n📁 Project Location: {project_base_path}"
+            # ── Project-Wide Awareness: trigger background index update ──
+            try:
+                from core.project_indexer import project_indexer
+                asyncio.create_task(project_indexer.scan_project(session_id or "", project_base_path))
+            except Exception:
+                pass
             return project_info + "\n" + "\n".join(results)
         else:
             return "\n".join(results)

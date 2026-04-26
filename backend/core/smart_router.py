@@ -9,22 +9,22 @@ ROUTING_RULES = {
         "keywords": ["code", "python", "javascript", "debug", "function", "class",
                      "error", "bug", "program", "script", "api", "sql", "kode",
                      "coding", "pemrograman", "syntax"],
-        "preferred": ["gpt-4o", "claude-3-5-sonnet-20241022"],
+        "preferred": ["deepseek-v3-2", "qwen3.6-flash"],
     },
     "writing": {
         "keywords": ["write", "essay", "article", "blog", "email", "letter",
                      "tulis", "artikel", "laporan", "report", "summary", "rangkum",
                      "cerita", "puisi"],
-        "preferred": ["claude-3-5-sonnet-20241022", "gpt-4o"],
+        "preferred": ["qwen3.6-flash", "deepseek-v3-2"],
     },
     "analysis": {
         "keywords": ["analyze", "analysis", "compare", "data", "chart", "statistic",
                      "analisa", "bandingkan", "grafik", "tren", "insight"],
-        "preferred": ["gemini-1.5-pro", "gpt-4o"],
+        "preferred": ["deepseek-v3-2", "qwen3.6-flash"],
     },
     "translation": {
         "keywords": ["translate", "terjemah", "bahasa", "language", "indonesian", "english"],
-        "preferred": ["claude-3-5-sonnet-20241022", "gpt-4o"],
+        "preferred": ["qwen3.6-flash", "deepseek-v3-2"],
     },
     "simple": {
         "keywords": ["hello", "halo", "hi", "thanks", "terima kasih", "apa kabar",

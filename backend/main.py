@@ -165,6 +165,14 @@ async def lifespan(app: FastAPI):
     log.info("✅ Cost Tracking Engine initialized")
     log.info("✅ Audit Logging System initialized")
 
+    # Init new intelligence systems
+    from core.self_correction import self_correction_engine  # noqa
+    from core.procedural_memory import procedural_memory  # noqa
+    from core.project_indexer import project_indexer  # noqa
+    log.info("✅ Self-Correction Engine initialized")
+    log.info("✅ Procedural Memory Engine initialized")
+    log.info("✅ Project Indexer (Project-Wide Awareness) initialized")
+
     # Capability Map — discover model capabilities
     from core.capability_map import capability_map
     import asyncio

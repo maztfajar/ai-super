@@ -125,6 +125,20 @@ class Orchestrator:
                 primary_intent="general",
             )
 
+        # ─── PHASE 1.5: PROCEDURAL MEMORY RECALL ─────────────────
+        # Injeksi "Buku Resep" dari tugas sukses sebelumnya ke system prompt
+        try:
+            from core.procedural_memory import procedural_memory
+            recipe_context = await procedural_memory.build_recipe_context(
+                category=spec.primary_intent,
+                query=message[:300],
+            )
+            if recipe_context:
+                system_prompt = system_prompt + recipe_context
+                yield OrchestratorEvent("status", "📋 Procedural memory: resep sukses sebelumnya ditemukan")
+        except Exception as e:
+            log.debug("Procedural memory recall skipped", error=str(e)[:80])
+
         # ─── PHASE 0: CAPABILITY-AWARE ROUTING ───────────────────
         # Fast-path for special intents before full orchestration
         primary = spec.primary_intent
@@ -418,6 +432,30 @@ class Orchestrator:
                 confidence=result.confidence,
                 execution_time_ms=result.execution_time_ms,
             ), task_id=task_exec_id)
+
+        # ─── PHASE 8.5: PROCEDURAL MEMORY — SAVE RECIPE ──────────
+        # Simpan pola sukses ke "Buku Resep" untuk referensi masa depan
+        any_success = any(r.success for r in results)
+        if any_success and aggregated.overall_confidence >= 0.6:
+            try:
+                from core.procedural_memory import procedural_memory
+                tools_used = list(set(
+                    r.agent_type for r in results if r.success
+                ))
+                models_used_list = list(set(
+                    r.model_used for r in results if r.success and r.model_used
+                ))
+                avg_conf = sum(r.confidence for r in results if r.success) / max(1, sum(1 for r in results if r.success))
+                await procedural_memory.reflect_on_task(
+                    category=spec.primary_intent,
+                    task_summary=message[:500],
+                    tools_used=tools_used,
+                    model_used=models_used_list[0] if models_used_list else "",
+                    confidence=avg_conf,
+                    steps_description=aggregated.final_response[:500] if aggregated.final_response else "",
+                )
+            except Exception as e:
+                log.debug("Procedural memory save skipped", error=str(e)[:80])
 
         # Update TaskExecution record
         await self._update_task_execution(
@@ -980,8 +1018,7 @@ class Orchestrator:
         """Attempt to refine a low-quality result using a different (better) model."""
         try:
             # Pilih model yang berbeda dari yang sudah dipakai, preferensi model yang lebih kuat
-            quality_keywords = ["pro", "plus", "sonnet", "gpt-4o", "claude-3-5", "gemini-1.5-pro",
-                                 "deepseek-v3", "seed-2-0"]
+            quality_keywords = ["deepseek-v3-2", "qwen3.6-flash", "gemini-2.5-flash-lite"]
             refine_model = None
             for keyword in quality_keywords:
                 for k in model_manager.available_models:

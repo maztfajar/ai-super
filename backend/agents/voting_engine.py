@@ -103,7 +103,7 @@ class VotingEngine:
             return []
             
         # Prioritize smart/complex models for voting
-        targets = ["gpt-4o", "claude-3-5-sonnet", "claude-3-opus", "gemini-1.5-pro", "seed-2-0-pro", "llama3.1"]
+        targets = ["deepseek-v3-2", "qwen3.6-flash", "claude-haiku-4-5", "gemini-2.5-flash-lite", "seed-2-0-pro", "llama3.1"]
         selected = []
         
         for t in targets:
@@ -125,7 +125,7 @@ class VotingEngine:
 
     def _select_judge_model(self) -> str:
         # GPT-4o or Sonnet make best judges
-        best_judges = ["gpt-4o", "claude-3-5-sonnet", "gemini-1.5-pro"]
+        best_judges = ["deepseek-v3-2", "qwen3.6-flash", "gemini-2.5-flash-lite"]
         for j in best_judges:
             for k in model_manager.available_models.keys():
                 if j in k:
