@@ -347,7 +347,15 @@ This source code is licensed strictly for viewing purposes only. You may not use
 *AI ORCHESTRATOR v2.1 — Self-Hosted AI Assistant with Vision & Multimodal Intelligence*  
 *Built with ❤️ using FastAPI, React, and cutting-edge AI models*
 
-## 🆕 **Recent Updates (v2.3)**
+## 🆕 **Recent Updates (v2.4)**
+- 🧠 **Mandatory Planning Phase**: AI Orchestrator kini diwajibkan melakukan fase perencanaan (Arsitektur, Dependencies, Integrasi, & DoD) sebelum menulis kode aplikasi.
+- ⚙️ **App Verification Loop**: Proses pre-flight check otomatis (status server, port, HTTP, log) sebelum aplikasi ditampilkan ke *user*.
+- 👁️ **Aggressive Context Injection**: AI secara agresif mendeteksi daftar file dan status port yang berjalan secara real-time agar tidak menulis ulang file secara redundan.
+- 🛡️ **Smart Error Hinting**: Analisis & injeksi *hint* otomatis pada `<observation>` untuk error umum (mis. `EADDRINUSE`, `ENOENT`, `SyntaxError`) agar AI langsung tahu cara memperbaikinya.
+- ✅ **Strict Quality Standards**: Standarisasi mutu aplikasi (*responsive, error handling, CORS, deployment check*) sebagai *Definition of Done* pasti bagi AI.
+- ♻️ **Token Efficiency via File Cache**: Aturan cache file di memori AI untuk mencegah pembacaan `read_file` berulang-ulang, sangat menghemat pemakaian *token*.
+
+## 🆕 **Previous Updates (v2.3)**
 - 🧠 **Procedural Memory**: AI kini otomatis menyimpan "Buku Resep" dari tugas-tugas sukses sebelumnya untuk mempercepat pengerjaan tugas serupa.
 - ♻️ **Self-Correction Loop**: Validasi otomatis di *sandbox* internal. AI mengoreksi error kode atau logika sendiri sebelum memberikannya ke pengguna.
 - 👁️ **Project-Wide Awareness**: Fitur `ProjectIndexer` yang membaca seluruh struktur kode di latar belakang, membuat AI jauh lebih paham keterkaitan antar-file.
