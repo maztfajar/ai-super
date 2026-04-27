@@ -1424,25 +1424,7 @@ export default function Chat() {
 
   useEffect(() => { scrollBottom() }, [messages, streamingText])
 
-  // ── Streaming watchdog: auto-stop after 90s with no new content ──
-  const lastChunkRef = useRef(Date.now())
-  const watchdogRef  = useRef(null)
-  useEffect(() => {
-    if (streaming) {
-      lastChunkRef.current = Date.now()
-      watchdogRef.current = setInterval(() => {
-        if (Date.now() - lastChunkRef.current > 300000) {
-          console.warn('[watchdog] No stream activity for 5m — auto stopping')
-          clearInterval(watchdogRef.current)
-          stopStreaming()
-          toast.error('⏱ Koneksi AI timeout (5 menit tanpa aktivitas). Respons dihentikan otomatis.', { duration: 4000 })
-        }
-      }, 5000)
-    } else {
-      clearInterval(watchdogRef.current)
-    }
-    return () => clearInterval(watchdogRef.current)
-  }, [streaming])
+  // Watchdog dihapus sesuai permintaan: proses jangan berhenti kecuali pengguna menekan tombol berhenti
 
   // Load models + sessions
   useEffect(() => {
@@ -1465,27 +1447,60 @@ export default function Chat() {
     }
   }, [urlSessionId, currentSession?.id])
 
-  // Load session from URL
+  // Load session from URL — robust version
+  // Jika messages sudah ada di store untuk sesi yang sama → jangan fetch ulang (navigasi kembali)
+  // Jika tidak ada (pindah menu, reload) → langsung fetch dari API pakai urlSessionId
   useEffect(() => {
-    if (urlSessionId) {
-      const s = sessions.find((x) => x.id === urlSessionId)
-      // Skip reload if:
-      // 1. Already on this exact session AND messages are in store (navigated away + back)
-      // 2. Currently streaming (would wipe in-progress messages)
-      const storeMessages = useChatStore.getState().messages
-      const alreadyLoaded = currentSession?.id === urlSessionId && storeMessages.length > 0
-      const isStreaming   = useChatStore.getState().streaming
-      if (alreadyLoaded || isStreaming) return  // messages intact — nothing to do
-      if (s) loadSession(s)
-      // sessions not yet loaded but we have currentSession from store with same ID
-      else if (currentSession?.id === urlSessionId && storeMessages.length > 0) return
+    if (!urlSessionId) return
+
+    const storeMessages = useChatStore.getState().messages
+    const storeSession  = useChatStore.getState().currentSession
+    const isStreaming   = useChatStore.getState().streaming
+
+    // 1. Sudah ada messages untuk sesi ini → tidak perlu fetch ulang
+    if (storeSession?.id === urlSessionId && storeMessages.length > 0) return
+    // 2. Sedang streaming → jangan ganggu
+    if (isStreaming) return
+
+    // 3. Coba cari di sessions list kalau sudah ada
+    const s = sessions.find((x) => x.id === urlSessionId)
+    if (s) {
+      loadSession(s)
+      return
     }
+
+    // 4. Sessions list belum dimuat, tapi kita punya urlSessionId → fetch langsung dari API
+    // Ini yang terjadi saat pindah menu → kembali ke /chat/:id
+    ;(async () => {
+      setLoadingMsgs(true)
+      try {
+        const msgs = await api.getMessages(urlSessionId)
+        // Jangan override jika streaming sudah aktif saat ini
+        if (useChatStore.getState().streaming) return
+        // Set currentSession — gunakan data yang sudah ada di store kalau cocok
+        const existingSession = useChatStore.getState().currentSession
+        if (!existingSession || existingSession.id !== urlSessionId) {
+          // Cari dari sessions list yang mungkin sudah ada
+          const found = useChatStore.getState().sessions.find(x => x.id === urlSessionId)
+          useChatStore.getState().setCurrentSession(
+            found || { id: urlSessionId, title: 'Chat', platform: channelType }
+          )
+        }
+        useChatStore.getState().setMessages(msgs || [])
+      } catch {
+        // Jika gagal fetch, tidak masalah — biarkan kosong
+      } finally {
+        setLoadingMsgs(false)
+      }
+    })()
   }, [urlSessionId, sessions])
 
   async function loadSession(session) {
     // Skip if already displaying this session with messages (e.g. returning from another menu)
     const storeMessages = useChatStore.getState().messages
     const storeSession  = useChatStore.getState().currentSession
+    // Guard: jangan ganggu saat streaming aktif
+    if (useChatStore.getState().streaming) return
     if (storeSession?.id === session.id && storeMessages.length > 0) {
       // Just make sure currentSession is set correctly, messages already in store
       setCurrentSession(session)
@@ -1580,15 +1595,19 @@ export default function Chat() {
   }
 
   // Auto-reset when changing channel
+  // Hanya navigate ke sesi pertama di channel baru — JANGAN buat sesi baru otomatis
+  // (mencegah loop: channel mismatch → newSession → clearMessages → chat hilang)
   useEffect(() => {
-    if (currentSession?.id && currentSession.platform && currentSession.platform !== channelType) {
+    if (!currentSession?.id) return
+    // Hanya lakukan auto-switch jika platform BENAR-BENAR berbeda dan sudah ada di DB
+    // (bukan stub minimal yang dibuat path-4)
+    if (currentSession.platform && currentSession.platform !== channelType) {
       if (filteredSessions.length > 0) {
         navigate(`/chat/${filteredSessions[0].id}`)
-      } else {
-        newSession()
       }
+      // Jika tidak ada sesi di channel ini, biarkan saja — jangan buat sesi baru otomatis
     }
-  }, [channelType, currentSession?.platform])
+  }, [channelType])
 
   async function deleteSession(id) {
     // 1. Tandai sebagai sedang dihapus (cegah polling mengembalikannya)
@@ -1777,7 +1796,7 @@ export default function Chat() {
     setStreaming(true)
     useChatStore.getState().setStatusText('')
     clearProcessSteps()  // Reset process steps for new task
-    lastChunkRef.current = Date.now()  // Reset watchdog
+    // Reset watchdog (dihapus)
 
     // Helper: add structured process step from onProcess SSE event.
     // If event has code payload (Written action), also auto-opens artifact panel.
@@ -1797,7 +1816,7 @@ export default function Chat() {
         }
       }
 
-      lastChunkRef.current = Date.now() // Reset watchdog on process steps
+      // Reset watchdog on process steps (dihapus)
       
       useChatStore.getState().addProcessStep({
         action: data.action || 'Worked',
@@ -1822,9 +1841,8 @@ export default function Chat() {
       }
     }
 
-    // Chunk handler: reset watchdog + append text
+    // Chunk handler: append text
     const handleChunk = (chunk) => {
-      lastChunkRef.current = Date.now()
       appendStreamingText(chunk)
     }
 
@@ -1895,7 +1913,7 @@ export default function Chat() {
         (status) => useChatStore.getState().setStatusText(status),
         (procData) => handleAddProcessStep(procData)
       )
-      useChatStore.getState().setAbortRequest(() => abortFn)
+      useChatStore.getState().setAbortRequest(abortFn)
     } else {
       // chatStream(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess)
       const abortFn = api.chatStream(
@@ -1953,7 +1971,7 @@ export default function Chat() {
         (status) => useChatStore.getState().setStatusText(status),
         (procData) => handleAddProcessStep(procData)
       )
-      useChatStore.getState().setAbortRequest(() => abortFn)
+      useChatStore.getState().setAbortRequest(abortFn)
     }
     
     // Auto-focus input after sending
@@ -1991,7 +2009,7 @@ export default function Chat() {
         })
       }
     )
-    useChatStore.getState().setAbortRequest(() => abortFn)
+    useChatStore.getState().setAbortRequest(abortFn)
   }
 
   function handleKeyDown(e) {

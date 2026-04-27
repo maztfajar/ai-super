@@ -312,7 +312,14 @@ if frontend_dist.exists():
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
-        return FileResponse(str(frontend_dist / "index.html"))
+        from fastapi.responses import FileResponse
+        resp = FileResponse(str(frontend_dist / "index.html"))
+        # Pastikan browser & CDN (Cloudflare) TIDAK cache index.html
+        # agar update frontend selalu langsung terbaca tanpa hard-refresh
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
 else:
     @app.get("/")
     async def root():
