@@ -133,6 +133,21 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText }) {
   const [open, setOpen] = useState(true)
   const [expandedIdx, setExpandedIdx] = useState(null)
 
+  // Fix 4: Stale indicator — tampilkan pesan jika tidak ada step baru selama 8+ detik
+  const [staleSeconds, setStaleSeconds] = useState(0)
+  const staleRef = useRef({ count: steps.length, timer: null })
+
+  useEffect(() => {
+    if (!isStreaming) { setStaleSeconds(0); return }
+    if (steps.length !== staleRef.current.count) {
+      staleRef.current.count = steps.length
+      setStaleSeconds(0)
+      return
+    }
+    const timer = setInterval(() => setStaleSeconds(s => s + 1), 1000)
+    return () => clearInterval(timer)
+  }, [steps.length, isStreaming])
+
   if (!steps || steps.length === 0) return null
 
   const latest     = steps[steps.length - 1]
@@ -249,6 +264,14 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText }) {
                 )
               })}
             </div>
+            {isStreaming && staleSeconds >= 8 && (
+              <div className="px-3 py-2 border-t border-border/40 bg-amber-400/5 flex items-center gap-2">
+                <Loader2 size={10} className="animate-spin text-amber-400 flex-shrink-0" />
+                <span className="text-[11px] text-amber-400">
+                  Masih memproses... ({staleSeconds}s) — AI menunggu hasil tool
+                </span>
+              </div>
+            )}
             {isStreaming && onStop && (
               <div className="px-3 py-2 border-t border-border bg-bg-4">
                 <button
@@ -1818,13 +1841,16 @@ export default function Chat() {
 
       // Reset watchdog on process steps (dihapus)
       
+      // Fix 1: spread semua field dari data agar code/language ikut tersimpan
+      const { action, detail, count, ts, type, ...rest } = data
       useChatStore.getState().addProcessStep({
-        action: data.action || 'Worked',
-        detail: data.detail || '',
-        count: data.count ?? null,
-        ts: data.ts || Date.now(),
+        action: action || 'Worked',
+        detail: detail || '',
+        count: count ?? null,
+        ts: ts || Date.now(),
         _textOffset: currentOffset,
         liveContent: null,
+        ...rest,   // ← ini yang membawa code, language, truncated
       })
 
       // ── Live Artifact: auto-open panel when agent writes a file ──

@@ -9,6 +9,80 @@ import structlog
 log = structlog.get_logger()
 
 
+# ─── Foreground Server Detection ────────────────────────────────────────────
+# Commands that run a long-lived server process in the foreground.
+# If these are detected WITHOUT background markers (& or nohup), they will
+# be automatically wrapped to run in the background to prevent blocking.
+FOREGROUND_SERVER_PATTERNS = [
+    r'\bnode\s+\S+\.(?:js|mjs|cjs)\b',    # node server.js, node app.mjs
+    r'\bnpm\s+start\b',                     # npm start
+    r'\bnpm\s+run\s+(?:dev|serve|start)\b', # npm run dev/serve/start
+    r'\byarn\s+(?:start|dev)\b',            # yarn start/dev
+    r'\bpnpm\s+(?:start|dev)\b',            # pnpm start/dev
+    r'\bstreamlit\s+run\b',                  # streamlit run
+    r'\buvicorn\b',                          # uvicorn main:app
+    r'\bgunicorn\b',                         # gunicorn
+    r'\bflask\s+run\b',                      # flask run
+    r'\bserve\s+-s\b',                       # serve -s build
+    r'\bnpx\s+serve\b',                      # npx serve
+    r'\bhttp-server\b',                      # http-server
+    r'\blive-server\b',                      # live-server
+    r'\bphp\s+-S\b',                         # php -S localhost:8000
+    r'\bruby\s+\S+\.rb\b',                   # ruby app.rb (sinatra, etc.)
+    r'\bvite\s+(?:preview|dev)?\s*$',        # vite / vite dev / vite preview
+    r'\bnext\s+(?:dev|start)\b',             # next dev / next start
+]
+
+# Markers that indicate command is already backgrounded
+_BACKGROUND_MARKERS = ['&', 'nohup ', '> /dev/null', 'disown', 'setsid']
+
+def _is_foreground_server(command: str) -> bool:
+    """Check if a command would start a foreground server process that blocks."""
+    cmd_stripped = command.strip()
+    # If already backgrounded, no need to intervene
+    if any(marker in cmd_stripped for marker in _BACKGROUND_MARKERS):
+        return False
+    # Check against known server patterns
+    for pattern in FOREGROUND_SERVER_PATTERNS:
+        if re.search(pattern, cmd_stripped, re.IGNORECASE):
+            return True
+    return False
+
+def _wrap_as_background(command: str, project_base_path: str) -> tuple[str, str]:
+    """Wrap a foreground server command to run in the background.
+    Returns (wrapped_command, log_file_path)."""
+    import hashlib
+    cmd_hash = hashlib.md5(command.encode()).hexdigest()[:8]
+    log_file = os.path.join(project_base_path, f".server_{cmd_hash}.log")
+    wrapped = f"nohup {command} > {log_file} 2>&1 &"
+    return wrapped, log_file
+
+def _classify_command_timeout(command: str) -> float:
+    """Determine appropriate timeout based on command type."""
+    cmd_lower = command.lower().strip()
+    
+    # Package installation — needs long timeout
+    if any(p in cmd_lower for p in ['npm install', 'npm i ', 'npm ci',
+                                     'pip install', 'pip3 install',
+                                     'apt-get install', 'apt install',
+                                     'yarn install', 'yarn add',
+                                     'pnpm install', 'pnpm add']):
+        return 300.0
+    
+    # Build commands — moderate timeout
+    if any(p in cmd_lower for p in ['npm run build', 'yarn build', 'pnpm build',
+                                     'webpack', 'tsc ', 'vite build',
+                                     'next build', 'cargo build', 'make ']):
+        return 180.0
+    
+    # Background/server commands (already backgrounded) — just startup check
+    if cmd_lower.rstrip().endswith('&'):
+        return 15.0
+    
+    # Default — sufficient for most commands but won't hang on accidental foreground
+    return 60.0
+
+
 # ─── Port Safety System ─────────────────────────────────────────────────────
 # Ports reserved by the AI Orchestrator and critical system services.
 # Any app created by the agent MUST NOT use these ports.
@@ -169,6 +243,19 @@ async def execute_bash(command: str, session_id: str = None) -> str:
         port_warning = ""
         command, port_warning = _rewrite_port_in_command(command)
 
+        # ── Foreground Server Auto-Background ─────────────────────
+        # If the command is a foreground server (node server.js, npm start, etc.)
+        # wrap it automatically to run in background so execute_bash doesn't hang.
+        bg_log_file = None
+        was_auto_backgrounded = False
+        if _is_foreground_server(command):
+            log.info("Auto-backgrounding foreground server command", original_cmd=command[:80])
+            command, bg_log_file = _wrap_as_background(command, project_base_path)
+            was_auto_backgrounded = True
+
+        # ── Adaptive Timeout ──────────────────────────────────────
+        timeout = _classify_command_timeout(command)
+
         proc = await asyncio.create_subprocess_shell(
             command,
             stdout=asyncio.subprocess.PIPE,
@@ -203,18 +290,51 @@ async def execute_bash(command: str, session_id: str = None) -> str:
             err, err_trunc = await stderr_task
             return out, out_trunc, err, err_trunc
 
-        out, out_trunc, err, err_trunc = await asyncio.wait_for(run_with_timeout(), timeout=300.0)
+        out, out_trunc, err, err_trunc = await asyncio.wait_for(run_with_timeout(), timeout=timeout)
         
         output = f"📁 [Working Directory: {project_base_path}]\n"
         output += port_warning  # Prepend port warning if any
-        if out:
-            output += out
-            if out_trunc:
-                output += "\n...[STDOUT TRUNCATED: EXCEEDED 10000 LINES]..."
-        if err:
-            output += "\n[stderr]\n" + err
-            if err_trunc:
-                output += "\n...[STDERR TRUNCATED: EXCEEDED 10000 LINES]..."
+        
+        # ── If auto-backgrounded, read the server log for startup info ──
+        if was_auto_backgrounded and bg_log_file:
+            await asyncio.sleep(3)  # Give server time to start
+            try:
+                if os.path.exists(bg_log_file):
+                    with open(bg_log_file, 'r', errors='replace') as f:
+                        startup_log = f.read(4000)
+                    output += f"🚀 Server started in background (auto-detected foreground command).\n"
+                    output += f"📄 Log file: {bg_log_file}\n"
+                    if startup_log.strip():
+                        output += f"--- Startup Log (first 4000 chars) ---\n{startup_log}\n---\n"
+                    else:
+                        output += "(Server starting, no log output yet)\n"
+                else:
+                    output += f"🚀 Server started in background. Log file: {bg_log_file}\n"
+            except Exception as log_err:
+                output += f"🚀 Server started in background. (Could not read log: {log_err})\n"
+            # Also get the PID
+            try:
+                pid_proc = await asyncio.create_subprocess_shell(
+                    "echo $!",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    cwd=project_base_path
+                )
+                pid_out, _ = await asyncio.wait_for(pid_proc.communicate(), timeout=5)
+                pid_str = pid_out.decode().strip()
+                if pid_str:
+                    output += f"PID: {pid_str}\n"
+            except Exception:
+                pass
+        else:
+            if out:
+                output += out
+                if out_trunc:
+                    output += "\n...[STDOUT TRUNCATED: EXCEEDED 10000 LINES]..."
+            if err:
+                output += "\n[stderr]\n" + err
+                if err_trunc:
+                    output += "\n...[STDERR TRUNCATED: EXCEEDED 10000 LINES]..."
                 
         return output.strip() or "Command executed successfully with no output."
     except asyncio.TimeoutError:
@@ -222,7 +342,11 @@ async def execute_bash(command: str, session_id: str = None) -> str:
             proc.kill()
         except:
             pass
-        return "Error: Command timed out after 120 seconds."
+        return (
+            f"Error: Command timed out after {int(timeout)} seconds. "
+            f"If this is a server command, make sure to run it in the background with: "
+            f"nohup <command> > app.log 2>&1 &"
+        )
     except Exception as e:
         return f"Error executing command: {str(e)}"
 

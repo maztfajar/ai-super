@@ -65,10 +65,18 @@ Instead, inside your <thinking> tag, you MUST explicitly structure your reasonin
 **STRICT ANTI-HALLUCINATION & TOOL USAGE RULES (MANDATORY):**
 - NEVER guess or hallucinate server metrics, file contents, or system status. If asked about the system (e.g., RAM, CPU, disk, network, services), you MUST ALWAYS use the `execute_bash` tool to fetch real-time data BEFORE answering. Real-time data is your main reference.
 - ALWAYS answer questions about server status. DO NOT say "I cannot process this" or "I don't have access". Always find a way using the provided tools.
+- **ABSOLUTE BAN:** NEVER say "Saya tidak memiliki akses ke terminal", "I don't have access to the terminal", "saya tidak bisa melihat proses", or ANY variation claiming you lack tool access. You ALWAYS have access to `execute_bash`, `read_file`, `write_file`, and other tools. USE THEM.
 - If data is not immediately available, provide an estimation based on what you can gather and explicitly explain the steps/commands to get the full data.
 - Always end your server status response with a useful insight or recommendation.
 - **FORMATTING REQUIREMENT:** Your final answer regarding server status must be formatted with clear labels, firm values, and colored status indicators (e.g., 🟢 OK, 🟡 WARN, 🔴 ERROR).
-- ALWAYS USE TOOLS for data management and creation. If requested to create a document, manage files, or handle complex data structures (like a system table), DO NOT merely simulate the output in text. You MUST use `write_file` or `execute_bash` to actually materialize that data on the system.{project_instruction}
+- ALWAYS USE TOOLS for data management and creation. If requested to create a document, manage files, or handle complex data structures (like a system table), DO NOT merely simulate the output in text. You MUST use `write_file` or `execute_bash` to actually materialize that data on the system.
+
+**FOLLOW-UP & RESULT CHECK (CRITICAL):**
+When the user asks follow-up questions like "bagaimana hasilnya?", "apakah sudah selesai?", "sudah jadi?", "cek hasilnya", or similar:
+1. DO NOT answer from memory or guess. USE `execute_bash` to check the actual state (e.g., `ps aux | grep`, `curl localhost:PORT`, `ls -la project_dir/`).
+2. If a server was started, verify it's still running and accessible.
+3. If files were created, verify they exist and show their content if relevant.
+4. Give concrete, verified answers based on real tool output.{project_instruction}
 
 **PORT SAFETY (CRITICAL — NEVER VIOLATE):**
 - The AI Orchestrator runs on port 7860. Reserved ports: 7860, 6379 (Redis), 5432 (Postgres), 3306 (MySQL), 11434 (Ollama).
@@ -97,13 +105,29 @@ http://localhost:<PORT>
 
 DO NOT stop after initial creation - continue through testing and validation until successful completion.
 
-**RESUME RULE (CRITICAL — prevents wasted tokens):**
-If the user says "lanjutkan", "continue", "teruskan", "next", or similar continuation commands:
+**NON-INTERACTIVE PACKAGE INSTALL (WAJIB):**
+Semua perintah instalasi HARUS menggunakan flag non-interactive:
+- npm: `npm install --yes --no-audit --no-fund`
+- pip: `pip install -q --no-input`
+- apt: `DEBIAN_FRONTEND=noninteractive apt-get install -y`
+- yarn: `yarn install --non-interactive`
+JANGAN pernah jalankan perintah yang menunggu input user.
+
+**SMART RESUME RULE (CRITICAL — prevents wasted tokens):**
+When the user says ANY of these intent keywords:
+- CONTINUE intents: "lanjutkan", "continue", "teruskan", "next"  
+- RUN intents: "jalankan", "run", "start", "eksekusi", "execute"
+- TEST intents: "deploy", "test", "coba", "preview", "buka"
+
+You MUST follow this workflow:
 1. FIRST run `execute_bash` with `ls -la <project_dir>` to see what files already exist.
 2. THEN read key existing files (index.html, main.py, package.json, etc.) to understand the current state.
-3. ONLY create or write files that are MISSING or incomplete — NEVER re-create files that already exist and are correct.
-4. Continue from exactly where you stopped. Do NOT restart the project from scratch.
-5. If unsure what was done, check git log or file timestamps: `ls -lt <project_dir> | head -20`
+3. If project already has files:
+   - For RUN/TEST intents: Jump DIRECTLY to running/testing. DO NOT re-create files.
+   - For CONTINUE intents: Only create MISSING files. Never re-create existing ones.
+4. If starting a server, check if it's already running: `ps aux | grep <app_name>`
+5. NEVER rebuild a project from scratch if files already exist.
+
 Violating this rule wastes tokens and frustrates the user.
 
 **ABSOLUTE RULE — OUTPUT FORMAT:**
@@ -513,14 +537,17 @@ class AgentExecutor:
 
                 if is_empty_output_err and consecutive_errors <= 2:
                     log.warning("Sumopod empty output error, simplifying prompt and retrying")
-                    # Simplify: strip the heavy system prompt, keep only the last user message
+                    # Simplify prompt TAPI tetap pertahankan tool instructions agar AI tidak
+                    # kehilangan kemampuan execute_bash, read_file, dll.
                     last_user = next(
                         (m["content"] for m in reversed(agent_msgs) if m["role"] == "user"),
-                        spec_content if 'spec_content' in dir() else "Tolong jawab pertanyaan saya"
+                        "Tolong jawab pertanyaan saya"
                     )
+                    # Rebuild with minimal but tool-capable system prompt
+                    minimal_system = build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
                     agent_msgs = [
-                        {"role": "system", "content": "Anda adalah asisten AI. Jawab dengan singkat dan jelas."},
-                        {"role": "user", "content": last_user[:1000]},
+                        {"role": "system", "content": minimal_system},
+                        {"role": "user", "content": last_user[:2000]},
                     ]
                     await asyncio.sleep(1.0)
                     continue
@@ -611,10 +638,40 @@ class AgentExecutor:
                                 return await find_safe_port(args.get("preferred", 0))
                             else:
                                 return f"Unknown tool: {cmd}. Available tools: execute_bash, read_file, write_file, write_multiple_files, ask_model, web_search, find_safe_port"
-                        res = await asyncio.wait_for(_exec_tool(), timeout=90.0)
-                    except asyncio.TimeoutError:
-                        res = f"Tool {cmd} timed out after 90 seconds. The tool execution was too slow. Try a simpler command or break it into smaller steps."
-                        yield process_emitter.to_sentinel("Error", f"{cmd} timeout (90s)")
+                        # Fix 2: Heartbeat pattern — kirim status setiap 20 detik, max 10 menit
+                        HEARTBEAT_INTERVAL = 20.0
+                        MAX_TOOL_TIME = 600.0  # 10 menit cukup untuk npm install
+
+                        tool_task = asyncio.create_task(_exec_tool())
+                        elapsed = 0.0
+                        res = None
+
+                        while not tool_task.done():
+                            try:
+                                res = await asyncio.wait_for(
+                                    asyncio.shield(tool_task),
+                                    timeout=HEARTBEAT_INTERVAL
+                                )
+                                break  # selesai normal
+                            except asyncio.TimeoutError:
+                                elapsed += HEARTBEAT_INTERVAL
+                                if elapsed >= MAX_TOOL_TIME:
+                                    tool_task.cancel()
+                                    try:
+                                        await tool_task
+                                    except asyncio.CancelledError:
+                                        pass
+                                    res = f"Tool {cmd} timeout setelah {int(MAX_TOOL_TIME/60)} menit."
+                                    yield process_emitter.to_sentinel("Error", f"{cmd} timeout {int(MAX_TOOL_TIME/60)}m")
+                                    break
+                                # Kirim heartbeat → frontend tahu masih hidup
+                                yield process_emitter.to_sentinel(
+                                    "Ran",
+                                    f"{_detail[:40]} ({int(elapsed)}s)...",
+                                )
+
+                        if res is None:
+                            res = f"Tool {cmd} tidak menghasilkan output."
                     except Exception as e:
                         res = f"Error executing tool {cmd}: {str(e)}. The tool encountered an error but the process continues."
                         yield process_emitter.to_sentinel("Error", str(e)[:80])
