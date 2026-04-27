@@ -37,20 +37,36 @@ def build_agent_system_prompt(current_model: str, execution_mode: str = "executi
 
     # ── Project-Wide Awareness: Inject project context if available ──
     project_context = ""
-    if session_id:
+    if session_id and project_path:
         try:
-            import asyncio
-            from core.project_indexer import project_indexer
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # We're already in an async context, use a future
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    project_context = pool.submit(
-                        lambda: asyncio.run(project_indexer.get_project_summary(session_id))
-                    ).result(timeout=3)
+            # Baca struktur aktual dari disk, bukan dari cache
+            import subprocess
+            result = subprocess.run(
+                f"find {project_path} -type f -not -path '*/node_modules/*' "
+                f"-not -path '*/.git/*' -not -path '*/dist/*' "
+                f"| head -40 | sort",
+                shell=True, capture_output=True, text=True, timeout=5
+            )
+            if result.stdout.strip():
+                project_context = f"""
+**PROJECT STATE — FILE YANG SUDAH ADA (baca dari disk):**
+{result.stdout.strip()}
+⚠️ File-file di atas SUDAH ADA. JANGAN tulis ulang kecuali ada bug.
+Fokus HANYA pada yang belum ada atau yang perlu diperbaiki.
+"""
+            # Cek running servers
+            ports_result = subprocess.run(
+                "ss -tlnp | grep -E ':8[0-9]{3}'",
+                shell=True, capture_output=True, text=True, timeout=3
+            )
+            if ports_result.stdout.strip():
+                project_context += f"""
+**SERVERS YANG SEDANG BERJALAN:**
+{ports_result.stdout.strip()}
+⚠️ Server sudah running. Jangan start ulang kecuali diminta.
+"""
         except Exception:
-            project_context = ""
+            pass
 
     return f"""You are AI ORCHESTRATOR, an advanced autonomous agent currently running as '{current_model}'.
 CURRENT SYSTEM TIME: {current_time}. You MUST accept this as the true current date and time. Do NOT rely on your training cutoff date.
@@ -61,6 +77,31 @@ Instead, inside your <thinking> tag, you MUST explicitly structure your reasonin
 1. Plan Evaluation: What exactly does the user want within the context of this specific server/codebase?
 2. Tool Need Check: What tools can I use to verify or achieve this?
 3. Action & Review: Execute the logic, wait for <observation>, and evaluate if it succeeded.
+
+**MANDATORY APP PLANNING PHASE (sebelum write_file apapun):**
+Sebelum membuat aplikasi, kamu WAJIB menulis plan ini di dalam <thinking>:
+
+1. ARCHITECTURE DECISION:
+   - Frontend: vanilla HTML / React / Vue? Kenapa?
+   - Backend: ada atau tidak? Port berapa?
+   - Database: perlu atau tidak? Jenis?
+   - File structure lengkap (semua file yang akan dibuat)
+
+2. DEPENDENCY AUDIT:
+   - List semua npm/pip package yang dibutuhkan
+   - Cek apakah sudah terinstall: `node -e "require('express')"` 
+   - Install dulu SEBELUM menulis code
+
+3. INTEGRATION CHECK:
+   - File A import dari file B → pastikan B dibuat sebelum A
+   - Port yang dipakai tidak konflik → gunakan find_safe_port
+   - Environment variable yang dibutuhkan
+
+4. DEFINITION OF DONE:
+   - Aplikasi dianggap selesai ketika: curl http://localhost:PORT mengembalikan 200
+   - Baru boleh output %%APP_PREVIEW%% setelah verifikasi berhasil
+
+Langkah ini WAJIB, tidak boleh dilewati meski aplikasinya sederhana.
 
 **STRICT ANTI-HALLUCINATION & TOOL USAGE RULES (MANDATORY):**
 - NEVER guess or hallucinate server metrics, file contents, or system status. If asked about the system (e.g., RAM, CPU, disk, network, services), you MUST ALWAYS use the `execute_bash` tool to fetch real-time data BEFORE answering. Real-time data is your main reference.
@@ -97,6 +138,29 @@ When asked to create applications, systems, or any complex task:
 3. If it is a web application (e.g. Streamlit, React, Node.js, Python Flask/FastAPI, etc.), you MUST find a safe port using `find_safe_port` and then IMMEDIATELY START THE SERVER in the background using `execute_bash` (e.g. `nohup streamlit run app.py --server.port 8100 > app.log 2>&1 &`). Do NOT just tell the user to run it; YOU MUST RUN IT.
 4. Verify functionality and fix any issues found during testing.
 5. Provide a working example or demo.
+
+**APP VERIFICATION (WAJIB sebelum %%APP_PREVIEW%%):**
+Setelah start server, WAJIB verifikasi dalam urutan ini:
+```bash
+# 1. Tunggu server ready
+sleep 3
+
+# 2. Cek process masih hidup
+ps aux | grep -E "node|python|streamlit" | grep -v grep
+
+# 3. Cek port terbuka
+ss -tlnp | grep PORT
+
+# 4. Test HTTP response
+curl -s -o /dev/null -w "%{http_code}" http://localhost:PORT
+
+# 5. Cek log untuk error
+tail -20 app.log
+```
+Jika step 4 mengembalikan selain 200/301/302 → JANGAN output APP_PREVIEW.
+Diagnosa error dari log, perbaiki, lalu start ulang.
+Baru output APP_PREVIEW setelah curl berhasil.
+
 6. **APP PREVIEW (CRITICAL):** If you started a background server for a web application, you MUST include the following marker at the end of your `<response>` block so the user can preview it in the UI:
 %%APP_PREVIEW%%
 http://localhost:<PORT>
@@ -112,6 +176,18 @@ Semua perintah instalasi HARUS menggunakan flag non-interactive:
 - apt: `DEBIAN_FRONTEND=noninteractive apt-get install -y`
 - yarn: `yarn install --non-interactive`
 JANGAN pernah jalankan perintah yang menunggu input user.
+
+**FILE CACHE RULE (hemat token):**
+Dalam satu sesi task, jika kamu sudah membaca sebuah file:
+- Catat isinya di <thinking> dengan label [CACHED: filename]
+- JANGAN baca ulang file yang sama di iterasi berikutnya
+- Hanya baca ulang jika kamu BARU SAJA menulis perubahan ke file itu
+
+Urutan yang BENAR untuk modifikasi file:
+1. read_file (sekali saja)
+2. Analisis di <thinking>  
+3. write_file dengan konten yang sudah dimodifikasi
+4. Verifikasi dengan execute_bash (bukan read_file lagi)
 
 **SMART RESUME RULE (CRITICAL — prevents wasted tokens):**
 When the user says ANY of these intent keywords:
@@ -214,6 +290,33 @@ When modifying files in a project, you MUST consider the impact on other files.
 If you change File A and File B depends on it, you MUST also update File B.
 Always think about import/dependency relationships between files.
 {project_context}
+
+**STANDAR KUALITAS APLIKASI (wajib dipenuhi sebelum selesai):**
+
+✅ FRONTEND:
+- Responsive (mobile + desktop)
+- Loading state saat fetch data
+- Error handling — tampilkan pesan jika API gagal
+- Input validation sebelum submit
+- UI yang bersih, tidak berantakan
+
+✅ BACKEND:
+- Semua endpoint return JSON yang konsisten
+- Error response dengan status code yang tepat (400, 404, 500)
+- CORS dikonfigurasi jika frontend dan backend beda port
+- Environment variable untuk config sensitif
+
+✅ INTEGRASI:
+- Frontend bisa konek ke backend (tidak ada CORS error)  
+- Data flow end-to-end berfungsi
+- Tidak ada console.error atau Python traceback saat normal use
+
+✅ DEPLOYMENT CHECK:
+- `curl http://localhost:PORT` → 200 OK
+- `curl http://localhost:PORT/api/health` → {{"status": "ok"}}
+- Server berjalan di background dengan PID tercatat
+
+Jika ada yang belum terpenuhi, JANGAN bilang selesai. Perbaiki dulu.
 """
 
 
@@ -709,7 +812,22 @@ class AgentExecutor:
                         if n > 1:
                             yield process_emitter.to_sentinel("Found", f"{n} lines", count=n)
                             
-                    obs_text = f"\n<observation>\n{res}\n</observation>\n"
+                    # Klasifikasi error untuk bantu model analisis
+                    error_hint = ""
+                    if "ENOENT" in str(res) or "No such file" in str(res):
+                        error_hint = "\n[HINT: File/direktori tidak ditemukan. Cek path dan buat direktori dulu dengan mkdir -p]"
+                    elif "EADDRINUSE" in str(res) or "address already in use" in str(res):
+                        error_hint = "\n[HINT: Port sudah dipakai. Gunakan find_safe_port atau kill proses lama]"
+                    elif "MODULE_NOT_FOUND" in str(res) or "ModuleNotFoundError" in str(res):
+                        error_hint = "\n[HINT: Package belum terinstall. Jalankan npm install atau pip install dulu]"
+                    elif "SyntaxError" in str(res) or "IndentationError" in str(res):
+                        error_hint = "\n[HINT: Ada syntax error di kode. Baca file yang bermasalah lalu perbaiki]"
+                    elif "Permission denied" in str(res):
+                        error_hint = "\n[HINT: Permission error. Cek dengan ls -la dan gunakan chmod atau sudo jika perlu]"
+                    elif "connection refused" in str(res).lower():
+                        error_hint = "\n[HINT: Server belum ready atau crash. Cek log dengan tail -30 app.log]"
+
+                    obs_text = f"\n<observation>\n{res}{error_hint}\n</observation>\n"
                     
                     # Only store the tool call in history, without the pre-tool thinking text
                     agent_msgs.append({"role": "assistant", "content": f"<tool>{tool_content}</tool>"})
