@@ -96,7 +96,7 @@ export const api = {
   // ── Chat ─────────────────────────────────────────────────
   createSession: (title) => req('POST', '/chat/sessions', { title }),
   listSessions:  ()      => req('GET', '/chat/sessions?t=' + Date.now()),
-  getMessages:   (id)    => req('GET',  '/chat/sessions/' + id + '/messages'),
+  getMessages:   (id)    => req('GET',  '/chat/sessions/' + id + '/messages?t=' + Date.now()),
   getNewMessages:(id, afterTs) => req('GET', '/chat/sessions/' + id + '/messages/new' + (afterTs ? '?after_ts=' + encodeURIComponent(afterTs) : '')),
   deleteSession: (id)    => req('DELETE', '/chat/sessions/' + id),
   exportChat:    async (id, format, msgIds) => {

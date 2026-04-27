@@ -311,7 +311,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             # Add timeout wrapper for orchestrator processing
             chunk_count = 0
             async def process_with_timeout():
-                nonlocal chunk_count, full_response
+                nonlocal chunk_count, full_response, status_msg_id
                 try:
                     async for event in orchestrator.process(
                         message=text,

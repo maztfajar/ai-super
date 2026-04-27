@@ -609,16 +609,31 @@ async def restart_server(user: User = Depends(get_current_user)):
         for k, v in env.items():
             os.environ[k] = v
 
+        # Spawn detached process to handle restart properly (kills old, starts new)
         import subprocess
-        log.info("Restart requested via pkill uvicorn (systemd will handle the reboot)")
-        try:
-            subprocess.run(["pkill", "-f", "uvicorn main:app"])
-        except Exception:
-            pass
+        import os
+        from pathlib import Path
         
-        # Fallback
-        import os, signal
-        os.kill(os.getpid(), signal.SIGTERM)
+        script_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "start.sh"
+        if script_path.exists():
+            log.info("Spawning detached bash script to restart the server")
+            cmd = f"sleep 1; pkill -f 'uvicorn main:app'; sleep 1; bash '{script_path}' &"
+            subprocess.Popen(
+                cmd,
+                shell=True,
+                cwd=str(script_path.parent.parent),
+                preexec_fn=os.setsid,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        else:
+            log.info("Restart requested via pkill uvicorn (fallback)")
+            try:
+                subprocess.run(["pkill", "-f", "uvicorn main:app"])
+            except Exception:
+                pass
+            import signal
+            os.kill(os.getpid(), signal.SIGTERM)
 
     asyncio.create_task(do_restart())
     return {"status": "restarting", "message": "Server restart dalam 1 detik..."}

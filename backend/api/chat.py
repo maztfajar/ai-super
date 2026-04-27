@@ -208,11 +208,18 @@ async def chat_send(
 
 
     # Get or create session
-    if req.session_id:
+    if req.session_id and not req.session_id.startswith("new-"):
         session = await db.get(ChatSession, req.session_id)
         if not session:
-            raise HTTPException(404, "Session not found")
+            # Sesi tidak ditemukan di DB (mungkin URL custom atau sudah terhapus)
+            # Buat sesi baru dengan ID tersebut agar UI tetap sinkron dengan URL
+            platform = req.channel if req.channel in ["web", "telegram", "whatsapp"] else "web"
+            session = ChatSession(id=req.session_id, user_id=user.id, title=req.message[:50], platform=platform)
+            db.add(session)
+            await db.commit()
+            await db.refresh(session)
     else:
+        # Jika session_id kosong atau dimulai dengan 'new-', buat sesi baru dengan UUID otomatis
         platform = req.channel if req.channel in ["web", "telegram", "whatsapp"] else "web"
         session = ChatSession(user_id=user.id, title=req.message[:50], platform=platform)
         db.add(session)

@@ -2362,7 +2362,10 @@ export default function Chat() {
               streamingText={streamingText}
             />
           )}
-          {!streaming && lastProcessSteps && lastProcessSteps.length > 0 && (
+          {/* Hanya tampilkan lastProcessSteps jika proses BENAR-BENAR kompleks
+               (ada step selain Thinking/Thought — artinya AI menjalankan tool/kode) */}
+          {!streaming && lastProcessSteps && lastProcessSteps.length > 0 &&
+            lastProcessSteps.some(s => s.action && s.action !== 'Thinking' && s.action !== 'Thought') && (
             <ProcessStepsPanel
               steps={lastProcessSteps}
               isStreaming={false}
