@@ -276,6 +276,47 @@ async def chat_send(
         final_model = req.model or "orchestrator"
         thinking_steps = []  # Collect all status messages for thinking section
         error_occurred = False
+        _saved_to_db = False
+
+        # Helper function to save response to DB
+        async def save_to_db_if_needed():
+            nonlocal _saved_to_db
+            if _saved_to_db or not full_response.strip():
+                return
+            try:
+                from db.database import AsyncSessionLocal
+                from datetime import datetime, timezone
+                async with AsyncSessionLocal() as save_db:
+                    # Implement retry logic for WAL locks
+                    for attempt in range(3):
+                        try:
+                            ai_msg = Message(
+                                session_id=session.id,
+                                user_id=user.id,
+                                role="assistant",
+                                content=full_response,
+                                model=final_model,
+                                rag_sources=json.dumps(rag_sources) if rag_sources else None,
+                                thinking_process="\n".join(thinking_steps) if thinking_steps else None,
+                            )
+                            save_db.add(ai_msg)
+
+                            sess = await save_db.get(ChatSession, session.id)
+                            if sess:
+                                if sess.title == "New Chat" and req.message:
+                                    sess.title = req.message[:50]
+                                sess.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                                save_db.add(sess)
+                            
+                            await save_db.commit()
+                            _saved_to_db = True
+                            break
+                        except Exception as dberr:
+                            if attempt == 2:
+                                raise dberr
+                            await asyncio.sleep(0.5)
+            except Exception as e:
+                log.error("Failed to save AI response in finally block", error=str(e))
 
         # ─── ANTI-BUFFERING PADDING ────────────────────────────
         # VPS reverse proxies (Nginx/Cloudflare) often buffer SSE chunks until 4KB.
@@ -340,32 +381,8 @@ async def chat_send(
                     return  # Stop generator
 
                 elif event.type == "done":
-                    # ─── Save response & update session BEFORE yielding done ───
-                    try:
-                        from db.database import AsyncSessionLocal
-                        from datetime import datetime, timezone
-                        async with AsyncSessionLocal() as save_db:
-                            ai_msg = Message(
-                                session_id=session.id,
-                                user_id=user.id,
-                                role="assistant",
-                                content=full_response,
-                                model=final_model,
-                                rag_sources=json.dumps(rag_sources) if rag_sources else None,
-                                thinking_process="\n".join(thinking_steps) if thinking_steps else None,
-                            )
-                            save_db.add(ai_msg)
-
-                            sess = await save_db.get(ChatSession, session.id)
-                            if sess:
-                                if sess.title == "New Chat":
-                                    sess.title = req.message[:50]
-                                sess.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-                                save_db.add(sess)
-                            
-                            await save_db.commit()
-                    except Exception as e:
-                        log.error("Failed to save AI response in done event", error=str(e))
+                    # DB save logic has been moved to the finally block to ensure it always runs.
+                    await save_to_db_if_needed()
 
                     # Pass through done event with orchestrator metadata + thinking process
                     done_payload = {"type": "done", "sources": rag_sources}
@@ -439,17 +456,21 @@ async def chat_send(
             thinking_steps.append(f"❌ Error [{err_id}]: {err_str[:100]}")
 
 
-        # ─── Update memory ────────────────────────────────────
-        try:
-            await memory_manager.save_chat_to_redis(session.id, "user", req.message)
-            await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
-        except Exception as e:
-            log.warning("Failed to update memory", error=str(e)[:100])
-            # Continue anyway - don't fail the chat if memory update fails
+        finally:
+            # FORCE COMIT TO DB: Always runs even if CancelledError or TimeoutError
+            await save_to_db_if_needed()
 
-        # Ensure done event if not already sent and no error
-        if not error_occurred and not full_response.startswith("Error"):
-            pass  # done already yielded by orchestrator
+            # ─── Update memory ────────────────────────────────────
+            try:
+                await memory_manager.save_chat_to_redis(session.id, "user", req.message)
+                await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
+            except Exception as e:
+                log.warning("Failed to update memory", error=str(e)[:100])
+                # Continue anyway - don't fail the chat if memory update fails
+
+            # Ensure done event if not already sent and no error
+            if not error_occurred and not full_response.startswith("Error"):
+                pass  # done already yielded by orchestrator
 
         # ─── Forward AI Response to Telegram (If applicable) ───
         if is_telegram_sync and getattr(user, "telegram_chat_id", None) and not error_occurred:
