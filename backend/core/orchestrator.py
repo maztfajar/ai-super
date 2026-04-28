@@ -106,7 +106,9 @@ class Orchestrator:
                     message_preview=message[:100])
 
         # ─── PHASE 1: PREPROCESSING ──────────────────────────────
-        yield OrchestratorEvent.proc("Thinking")
+        yield OrchestratorEvent.proc("Thinking", "", extra={
+            "result": f"Menganalisa: {message[:200]}"
+        })
         yield OrchestratorEvent("status", "🔍 Menganalisa permintaan...")
 
         try:
@@ -237,7 +239,6 @@ class Orchestrator:
             return
 
         # ─── PHASE 2: TASK DECOMPOSITION ─────────────────────────
-        yield OrchestratorEvent.proc("Planned", "memecah tugas menjadi sub-tasks")
         yield OrchestratorEvent("status", "📋 Memecah tugas menjadi sub-tasks...")
 
         try:
@@ -249,6 +250,11 @@ class Orchestrator:
                 task_type=spec.primary_intent,
                 required_skills=spec.intents,
             )]
+
+        subtask_list = "\n".join([f"- {st.description[:80]}" for st in subtasks])
+        yield OrchestratorEvent.proc("Planned", "memecah tugas menjadi sub-tasks", extra={
+            "result": f"Sub-tasks yang dibuat:\n{subtask_list}"
+        })
 
         # ─── PHASE 3: BUILD EXECUTION DAG ────────────────────────
         dag = dag_builder.build(subtasks)
@@ -276,7 +282,13 @@ class Orchestrator:
                 f"  → {agent_name}: {st.description[:80]}...")
 
         # ─── PHASE 5: EXECUTE ─────────────────────────────────────
-        yield OrchestratorEvent.proc("Worked", f"{len(subtasks)} sub-tasks", count=len(subtasks))
+        agent_assignments = "\n".join([
+            f"- {st.description[:60]} → {st.assigned_agent or 'general'}"
+            for st in assigned_subtasks
+        ])
+        yield OrchestratorEvent.proc("Worked", f"{len(subtasks)} sub-tasks", count=len(subtasks), extra={
+            "result": f"Agent assignments:\n{agent_assignments}"
+        })
         yield OrchestratorEvent("status", "⚡ Mengeksekusi sub-tasks...")
 
         results: List[SubTaskResult] = []

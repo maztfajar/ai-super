@@ -175,6 +175,11 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenAr
       return { content: step.code, isLive: false }
     }
 
+    // Step punya result (dari bash, search, orchestrator)
+    if (step.result && step.result.trim()) {
+      return { content: step.result, isLive: false }
+    }
+
     return null
   }
 
@@ -1948,6 +1953,7 @@ export default function Chat() {
     // Helper: add structured process step from onProcess SSE event.
     // If event has code payload (Written action), also auto-opens artifact panel.
     const handleAddProcessStep = (data) => {
+      console.log('📊 Process step data:', JSON.stringify(data, null, 2))  // Debug log
       const currentOffset = useChatStore.getState().streamingText.length
       const steps = useChatStore.getState().processSteps
 
