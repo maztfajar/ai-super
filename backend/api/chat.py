@@ -340,6 +340,33 @@ async def chat_send(
                     return  # Stop generator
 
                 elif event.type == "done":
+                    # ─── Save response & update session BEFORE yielding done ───
+                    try:
+                        from db.database import AsyncSessionLocal
+                        from datetime import datetime, timezone
+                        async with AsyncSessionLocal() as save_db:
+                            ai_msg = Message(
+                                session_id=session.id,
+                                user_id=user.id,
+                                role="assistant",
+                                content=full_response,
+                                model=final_model,
+                                rag_sources=json.dumps(rag_sources) if rag_sources else None,
+                                thinking_process="\n".join(thinking_steps) if thinking_steps else None,
+                            )
+                            save_db.add(ai_msg)
+
+                            sess = await save_db.get(ChatSession, session.id)
+                            if sess:
+                                if sess.title == "New Chat":
+                                    sess.title = req.message[:50]
+                                sess.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                                save_db.add(sess)
+                            
+                            await save_db.commit()
+                    except Exception as e:
+                        log.error("Failed to save AI response in done event", error=str(e))
+
                     # Pass through done event with orchestrator metadata + thinking process
                     done_payload = {"type": "done", "sources": rag_sources}
                     if event.data:
@@ -347,6 +374,7 @@ async def chat_send(
                     # Include thinking process for expandable thinking section
                     done_payload["thinking_process"] = "\n".join(thinking_steps) if thinking_steps else ""
                     yield f"data: {json.dumps(done_payload)}\n\n"
+                    return # Exit generator cleanly
 
                 elif event.type == "error":
                     yield event.to_sse()
@@ -410,32 +438,6 @@ async def chat_send(
             error_occurred = True
             thinking_steps.append(f"❌ Error [{err_id}]: {err_str[:100]}")
 
-        # ─── Save response & update session ───────────────────
-        try:
-            from db.database import AsyncSessionLocal
-            async with AsyncSessionLocal() as save_db:
-                ai_msg = Message(
-                    session_id=session.id,
-                    user_id=user.id,
-                    role="assistant",
-                    content=full_response[:5000],  # Limit to 5000 chars to prevent DB issues
-                    model=final_model,
-                    rag_sources=json.dumps(rag_sources) if rag_sources else None,
-                    thinking_process="\n".join(thinking_steps) if thinking_steps else None,
-                )
-                save_db.add(ai_msg)
-
-                sess = await save_db.get(ChatSession, session.id)
-                if sess:
-                    if sess.title == "New Chat":
-                        sess.title = req.message[:60]
-                    sess.model_used = final_model
-                    sess.updated_at = datetime.utcnow()
-                    save_db.add(sess)
-                await save_db.commit()
-        except Exception as e:
-            log.warning("Failed to save message", error=str(e)[:100])
-            # Continue anyway - don't fail the chat if message save fails
 
         # ─── Update memory ────────────────────────────────────
         try:

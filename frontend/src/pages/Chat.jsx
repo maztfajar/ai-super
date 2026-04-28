@@ -1457,7 +1457,12 @@ export default function Chat() {
 
   // Derived: Filter sessions by currently selected channel
   const channelType = connectedChannels.find(c => c.id === selectedChannel)?.type || 'web'
-  const filteredSessions = sessions.filter(s => (s.platform || 'web') === channelType)
+  const filteredSessions = sessions.filter(s => {
+    const sType = s.platform || 'web'
+    // Relaxed matching: web and null/empty are treated as the same
+    if (channelType === 'web') return !sType || sType === 'web'
+    return sType === channelType
+  })
 
   // ── TTS Logic ──
   const handleSpeak = useCallback((msg) => {
@@ -1491,6 +1496,12 @@ export default function Chat() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Artifacts Panel state
   const [artifact, setArtifact] = useState({ open: false, code: '', language: '', title: '' })
+  
+  // Auto-hide process panel setelah streaming selesai
+  const [showLastSteps, setShowLastSteps] = useState(false)
+  const [fadingOut, setFadingOut] = useState(false)
+  const hideStepsTimerRef = useRef(null)
+
   const openArtifact = useCallback((code, language) => {
     setArtifact({ open: true, code, language, title: '' })
   }, [])
@@ -1805,6 +1816,18 @@ export default function Chat() {
     clearStreaming()
     setStatusText('')
     useChatStore.getState().finalizeProcessSteps()  // Keep steps visible after stop
+    
+    // Auto-hide timer
+    setShowLastSteps(true)
+    if (hideStepsTimerRef.current) clearTimeout(hideStepsTimerRef.current)
+    hideStepsTimerRef.current = setTimeout(() => {
+      setFadingOut(true)
+      setTimeout(() => {
+        setShowLastSteps(false)
+        setFadingOut(false)
+      }, 400)
+    }, 7600)
+
     toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
   }
 
@@ -2022,11 +2045,26 @@ export default function Chat() {
             thinking_process: done.thinking_process || null,
             created_at: new Date().toISOString(),
           })
-          api.listSessions().then((s) => {
-            const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-            setSessions(safe)
-          }).catch(() => {})
+          // Delay refresh slightly to ensure backend commit is fully visible (SQLite multi-worker safety)
+          setTimeout(() => {
+            api.listSessions().then((s) => {
+              const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+              setSessions(safe)
+            }).catch(() => {})
+          }, 800)
           useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
+          
+          // Auto-hide timer
+          setShowLastSteps(true)
+          if (hideStepsTimerRef.current) clearTimeout(hideStepsTimerRef.current)
+          hideStepsTimerRef.current = setTimeout(() => {
+            setFadingOut(true)
+            setTimeout(() => {
+              setShowLastSteps(false)
+              setFadingOut(false)
+            }, 400)
+          }, 7600)
+
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
           autoOpenAppPreview(fullText)  // Auto-open preview if app was built
@@ -2075,11 +2113,26 @@ export default function Chat() {
             thinking_process: done.thinking_process || null,
             created_at: new Date().toISOString(),
           })
-          api.listSessions().then((s) => {
-            const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-            setSessions(safe)
-          }).catch(() => {})
+          // Delay refresh slightly to ensure backend commit is fully visible (SQLite multi-worker safety)
+          setTimeout(() => {
+            api.listSessions().then((s) => {
+              const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+              setSessions(safe)
+            }).catch(() => {})
+          }, 800)
           useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
+          
+          // Auto-hide timer
+          setShowLastSteps(true)
+          if (hideStepsTimerRef.current) clearTimeout(hideStepsTimerRef.current)
+          hideStepsTimerRef.current = setTimeout(() => {
+            setFadingOut(true)
+            setTimeout(() => {
+              setShowLastSteps(false)
+              setFadingOut(false)
+            }, 400)
+          }, 7600)
+
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
           autoOpenAppPreview(fullText)  // Auto-open preview if app was built
@@ -2432,7 +2485,57 @@ export default function Chat() {
             />
           ))}
 
-          {/* Streaming bubble dengan tombol stop */}
+          {/* ── PROCESS STEPS PANEL — selalu di atas jawaban ── */}
+          {/* Live: tampil saat streaming */}
+          {streaming && processSteps.length > 0 && (
+            <div
+              onClickCapture={(e) => {
+                if (!e.target.closest('[data-allow-propagation]')) {
+                  e.stopPropagation()
+                }
+              }}
+              onMouseDownCapture={(e) => {
+                if (!e.target.closest('[data-allow-propagation]')) {
+                  e.stopPropagation()
+                }
+              }}
+            >
+              <ProcessStepsPanel
+                steps={processSteps}
+                isStreaming={streaming}
+                onStop={stopStreaming}
+                streamingText={streamingText}
+                onOpenArtifactCard={openArtifactCard}
+              />
+            </div>
+          )}
+
+          {/* After done: tampil singkat lalu hilang otomatis */}
+          {!streaming && showLastSteps && lastProcessSteps && lastProcessSteps.length > 0 &&
+            lastProcessSteps.some(s => s.action && s.action !== 'Thinking' && s.action !== 'Thought') && (
+            <div className={clsx("relative", fadingOut && "process-panel-fadeout")}>
+              <ProcessStepsPanel
+                steps={lastProcessSteps}
+                isStreaming={false}
+                onStop={null}
+                streamingText=""
+                onOpenArtifactCard={openArtifactCard}
+              />
+              <div className="flex items-center justify-end px-10 pb-1 gap-2 animate-fade">
+                <span className="text-[10px] text-ink-3 opacity-50">
+                  Otomatis hilang dalam beberapa detik
+                </span>
+                <button
+                  onClick={() => setShowLastSteps(false)}
+                  className="text-[10px] text-ink-3 hover:text-danger transition-colors underline"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── STREAMING BUBBLE — jawaban di bawah thinking ── */}
           {streaming && streamingText && (
             <Bubble
               msg={{ role: 'assistant', content: streamingText, model: actualModel || selectedOrchestrator, created_at: new Date().toISOString() }}
@@ -2441,67 +2544,6 @@ export default function Chat() {
               onSpeak={handleSpeak}
               speakingId={speakingId}
               onOpenArtifact={openArtifact}
-              onOpenArtifactCard={openArtifactCard}
-            />
-          )}
-
-          {/* Pending Confirmation UI (HIDDEN for vision tasks) */}
-          {false && pendingConfirmation && (
-            <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
-              <div className="flex gap-4">
-                <div className="w-8 h-8 flex-shrink-0 bg-warn/20 border border-warn/50 rounded-lg flex items-center justify-center">
-                  <span className="text-warn text-lg">⚠️</span>
-                </div>
-                <div className="flex-1 min-w-0 bg-bg-2 border border-warn/30 rounded-2xl rounded-tl-sm px-4 py-3 shadow-lg shadow-black/20">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-warn">VPS Execution Request</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-warn/20 text-warn tracking-widest">{pendingConfirmation.risk} RISK</span>
-                  </div>
-                  <div className="text-xs text-ink-2 mb-3">
-                    <p className="font-semibold text-ink mb-1">Tujuan Perintah:</p>
-                    <p>{pendingConfirmation.purpose}</p>
-                  </div>
-                  <div className="bg-bg-3 p-2.5 rounded border border-border-2 font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap">
-                    {pendingConfirmation.command}
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => approveExecution(pendingConfirmation)}
-                      className="flex-1 bg-success hover:bg-success/80 text-white font-medium py-2 rounded-lg text-xs shadow-md transition-all"
-                    >
-                      ✓ Setujui Eksekusi
-                    </button>
-                    <button
-                      onClick={() => setPendingConfirmation(null)}
-                      className="flex-1 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink font-medium py-2 border border-border rounded-lg text-xs transition-all"
-                    >
-                      ✗ Batalkan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Process Steps Panel — live during streaming, review-able after */}
-          {streaming && processSteps.length > 0 && (
-            <ProcessStepsPanel
-              steps={processSteps}
-              isStreaming={streaming}
-              onStop={stopStreaming}
-              streamingText={streamingText}
-              onOpenArtifactCard={openArtifactCard}
-            />
-          )}
-          {/* Hanya tampilkan lastProcessSteps jika proses BENAR-BENAR kompleks
-               (ada step selain Thinking/Thought — artinya AI menjalankan tool/kode) */}
-          {!streaming && lastProcessSteps && lastProcessSteps.length > 0 &&
-            lastProcessSteps.some(s => s.action && s.action !== 'Thinking' && s.action !== 'Thought') && (
-            <ProcessStepsPanel
-              steps={lastProcessSteps}
-              isStreaming={false}
-              onStop={null}
-              streamingText=""
               onOpenArtifactCard={openArtifactCard}
             />
           )}

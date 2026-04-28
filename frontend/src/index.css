@@ -289,3 +289,13 @@ body {
   .mobile-safe-left { padding-left: env(safe-area-inset-left); }
   .mobile-safe-right { padding-right: env(safe-area-inset-right); }
 }
+
+/* Fade out animation untuk process steps panel */
+@keyframes fadeOutDown {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+.process-panel-fadeout {
+  animation: fadeOutDown 0.4s ease-out forwards;
+}

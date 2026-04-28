@@ -54,7 +54,14 @@ class Settings(BaseSettings):
     ALLOW_PUBLIC_REGISTER: bool = False
 
     # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./data/ai-orchestrator.db"
+    @property
+    def DATABASE_URL(self) -> str:
+        # Selalu gunakan absolute path ke data/ai-orchestrator.db di root project
+        root = Path(__file__).resolve().parent.parent.parent
+        db_path = root / "data" / "ai-orchestrator.db"
+        # Pastikan folder exists
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        return f"sqlite+aiosqlite:///{db_path}"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -87,7 +94,11 @@ class Settings(BaseSettings):
     DEFAULT_MODEL: str = "ollama/llama3.1"
 
     # RAG
-    CHROMA_PERSIST_DIR: str = "./data/chroma_db"
+    @property
+    def CHROMA_PERSIST_DIR(self) -> str:
+        root = Path(__file__).resolve().parent.parent.parent
+        return str(root / "data" / "chroma_db")
+
     RAG_DOCUMENTS_DIR: str = "../rag_documents"
     RAG_TIMEOUT_SECONDS: int = 45
     EMBEDDING_PROVIDER: str = "sumopod"
@@ -113,7 +124,11 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str = "admin@ai-orchestrator.local"
 
     # Files
-    UPLOAD_DIR: str = "./data/uploads"
+    @property
+    def UPLOAD_DIR(self) -> str:
+        root = Path(__file__).resolve().parent.parent.parent
+        return str(root / "data" / "uploads")
+
     MAX_UPLOAD_SIZE_MB: int = 50
     ALLOWED_EXTENSIONS: str = "pdf,docx,txt,csv,md,json,xlsx,xls,pptx,ppt"
 
@@ -132,7 +147,10 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "IMPORTANT"
-    LOG_FILE: str = "./data/logs/ai-orchestrator.log"
+    @property
+    def LOG_FILE(self) -> str:
+        root = Path(__file__).resolve().parent.parent.parent
+        return str(root / "data" / "logs" / "ai-orchestrator.log")
 
     # Tunnel / Cloudflare
     CLOUDFLARE_TUNNEL_ID: Optional[str] = None

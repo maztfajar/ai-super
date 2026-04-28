@@ -438,8 +438,7 @@ class ResponseFilter:
                         
                     self.pending = self.pending[idx:]
                     if tag_type == "thinking":
-                        if self.emit_thinking:
-                            output += '\n\n---\n*🤔 Proses Berpikir:*\n'
+                        # NEVER emit thinking as raw text — capture silently and send as process event
                         self._thinking_buffer = ""  # reset buffer untuk thinking baru
                         self.pending = self.pending[tag_len:]
                         self.state = "THINKING"
@@ -472,25 +471,21 @@ class ResponseFilter:
                     break
                 
                 if end_think != -1:
-                    # Thinking selesai — capture seluruh konten
+                    # Thinking selesai — capture seluruh konten (SILENT, never emit as text)
                     thinking_text = self.pending[:end_think]
                     self._thinking_buffer += thinking_text
                     # Simpan ke _thinking_ready agar bisa diambil executor
                     self._thinking_ready = self._thinking_buffer.strip()
                     self._thinking_buffer = ""
-                    
-                    if self.emit_thinking:
-                        output += thinking_text
-                        output += '\n---\n\n'
+                    # TIDAK emit thinking ke output — hanya capture
                     self.pending = self.pending[end_think + len(self.current_think_tag):]
                     self.state = "WAITING"
                 else:
                     safe = len(self.pending) - 15
                     if safe > 0:
                         chunk_part = self.pending[:safe]
-                        self._thinking_buffer += chunk_part  # accumulate
-                        if self.emit_thinking:
-                            output += chunk_part
+                        self._thinking_buffer += chunk_part  # accumulate (SILENT)
+                        # TIDAK emit ke output
                         self.pending = self.pending[safe:]
                     break
 
@@ -518,16 +513,12 @@ class ResponseFilter:
 
     def flush(self) -> str:
         if self.state == "THINKING" and self.pending:
-            # Flush sisa thinking
+            # Flush sisa thinking — capture silently
             self._thinking_buffer += self.pending
             self._thinking_ready = self._thinking_buffer.strip()
             self._thinking_buffer = ""
-            if self.emit_thinking:
-                res = self.pending + '\n---\n\n'
-            else:
-                res = ""
             self.pending = ""
-            return res
+            return ""  # Never emit thinking as raw text
         elif self.state == "RESPONSE" and self.pending:
             res = self.pending
             self.pending = ""

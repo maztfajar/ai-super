@@ -2,13 +2,23 @@ from sqlmodel import SQLModel
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from typing import AsyncGenerator
+import sqlalchemy as sa
 from core.config import settings
 
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     future=True,
+    # Enable WAL mode for better concurrency with multiple workers
+    connect_args={"check_same_thread": False},
 )
+
+@sa.event.listens_for(engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
+    cursor.close()
 
 AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
@@ -63,6 +73,9 @@ def _safe_migrate(conn):
         if "project_metadata" not in existing:
             conn.execute(sa.text("ALTER TABLE chat_sessions ADD COLUMN project_metadata JSON"))
             print("  ✓ Migrasi: kolom project_metadata ditambahkan ke tabel chat_sessions")
+        if "platform" not in existing:
+            conn.execute(sa.text("ALTER TABLE chat_sessions ADD COLUMN platform TEXT DEFAULT 'web'"))
+            print("  ✓ Migrasi: kolom platform ditambahkan ke tabel chat_sessions")
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
