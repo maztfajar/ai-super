@@ -159,25 +159,17 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenAr
   const getStepContent = (step, stepIdx) => {
     const isLastStep = stepIdx === steps.length - 1
 
-    // Untuk step terakhir yang sedang streaming — pakai streamingText
+    // Live streaming untuk step terakhir yang sedang aktif
     if (isLastStep && isStreaming && step._textOffset != null && streamingText) {
       const live = streamingText.substring(step._textOffset)
       if (live.trim()) return { content: live, isLive: true }
     }
 
-    // Step punya liveContent tersimpan (kode Written, hasil bash, dll)
-    if (step.liveContent && step.liveContent.trim()) {
-      return { content: step.liveContent, isLive: false }
-    }
+    // Cek semua field konten — urutan prioritas
+    const content = step.liveContent || step.code || step.result
 
-    // Step punya code (dari Written event)
-    if (step.code && step.code.trim()) {
-      return { content: step.code, isLive: false }
-    }
-
-    // Step punya result (dari bash, search, orchestrator)
-    if (step.result && step.result.trim()) {
-      return { content: step.result, isLive: false }
+    if (content && content.trim()) {
+      return { content: content.trim(), isLive: false }
     }
 
     return null
@@ -1953,11 +1945,11 @@ export default function Chat() {
     // Helper: add structured process step from onProcess SSE event.
     // If event has code payload (Written action), also auto-opens artifact panel.
     const handleAddProcessStep = (data) => {
-      console.log('📊 Process step data:', JSON.stringify(data, null, 2))  // Debug log
+      console.log(`Step "${data.action}" hasContent:`, !!(data.code || data.result), 'data:', data)
       const currentOffset = useChatStore.getState().streamingText.length
       const steps = useChatStore.getState().processSteps
 
-      // Finalize content slice untuk step sebelumnya
+      // Finalize liveContent untuk step sebelumnya
       if (steps.length > 0) {
         const lastStep = steps[steps.length - 1]
         if (lastStep._textOffset != null && lastStep.liveContent == null) {
@@ -1969,16 +1961,12 @@ export default function Chat() {
         }
       }
 
+      // Destructure semua field, simpan sisanya di rest
       const { action, detail, count, ts, type, ...rest } = data
 
-      // Buat preview content dari data tool
-      let previewContent = null
-      if (rest.code) {
-        // Written step — tampilkan kode yang ditulis
-        previewContent = rest.code
-      } else if (rest.result) {
-        previewContent = rest.result
-      }
+      // Tentukan konten yang akan ditampilkan di toggle
+      // Prioritas: code (Written) > result (tool output) > liveContent (streaming)
+      const previewContent = rest.code || rest.result || null
 
       useChatStore.getState().addProcessStep({
         action: action || 'Worked',
@@ -1986,11 +1974,12 @@ export default function Chat() {
         count: count ?? null,
         ts: ts || Date.now(),
         _textOffset: currentOffset,
-        liveContent: previewContent,  // ← langsung isi jika ada
+        liveContent: previewContent,  // langsung isi jika ada konten
+        // spread semua field extra: code, language, result, truncated, dll
         ...rest,
       })
 
-      // Auto-open artifact untuk Written action
+      // Auto-open artifact panel untuk Written action
       if (action === 'Written' && rest.code && detail) {
         const lang = (rest.language || detail.split('.').pop() || 'txt').toLowerCase()
         const filename = detail.split('/').pop() || detail

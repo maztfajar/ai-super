@@ -107,7 +107,7 @@ class Orchestrator:
 
         # ─── PHASE 1: PREPROCESSING ──────────────────────────────
         yield OrchestratorEvent.proc("Thinking", "", extra={
-            "result": f"Menganalisa: {message[:200]}"
+            "result": f"Menganalisa pesan: \"{message[:150]}...\"\nMenentukan intent dan kompleksitas..."
         })
         yield OrchestratorEvent("status", "🔍 Menganalisa permintaan...")
 
@@ -128,6 +128,15 @@ class Orchestrator:
                 is_simple=True,
                 primary_intent="general",
             )
+
+        yield OrchestratorEvent.proc("Analyzed", f"intent: {spec.primary_intent}", extra={
+            "result": (
+                f"Intent: {spec.primary_intent}\n"
+                f"Kompleksitas: {spec.complexity_score:.2f}\n"
+                f"Is Simple: {spec.is_simple}\n"
+                f"Intents: {', '.join(spec.intents) if spec.intents else '-'}"
+            )
+        })
 
         # ─── PHASE 1.5: PROCEDURAL MEMORY RECALL ─────────────────
         # Injeksi "Buku Resep" dari tugas sukses sebelumnya ke system prompt
@@ -251,9 +260,12 @@ class Orchestrator:
                 required_skills=spec.intents,
             )]
 
-        subtask_list = "\n".join([f"- {st.description[:80]}" for st in subtasks])
-        yield OrchestratorEvent.proc("Planned", "memecah tugas menjadi sub-tasks", extra={
-            "result": f"Sub-tasks yang dibuat:\n{subtask_list}"
+        subtask_summary = "\n".join([
+            f"{i+1}. [{st.task_type}] {st.description[:70]}"
+            for i, st in enumerate(subtasks)
+        ])
+        yield OrchestratorEvent.proc("Planned", f"{len(subtasks)} sub-tasks", extra={
+            "result": f"Sub-tasks yang akan dikerjakan:\n{subtask_summary}"
         })
 
         # ─── PHASE 3: BUILD EXECUTION DAG ────────────────────────
@@ -282,12 +294,12 @@ class Orchestrator:
                 f"  → {agent_name}: {st.description[:80]}...")
 
         # ─── PHASE 5: EXECUTE ─────────────────────────────────────
-        agent_assignments = "\n".join([
-            f"- {st.description[:60]} → {st.assigned_agent or 'general'}"
+        assignment_summary = "\n".join([
+            f"• {st.description[:50]} → {st.assigned_agent or 'general'} ({st.assigned_model or 'default'})"
             for st in assigned_subtasks
         ])
         yield OrchestratorEvent.proc("Worked", f"{len(subtasks)} sub-tasks", count=len(subtasks), extra={
-            "result": f"Agent assignments:\n{agent_assignments}"
+            "result": f"Agent assignments:\n{assignment_summary}"
         })
         yield OrchestratorEvent("status", "⚡ Mengeksekusi sub-tasks...")
 
