@@ -1556,14 +1556,16 @@ export default function Chat() {
   // Load models + sessions
   useEffect(() => {
     api.listSessions().then(s => {
-      setSessions(prev => (prev.length > 0 && s.length === 0) ? prev : s)
+      const currentSessions = useChatStore.getState().sessions
+      setSessions((currentSessions.length > 0 && s.length === 0) ? currentSessions : s)
     }).catch(() => { })
     api.listModels().then(() => {
       // Re-fetch sessions after models loaded (titles may have been updated)
       api.listSessions().then((s) => {
         // Filter out any sessions currently being deleted
         const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-        setSessions(prev => (prev.length > 0 && safe.length === 0) ? prev : safe)
+        const currentSessions = useChatStore.getState().sessions
+        setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
       }).catch(() => { })
     }).catch(() => { })
   }, [])
@@ -1686,7 +1688,8 @@ export default function Chat() {
             // Refresh session list — but filter out sessions being deleted
             api.listSessions().then((s) => {
               const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-              setSessions(prev => (prev.length > 0 && safe.length === 0) ? prev : safe)
+              const currentSessions = useChatStore.getState().sessions
+              setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
             }).catch(() => {})
           }
         }
@@ -2051,7 +2054,8 @@ export default function Chat() {
           setTimeout(() => {
             api.listSessions().then((s) => {
               const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-              setSessions(prev => (prev.length > 0 && safe.length === 0) ? prev : safe)
+              const currentSessions = useChatStore.getState().sessions
+              setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
             }).catch(() => {})
           }, 800)
           useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
@@ -2119,7 +2123,8 @@ export default function Chat() {
           setTimeout(() => {
             api.listSessions().then((s) => {
               const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-              setSessions(prev => (prev.length > 0 && safe.length === 0) ? prev : safe)
+              const currentSessions = useChatStore.getState().sessions
+              setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
             }).catch(() => {})
           }, 800)
           useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
