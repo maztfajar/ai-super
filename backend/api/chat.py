@@ -458,15 +458,26 @@ async def chat_send(
 
         finally:
             # FORCE COMIT TO DB: Always runs even if CancelledError or TimeoutError
-            await save_to_db_if_needed()
+            async def finalize_chat():
+                await save_to_db_if_needed()
 
-            # ─── Update memory ────────────────────────────────────
+                # ─── Update memory ────────────────────────────────────
+                try:
+                    await memory_manager.save_chat_to_redis(session.id, "user", req.message)
+                    await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
+                except Exception as e:
+                    log.warning("Failed to update memory", error=str(e)[:100])
+                    # Continue anyway - don't fail the chat if memory update fails
+            
+            # Since the current task might be cancelled (e.g., client disconnected),
+            # any direct `await` here would instantly raise CancelledError.
+            # Spawning a background task guarantees the DB commit completes.
             try:
-                await memory_manager.save_chat_to_redis(session.id, "user", req.message)
-                await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
+                import asyncio
+                loop = asyncio.get_running_loop()
+                loop.create_task(finalize_chat())
             except Exception as e:
-                log.warning("Failed to update memory", error=str(e)[:100])
-                # Continue anyway - don't fail the chat if memory update fails
+                log.error("Failed to spawn finalize task", error=str(e))
 
             # Ensure done event if not already sent and no error
             if not error_occurred and not full_response.startswith("Error"):

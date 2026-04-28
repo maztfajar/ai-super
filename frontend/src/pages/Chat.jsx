@@ -1831,7 +1831,7 @@ export default function Chat() {
         setShowLastSteps(false)
         setFadingOut(false)
       }, 400)
-    }, 7600)
+    }, 3600)
 
     toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
   }
@@ -2069,7 +2069,7 @@ export default function Chat() {
               setShowLastSteps(false)
               setFadingOut(false)
             }, 400)
-          }, 7600)
+          }, 3600)
 
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
@@ -2138,7 +2138,7 @@ export default function Chat() {
               setShowLastSteps(false)
               setFadingOut(false)
             }, 400)
-          }, 7600)
+          }, 3600)
 
           useChatStore.getState().setActualModel(null)
           useChatStore.getState().setAbortRequest(null)
