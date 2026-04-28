@@ -106,8 +106,14 @@ class Orchestrator:
                     message_preview=message[:100])
 
         # ─── PHASE 1: PREPROCESSING ──────────────────────────────
-        yield OrchestratorEvent.proc("Thinking", "", extra={
-            "result": f"Menganalisa pesan: \"{message[:150]}...\"\nMenentukan intent dan kompleksitas..."
+        yield OrchestratorEvent.proc("Thinking", "memulai analisis", extra={
+            "result": (
+                f"📥 Pesan masuk: \"{message[:200]}\"\n\n"
+                f"⏳ Menjalankan preprocessing...\n"
+                f"   • Klasifikasi intent\n"
+                f"   • Pengukuran kompleksitas\n"
+                f"   • Routing model"
+            )
         })
         yield OrchestratorEvent("status", "🔍 Menganalisa permintaan...")
 

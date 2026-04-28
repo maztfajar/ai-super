@@ -152,7 +152,7 @@ ps aux | grep -E "node|python|streamlit" | grep -v grep
 ss -tlnp | grep PORT
 
 # 4. Test HTTP response
-curl -s -o /dev/null -w "%{http_code}" http://localhost:PORT
+curl -s -o /dev/null -w "%{{http_code}}" http://localhost:PORT
 
 # 5. Cek log untuk error
 tail -20 app.log
@@ -221,6 +221,52 @@ Step 2 (SHOWN to user): Put ONLY your final answer inside:
 </response>
 
 CRITICAL: Do NOT write ANY text outside of these two tags. The system will BLOCK everything that is not inside `<response>` tags. If you write text without tags, it breaks the system.
+
+**THINKING QUALITY — WAJIB STRUCTURED SEPERTI ENGINEER SENIOR:**
+Di dalam <thinking>, tulis reasoning dengan sub-judul yang jelas. 
+Contoh yang BENAR (seperti yang diharapkan user):
+
+<thinking>
+## Memahami Permintaan
+User ingin membuat todo app dengan fitur login. Perlu auth + CRUD.
+
+## Keputusan Arsitektur
+- Frontend: React via CDN (tidak perlu build step, deploy lebih cepat)
+- Backend: Express.js (ringan, familiar, banyak contoh)
+- Database: SQLite dengan better-sqlite3 (zero config, cocok untuk single-user)
+- Auth: JWT + bcrypt (standar industri)
+
+## File Structure
+todo-app/
+├── server.js        # Express backend
+├── package.json     # dependencies
+└── public/
+├── index.html   # React SPA
+└── app.js       # React components
+
+## Dependency Check
+Perlu install: express, better-sqlite3, bcryptjs, jsonwebtoken, cors
+Command: npm install --yes --no-audit --no-fund express better-sqlite3 bcryptjs jsonwebtoken cors
+
+## Potensi Masalah
+1. CORS: frontend (file://) vs backend (localhost:PORT) → konfigurasi cors() dengan origin: '*'
+2. JWT_SECRET: harus random dan disimpan di env
+3. SQLite path: gunakan path.join(__dirname, 'db.sqlite') bukan relative path
+
+## Urutan Eksekusi
+1. find_safe_port → dapat port bebas
+2. write_multiple_files → scaffold semua file sekaligus
+3. execute_bash: cd todo-app && npm install --yes --no-audit
+4. execute_bash: nohup node server.js > app.log 2>&1 & sleep 3
+5. execute_bash: curl -s localhost:PORT → verifikasi 200 OK
+6. Output %%APP_PREVIEW%%
+
+## Estimasi: ~3 menit
+</thinking>
+
+JANGAN tulis thinking yang pendek atau generik seperti:
+"User wants an app. I'll create it now."
+Semakin detail thinking = semakin sedikit error = semakin sedikit retry = hemat token.
 
 **FILE SAVING CAPABILITY:**
 When the user asks you to save results to a directory/folder/file, DO NOT refuse. Include the following special marker at the END of your `<response>` block:
@@ -333,6 +379,9 @@ class ResponseFilter:
         self.ever_emitted_response = False
         self.emit_thinking = emit_thinking
         self.current_think_tag = "</thinking>"
+        # ── Thinking capture ──────────────────────────────────
+        self._thinking_buffer = ""   # accumulate thinking chunks
+        self._thinking_ready = ""    # complete thinking block, siap diambil executor
 
     def process(self, chunk: str) -> str:
         self.pending += chunk
@@ -391,6 +440,7 @@ class ResponseFilter:
                     if tag_type == "thinking":
                         if self.emit_thinking:
                             output += '\n\n---\n*🤔 Proses Berpikir:*\n'
+                        self._thinking_buffer = ""  # reset buffer untuk thinking baru
                         self.pending = self.pending[tag_len:]
                         self.state = "THINKING"
                     elif tag_type == "response":
@@ -410,22 +460,37 @@ class ResponseFilter:
                 idx_tool = self.pending.find("<tool>")
                 
                 if idx_tool != -1 and (end_think == -1 or idx_tool < end_think):
+                    # Tool ditemukan sebelum thinking selesai — simpan yang sudah ada
+                    partial = self.pending[:idx_tool]
+                    self._thinking_buffer += partial
+                    # Simpan sebagai thinking_ready meski belum selesai
+                    if self._thinking_buffer.strip():
+                        self._thinking_ready = self._thinking_buffer.strip()
                     if self.emit_thinking:
-                        output += self.pending[:idx_tool]
+                        output += partial
                     self.pending = self.pending[idx_tool:]
                     break
                 
                 if end_think != -1:
+                    # Thinking selesai — capture seluruh konten
+                    thinking_text = self.pending[:end_think]
+                    self._thinking_buffer += thinking_text
+                    # Simpan ke _thinking_ready agar bisa diambil executor
+                    self._thinking_ready = self._thinking_buffer.strip()
+                    self._thinking_buffer = ""
+                    
                     if self.emit_thinking:
-                        output += self.pending[:end_think]
+                        output += thinking_text
                         output += '\n---\n\n'
                     self.pending = self.pending[end_think + len(self.current_think_tag):]
                     self.state = "WAITING"
                 else:
                     safe = len(self.pending) - 15
                     if safe > 0:
+                        chunk_part = self.pending[:safe]
+                        self._thinking_buffer += chunk_part  # accumulate
                         if self.emit_thinking:
-                            output += self.pending[:safe]
+                            output += chunk_part
                         self.pending = self.pending[safe:]
                     break
 
@@ -453,6 +518,10 @@ class ResponseFilter:
 
     def flush(self) -> str:
         if self.state == "THINKING" and self.pending:
+            # Flush sisa thinking
+            self._thinking_buffer += self.pending
+            self._thinking_ready = self._thinking_buffer.strip()
+            self._thinking_buffer = ""
             if self.emit_thinking:
                 res = self.pending + '\n---\n\n'
             else:
@@ -468,6 +537,12 @@ class ResponseFilter:
             self.pending = ""
             return res
         return ""
+
+    def pop_thinking(self) -> str:
+        """Ambil thinking content yang sudah ter-capture, lalu reset."""
+        result = self._thinking_ready
+        self._thinking_ready = ""
+        return result
 
 
 class AgentExecutor:
@@ -666,6 +741,17 @@ class AgentExecutor:
                     agent_msgs = self._prune_agent_messages(agent_msgs)
                     await asyncio.sleep(min(2 ** consecutive_errors, 8))  # Exponential backoff
                     continue
+            
+            # ── EMIT THINKING sebagai process sentinel ──────────────
+            # Ambil thinking content yang sudah di-capture ResponseFilter
+            captured_thinking = response_filter.pop_thinking()
+            if captured_thinking and len(captured_thinking) > 30:
+                word_count = len(captured_thinking.split())
+                yield process_emitter.to_sentinel(
+                    "Thinking",
+                    f"Reasoning ({word_count} kata)",
+                    extra={"result": captured_thinking}
+                )
             
             # Check if model intends to use a tool
             has_tool = "<tool>" in buffer

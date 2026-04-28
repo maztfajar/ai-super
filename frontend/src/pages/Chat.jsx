@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -129,13 +129,19 @@ const ACTION_META = {
 }
 const DEFAULT_META = { icon: Zap, color: 'text-ink-3', bg: 'bg-bg-5' }
 
-function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenArtifactCard }) {
+const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenArtifactCard }) {
   const [open, setOpen] = useState(true)
   const [expandedIdx, setExpandedIdx] = useState(null)
   const [staleSeconds, setStaleSeconds] = useState(0)
   const staleCountRef = useRef(steps.length)
 
-  // Stale indicator — reset setiap ada step baru
+  // Fix 4: useCallback dengan dependency array kosong — tidak re-create setiap render
+  const toggleStep = useCallback((i, e) => {
+    e.stopPropagation()   // Fix 2: cegah event bubble ke parent
+    e.preventDefault()    // Fix 2: cegah default behavior
+    setExpandedIdx(prev => prev === i ? null : i) // functional update, aman dari stale closure
+  }, []) // empty deps — setExpandedIdx dari useState selalu stabil
+
   useEffect(() => {
     if (!isStreaming) { setStaleSeconds(0); return }
     if (steps.length !== staleCountRef.current) {
@@ -153,42 +159,37 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenAr
   const meta = ACTION_META[latest?.action] || DEFAULT_META
   const LatestIcon = meta.icon
 
-  const toggleStep = (i) => setExpandedIdx(prev => prev === i ? null : i)
-
-  // Ambil konten untuk ditampilkan per step
+  // Ambil konten yang bisa ditampilkan untuk setiap step
   const getStepContent = (step, stepIdx) => {
     const isLastStep = stepIdx === steps.length - 1
-
-    // Live streaming untuk step terakhir yang sedang aktif
+    // Live streaming untuk step terakhir
     if (isLastStep && isStreaming && step._textOffset != null && streamingText) {
       const live = streamingText.substring(step._textOffset)
       if (live.trim()) return { content: live, isLive: true }
     }
-
-    // Cek semua field konten — urutan prioritas
+    // Field konten dengan prioritas
     const content = step.liveContent || step.code || step.result
-
-    if (content && content.trim()) {
-      return { content: content.trim(), isLive: false }
-    }
-
+    if (content && content.trim()) return { content: content.trim(), isLive: false }
     return null
   }
 
-  // Hitung berapa step yang punya konten (untuk badge)
-  const stepsWithContent = steps.filter((s, i) => getStepContent(s, i) !== null).length
-
   return (
-    <div className="flex gap-2.5 mb-2 animate-fade">
+    <div
+      className="flex gap-2.5 mb-2 animate-fade"
+    >
       <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0 mt-0.5">
         <Bot size={13} className="text-white" />
       </div>
 
       <div className="flex-1 max-w-[90%]">
-        {/* Header toggle utama */}
+        {/* Header utama */}
         <button
-          onClick={() => setOpen(o => !o)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-all group"
+          onClick={(e) => {
+            e.stopPropagation()  // Fix 2: cegah bubble ke parent
+            e.preventDefault()
+            setOpen(o => !o)
+          }}
+          className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-all"
         >
           <div className="flex items-center gap-2 min-w-0">
             {isStreaming ? (
@@ -212,64 +213,51 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenAr
             )}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            {stepsWithContent > 0 && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent-2 border border-accent/20">
-                {stepsWithContent} detail
-              </span>
-            )}
             <span className="text-[10px] text-ink-3 tabular-nums">
               {steps.length} step{steps.length !== 1 ? 's' : ''}
             </span>
-            {open
-              ? <ChevronUp size={13} className="text-ink-3" />
-              : <ChevronDown size={13} className="text-ink-3" />}
+            {open ? <ChevronUp size={13} className="text-ink-3" /> : <ChevronDown size={13} className="text-ink-3" />}
           </div>
         </button>
 
         {/* Daftar steps */}
         {open && (
           <div className="mt-1.5 border border-border bg-bg-3 rounded-xl rounded-tl-sm overflow-hidden">
-            <div className="max-h-[420px] overflow-y-auto divide-y divide-border/40">
+            <div className="max-h-[500px] overflow-y-auto divide-y divide-border/40">
               {steps.map((step, i) => {
                 const m = ACTION_META[step.action] || DEFAULT_META
                 const Icon = m.icon
                 const isLast = i === steps.length - 1
                 const isExpanded = expandedIdx === i
                 const contentData = getStepContent(step, i)
-                const hasContent = contentData !== null
+                // Semua step bisa diklik — yang tidak punya konten rich tampilkan info minimal
+                const displayContent = contentData?.content ||
+                  `Action: ${step.action}\nDetail: ${step.detail || '—'}\nTimestamp: ${new Date(step.ts || Date.now()).toLocaleTimeString('id-ID')}`
 
                 return (
                   <div key={i}>
-                    {/* Step row — klik untuk toggle expand */}
+                    {/* Step row */}
                     <button
                       className={clsx(
-                        'w-full flex items-center gap-2.5 px-3 py-2.5 text-[11px] transition-colors text-left',
+                        'w-full flex items-center gap-2.5 px-3 py-2.5 text-[11px] transition-colors text-left group',
                         isLast && isStreaming ? 'bg-accent/5' : 'hover:bg-bg-4',
-                        isExpanded ? 'bg-bg-4 border-b border-border/40' : '',
-                        hasContent ? 'cursor-pointer' : 'cursor-default'
+                        isExpanded ? 'bg-bg-4' : ''
                       )}
-                      onClick={() => hasContent && toggleStep(i)}
+                      onClick={(e) => toggleStep(i, e)}  // Fix 2: kirim event ke toggleStep
                     >
-                      {/* Nomor step */}
                       <span className="text-[9px] text-ink-3 tabular-nums w-5 text-right flex-shrink-0 font-mono">
                         {i + 1}
                       </span>
 
-                      {/* Live pulse untuk step aktif */}
                       {isLast && isStreaming && (
                         <span className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse flex-shrink-0" />
                       )}
 
-                      {/* Action badge */}
-                      <div className={clsx(
-                        'flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0',
-                        m.bg, m.color
-                      )}>
+                      <div className={clsx('flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0', m.bg, m.color)}>
                         <Icon size={9} />
                         <span className="font-semibold text-[10px]">{step.action}</span>
                       </div>
 
-                      {/* Detail text */}
                       <span className={clsx(
                         'truncate flex-1 min-w-0 text-[11px]',
                         isLast && isStreaming ? 'text-ink font-medium' : 'text-ink-3'
@@ -277,42 +265,37 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenAr
                         {step.detail || '—'}
                       </span>
 
-                      {/* Count badge */}
                       {step.count != null && (
                         <span className="tabular-nums text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-5 text-ink-3 border border-border flex-shrink-0">
                           {step.count}
                         </span>
                       )}
 
-                      {/* Toggle chevron — hanya jika ada konten */}
-                      {hasContent && (
-                        <span className={clsx(
-                          'flex-shrink-0 transition-transform duration-200 ml-1',
-                          isExpanded ? 'rotate-180' : 'rotate-0'
-                        )}>
-                          <ChevronDown size={11} className="text-ink-3" />
-                        </span>
-                      )}
-
-                      {/* Dot indicator — ada konten tapi belum expand */}
-                      {hasContent && !isExpanded && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent/50 flex-shrink-0" />
-                      )}
+                      {/* Selalu tampilkan chevron di setiap step */}
+                      <span className={clsx(
+                        'flex-shrink-0 transition-transform duration-200 opacity-0 group-hover:opacity-100',
+                        isExpanded ? 'opacity-100 rotate-180' : ''
+                      )}>
+                        <ChevronDown size={11} className="text-ink-3" />
+                      </span>
                     </button>
 
-                    {/* Expandable content panel */}
-                    {isExpanded && hasContent && contentData && (
+                    {/* Expandable content */}
+                    {isExpanded && (
                       <div className="bg-bg-2 border-b border-border/40">
-                        {/* Header konten */}
-                        <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/30 bg-bg-3">
-                          <div className="flex items-center gap-1.5">
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-bg-3 border-b border-border/30">
+                          <div className="flex items-center gap-2">
                             <Icon size={9} className={m.color} />
                             <span className="text-[10px] text-ink-3 font-medium">
-                              {step.action === 'Written' ? `File: ${step.detail?.split('/').pop()}` :
-                               step.action === 'Ran' ? 'Output bash' :
-                               step.action === 'Reading' ? `Membaca: ${step.detail}` :
-                               step.action === 'Searched' ? `Hasil: ${step.detail}` :
-                               'Detail'}
+                              {step.action === 'Thinking' ? '💭 Proses Berpikir' :
+                               step.action === 'Analyzed' ? '🔍 Hasil Analisis' :
+                               step.action === 'Planned'  ? '📋 Rencana Eksekusi' :
+                               step.action === 'Worked'   ? '⚡ Eksekusi Sub-tasks' :
+                               step.action === 'Written'  ? `📄 ${step.detail?.split('/').pop()}` :
+                               step.action === 'Ran'      ? '💻 Output Terminal' :
+                               step.action === 'Reading'  ? `📖 ${step.detail}` :
+                               step.action === 'Searched' ? `🔍 Hasil: ${step.detail}` :
+                               step.detail || step.action}
                             </span>
                             {step.language && (
                               <span className={clsx(
@@ -322,59 +305,49 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenAr
                                 {step.language}
                               </span>
                             )}
-                            {contentData.isLive && (
+                            {contentData?.isLive && (
                               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent-2 border border-accent/20 animate-pulse">
-                                live
+                                ● live
                               </span>
                             )}
                           </div>
-
-                          {/* Copy button untuk konten step */}
                           <button
                             onClick={(e) => {
-                              e.stopPropagation()
-                              copyToClipboard(contentData.content)
+                              e.stopPropagation()   // Fix 2
+                              e.preventDefault()
+                              copyToClipboard(displayContent)
                             }}
                             className="p-1 rounded hover:bg-bg-5 transition-colors"
-                            title="Copy konten"
+                            title="Copy"
                           >
                             <Copy size={10} className="text-ink-3" />
                           </button>
                         </div>
 
-                        {/* Konten */}
-                        <div className="relative">
-                          <pre className={clsx(
-                            'text-[11px] leading-relaxed font-mono p-3 whitespace-pre-wrap overflow-x-auto text-ink-2',
-                            'max-h-64 overflow-y-auto'
-                          )}>
-                            {contentData.content}
-                            {contentData.isLive && (
-                              <span className="inline-block w-1 h-3 bg-accent-2 animate-pulse ml-0.5 align-middle" />
-                            )}
-                          </pre>
-
-                          {/* Open in artifacts jika ini adalah file Written */}
-                          {step.action === 'Written' && step.code && (
-                            <div className="px-3 py-1.5 border-t border-border/30 bg-bg-3 flex justify-end">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  // onOpenArtifactCard dipassing dari parent
-                                  if (onOpenArtifactCard) {
-                                    const lang = (step.language || step.detail?.split('.').pop() || 'txt').toLowerCase()
-                                    const truncNote = step.truncated ? '\n\n// [konten dipotong untuk performa]' : ''
-                                    onOpenArtifactCard(step.code + truncNote, lang, `✍️ ${step.detail?.split('/').pop() || 'File'}`, false)
-                                  }
-                                }}
-                                className="flex items-center gap-1 text-[10px] text-accent-2 hover:text-accent transition-colors"
-                              >
-                                <ExternalLink size={9} />
-                                Buka di Artifacts
-                              </button>
-                            </div>
+                        <pre className="text-[11px] leading-relaxed font-mono p-3 whitespace-pre-wrap overflow-x-auto text-ink-2 max-h-72 overflow-y-auto">
+                          {displayContent}
+                          {contentData?.isLive && (
+                            <span className="inline-block w-1 h-3 bg-accent-2 animate-pulse ml-0.5 align-middle" />
                           )}
-                        </div>
+                        </pre>
+
+                        {/* Tombol buka di Artifacts untuk file Written */}
+                        {step.action === 'Written' && step.code && onOpenArtifactCard && (
+                          <div className="px-3 py-2 border-t border-border/30 bg-bg-3 flex justify-between items-center">
+                            <span className="text-[10px] text-ink-3">{step.detail}</span>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()  // Fix 2
+                                e.preventDefault()
+                                const ext = (step.language || step.detail?.split('.').pop() || 'txt').toLowerCase()
+                                onOpenArtifactCard(step.code, ext, `✍️ ${step.detail?.split('/').pop()}`, false)
+                              }}
+                              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 transition-all"
+                            >
+                              <ExternalLink size={9} /> Buka di Artifacts
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -382,33 +355,32 @@ function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenAr
               })}
             </div>
 
-            {/* Footer — stale indicator + stop button */}
-            <div className="border-t border-border bg-bg-4">
-              {isStreaming && staleSeconds >= 8 && (
-                <div className="px-3 py-2 flex items-center gap-2 border-b border-border/40 bg-amber-400/5">
-                  <Loader2 size={10} className="animate-spin text-amber-400 flex-shrink-0" />
-                  <span className="text-[11px] text-amber-400">
-                    Masih memproses... ({staleSeconds}s) — menunggu hasil tool
-                  </span>
-                </div>
-              )}
-              {isStreaming && onStop && (
-                <div className="px-3 py-2">
-                  <button
-                    onClick={onStop}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-[11px] font-medium transition-all"
-                  >
-                    <Square size={10} fill="currentColor" /> Hentikan
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Footer */}
+            {isStreaming && staleSeconds >= 8 && (
+              <div className="px-3 py-2 border-t border-border/40 bg-amber-400/5 flex items-center gap-2">
+                <Loader2 size={10} className="animate-spin text-amber-400 flex-shrink-0" />
+                <span className="text-[11px] text-amber-400">
+                  Masih memproses... ({staleSeconds}s) — AI menunggu hasil tool
+                </span>
+              </div>
+            )}
+            {isStreaming && onStop && (
+              <div className="px-3 py-2 border-t border-border">
+                <button
+                  data-allow-propagation="true"
+                  onClick={(e) => { e.stopPropagation(); onStop() }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-[11px] font-medium transition-all"
+                >
+                  <Square size={10} fill="currentColor" /> Hentikan
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
   )
-}
+})
 
 // ── ArtifactsPanel: slideout panel di sebelah kanan ───────────
 function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
@@ -1583,13 +1555,20 @@ export default function Chat() {
     }).catch(() => { })
   }, [])
 
-  // Auto-redirect /chat → /chat/:id when we already have an active session in store
-  // This handles the case where user navigates to /chat (no ID) after switching menus
+  // Auto-redirect /chat → /chat/:id
+  // Kasus 1: Ada currentSession di store (sudah login sebelumnya di domain ini)
+  // Kasus 2: Tidak ada currentSession (fresh login, misal dari tunnel URL) →
+  //          redirect ke sesi terbaru dari database agar langsung muncul tanpa perlu
+  //          klik sesi secara manual
   useEffect(() => {
     if (!urlSessionId && currentSession?.id) {
+      // Sudah ada sesi aktif di store → langsung pakai
       navigate(`/chat/${currentSession.id}`, { replace: true })
+    } else if (!urlSessionId && !currentSession?.id && sessions.length > 0) {
+      // Tidak ada sesi aktif (fresh login / domain baru) → pakai sesi terbaru dari DB
+      navigate(`/chat/${sessions[0].id}`, { replace: true })
     }
-  }, [urlSessionId, currentSession?.id])
+  }, [urlSessionId, currentSession?.id, sessions])
 
   // Load session from URL — robust version
   // Jika messages sudah ada di store untuk sesi yang sama → jangan fetch ulang (navigasi kembali)
