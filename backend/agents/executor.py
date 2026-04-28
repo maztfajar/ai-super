@@ -827,6 +827,29 @@ class AgentExecutor:
                     elif "connection refused" in str(res).lower():
                         error_hint = "\n[HINT: Server belum ready atau crash. Cek log dengan tail -30 app.log]"
 
+                    # Kirim hasil tool ke frontend agar bisa ditampilkan di step toggle
+                    if cmd == "execute_bash" and res and not res.startswith("Error"):
+                        # Batasi output bash ke 2000 char agar tidak membanjiri
+                        display_res = res[:2000] + ("\n...[output dipotong]" if len(res) > 2000 else "")
+                        yield process_emitter.to_sentinel(
+                            "Found",
+                            f"output: {args.get('command','')[:40]}",
+                            extra={"result": display_res}
+                        )
+                    elif cmd == "read_file" and res and not res.startswith("Error"):
+                        display_res = res[:3000] + ("\n...[dipotong]" if len(res) > 3000 else "")
+                        yield process_emitter.to_sentinel(
+                            "Reading",  
+                            args.get("path", "").split("/")[-1],
+                            extra={"result": display_res}
+                        )
+                    elif cmd == "web_search" and res and not res.startswith("Error"):
+                        yield process_emitter.to_sentinel(
+                            "Fetched",
+                            args.get("query","")[:50],
+                            extra={"result": res[:2000]}
+                        )
+
                     obs_text = f"\n<observation>\n{res}{error_hint}\n</observation>\n"
                     
                     # Only store the tool call in history, without the pre-tool thinking text
