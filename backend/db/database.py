@@ -5,20 +5,25 @@ from typing import AsyncGenerator
 import sqlalchemy as sa
 from core.config import settings
 
+db_url = settings.get_db_url
+is_sqlite = db_url.startswith("sqlite")
+
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=settings.DEBUG,
     future=True,
-    # Enable WAL mode for better concurrency with multiple workers
-    connect_args={"check_same_thread": False},
+    connect_args=connect_args,
 )
 
-@sa.event.listens_for(engine.sync_engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
-    cursor = dbapi_connection.cursor()
-    cursor.execute("PRAGMA journal_mode=WAL")
-    cursor.execute("PRAGMA synchronous=NORMAL")
-    cursor.close()
+if is_sqlite:
+    @sa.event.listens_for(engine.sync_engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
 
 AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False

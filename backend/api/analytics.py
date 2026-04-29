@@ -17,7 +17,7 @@ import os
 router = APIRouter()
 
 # Detect database dialect for raw SQL compatibility
-_is_postgres = 'postgresql' in settings.DATABASE_URL
+_is_postgres = 'postgresql' in settings.get_db_url
 
 def _timeline_sql():
     """Return the timeline query string appropriate for the active DB."""
@@ -371,7 +371,7 @@ async def storage_info(user: User = Depends(get_current_user)):
 
     base = _Path(__file__).parent.parent
 
-    db_path    = _Path(settings.DATABASE_URL.replace("sqlite+aiosqlite:///", "").replace("./", str(base) + "/"))
+    db_path    = _Path(settings.get_db_url.replace("sqlite+aiosqlite:///", "").replace("./", str(base) + "/"))
     upload_dir = _Path(settings.UPLOAD_DIR) if _Path(settings.UPLOAD_DIR).is_absolute() else base / settings.UPLOAD_DIR.lstrip("./")
     chroma_dir = _Path(settings.CHROMA_PERSIST_DIR) if _Path(settings.CHROMA_PERSIST_DIR).is_absolute() else base / settings.CHROMA_PERSIST_DIR.lstrip("./")
     log_dir    = _Path(settings.LOG_FILE).parent if not _Path(settings.LOG_FILE).is_absolute() else _Path(settings.LOG_FILE).parent

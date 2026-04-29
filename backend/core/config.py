@@ -54,9 +54,13 @@ class Settings(BaseSettings):
     ALLOW_PUBLIC_REGISTER: bool = False
 
     # Database
+    DATABASE_URL: str = ""
+
     @property
-    def DATABASE_URL(self) -> str:
-        # Selalu gunakan absolute path ke data/ai-orchestrator.db di root project
+    def get_db_url(self) -> str:
+        if self.DATABASE_URL and self.DATABASE_URL.strip():
+            return self.DATABASE_URL
+        # Selalu gunakan absolute path ke data/ai-orchestrator.db di root project jika kosong
         root = Path(__file__).resolve().parent.parent.parent
         db_path = root / "data" / "ai-orchestrator.db"
         # Pastikan folder exists
