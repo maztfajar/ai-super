@@ -84,7 +84,7 @@ read -p "   OpenAI API Key: " WZ_OPENAI
 read -p "   Anthropic API Key: " WZ_ANTHROPIC
 read -p "   Telegram Bot Token: " WZ_TELEGRAM
 read -p "   WhatsApp Access Token: " WZ_WHATSAPP
-read -p "   Tavily API Key (Untuk Web Search): " WZ_TAVILY
+read -p "   Tavily API Key (Tekan ENTER untuk melewati): " WZ_TAVILY
 
 # Copy env.example
 if [ ! -f "$APP_DIR/.env" ]; then
