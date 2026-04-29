@@ -84,6 +84,7 @@ read -p "   OpenAI API Key: " WZ_OPENAI
 read -p "   Anthropic API Key: " WZ_ANTHROPIC
 read -p "   Telegram Bot Token: " WZ_TELEGRAM
 read -p "   WhatsApp Access Token: " WZ_WHATSAPP
+read -p "   Tavily API Key (Untuk Web Search): " WZ_TAVILY
 
 # Copy env.example
 if [ ! -f "$APP_DIR/.env" ]; then
@@ -103,6 +104,7 @@ if [ -f "$APP_DIR/.env" ]; then
     if [ -n "$WZ_ANTHROPIC" ]; then sed -i -e "s/^ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$WZ_ANTHROPIC\"/" "$APP_DIR/.env"; fi
     if [ -n "$WZ_TELEGRAM" ]; then sed -i -e "s/^TELEGRAM_BOT_TOKEN=.*/TELEGRAM_BOT_TOKEN=\"$WZ_TELEGRAM\"/" "$APP_DIR/.env"; fi
     if [ -n "$WZ_WHATSAPP" ]; then sed -i -e "s/^WHATSAPP_ACCESS_TOKEN=.*/WHATSAPP_ACCESS_TOKEN=\"$WZ_WHATSAPP\"/" "$APP_DIR/.env"; fi
+    if [ -n "$WZ_TAVILY" ]; then sed -i -e "s/^TAVILY_API_KEY=.*/TAVILY_API_KEY=\"$WZ_TAVILY\"/" "$APP_DIR/.env"; fi
 
     if [ "$WZ_DB_TYPE" = "2" ]; then
         # PostgreSQL
@@ -246,6 +248,7 @@ PACKAGES=(
     "tabulate>=0.9.0"
     "pdfplumber>=0.11.0"
     "docx2txt>=0.8"
+    "tavily-python>=0.3.3"
 )
 
 TOTAL=${#PACKAGES[@]}
