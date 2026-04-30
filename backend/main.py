@@ -226,7 +226,7 @@ class SmartCORSMiddleware(_BHMW):
     """
     _SAFE_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0"}
 
-    def _is_allowed(self, origin: str) -> bool:
+    def _is_allowed(self, origin: str, request: Request) -> bool:
         if not origin:
             return True  # Same-origin requests have no Origin header
         try:
@@ -236,23 +236,36 @@ class SmartCORSMiddleware(_BHMW):
             return False
         if host in self._SAFE_HOSTS:
             return True
+            
+        # Automatically allow if origin matches the Host or X-Forwarded-Host header
+        # This fixes blank screens when accessed via Cloudflare Tunnel without TUNNEL_DOMAIN set
+        req_host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+        req_host_name = req_host.split(":")[0]
+        if host == req_host_name:
+            return True
+            
         # Allow configured tunnel/custom domain
         import os
         tunnel_domain = os.environ.get("TUNNEL_DOMAIN", "").strip()
         if tunnel_domain and (host == tunnel_domain or host.endswith("." + tunnel_domain)):
             return True
+            
+        # Automatically allow common tunnel suffixes to prevent lockdown
+        if host.endswith(".trycloudflare.com") or host.endswith(".ngrok.io") or host.endswith(".ngrok-free.app") or host.endswith(".loca.lt"):
+            return True
+            
         return False
 
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin", "")
-        if origin and not self._is_allowed(origin):
+        if origin and not self._is_allowed(origin, request):
             # Reject cross-origin requests from unknown origins
             return JSONResponse(
                 status_code=403,
                 content={"detail": "CORS: origin not allowed"},
             )
         response = await call_next(request)
-        if origin and self._is_allowed(origin):
+        if origin and self._is_allowed(origin, request):
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
             response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
@@ -306,6 +319,10 @@ async def serve_logo():
     raise _H(404)
 
 # Serve React frontend
+import mimetypes
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
+
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
     app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
