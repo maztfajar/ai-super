@@ -30,6 +30,13 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 - Scheduled tasks dan background processing
 - Visual workflow builder
 
+### 🛠️ **AI Orchestrator Execution Pipeline**
+- **Mandatory Planning Phase**: AI diwajibkan merencanakan arsitektur, dependencies, dan langkah eksekusi secara runut sebelum mulai menulis kode.
+- **Process Step Tracking**: UI interaktif (Process Steps Panel) untuk memantau proses *thinking*, *planning*, *execution*, dan *verification* secara real-time.
+- **Execution Sandbox**: Eksekusi kode dan bash script terisolasi dengan pengawasan, *auto-correction* saat error, dan deteksi port/proses.
+- **App Verification Loop**: Pre-flight check otomatis sebelum mengembalikan hasil ke pengguna untuk memastikan aplikasi benar-benar berjalan.
+- **Dynamic Context Injection**: Deteksi otomatis file aktif dan status *environment* untuk mengurangi halusinasi dan redundansi aksi AI.
+
 ### � **Project Management System**
 - **Smart Project Location**: Auto-deteksi saat pembuatan aplikasi
 - **Persistent Storage**: Lokasi proyek tersimpan per session
@@ -203,11 +210,14 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/0
 3. AI akan menggunakan knowledge base untuk jawaban yang lebih akurat
 4. Lihat sumber referensi pada setiap jawaban
 
-### 🔄 **Workflow Automation**
-1. Buat workflow baru di menu **Workflow**
-2. Set trigger (schedule, webhook, manual)
-3. Tambah actions (send message, API call, file operations)
-4. Jalankan atau schedule workflow
+### 🔄 **Workflow Automation & AI Orchestration**
+1. Buat workflow otomatis di menu **Workflow** dengan trigger & actions.
+2. Saat memberikan instruksi kompleks (pembuatan web/app), AI akan memulai **Execution Pipeline**:
+   - **Thinking**: Menganalisis kebutuhan dan merumuskan langkah.
+   - **Planning**: Menghasilkan *Implementation Plan* terstruktur.
+   - **Executing**: Menjalankan *bash commands*, *file edits*, dan *linting* secara otonom.
+   - **Verifying**: Memastikan port berjalan dan tidak ada error fatal sebelum selesai.
+3. Anda dapat melihat progres real-time melalui panel indikator di chat.
 
 ### 📁 **Project Management System**
 1. **Auto-Detection**: Saat minta AI buat aplikasi, sistem otomatis meminta lokasi proyek
