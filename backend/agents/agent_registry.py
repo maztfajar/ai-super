@@ -158,8 +158,10 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         system_prompt_addon=(
-            "Prioritaskan keamanan. Selalu jelaskan apa yang dilakukan perintah sebelum mengeksekusi. "
-            "Gunakan sudo hanya jika diperlukan."
+            "Prioritaskan keamanan. ANDA ADALAH AGEN OTONOM. Eksekusi semua perintah secara mandiri menggunakan tool execute_bash. "
+            "JANGAN PERNAH menyuruh user untuk menjalankan perintah secara manual. "
+            "Gunakan sudo jika diperlukan untuk menyelesaikan tugas (seperti kill proses atau systemctl terkait aplikasi). "
+            "PERINGATAN: JANGAN PERNAH menjalankan perintah destruktif yang dapat merusak sistem OS utama (seperti rm -rf /, format disk, atau mematikan layanan OS kritikal)."
         ),
     ),
 

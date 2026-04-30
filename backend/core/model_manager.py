@@ -555,14 +555,25 @@ class ModelManager:
                     return resp.choices[0].message.content or ""
 
             elif provider == "google":
+                import asyncio
                 import google.generativeai as genai
                 import base64 as _b64, io
                 import PIL.Image
                 genai.configure(api_key=settings.GOOGLE_API_KEY)
                 gmodel = genai.GenerativeModel(clean_model)
                 pil_img = PIL.Image.open(io.BytesIO(_b64.b64decode(image_b64)))
-                resp = gmodel.generate_content([pil_img, text_prompt])
-                return resp.text or ""
+                
+                # Jalankan sinkronous API Gemini di thread pool agar tidak memblokir event loop
+                loop = asyncio.get_event_loop()
+                def _generate_sync():
+                    return gmodel.generate_content([pil_img, text_prompt])
+                    
+                resp = await loop.run_in_executor(None, _generate_sync)
+                try:
+                    return resp.text or ""
+                except ValueError:
+                    # Ini terjadi jika terblokir oleh safety filter Gemini
+                    return "❌ Respons diblokir oleh filter keamanan Google Gemini (Safety Block)."
 
         except Exception as e:
             log.error("chat_with_image error", model=model_to_use, error=str(e))
