@@ -2714,19 +2714,19 @@ export default function Chat() {
               <button
                 onClick={() => chatContextFileRef.current?.click()}
                 disabled={streaming}
-                className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-colors disabled:opacity-40"
+                className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
                 title="Lampirkan file (PDF, Excel, Word) ke chat"
               >
-                <FilePlus size={15} />
+                <FilePlus size={16} className="md:w-[15px] md:h-[15px]" />
               </button>
 
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={streaming}
-                className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-colors disabled:opacity-40"
+                className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
                 title="Upload file ke Knowledge Base"
               >
-                <Paperclip size={15} />
+                <Paperclip size={16} className="md:w-[15px] md:h-[15px]" />
               </button>
 
               {/* Kamera */}
@@ -2734,14 +2734,14 @@ export default function Chat() {
                 onClick={() => imagePickerRef.current?.click()}
                 disabled={streaming}
                 className={clsx(
-                  'w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-40',
+                  'w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border transition-all disabled:opacity-40',
                   pendingImage
                     ? 'border-accent bg-accent/20 text-accent'
                     : 'border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
                 )}
                 title="Kirim gambar ke AI"
               >
-                <ImagePlus size={15} />
+                <ImagePlus size={16} className="md:w-[15px] md:h-[15px]" />
               </button>
 
               {/* Mikrofon */}
@@ -2749,7 +2749,7 @@ export default function Chat() {
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={streaming || isTranscribing}
                 className={clsx(
-                  'w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg border transition-colors disabled:opacity-40',
+                  'w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border transition-all disabled:opacity-40',
                   isRecording
                     ? 'border-danger bg-danger/20 text-danger animate-pulse'
                     : isTranscribing
@@ -2758,7 +2758,7 @@ export default function Chat() {
                 )}
                 title={isRecording ? 'Berhenti merekam' : isTranscribing ? 'Mentranskripsi...' : 'Rekam suara'}
               >
-                {isRecording ? <MicOff size={15} /> : isTranscribing ? <Loader2 size={15} className="animate-spin" /> : <Mic size={15} />}
+                {isRecording ? <MicOff size={16} className="md:w-[15px] md:h-[15px]" /> : isTranscribing ? <Loader2 size={16} className="animate-spin md:w-[15px] md:h-[15px]" /> : <Mic size={16} className="md:w-[15px] md:h-[15px]" />}
               </button>
 
               {/* Text input */}
@@ -2813,11 +2813,11 @@ export default function Chat() {
                   }}
                   placeholder={
                     streaming
-                      ? 'Ketik jawaban atau pesan baru... (Enter untuk kirim & interrupt)'
-                      : 'Ketik pesan, perintah, atau minta analisa data... (atau drag & drop gambar)'
+                      ? 'Ketik jawaban atau pesan baru... (Enter untuk kirim)'
+                      : 'Ketik pesan, perintah, atau analisa data...'
                   }
                   rows={1}
-                  className="w-full bg-bg-4 border border-border-2 rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none"
+                  className="w-full bg-bg-4 border border-border-2 rounded-2xl md:rounded-xl px-4 md:px-3.5 py-3 md:py-2.5 text-base md:text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none"
                 />
               </div>
 
@@ -2826,19 +2826,19 @@ export default function Chat() {
                 // Pure stop button — no input typed
                 <button
                   onClick={stopStreaming}
-                  className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-danger hover:bg-danger/80 text-white transition-all shadow-lg shadow-danger/20"
+                  className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg bg-danger hover:bg-danger/80 text-white transition-all shadow-lg shadow-danger/20"
                   title="Stop (Esc)"
                 >
-                  <Square size={16} fill="white" />
+                  <Square size={17} className="md:w-[16px] md:h-[16px]" fill="white" />
                 </button>
               ) : streaming && input.trim() ? (
                 // Interrupt + Send button — user typed a reply while streaming
                 <button
                   onClick={sendMessage}
-                  className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-accent hover:bg-accent/80 text-white transition-all shadow-lg shadow-accent/20 relative"
+                  className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg bg-accent hover:bg-accent/80 text-white transition-all shadow-lg shadow-accent/20 relative"
                   title="Interrupt & Kirim jawaban"
                 >
-                  <Send size={15} />
+                  <Send size={16} className="md:w-[15px] md:h-[15px] translate-x-[-1px] translate-y-[1px]" />
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-danger border border-bg-2" />
                 </button>
               ) : (
@@ -2846,10 +2846,10 @@ export default function Chat() {
                 <button
                   onClick={sendMessage}
                   disabled={!input.trim() || !currentSession}
-                  className="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-accent hover:bg-accent/80 disabled:opacity-40 text-white transition-colors"
+                  className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg bg-accent hover:bg-accent/80 disabled:opacity-40 text-white transition-all"
                   title="Kirim (Enter)"
                 >
-                  <Send size={15} />
+                  <Send size={16} className="md:w-[15px] md:h-[15px] translate-x-[-1px] translate-y-[1px]" />
                 </button>
               )}
             </div>

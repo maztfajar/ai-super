@@ -165,21 +165,13 @@ export default function Layout() {
   const handleLogout = () => { logout(); navigate('/login') }
 
   return (
-    <div className="flex h-screen bg-bg overflow-hidden">
-      {/* Mobile overlay */}
-      {isMobile && mobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        />
-      )}
+    <div className="flex h-[100dvh] bg-bg overflow-hidden">
+
       
       <aside className={clsx(
         'flex flex-col bg-bg-2 border-r border-border transition-all duration-200 flex-shrink-0 z-50',
-        // Mobile styles
-        isMobile ? (mobileMenuOpen ? 'fixed left-0 top-0 h-full w-64' : 'hidden') :
-        // Desktop styles
-        (sidebarOpen ? 'w-52' : 'w-14')
+        // Mobile styles: Always hidden, handled by Bottom Navigation
+        isMobile ? 'hidden' : (sidebarOpen ? 'w-52' : 'w-14')
       )}>
         {/* Logo */}
         <div className="flex items-center gap-2.5 px-3.5 py-4 border-b border-border">
@@ -302,15 +294,8 @@ export default function Layout() {
           // Mobile: taller header with better spacing
           isMobile ? 'h-14 px-3' : 'h-12 px-4'
         )}>
-          {/* Mobile menu toggle */}
-          {isMobile ? (
-            <button 
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
-              className="p-2 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors"
-            >
-              {mobileMenuOpen ? <X size={18}/> : <Menu size={18}/>}
-            </button>
-          ) : (
+          {/* Desktop menu toggle (hidden on mobile) */}
+          {!isMobile && (
             <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
               {sidebarOpen ? <ChevronLeft size={16}/> : <Menu size={16}/>}
             </button>
@@ -355,10 +340,102 @@ export default function Layout() {
             )}
           </div>
         </header>
-        <main className="flex-1 overflow-auto">
+        <main className={clsx("flex-1 overflow-auto", isMobile && "pb-14")}>
           <Outlet/>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 right-0 h-14 bg-bg-2 border-t border-border flex items-center justify-around z-50 px-2 pb-safe">
+          <NavLink to="/dashboard" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <LayoutDashboard size={20} />
+            <span className="text-[9px] font-medium">Utama</span>
+          </NavLink>
+          <NavLink to="/chat" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <MessageSquare size={20} />
+            <span className="text-[9px] font-medium">Chat</span>
+          </NavLink>
+          {isAdmin && (
+            <NavLink to="/integrations" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+              <Plug size={20} />
+              <span className="text-[9px] font-medium">Integrasi</span>
+            </NavLink>
+          )}
+          <NavLink to="/analytics" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <BarChart3 size={20} />
+            <span className="text-[9px] font-medium">Statistik</span>
+          </NavLink>
+          <button onClick={() => setMobileMenuOpen(true)} className={clsx("flex flex-col items-center justify-center w-full h-full gap-1", mobileMenuOpen ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <Menu size={20} />
+            <span className="text-[9px] font-medium">Menu</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Bottom Sheet Menu */}
+      {isMobile && mobileMenuOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-[60] animate-fade" onClick={() => setMobileMenuOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 bg-bg-2 border-t border-border rounded-t-2xl z-[70] animate-slide-in-up max-h-[80vh] flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <span className="font-semibold text-ink">Menu Lainnya</span>
+              <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-lg bg-bg-4 text-ink-3 hover:text-ink transition-colors">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-2 pb-6">
+              <div className="flex items-center gap-3 px-3 py-3 mb-2 border-b border-border/50">
+                <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0', isAdmin ? 'bg-gradient-to-br from-accent to-pink text-white' : 'bg-bg-4 text-ink-2 border border-border')}>
+                  {user?.username?.[0]?.toUpperCase() || 'A'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-ink truncate">{user?.username}</div>
+                  <div className="text-xs text-ink-3">{isAdmin ? '👑 Admin' : '👤 Sub Admin'}</div>
+                </div>
+                <NavLink to="/profile" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-lg bg-bg-4 text-ink-3 hover:text-ink">
+                  <Settings size={16} />
+                </NavLink>
+              </div>
+
+              {SECTIONS.map(section => {
+                const items = NAV.filter(n => n.section === section);
+                if (!items.length) return null;
+                // Skip rendering items that are already on bottom nav
+                const filteredItems = items.filter(i => !['/dashboard', '/chat', '/integrations', '/analytics'].includes(i.to));
+                if (!filteredItems.length) return null;
+
+                return (
+                  <div key={section} className="mb-4">
+                    <div className="text-[10px] font-semibold tracking-widest uppercase text-ink-3 px-3 mb-2">
+                      {sectionLabels[section]}
+                    </div>
+                    {filteredItems.map(({ label, to, icon: Icon }) => (
+                      <NavLink 
+                        key={to} 
+                        to={to}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={({ isActive }) => clsx(
+                          'flex items-center gap-3 px-3 py-3 rounded-xl mb-1 text-sm transition-all',
+                          isActive ? 'bg-accent/10 text-accent-2 font-medium' : 'text-ink-2 hover:bg-bg-4 hover:text-ink'
+                        )}>
+                        <Icon size={18} />
+                        <span>{label}</span>
+                      </NavLink>
+                    ))}
+                  </div>
+                )
+              })}
+              
+              <div className="border-t border-border mt-2 pt-2 px-2">
+                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-danger hover:bg-danger/10 transition-colors">
+                  <LogOut size={18} /> {t('logout')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }
