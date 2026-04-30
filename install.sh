@@ -319,6 +319,14 @@ log "Frontend built"
 
 # ── Systemd services ─────────────────────────────────────────
 step "Installing System Services"
+
+# Kill any existing process on port 7860 to avoid conflicts
+PID_OLD=$(sudo lsof -t -i:7860 2>/dev/null || true)
+if [ -n "$PID_OLD" ]; then
+    warn "Menghentikan proses lama pada port 7860 (PID: $PID_OLD)..."
+    sudo kill -9 $PID_OLD || true
+fi
+
 cat > /tmp/ai-orchestrator-api.service << EOF
 [Unit]
 Description=AI ORCHESTRATOR API Server
@@ -338,11 +346,19 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-sudo cp /tmp/ai-orchestrator-api.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable ai-orchestrator-api 2>/dev/null || true
-sudo systemctl restart ai-orchestrator-api 2>/dev/null || sudo systemctl start ai-orchestrator-api 2>/dev/null || true
-log "Systemd service installed and started (background)"
+log "Memasang service file ke /etc/systemd/system/..."
+if sudo cp /tmp/ai-orchestrator-api.service /etc/systemd/system/; then
+    sudo systemctl daemon-reload
+    sudo systemctl enable ai-orchestrator-api 2>/dev/null || true
+    if sudo systemctl restart ai-orchestrator-api 2>/dev/null; then
+        log "Systemd service berhasil dipasang dan dijalankan!"
+    else
+        warn "Gagal menjalankan service via systemctl. Mencoba 'start'..."
+        sudo systemctl start ai-orchestrator-api || warn "Gagal memulai service. Anda mungkin perlu menjalankannya secara manual."
+    fi
+else
+    err "Gagal menyalin file service! Pastikan Anda memiliki hak akses sudo."
+fi
 
 # ── Done ──────────────────────────────────────────────────────
 echo -e "\n${GREEN}${BOLD}"
