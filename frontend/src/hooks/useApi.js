@@ -123,7 +123,7 @@ export const api = {
   scrapeWeb:  (url)  => req('POST',   '/rag/scrape', { url }),
 
   // ── Models ────────────────────────────────────────────────
-  listModels: () => req('GET', '/models'),  listSavedModels: () => req('GET', '/models/saved'),  // Only from .env and .custom_models.json
+  listModels: () => req('GET', '/models?t=' + Date.now()),  listSavedModels: () => req('GET', '/models/saved?t=' + Date.now()),
   reloadSavedModels: () => req('POST', '/models/reload-saved'),
   // ── Custom Model Providers ────────────────────────────────
   listCustomModels:     ()     => req('GET',    '/integrations/custom-models'),
@@ -166,7 +166,7 @@ export const api = {
   activeSessions:      () => req('GET', '/monitoring/active-sessions'),
 
   // ── Integrations ─────────────────────────────────────────
-  integrationsStatus: () => req('GET', '/integrations/status'),
+  integrationsStatus: () => req('GET', '/integrations/status?t=' + Date.now()),
 
   // ── Webhooks ─────────────────────────────────────────────
   listWebhooks:     ()       => req('GET',    '/integrations/webhooks'),
