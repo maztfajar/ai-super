@@ -116,6 +116,7 @@ class Settings(BaseSettings):
     # Telegram
     TELEGRAM_BOT_TOKEN: Optional[str] = None
     TELEGRAM_WEBHOOK_URL: Optional[str] = None
+    ADMIN_TELEGRAM_CHAT_ID: str = ""  # Chat ID untuk laporan self-healing
 
     # WhatsApp
     WHATSAPP_ACCESS_TOKEN: Optional[str] = None

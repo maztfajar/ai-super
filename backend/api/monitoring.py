@@ -7,6 +7,9 @@ from fastapi import APIRouter
 from core.metrics import metrics_engine
 from core.error_recovery import error_recovery
 from agents.agent_registry import agent_registry
+from fastapi import Depends
+from db.models import User
+from core.auth import get_current_user, get_admin_user
 
 router = APIRouter()
 
@@ -134,3 +137,31 @@ async def active_sessions():
     except Exception as e:
         # Return empty list if database error (monitoring page should still work)
         return {"active_sessions": [], "cutoff_minutes": 60, "error": str(e)}
+
+
+@router.get("/self-healing/events")
+async def get_healing_events(
+    limit: int = 20,
+    user: User = Depends(get_current_user),
+):
+    """Ambil riwayat self-healing events."""
+    from core.self_healing import self_healing_engine
+    return {
+        "events": self_healing_engine.get_recent_events(limit),
+        "total":  len(self_healing_engine._events),
+    }
+
+
+@router.post("/self-healing/trigger")
+async def trigger_healing_check(
+    user: User = Depends(get_admin_user),
+):
+    """Trigger manual health check — hanya admin."""
+    from core.self_healing import self_healing_engine
+    await self_healing_engine._run_all_checks()
+    events = self_healing_engine.get_recent_events(10)
+    return {
+        "status": "checked",
+        "events_found": len(events),
+        "events": events,
+    }

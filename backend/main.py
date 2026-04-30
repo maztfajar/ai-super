@@ -45,6 +45,7 @@ from api.compliance import router as compliance_router
 from core.cost_tracking import cost_engine
 from core.audit_logging import audit_logger
 from core.approval_system import approval_system
+from core.self_healing import self_healing_engine
 
 # Timeout middleware configuration
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -173,6 +174,10 @@ async def lifespan(app: FastAPI):
     log.info("✅ Procedural Memory Engine initialized")
     log.info("✅ Project Indexer (Project-Wide Awareness) initialized")
 
+    # ── Self-Healing Engine ───────────────────────────────────────
+    await self_healing_engine.start()
+    log.info("✅ Self-Healing Engine started")
+
     # Capability Map — discover model capabilities
     from core.capability_map import capability_map
     import asyncio
@@ -198,6 +203,9 @@ async def lifespan(app: FastAPI):
             stop_polling()
         except Exception:
             pass
+
+    # Stop self-healing
+    self_healing_engine.stop()
 
 
 app = FastAPI(

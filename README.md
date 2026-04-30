@@ -32,6 +32,7 @@ Platform AI Self-Hosted tercanggih dengan **Multi-AI Parallel Voting**, **Agent 
 - **Two-Factor Authentication (2FA)**: Keamanan ekstra dengan TOTP dan Telegram OTP.
 - **Multi-Channel Integration**: Akses melalui Web Interface, Telegram Bot, dan WhatsApp (experimental).
 - **PostgreSQL Support**: Pilihan database skala enterprise untuk stabilitas data yang lebih baik.
+- **Self-Healing Infrastructure (New)**: Deteksi otomatis dan perbaikan mandiri terhadap crash server, disk penuh, error permission, dan masalah konektivitas database/Redis.
 
 ---
 
@@ -102,6 +103,7 @@ TELEGRAM_CHAT_ID=123456789
 - 🎭 **Role Mapping UI**: Antarmuka baru di menu Integrations untuk memetakan model ke peran (misal: DeepSeek untuk Coding, Gemini untuk Reasoning).
 - ⚡ **Response Stability**: Perbaikan logika streaming untuk mencegah coupling karakter ("teks gandeng") pada koneksi lambat.
 - 🐘 **PostgreSQL Ready**: Dukungan penuh untuk PostgreSQL sebagai backend database utama.
+- 🔧 **Self-Healing Engine**: Sistem pemantauan background 24/7 yang dapat memperbaiki masalah infrastruktur secara otomatis dan mengirim laporan via Telegram.
 
 ## 🆕 **Update Sebelumnya (v2.4)**
 - 🧠 **Mandatory Planning**: AI wajib membuat rencana langkah demi langkah sebelum eksekusi kode.
@@ -132,6 +134,7 @@ Masalah umum:
 - **Blank Screen (Tunnel)**: Pastikan CORS dikonfigurasi dengan URL tunnel Anda di `.env`.
 - **Database Locked**: Jika menggunakan SQLite, pastikan tidak ada proses backend ganda yang berjalan.
 - **Model Timeout**: Gunakan model "flash" (seperti Gemini Flash) jika koneksi internet terbatas.
+- **Server Issues**: Gunakan fitur **Self-Healing** yang otomatis berjalan di background untuk memulihkan layanan yang macet. Cek log di `data/logs/` untuk detail tindakan yang diambil.
 
 ---
 
