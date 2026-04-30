@@ -11,7 +11,10 @@ from agents.tools.web_search import web_search
 
 log = structlog.get_logger()
 
-def build_agent_system_prompt(current_model: str, execution_mode: str = "execution", project_path: str = None, session_id: str = None) -> str:
+def _prune_agent_messages(messages: list) -> list:
+    pass # forward declaration is not needed in python, I'll just change the function definition
+
+async def build_agent_system_prompt(current_model: str, execution_mode: str = "execution", project_path: str = None, session_id: str = None) -> str:
     from core.model_manager import model_manager
     import datetime
 
@@ -39,32 +42,43 @@ def build_agent_system_prompt(current_model: str, execution_mode: str = "executi
     project_context = ""
     if session_id and project_path:
         try:
-            # Baca struktur aktual dari disk, bukan dari cache
-            import subprocess
-            result = subprocess.run(
-                f"find {project_path} -type f -not -path '*/node_modules/*' "
-                f"-not -path '*/.git/*' -not -path '*/dist/*' "
-                f"| head -40 | sort",
-                shell=True, capture_output=True, text=True, timeout=5
+            # Menggunakan asyncio subprocess agar TIDAK memblokir event loop utama Uvicorn
+            import asyncio
+            
+            # Find command dioptimasi dengan maxdepth 3 agar instant
+            find_cmd = (
+                f"find {project_path} -maxdepth 3 -type f "
+                f"-not -path '*/node_modules/*' -not -path '*/.git/*' "
+                f"-not -path '*/dist/*' -not -path '*/.venv/*' "
+                f"| head -40 | sort"
             )
-            if result.stdout.strip():
+            proc = await asyncio.create_subprocess_shell(
+                find_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3.0)
+            
+            if stdout.decode().strip():
                 project_context = f"""
 **PROJECT STATE — FILE YANG SUDAH ADA (baca dari disk):**
-{result.stdout.strip()}
+{stdout.decode().strip()}
 ⚠️ File-file di atas SUDAH ADA. JANGAN tulis ulang kecuali ada bug.
 Fokus HANYA pada yang belum ada atau yang perlu diperbaiki.
 """
-            # Cek running servers
-            ports_result = subprocess.run(
-                "ss -tlnp | grep -E ':8[0-9]{3}'",
-                shell=True, capture_output=True, text=True, timeout=3
+            # Cek running servers (non-blocking)
+            proc_ports = await asyncio.create_subprocess_shell(
+                "ss -tlnp | grep -E ':8[0-9]{3}'", 
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            if ports_result.stdout.strip():
+            stdout_ports, _ = await asyncio.wait_for(proc_ports.communicate(), timeout=2.0)
+            
+            if stdout_ports.decode().strip():
                 project_context += f"""
 **SERVERS YANG SEDANG BERJALAN:**
-{ports_result.stdout.strip()}
+{stdout_ports.decode().strip()}
 ⚠️ Server sudah running. Jangan start ulang kecuali diminta.
 """
+        except asyncio.TimeoutError:
+            pass # Skip jika terlalu lama
         except Exception:
             pass
 
@@ -632,7 +646,7 @@ class AgentExecutor:
         project_path: str = None,
     ) -> AsyncGenerator[str, None]:
         
-        system_prompt = build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
+        system_prompt = await build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
         
         # Inject our agent system prompt
         agent_msgs = list(messages)
@@ -714,7 +728,7 @@ class AgentExecutor:
                         "Tolong jawab pertanyaan saya"
                     )
                     # Rebuild with minimal but tool-capable system prompt
-                    minimal_system = build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
+                    minimal_system = await build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
                     agent_msgs = [
                         {"role": "system", "content": minimal_system},
                         {"role": "user", "content": last_user[:2000]},
