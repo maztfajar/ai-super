@@ -267,10 +267,11 @@ done
 
 [ ${#FAILED[@]} -gt 0 ] && warn "Gagal: ${FAILED[*]}" || log "Semua package terinstall!"
 
-# ── Init Database & Admin ─────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# INIT DATABASE & ADMIN USER — WAJIB, jangan hapus
+# ─────────────────────────────────────────────────────────────
 step "Initializing Database & Admin User"
 cd "$APP_DIR/backend"
-source "$APP_DIR/backend/venv/bin/activate"
 mkdir -p data/logs data/uploads data/chroma_db
 
 if [ -f "$APP_DIR/.env" ]; then
@@ -279,22 +280,33 @@ if [ -f "$APP_DIR/.env" ]; then
     set +a
 fi
 
-python3 - << 'PYEOF'
-import asyncio, sys, os
-sys.path.insert(0, '.')
+# Cari Python yang benar di venv
+VENV_PYTHON=""
+for try_path in \
+    "$APP_DIR/backend/venv/bin/python3" \
+    "$APP_DIR/venv/bin/python3" \
+    "$HOME/.venv/bin/python3" \
+    "$(which python3 2>/dev/null)"; do
+    if [ -x "$try_path" ]; then
+        VENV_PYTHON="$try_path"
+        break
+    fi
+done
 
-async def main():
-    from db.database import init_db, AsyncSessionLocal
-    from core.auth import ensure_admin_exists
-    from core.config import settings
-    await init_db()
-    async with AsyncSessionLocal() as db:
-        await ensure_admin_exists(db)
-    print(f"  Admin siap: {settings.ADMIN_USERNAME} / {settings.ADMIN_PASSWORD}")
+if [ -z "$VENV_PYTHON" ]; then
+    err "❌ Python tidak ditemukan di venv!"
+fi
 
-asyncio.run(main())
-PYEOF
-log "Database & admin user siap"
+echo "   Python: $VENV_PYTHON"
+$VENV_PYTHON db/init_admin.py
+
+if [ $? -eq 0 ]; then
+    log "Database & admin user siap"
+else
+    warn ""
+    warn "⚠️  Init admin gagal otomatis. Jalankan manual:"
+    warn "   cd $APP_DIR/backend && source venv/bin/activate && python3 db/init_admin.py"
+fi
 
 # ── Frontend ──────────────────────────────────────────────────
 step "Building Frontend"
@@ -343,7 +355,18 @@ echo -e "  ${CYAN}Langkah berikutnya:${NC}"
 echo -e "  1. Edit API key (opsional) : ${YELLOW}nano $APP_DIR/.env${NC}"
 echo -e "  2. Jalankan server         : ${YELLOW}bash $APP_DIR/scripts/dev.sh${NC}"
 echo -e "  3. Buka browser            : ${YELLOW}http://localhost:7860${NC}"
-echo -e "  4. Login                   : ${YELLOW}$WZ_ADMIN_USER / $WZ_ADMIN_PASS${NC}"
-echo -e "\n  ${CYAN}RAG/LangChain (opsional):${NC}"
+echo ""
+echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${BOLD}${GREEN}  🔐 KREDENSIAL LOGIN APLIKASI${NC}"
+echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${CYAN}  URL      :${NC} ${YELLOW}http://localhost:7860${NC}"
+echo -e "  ${CYAN}  Username :${NC} ${YELLOW}$WZ_ADMIN_USER${NC}"
+echo -e "  ${CYAN}  Password :${NC} ${YELLOW}$WZ_ADMIN_PASS${NC}"
+echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "  ${YELLOW}  ⚠️  Jika lupa password, default fallback: admin / admin123${NC}"
+echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo -e "  ${CYAN}RAG/LangChain (opsional):${NC}"
 echo -e "  bash $APP_DIR/scripts/install-rag.sh"
 echo ""
+
