@@ -36,5 +36,16 @@
     "speed",
     "text",
     "vision"
+  ],
+  "sumopod/deepseek-v4-pro": [
+    "coding",
+    "reasoning",
+    "text"
+  ],
+  "sumopod/gpt-5-nano": [
+    "coding",
+    "reasoning",
+    "speed",
+    "text"
   ]
 }

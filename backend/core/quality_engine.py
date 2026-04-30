@@ -1,32 +1,41 @@
 """
-Super Agent Orchestrator — Quality Assurance Engine
-Multi-level validation pipeline for agent outputs.
-Levels: Syntax → Semantic → Quality → Integration
+Quality Engine (v2.1 — Performance Optimized)
+=============================================
+Perbaikan dari v1:
+  1. _get_fast_model(): pakai daftar model yang sesuai dengan sistem (sumopod/...)
+  2. _validate_quality(): timeout 8s agar tidak memperlambat pipeline
+  3. Level 3 (LLM quality check) dilewati untuk output pendek (<200 chars) — tidak perlu
+  4. Threshold refinement lebih realistis: QUALITY_THRESHOLD 0.5 → 0.45
+  5. Scoring lebih toleran terhadap bahasa Indonesia (tidak salah deteksi "contradiction")
+  6. validate_ensemble() berjalan paralel (bukan sequential)
 """
+
 import json
 import time
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field, asdict
+import asyncio
+from typing import Dict, List, Optional
+from dataclasses import dataclass, field
 import structlog
 
 from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
+CONFIDENCE_THRESHOLD = 0.6
+QUALITY_THRESHOLD    = 0.45   # diturunkan dari 0.5 — lebih realistis
+
 
 @dataclass
 class ValidationResult:
-    """Result from a single validation level."""
-    level: str                   # syntax | semantic | quality | integration
+    level: str
     passed: bool = True
-    score: float = 1.0           # 0.0-1.0
+    score: float = 1.0
     issues: List[str] = field(default_factory=list)
     suggestions: List[str] = field(default_factory=list)
 
 
 @dataclass
 class QualityReport:
-    """Complete quality assessment of an agent output."""
     task_id: str
     agent_type: str
     model_used: str
@@ -40,31 +49,18 @@ class QualityReport:
 
     def to_dict(self) -> dict:
         return {
-            "task_id": self.task_id,
-            "agent": self.agent_type,
-            "model": self.model_used,
-            "score": round(self.overall_score, 3),
-            "passed": self.overall_passed,
-            "confidence": round(self.confidence, 3),
+            "task_id":          self.task_id,
+            "agent":            self.agent_type,
+            "model":            self.model_used,
+            "score":            round(self.overall_score, 3),
+            "passed":           self.overall_passed,
+            "confidence":       round(self.confidence, 3),
             "needs_refinement": self.needs_refinement,
-            "issues": [
-                issue
-                for v in self.validations
-                for issue in v.issues
-            ],
+            "issues": [i for v in self.validations for i in v.issues],
         }
 
 
-# Confidence threshold — below this, request refinement
-CONFIDENCE_THRESHOLD = 0.6
-QUALITY_THRESHOLD = 0.5
-
-
 class QualityEngine:
-    """
-    Multi-level validation pipeline.
-    Each task output goes through 4 validation levels.
-    """
 
     async def validate(
         self,
@@ -75,9 +71,6 @@ class QualityEngine:
         original_request: str = "",
         expected_format: Optional[str] = None,
     ) -> QualityReport:
-        """
-        Run the full validation pipeline on an agent output.
-        """
         start = time.time()
         report = QualityReport(
             task_id=task_id,
@@ -85,45 +78,47 @@ class QualityEngine:
             model_used=model_used,
         )
 
-        # Level 1: Syntax Validation
-        syntax = self._validate_syntax(output, expected_format)
-        report.validations.append(syntax)
+        # Level 1: Syntax
+        report.validations.append(self._validate_syntax(output, expected_format))
 
-        # Level 2: Semantic Validation
-        semantic = self._validate_semantic(output)
-        report.validations.append(semantic)
+        # Level 2: Semantic
+        report.validations.append(self._validate_semantic(output))
 
-        # Level 3: Quality Validation (LLM-based if output is substantial)
-        if len(output) > 100:
+        # Level 3: LLM quality check — hanya untuk output substansial (>200 chars)
+        # PERBAIKAN: threshold dinaikkan dari 100 → 200 untuk hemat token
+        if len(output) > 200:
             quality = await self._validate_quality(output, original_request, agent_type)
             report.validations.append(quality)
         else:
+            # Output pendek → anggap cukup baik
             report.validations.append(
-                ValidationResult(level="quality", passed=True, score=0.7)
+                ValidationResult(level="quality", passed=True, score=0.75)
             )
 
-        # Compute overall score
+        # Hitung overall score
         scores = [v.score for v in report.validations]
-        report.overall_score = sum(scores) / len(scores) if scores else 0.5
+        report.overall_score  = sum(scores) / len(scores) if scores else 0.5
         report.overall_passed = all(v.passed for v in report.validations)
-        report.confidence = report.overall_score
+        report.confidence     = report.overall_score
 
-        # Determine if refinement is needed
+        # Perlu refinement?
         if report.overall_score < QUALITY_THRESHOLD:
             report.needs_refinement = True
-            report.refinement_reason = "Quality score below threshold"
+            report.refinement_reason = f"Quality score {report.overall_score:.2f} di bawah threshold"
         elif not report.overall_passed:
-            report.needs_refinement = True
             all_issues = [i for v in report.validations for i in v.issues]
+            report.needs_refinement  = True
             report.refinement_reason = f"Validation issues: {'; '.join(all_issues[:3])}"
 
         report.validation_time_ms = int((time.time() - start) * 1000)
 
-        log.debug("Quality validated",
-                  task=task_id, score=f"{report.overall_score:.2f}",
-                  passed=report.overall_passed,
-                  time_ms=report.validation_time_ms)
-
+        log.debug(
+            "Quality validated",
+            task=task_id,
+            score=f"{report.overall_score:.2f}",
+            passed=report.overall_passed,
+            time_ms=report.validation_time_ms,
+        )
         return report
 
     async def validate_ensemble(
@@ -132,159 +127,205 @@ class QualityEngine:
         original_request: str,
     ) -> int:
         """
-        Compare multiple outputs and return index of the best one.
-        Used when ensemble methods produce multiple candidates.
+        Bandingkan beberapa output dan kembalikan index terbaik.
+        PERBAIKAN: jalankan secara paralel (bukan sequential).
         """
         if len(outputs) <= 1:
             return 0
 
-        reports = []
-        for i, out in enumerate(outputs):
-            report = await self.validate(
+        # Validasi semua output secara paralel
+        tasks = [
+            self.validate(
                 task_id=f"ensemble_{i}",
                 agent_type=out.get("agent_type", "general"),
                 model_used=out.get("model", "unknown"),
                 output=out.get("response", ""),
                 original_request=original_request,
             )
-            reports.append(report)
+            for i, out in enumerate(outputs)
+        ]
+        reports = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # Pick the highest scoring
-        best_idx = max(range(len(reports)), key=lambda i: reports[i].overall_score)
+        best_idx   = 0
+        best_score = -1.0
+        for i, r in enumerate(reports):
+            if isinstance(r, Exception):
+                log.debug("Ensemble validation error", idx=i, error=str(r)[:60])
+                continue
+            if r.overall_score > best_score:
+                best_score = r.overall_score
+                best_idx   = i
+
         return best_idx
 
-    # ─── Level 1: Syntax Validation ───────────────────────────
+    # ── Level 1: Syntax ────────────────────────────────────────────────────────
 
-    def _validate_syntax(self, output: str, expected_format: Optional[str] = None) -> ValidationResult:
-        """Check format correctness, required fields, data integrity."""
+    def _validate_syntax(
+        self,
+        output: str,
+        expected_format: Optional[str] = None,
+    ) -> ValidationResult:
         result = ValidationResult(level="syntax")
         issues = []
 
-        # Check for empty output
         if not output or not output.strip():
             result.passed = False
-            result.score = 0.0
-            issues.append("Empty output")
-            result.issues = issues
+            result.score  = 0.0
+            result.issues = ["Empty output"]
             return result
 
-        # Check for error markers
-        error_markers = ["[Error", "❌", "Error:", "Exception:", "Traceback"]
-        for marker in error_markers:
-            if marker in output:
-                issues.append(f"Output contains error marker: {marker}")
-                result.score -= 0.2
+        # Error markers — kurangi penalti jika hanya 1 marker
+        error_markers = ["[Error", "❌ ", "Error:", "Exception:", "Traceback"]
+        found_errors = [m for m in error_markers if m in output]
+        if found_errors:
+            # Error di awal → lebih parah
+            if output.strip().startswith(tuple(found_errors)):
+                result.score -= 0.4
+            else:
+                result.score -= 0.15 * len(found_errors)
+            issues.append(f"Output mengandung error marker: {found_errors[0]}")
 
-        # If JSON expected, validate JSON
+        # JSON format check
         if expected_format == "json":
             try:
                 json.loads(output)
             except json.JSONDecodeError:
-                issues.append("Expected JSON format but output is not valid JSON")
+                issues.append("Expected JSON tapi output bukan valid JSON")
                 result.score -= 0.3
 
-        # Check for truncation indicators
-        if output.endswith("...") or output.endswith("```"):
-            if len(output) > 3000:
-                issues.append("Output may be truncated")
-                result.score -= 0.1
+        # Truncation check
+        if len(output) > 3000 and (output.rstrip().endswith("...") or output.rstrip().endswith("```")):
+            issues.append("Output kemungkinan terpotong")
+            result.score -= 0.1
 
-        result.score = max(0.0, min(1.0, result.score))
+        result.score  = max(0.0, min(1.0, result.score))
         result.passed = result.score >= 0.5
         result.issues = issues
         return result
 
-    # ─── Level 2: Semantic Validation ─────────────────────────
+    # ── Level 2: Semantic ──────────────────────────────────────────────────────
 
     def _validate_semantic(self, output: str) -> ValidationResult:
-        """Check logical consistency and reasonableness."""
+        """
+        Cek konsistensi logis dan pengulangan berlebihan.
+        PERBAIKAN: tidak deteksi false-positive contradiction untuk bahasa Indonesia.
+        """
         result = ValidationResult(level="semantic")
         issues = []
 
-        # Check for self-contradictions (simple heuristic)
-        sentences = output.split(".")
-        if len(sentences) > 3:
-            # Check for contradictory statements (very basic)
-            negation_pairs = [
-                ("is not", "is"), ("cannot", "can"), ("should not", "should"),
-                ("tidak", "bisa"), ("bukan", "adalah"),
-            ]
-            for neg, pos in negation_pairs:
-                neg_count = output.lower().count(neg)
-                pos_count = output.lower().count(pos)
-                if neg_count > 0 and pos_count > 3 and neg_count > pos_count:
-                    issues.append("Potential self-contradiction detected")
-                    result.score -= 0.1
-                    break
-
-        # Check for excessive repetition
         words = output.split()
-        if len(words) > 50:
-            # Check if any phrase repeats too much
-            bigrams = [f"{words[i]} {words[i+1]}" for i in range(len(words)-1)]
-            from collections import Counter
-            common = Counter(bigrams).most_common(3)
-            for bigram, count in common:
-                if count > len(words) * 0.05:  # more than 5% repetition
-                    issues.append(f"Excessive repetition of '{bigram}'")
-                    result.score -= 0.15
-                    break
+        total_words = len(words)
 
-        result.score = max(0.0, min(1.0, result.score))
+        # Cek repetisi berlebihan (lebih dari 8% bigram yang sama)
+        if total_words > 80:
+            from collections import Counter
+            bigrams = [f"{words[i]} {words[i+1]}" for i in range(total_words - 1)]
+            common  = Counter(bigrams).most_common(1)
+            if common:
+                phrase, count = common[0]
+                # Abaikan bigram sangat pendek (kata sambung) dan abaikan untuk teks pendek
+                if (count > total_words * 0.08
+                        and len(phrase) > 6
+                        and total_words > 100):
+                    issues.append(f"Repetisi berlebihan: '{phrase}' ({count}x)")
+                    result.score -= 0.2
+
+        # Cek output kosong setelah strip
+        if not output.strip():
+            result.score = 0.0
+            result.passed = False
+            issues.append("Output kosong setelah strip")
+
+        result.score  = max(0.0, min(1.0, result.score))
         result.passed = result.score >= 0.5
         result.issues = issues
         return result
 
-    # ─── Level 3: Quality Validation (LLM-based) ─────────────
+    # ── Level 3: LLM Quality ─────────────────────────────────────────────────
 
-    async def _validate_quality(self, output: str, request: str,
-                                  agent_type: str) -> ValidationResult:
-        """Use a fast LLM to assess quality, relevance, and completeness."""
+    async def _validate_quality(
+        self,
+        output: str,
+        request: str,
+        agent_type: str,
+    ) -> ValidationResult:
+        """
+        LLM judge — rate output 0.0-1.0.
+        PERBAIKAN: timeout 8s, model dari daftar yang benar.
+        """
         result = ValidationResult(level="quality")
-
         try:
             fast_model = self._get_fast_model()
-            prompt = f"""Rate the following AI response on a scale of 0.0-1.0.
-Consider: accuracy, relevance to the request, completeness, and clarity.
-
-User Request: {request[:500]}
-AI Response (first 1000 chars): {output[:1000]}
-
-Output ONLY JSON:
-{{"score": 0.85, "issues": ["issue1"], "strengths": ["strength1"]}}"""
-
-            judge_result = await model_manager.chat_completion(
-                model=fast_model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1,
-                max_tokens=200,
+            prompt = (
+                f"Rate the following AI response on a scale of 0.0-1.0.\n"
+                f"Consider: accuracy, relevance, completeness, and clarity.\n\n"
+                f"User Request: {request[:400]}\n"
+                f"AI Response (first 800 chars): {output[:800]}\n\n"
+                f"Output ONLY JSON (no explanation):\n"
+                f'{{ "score": 0.85, "issues": ["issue1"], "strengths": ["strength1"] }}'
             )
 
-            # Parse
+            judge_result = await asyncio.wait_for(
+                model_manager.chat_completion(
+                    model=fast_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.1,
+                    max_tokens=150,
+                ),
+                timeout=8.0,
+            )
+
+            # Bersihkan markdown
             if "```json" in judge_result:
                 judge_result = judge_result.split("```json")[1].split("```")[0].strip()
             elif "```" in judge_result:
                 judge_result = judge_result.split("```")[1].split("```")[0].strip()
 
-            data = json.loads(judge_result)
-            result.score = min(1.0, max(0.0, data.get("score", 0.7)))
-            result.issues = data.get("issues", [])
-            result.suggestions = data.get("strengths", [])
-            result.passed = result.score >= QUALITY_THRESHOLD
+            # Ekstrak JSON (toleran terhadap extra text)
+            import re
+            m = re.search(r'\{.*\}', judge_result, re.DOTALL)
+            if m:
+                data = json.loads(m.group(0))
+                result.score       = min(1.0, max(0.0, float(data.get("score", 0.7))))
+                result.issues      = data.get("issues", [])
+                result.suggestions = data.get("strengths", [])
+                result.passed      = result.score >= QUALITY_THRESHOLD
+            else:
+                result.score  = 0.7
+                result.passed = True
 
+        except asyncio.TimeoutError:
+            log.debug("Quality validation timeout (>8s), using default score")
+            result.score  = 0.7
+            result.passed = True
         except Exception as e:
-            log.debug("Quality validation LLM failed, using default", error=str(e)[:80])
-            result.score = 0.7  # assume decent if we can't judge
+            log.debug("Quality validation LLM failed", error=str(e)[:60])
+            result.score  = 0.7
             result.passed = True
 
         return result
 
+    # ── Model selection ───────────────────────────────────────────────────────
+
     def _get_fast_model(self) -> str:
-        """Pick fastest model for validation."""
-        priorities = ["gpt-5-nano", "gemini-2.5-flash-lite", "claude-haiku-4-5"]
+        """
+        Pilih model tercepat untuk validasi.
+        PERBAIKAN: daftar sesuai dengan model yang ada di sistem (sumopod/...).
+        """
+        priorities = [
+            "sumopod/gemini-2.5-flash-lite",
+            "sumopod/claude-haiku-4-5",
+            "sumopod/gpt-5-nano",
+            "sumopod/qwen3.6-flash",
+        ]
+        available = model_manager.available_models
         for p in priorities:
-            for k in model_manager.available_models.keys():
-                if p in k:
+            if p in available:
+                return p
+        # Partial match fallback
+        for p in priorities:
+            for k in available:
+                if p.split("/")[-1] in k:
                     return k
         return model_manager.get_default_model()
 

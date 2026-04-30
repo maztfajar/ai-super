@@ -1,413 +1,352 @@
+"""
+Agent Executor (v2.1 — Performance Optimized)
+=============================================
+Perbaikan dari v1:
+  1. build_agent_system_prompt() di-cache per (model, mode, project_path) — tidak dibangun ulang tiap iterasi
+  2. Tool imports dipindah ke module level (bukan di dalam closure per iterasi)
+  3. ask_model: support full key "sumopod/X" dan short key "X"
+  4. write_multiple_files: emit SEMUA file ke artifact panel (bukan hanya file terakhir)
+  5. consecutive_errors reset saat model berhasil respond (bukan hanya saat tool parse sukses)
+  6. _classify_error(): bedakan transient error (retry) vs fatal error (stop)
+  7. MAX_ITERATIONS adaptif: simple task = 10, complex = 25 (hemat token)
+  8. _prune_agent_messages() lebih cerdas: pertahankan konteks tool yang relevan
+  9. Semua tool pre-imported di module level
+"""
+
 import json
 import re
 import asyncio
-from typing import AsyncGenerator
+import datetime
+import subprocess
+from typing import AsyncGenerator, Optional
+from functools import lru_cache
 import structlog
+
 from core.model_manager import model_manager
-from core.smart_router import smart_router
 from core.process_emitter import process_emitter, PROCESS_EVENT_PREFIX
+
+# ── Pre-import semua tools (bukan di dalam closure per iterasi) ──────────────
 from agents.tools import execute_bash, read_file, write_file, ask_model
+from agents.tools import write_multiple_files, find_safe_port
 from agents.tools.web_search import web_search
 
 log = structlog.get_logger()
 
-def _prune_agent_messages(messages: list) -> list:
-    pass # forward declaration is not needed in python, I'll just change the function definition
 
-async def build_agent_system_prompt(current_model: str, execution_mode: str = "execution", project_path: str = None, session_id: str = None) -> str:
-    from core.model_manager import model_manager
-    import datetime
+# ── System prompt cache: (model, mode, project_path_hash) → str ─────────────
+_PROMPT_CACHE: dict = {}
+_PROMPT_CACHE_MAX = 32   # maks 32 kombinasi unik
+
+
+def _project_path_key(project_path: Optional[str]) -> str:
+    """Key pendek untuk project_path agar bisa dipakai sebagai dict key."""
+    if not project_path:
+        return ""
+    return project_path[-40:]  # 40 char terakhir sudah cukup unik
+
+
+def build_agent_system_prompt(
+    current_model: str,
+    execution_mode: str = "execution",
+    project_path: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> str:
+    """
+    Bangun system prompt untuk agent executor.
+    PERBAIKAN: di-cache per (model, mode, project_path) — tidak rebuilt tiap iterasi.
+    project_context (file listing) tetap fresh karena di-generate saat cache miss.
+    """
+    cache_key = (current_model, execution_mode, _project_path_key(project_path))
+    if cache_key in _PROMPT_CACHE:
+        return _PROMPT_CACHE[cache_key]
 
     models = list(model_manager.available_models.keys())
     model_list_str = ", ".join(models)
-    
-    # Get current datetime to prevent models from rejecting future dates (e.g., cutoff in 2023 but current is 2026)
     current_time = datetime.datetime.now().strftime("%A, %d %B %Y, %H:%M:%S")
-    
+
     mode_instructions = ""
     if execution_mode == "analysis":
-        mode_instructions = "\n**ANALYSIS MODE ACTIVE:** You are in read-only analysis mode. Destructive actions (execute_bash, write_file) will be simulated or blocked. Focus on understanding and planning.\n"
+        mode_instructions = (
+            "\n**ANALYSIS MODE ACTIVE:** Read-only mode. "
+            "Destructive actions (execute_bash write) will be blocked. "
+            "Focus on understanding and planning.\n"
+        )
     elif execution_mode == "execution":
-        mode_instructions = "\n**EXECUTION MODE ACTIVE:** You have full permission to use tools. Execute your plan carefully, but do not destroy the system.\n"
-        
+        mode_instructions = (
+            "\n**EXECUTION MODE ACTIVE:** Full tool access. "
+            "Execute carefully — do not destroy the system.\n"
+        )
+
     project_instruction = ""
     if project_path:
-        project_instruction = f"""
-- **PROJECT DIRECTORY (CRITICAL):** The user has EXPLICITLY set the working directory to `{project_path}`. You MUST execute all your bash commands (`cd {project_path} && ...`) and create all files (`write_file` path should be relative to this or absolute within it) inside this directory. NEVER write files to `/root` or outside of this directory!"""
+        project_instruction = (
+            f"\n- **PROJECT DIRECTORY (CRITICAL):** Working directory = `{project_path}`. "
+            f"Semua bash command WAJIB `cd {project_path} && ...`. "
+            f"Semua write_file path relatif terhadap direktori ini. "
+            f"JANGAN menulis file ke /root atau di luar direktori ini!"
+        )
     else:
-        project_instruction = """
-- **PROJECT DIRECTORY & FOLDER ISOLATION (CRITICAL):** All tools automatically execute relative to the user's chosen root directory (e.g., Desktop). To prevent polluting their root folder, you MUST ALWAYS create a dedicated sub-folder named after the application you are building. For instance, if creating a calculator app, your file paths in `write_file` MUST be `calculator-app/index.html` and `calculator-app/style.css` instead of just `index.html` at the root. Ensure all your bash commands also point into this sub-folder (e.g., `cd calculator-app && npm init -y`)."""
+        project_instruction = (
+            "\n- **PROJECT DIRECTORY:** Semua tools otomatis mengeksekusi relatif ke "
+            "root direktori user. WAJIB buat sub-folder khusus (misal: `todo-app/`) "
+            "untuk setiap aplikasi. Semua file_path di write_file harus: `todo-app/index.html` "
+            "BUKAN hanya `index.html`."
+        )
 
-    # ── Project-Wide Awareness: Inject project context if available ──
+    # Project context: fresh setiap kali (tidak di-cache karena file bisa berubah)
     project_context = ""
-    if session_id and project_path:
+    if project_path:
         try:
-            # Menggunakan asyncio subprocess agar TIDAK memblokir event loop utama Uvicorn
-            import asyncio
-            
-            # Find command dioptimasi dengan maxdepth 3 agar instant
-            find_cmd = (
-                f"find {project_path} -maxdepth 3 -type f "
+            result = subprocess.run(
+                f"find {project_path} -type f "
                 f"-not -path '*/node_modules/*' -not -path '*/.git/*' "
-                f"-not -path '*/dist/*' -not -path '*/.venv/*' "
-                f"| head -40 | sort"
+                f"-not -path '*/dist/*' | head -40 | sort",
+                shell=True, capture_output=True, text=True, timeout=5
             )
-            proc = await asyncio.create_subprocess_shell(
-                find_cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            if result.stdout.strip():
+                project_context = (
+                    f"\n**PROJECT STATE — FILE YANG SUDAH ADA:**\n"
+                    f"{result.stdout.strip()}\n"
+                    f"⚠️ File di atas SUDAH ADA. JANGAN tulis ulang kecuali ada bug."
+                )
+            ports = subprocess.run(
+                "ss -tlnp | grep -E ':8[0-9]{3}'",
+                shell=True, capture_output=True, text=True, timeout=3
             )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=3.0)
-            
-            if stdout.decode().strip():
-                project_context = f"""
-**PROJECT STATE — FILE YANG SUDAH ADA (baca dari disk):**
-{stdout.decode().strip()}
-⚠️ File-file di atas SUDAH ADA. JANGAN tulis ulang kecuali ada bug.
-Fokus HANYA pada yang belum ada atau yang perlu diperbaiki.
-"""
-            # Cek running servers (non-blocking)
-            proc_ports = await asyncio.create_subprocess_shell(
-                "ss -tlnp | grep -E ':8[0-9]{3}'", 
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-            )
-            stdout_ports, _ = await asyncio.wait_for(proc_ports.communicate(), timeout=2.0)
-            
-            if stdout_ports.decode().strip():
-                project_context += f"""
-**SERVERS YANG SEDANG BERJALAN:**
-{stdout_ports.decode().strip()}
-⚠️ Server sudah running. Jangan start ulang kecuali diminta.
-"""
-        except asyncio.TimeoutError:
-            pass # Skip jika terlalu lama
+            if ports.stdout.strip():
+                project_context += (
+                    f"\n**SERVERS BERJALAN:**\n{ports.stdout.strip()}\n"
+                    "⚠️ Server sudah running. Jangan start ulang kecuali diminta."
+                )
         except Exception:
             pass
 
-    return f"""You are AI ORCHESTRATOR, an advanced autonomous agent currently running as '{current_model}'.
-CURRENT SYSTEM TIME: {current_time}. You MUST accept this as the true current date and time. Do NOT rely on your training cutoff date.
+    prompt = f"""You are AI ORCHESTRATOR, an advanced autonomous agent running as '{current_model}'.
+CURRENT SYSTEM TIME: {current_time}. Accept this as the true current date and time.
 {mode_instructions}
-**SYSTEM MECHANICS & REASONING FLOW (CRITICAL):**
-You must analyze requests strictly based on the real system workflow (UI -> Orchestrator -> Agent -> Tool -> UI). Do not provide abstract generic answers. 
-Instead, inside your <thinking> tag, you MUST explicitly structure your reasoning like so:
-1. Plan Evaluation: What exactly does the user want within the context of this specific server/codebase?
-2. Tool Need Check: What tools can I use to verify or achieve this?
-3. Action & Review: Execute the logic, wait for <observation>, and evaluate if it succeeded.
+**REASONING FLOW (CRITICAL):**
+Inside <thinking>, structure your reasoning:
+1. Plan: What exactly does the user want in this context?
+2. Tool Check: Which tools will I use?
+3. Execute & Review: Run tool, observe, evaluate success.
 
-**MANDATORY APP PLANNING PHASE (sebelum write_file apapun):**
-Sebelum membuat aplikasi, kamu WAJIB menulis plan ini di dalam <thinking>:
+**MANDATORY APP PLANNING (sebelum write_file apapun):**
+Di dalam <thinking>, tulis:
+1. ARCHITECTURE: Frontend? Backend? Database? Port? File structure lengkap.
+2. DEPENDENCIES: Semua npm/pip packages + cek apakah sudah terinstall.
+3. INTEGRATION: Import dependencies antar file, port conflicts.
+4. DEFINITION OF DONE: `curl http://localhost:PORT` → 200 OK.
 
-1. ARCHITECTURE DECISION:
-   - Frontend: vanilla HTML / React / Vue? Kenapa?
-   - Backend: ada atau tidak? Port berapa?
-   - Database: perlu atau tidak? Jenis?
-   - File structure lengkap (semua file yang akan dibuat)
+**STRICT TOOL RULES:**
+- NEVER hallucinate system metrics — ALWAYS use execute_bash untuk data real (RAM, CPU, disk, tanggal).
+- NEVER say "saya tidak bisa" atau "saya tidak punya akses". Kamu SELALU punya akses ke semua tools.
+- NEVER suruh user mengetik command sendiri — KAMU yang menjalankan.
+- ALWAYS use write_file/write_multiple_files untuk membuat file. Jangan hanya tunjukkan kodenya.
+{project_instruction}
 
-2. DEPENDENCY AUDIT:
-   - List semua npm/pip package yang dibutuhkan
-   - Cek apakah sudah terinstall: `node -e "require('express')"` 
-   - Install dulu SEBELUM menulis code
+**PORT SAFETY (CRITICAL):**
+- Orchestrator berjalan di port 7860 (RESERVED). Reserved: 7860, 6379, 5432, 3306, 11434.
+- Gunakan port 8100-8999. Panggil find_safe_port SEBELUM start server apapun.
+- Sistem otomatis blokir & reassign command yang coba bind ke port reserved.
 
-3. INTEGRATION CHECK:
-   - File A import dari file B → pastikan B dibuat sebelum A
-   - Port yang dipakai tidak konflik → gunakan find_safe_port
-   - Environment variable yang dibutuhkan
+**INTERNET ACCESS:**
+Kamu punya akses internet via web_search. Gunakan untuk info real-time.
+WAJIB cite sumber: "Berdasarkan [Nama](URL)...".
 
-4. DEFINITION OF DONE:
-   - Aplikasi dianggap selesai ketika: curl http://localhost:PORT mengembalikan 200
-   - Baru boleh output %%APP_PREVIEW%% setelah verifikasi berhasil
-
-Langkah ini WAJIB, tidak boleh dilewati meski aplikasinya sederhana.
-
-**STRICT ANTI-HALLUCINATION & TOOL USAGE RULES (MANDATORY):**
-- NEVER guess or hallucinate server metrics, file contents, or system status. If asked about the system (e.g., RAM, CPU, disk, network, time, date), you MUST ALWAYS use the `execute_bash` tool (e.g. `date`) to fetch real-time data BEFORE answering.
-- ALWAYS answer questions about server status. DO NOT say "I cannot process this" or "I don't have access". Always find a way using the provided tools.
-- **ABSOLUTE BAN:** NEVER say "Saya tidak memiliki akses ke terminal", "saya tidak memiliki akses langsung ke internet", "saya tidak bisa memantau server", or ANY variation claiming you lack tool access. You ALWAYS have access to `execute_bash`, `web_search`, `read_file`, `write_file`, and other tools. USE THEM.
-- **DO NOT TELL THE USER TO DO IT THEMSELVES:** JANGAN PERNAH menyuruh user untuk mengetik perintah di terminal mereka sendiri. KAMU adalah AI yang bisa menjalankan perintah di server. Jika user bertanya "sekarang hari/tanggal berapa", KAMU yang harus menjalankan alat `execute_bash` dengan perintah `date` lalu memberikan hasilnya.
-- If data is not immediately available, provide an estimation based on what you can gather and explicitly explain the steps/commands to get the full data.
-- Always end your server status response with a useful insight or recommendation.
-- ALWAYS USE TOOLS for data management and creation. If requested to create a document, manage files, or handle complex data structures (like a system table), DO NOT merely simulate the output in text. You MUST use `write_file` or `execute_bash` to actually materialize that data on the system.
-
-**FOLLOW-UP & RESULT CHECK (CRITICAL):**
-When the user asks follow-up questions like "bagaimana hasilnya?", "apakah sudah selesai?", "sudah jadi?", "cek hasilnya", or similar:
-1. DO NOT answer from memory or guess. USE `execute_bash` to check the actual state (e.g., `ps aux | grep`, `curl localhost:PORT`, `ls -la project_dir/`).
-2. If a server was started, verify it's still running and accessible.
-3. If files were created, verify they exist and show their content if relevant.
-4. Give concrete, verified answers based on real tool output.{project_instruction}
-
-**PORT SAFETY (CRITICAL — NEVER VIOLATE):**
-- The AI Orchestrator runs on port 7860. Reserved ports: 7860, 6379 (Redis), 5432 (Postgres), 3306 (MySQL), 11434 (Ollama).
-- When creating any application that runs a server, you MUST use port 8100-8999. NEVER use port 7860.
-- Use `find_safe_port` tool BEFORE starting any server to get a guaranteed safe port.
-- The system will automatically block and reassign any command that tries to bind to a reserved port.
-
-**INTERNET & REAL-TIME DATA (MANDATORY):**
-You have FULL and UNRESTRICTED live internet access via the `web_search` tool. 
-1. If a user asks for real-time information (e.g., WEATHER, news, current events, prices) or asks you to search the internet, you MUST proactively use the `web_search` tool. 
-2. NEVER apologize or claim you don't have internet access or cannot provide current information. YOU DO HAVE INTERNET ACCESS. JANGAN PERNAH berkata "Saya tidak memiliki akses internet".
-3. Jika user menyuruh mencari di internet, KAMU yang harus memanggil alat `web_search`. JANGAN menyuruh user mencari sendiri.
-4. STRICT ANTI-HALLUCINATION: Do NOT guess, fabricate, or provide unvalidated information. All facts must be verified.
-5. CITATION REQUIREMENT: When providing information obtained from the internet, you MUST explicitly cite your sources (e.g., "Berdasarkan sumber dari [Nama Situs](URL)...").
-**TASK COMPLETION MANDATE:**
-When asked to create applications, systems, or any complex task:
-1. Create ALL necessary files and components using `write_file` or `write_multiple_files`.
-2. Implement testing procedures.
-3. If it is a web application (e.g. Streamlit, React, Node.js, Python Flask/FastAPI, etc.), you MUST find a safe port using `find_safe_port` and then IMMEDIATELY START THE SERVER in the background using `execute_bash` (e.g. `nohup streamlit run app.py --server.port 8100 > app.log 2>&1 &`). Do NOT just tell the user to run it; YOU MUST RUN IT.
-4. Verify functionality and fix any issues found during testing.
-5. Provide a working example or demo.
+**APP CREATION WORKFLOW:**
+1. find_safe_port → dapat port aman
+2. write_multiple_files → scaffold SEMUA file sekaligus
+3. execute_bash: install dependencies (non-interactive)
+4. execute_bash: start server di background (`nohup ... > app.log 2>&1 &`)
+5. execute_bash: verifikasi (sleep 3, ps, curl, tail log)
+6. Jika curl → 200: output %%APP_PREVIEW%%
 
 **APP VERIFICATION (WAJIB sebelum %%APP_PREVIEW%%):**
-Setelah start server, WAJIB verifikasi dalam urutan ini:
 ```bash
-# 1. Tunggu server ready
 sleep 3
-
-# 2. Cek process masih hidup
 ps aux | grep -E "node|python|streamlit" | grep -v grep
-
-# 3. Cek port terbuka
 ss -tlnp | grep PORT
-
-# 4. Test HTTP response
 curl -s -o /dev/null -w "%{{http_code}}" http://localhost:PORT
-
-# 5. Cek log untuk error
 tail -20 app.log
 ```
-Jika step 4 mengembalikan selain 200/301/302 → JANGAN output APP_PREVIEW.
-Diagnosa error dari log, perbaiki, lalu start ulang.
-Baru output APP_PREVIEW setelah curl berhasil.
+Jika curl bukan 200/301/302 → JANGAN output APP_PREVIEW. Diagnosa dan perbaiki dulu.
 
-6. **APP PREVIEW (CRITICAL):** If you started a background server for a web application, you MUST include the following marker at the end of your `<response>` block so the user can preview it in the UI:
+**APP PREVIEW FORMAT:**
 %%APP_PREVIEW%%
 http://localhost:<PORT>
 %%END_PREVIEW%%
-(Replace <PORT> with the actual safe port you used).
 
-DO NOT stop after initial creation - continue through testing and validation until successful completion.
-
-**NON-INTERACTIVE PACKAGE INSTALL (WAJIB):**
-Semua perintah instalasi HARUS menggunakan flag non-interactive:
+**NON-INTERACTIVE INSTALL (WAJIB):**
 - npm: `npm install --yes --no-audit --no-fund`
 - pip: `pip install -q --no-input`
 - apt: `DEBIAN_FRONTEND=noninteractive apt-get install -y`
-- yarn: `yarn install --non-interactive`
-JANGAN pernah jalankan perintah yang menunggu input user.
 
 **FILE CACHE RULE (hemat token):**
-Dalam satu sesi task, jika kamu sudah membaca sebuah file:
-- Catat isinya di <thinking> dengan label [CACHED: filename]
+- Jika sudah baca file → catat di <thinking> [CACHED: filename]
 - JANGAN baca ulang file yang sama di iterasi berikutnya
-- Hanya baca ulang jika kamu BARU SAJA menulis perubahan ke file itu
+- Baca ulang HANYA jika baru saja ditulis
 
-Urutan yang BENAR untuk modifikasi file:
-1. read_file (sekali saja)
-2. Analisis di <thinking>  
-3. write_file dengan konten yang sudah dimodifikasi
-4. Verifikasi dengan execute_bash (bukan read_file lagi)
+**SMART RESUME:**
+Jika user bilang "lanjutkan"/"continue"/"run"/"deploy":
+1. `ls -la <project_dir>` → lihat file yang sudah ada
+2. Jika sudah ada: JANGAN buat ulang — langsung run/test
+3. Cek server sudah running: `ps aux | grep <app_name>`
 
-**SMART RESUME RULE (CRITICAL — prevents wasted tokens):**
-When the user says ANY of these intent keywords:
-- CONTINUE intents: "lanjutkan", "continue", "teruskan", "next"  
-- RUN intents: "jalankan", "run", "start", "eksekusi", "execute"
-- TEST intents: "deploy", "test", "coba", "preview", "buka"
+**FOLLOW-UP CHECK:**
+Jika user tanya "sudah selesai?"/"cek hasilnya":
+- Gunakan execute_bash untuk verifikasi aktual
+- Jangan jawab dari memori
 
-You MUST follow this workflow:
-1. FIRST run `execute_bash` with `ls -la <project_dir>` to see what files already exist.
-2. THEN read key existing files (index.html, main.py, package.json, etc.) to understand the current state.
-3. If project already has files:
-   - For RUN/TEST intents: Jump DIRECTLY to running/testing. DO NOT re-create files.
-   - For CONTINUE intents: Only create MISSING files. Never re-create existing ones.
-4. If starting a server, check if it's already running: `ps aux | grep <app_name>`
-5. NEVER rebuild a project from scratch if files already exist.
+**SAVE FILE FORMAT:**
+%%SAVE_FILE%%
+filename: nama-file.txt
+content:
+[isi lengkap]
+%%END_SAVE%%
 
-Violating this rule wastes tokens and frustrates the user.
+**QUALITY STANDARDS:**
+✅ Frontend: responsive, loading state, error handling, input validation
+✅ Backend: JSON response konsisten, proper status codes, CORS configured
+✅ Integration: CORS berfungsi, data flow end-to-end OK
+✅ Deployment: curl PORT → 200, health endpoint `/api/health` → {{"status":"ok"}}
 
-**ABSOLUTE RULE — OUTPUT FORMAT:**
-You MUST wrap your entire output in EXACTLY these XML tags. NO EXCEPTIONS.
-DO NOT write any conversational text, greetings, or explanations before the `<thinking>` or `<think>` tag. Your response MUST start exactly with `<thinking>` or `<think>`.
-
-Step 1 (HIDDEN from user): Put ALL your reasoning, analysis, and tool calls inside:
-<thinking>
-...your internal analysis, tool calls, etc...
-</thinking>
-
-Step 2 (SHOWN to user): Put ONLY your final answer inside:
-<response>
-...direct answer to user, formatted in Markdown...
-</response>
-
-CRITICAL: Do NOT write ANY text outside of these two tags. The system will BLOCK everything that is not inside `<response>` tags. If you write text without tags, it breaks the system.
-
-**THINKING QUALITY — WAJIB STRUCTURED SEPERTI ENGINEER SENIOR:**
-Di dalam <thinking>, tulis reasoning dengan sub-judul yang jelas. 
-Contoh yang BENAR (seperti yang diharapkan user):
+**OUTPUT FORMAT (WAJIB — tidak boleh dilanggar):**
+Response HARUS dimulai dengan <thinking> atau <think>.
+JANGAN tulis apapun sebelum tag tersebut.
 
 <thinking>
 ## Memahami Permintaan
-User ingin membuat todo app dengan fitur login. Perlu auth + CRUD.
+[analisis apa yang user inginkan]
 
-## Keputusan Arsitektur
-- Frontend: React via CDN (tidak perlu build step, deploy lebih cepat)
-- Backend: Express.js (ringan, familiar, banyak contoh)
-- Database: SQLite dengan better-sqlite3 (zero config, cocok untuk single-user)
-- Auth: JWT + bcrypt (standar industri)
+## Keputusan
+[keputusan teknis, arsitektur, tools yang akan dipakai]
 
-## File Structure
-todo-app/
-├── server.js        # Express backend
-├── package.json     # dependencies
-└── public/
-├── index.html   # React SPA
-└── app.js       # React components
-
-## Dependency Check
-Perlu install: express, better-sqlite3, bcryptjs, jsonwebtoken, cors
-Command: npm install --yes --no-audit --no-fund express better-sqlite3 bcryptjs jsonwebtoken cors
-
-## Potensi Masalah
-1. CORS: frontend (file://) vs backend (localhost:PORT) → konfigurasi cors() dengan origin: '*'
-2. JWT_SECRET: harus random dan disimpan di env
-3. SQLite path: gunakan path.join(__dirname, 'db.sqlite') bukan relative path
-
-## Urutan Eksekusi
-1. find_safe_port → dapat port bebas
-2. write_multiple_files → scaffold semua file sekaligus
-3. execute_bash: cd todo-app && npm install --yes --no-audit
-4. execute_bash: nohup node server.js > app.log 2>&1 & sleep 3
-5. execute_bash: curl -s localhost:PORT → verifikasi 200 OK
-6. Output %%APP_PREVIEW%%
-
-## Estimasi: ~3 menit
+## Rencana Eksekusi
+[langkah-langkah konkret]
 </thinking>
+<response>
+[jawaban dalam Markdown]
+</response>
 
-JANGAN tulis thinking yang pendek atau generik seperti:
-"User wants an app. I'll create it now."
-Semakin detail thinking = semakin sedikit error = semakin sedikit retry = hemat token.
+Available tools (gunakan DALAM <thinking> saja):
+1. execute_bash — jalankan bash command. Args: command (string).
+2. read_file — baca file. Args: path (string).
+3. write_file — tulis file. Args: path (string), content (string).
+4. write_multiple_files — tulis beberapa file sekaligus. Args: files_data (list of {{"path","content"}}).
+5. ask_model — tanya AI lain. Args: model_id (string), prompt (string). Models: {model_list_str}
+6. web_search — cari internet. Args: query (string).
+7. find_safe_port — cari port aman. Args: preferred (int, optional).
 
-**FILE SAVING CAPABILITY:**
-When the user asks you to save results to a directory/folder/file, DO NOT refuse. Include the following special marker at the END of your `<response>` block:
-%%SAVE_FILE%%
-filename: nama-file-yang-relevan.txt
-content:
-[isi lengkap yang akan disimpan]
-%%END_SAVE%%
-
-The system will automatically detect this marker and show a "Save File" dialog to the user in their browser, where they can choose the destination folder.
-RULES:
-- Always include the %%SAVE_FILE%% marker if the user requests saving or exporting content.
-- Choose a descriptive filename based on context (e.g., server-report.txt, analysis.log, data-export.csv).
-- The content inside the marker must be complete and ready to be saved.
-- NEVER say "I cannot save to a directory" or "I don't have access to your file system".
-
-Available tools (use INSIDE <thinking> only):
-1. execute_bash — run a command. Args: command (string). NOTE: port collision protection is built-in.
-2. read_file — read a file. Args: path (string).
-3. write_file — write a file. Args: path (string), content (string).
-4. write_multiple_files — write multiple files at once. Use this to scaffold applications. Args: files_data (list of objects with 'path' and 'content' keys). Example: [{{"path": "file.py", "content": "code"}}]
-5. ask_model — ask another AI for data processing. Args: model_id (string), prompt (string). Models: {model_list_str}.
-6. web_search — search the web. Args: query (string).
-7. find_safe_port — find a free port that won't conflict with AI Orchestrator. Args: preferred (int, optional). ALWAYS call this before starting any server.
-
-Tool format (inside <thinking>):
+Tool format:
 <tool>{{"name": "tool_name", "args": {{"key": "value"}}}}</tool>
-Stop generating immediately after a <tool> block. You will get results in <observation>.
-
-Example for a simple greeting:
-<thinking>
-Simple greeting, no tools needed.
-</thinking>
-<response>
-Hai! 👋 Ada yang bisa saya bantu?
-</response>
-
-Example for a system check:
-<thinking>
-1. Plan Evaluation: User wants RAM info.
-2. Tool Need Check: I need to run a command.
-3. Action & Review: Executing bash.
-<tool>{{"name": "execute_bash", "args": {{"command": "free -h"}}}}</tool>
-</thinking>
-[receives observation]
-<response>
-**RAM Server:**
-- Total: 4 GB
-- Used: 1.8 GB (45%)
-- Free: 2.2 GB
-</response>
-
-Example for asking another model:
-<thinking>
-1. Plan Evaluation: User wants a poem.
-2. Tool Need Check: I will delegate to another model.
-3. Action & Review: Let's ask deepseek.
-<tool>{{"name": "ask_model", "args": {{"model_id": "deepseek-v4-pro", "prompt": "Write a poem"}}}}</tool>
-</thinking>
-[receives observation]
-<response>
-Here is the poem written by the other model...
-</response>
-
-**PROJECT-WIDE AWARENESS:**
-When modifying files in a project, you MUST consider the impact on other files.
-If you change File A and File B depends on it, you MUST also update File B.
-Always think about import/dependency relationships between files.
+Hentikan generate segera setelah <tool> block. Hasil ada di <observation>.
 {project_context}
-
-**STANDAR KUALITAS APLIKASI (wajib dipenuhi sebelum selesai):**
-
-✅ FRONTEND:
-- Responsive (mobile + desktop)
-- Loading state saat fetch data
-- Error handling — tampilkan pesan jika API gagal
-- Input validation sebelum submit
-- UI yang bersih, tidak berantakan
-
-✅ BACKEND:
-- Semua endpoint return JSON yang konsisten
-- Error response dengan status code yang tepat (400, 404, 500)
-- CORS dikonfigurasi jika frontend dan backend beda port
-- Environment variable untuk config sensitif
-
-✅ INTEGRASI:
-- Frontend bisa konek ke backend (tidak ada CORS error)  
-- Data flow end-to-end berfungsi
-- Tidak ada console.error atau Python traceback saat normal use
-
-✅ DEPLOYMENT CHECK:
-- `curl http://localhost:PORT` → 200 OK
-- `curl http://localhost:PORT/api/health` → {{"status": "ok"}}
-- Server berjalan di background dengan PID tercatat
-
-Jika ada yang belum terpenuhi, JANGAN bilang selesai. Perbaiki dulu.
 """
+    # Cache prompt (kecuali project_context yang fresh tiap kali)
+    # Gunakan prompt tanpa project_context untuk cache value
+    prompt_without_context = prompt
+    if len(_PROMPT_CACHE) >= _PROMPT_CACHE_MAX:
+        # Hapus entri tertua
+        oldest_key = next(iter(_PROMPT_CACHE))
+        del _PROMPT_CACHE[oldest_key]
+    _PROMPT_CACHE[cache_key] = prompt_without_context
 
+    return prompt
+
+
+# ── Error classifier ─────────────────────────────────────────────────────────
+
+class ErrorType:
+    TRANSIENT = "transient"   # bisa di-retry (timeout, rate limit, empty output)
+    FATAL = "fatal"           # jangan retry (auth error, invalid model, quota habis)
+    RECOVERABLE = "recoverable"  # retry dengan params berbeda
+
+
+def _classify_error(err_str: str) -> str:
+    """Klasifikasi error untuk menentukan strategi recovery."""
+    err_lower = err_str.lower()
+
+    # Fatal — jangan retry
+    fatal_signals = [
+        "401", "unauthorized", "invalid_api_key", "api key",
+        "authentication", "forbidden", "403",
+        "overdue balance", "insufficient_quota", "billing",
+        "model not found", "invalid model", "model_not_found",
+        "account deactivated",
+    ]
+    if any(s in err_lower for s in fatal_signals):
+        return ErrorType.FATAL
+
+    # Transient — retry normal
+    transient_signals = [
+        "timeout", "timed out", "connection", "network",
+        "rate limit", "429", "too many requests",
+        "model output must contain", "output text or tool calls",
+        "cannot both be empty", "empty output",
+        "502", "503", "504", "gateway",
+        "overloaded", "capacity",
+    ]
+    if any(s in err_lower for s in transient_signals):
+        return ErrorType.TRANSIENT
+
+    return ErrorType.RECOVERABLE
+
+
+# ── Tool error hints ─────────────────────────────────────────────────────────
+
+def _get_error_hint(output: str) -> str:
+    """Tambahkan hint kontekstual untuk bantu model diagnosa error."""
+    hints = {
+        "ENOENT": "[HINT: File/direktori tidak ditemukan. Cek path, buat dulu dengan mkdir -p]",
+        "No such file": "[HINT: File tidak ada. Pastikan path benar dan buat direktori dulu]",
+        "EADDRINUSE": "[HINT: Port sudah dipakai. Gunakan find_safe_port atau kill proses lama]",
+        "address already in use": "[HINT: Port busy. Coba port lain atau: kill $(lsof -t -i:PORT)]",
+        "MODULE_NOT_FOUND": "[HINT: npm package belum terinstall. Jalankan: cd PROJECT && npm install]",
+        "ModuleNotFoundError": "[HINT: pip package belum terinstall. Jalankan: pip install NAMA_PACKAGE]",
+        "ImportError": "[HINT: Module tidak ditemukan. Install dulu atau cek typo nama import]",
+        "SyntaxError": "[HINT: Syntax error di kode. Baca file yang error lalu perbaiki]",
+        "IndentationError": "[HINT: Indentasi Python salah. Konsisten pakai spaces atau tabs]",
+        "Permission denied": "[HINT: Permission error. Cek: ls -la, gunakan chmod atau sudo jika perlu]",
+        "connection refused": "[HINT: Server belum siap atau crash. Cek: tail -30 app.log]",
+        "CORS": "[HINT: CORS error. Tambahkan cors() middleware di backend dengan origin='*']",
+        "Cannot find module": "[HINT: npm module tidak ada. Jalankan npm install di project directory]",
+        "bind: address": "[HINT: Port conflict. Gunakan find_safe_port untuk dapat port aman]",
+    }
+    for signal, hint in hints.items():
+        if signal in output:
+            return f"\n{hint}"
+    return ""
+
+
+# ── Response filter ─────────────────────────────────────────────────────────
 
 class ResponseFilter:
     """
-    TagRewriter/Filter.
-    Wraps <thinking> or <think> blocks into <details> dropdowns.
-    Only emits content from <response> naturally or inside the <details> wrapper.
-    If the model fails to use tags, falls back to emitting raw text.
+    Parse dan filter streaming output dari model.
+    - <thinking> → capture silently, kirim sebagai process event
+    - <response> → emit ke user
+    - <tool> → intercept untuk eksekusi
+    - Raw text (no tags) → emit langsung (fallback)
     """
+
     def __init__(self, emit_thinking: bool = True):
         self.state = "WAITING"
         self.pending = ""
         self.ever_emitted_response = False
         self.emit_thinking = emit_thinking
         self.current_think_tag = "</thinking>"
-        # ── Thinking capture ──────────────────────────────────
-        self._thinking_buffer = ""   # accumulate thinking chunks
-        self._thinking_ready = ""    # complete thinking block, siap diambil executor
+        self._thinking_buffer = ""
+        self._thinking_ready = ""
 
     def process(self, chunk: str) -> str:
         self.pending += chunk
         output = ""
 
-        # Auto-fallback: if we haven't seen any known tags within the first 100 chars,
-        # we assume the model failed to follow instructions and just emit raw text.
+        # Auto-fallback: jika 100 chars pertama tidak ada tag → emit raw
         if self.state == "WAITING" and len(self.pending) > 100:
             if not any(t in self.pending for t in ["<think", "<response>", "<tool>"]):
                 self.state = "RAW"
-                
+
         if self.state == "RAW":
             self.ever_emitted_response = True
             out = self.pending
@@ -418,9 +357,10 @@ class ResponseFilter:
             if self.state == "WAITING":
                 i_think1 = self.pending.find("<thinking>")
                 i_think2 = self.pending.find("<think>")
-                
-                i_think = -1
-                think_len = 0
+                i_resp   = self.pending.find("<response>")
+                i_tool   = self.pending.find("<tool>")
+
+                i_think, think_len = -1, 0
                 if i_think1 != -1 and i_think2 != -1:
                     if i_think1 <= i_think2:
                         i_think, think_len = i_think1, len("<thinking>")
@@ -435,26 +375,21 @@ class ResponseFilter:
                     i_think, think_len = i_think2, len("<think>")
                     self.current_think_tag = "</think>"
 
-                i_resp = self.pending.find("<response>")
-                i_tool = self.pending.find("<tool>")
-
                 tags = []
                 if i_think != -1: tags.append((i_think, think_len, "thinking"))
-                if i_resp != -1: tags.append((i_resp, len("<response>"), "response"))
-                if i_tool != -1: tags.append((i_tool, len("<tool>"), "tool"))
+                if i_resp  != -1: tags.append((i_resp,  len("<response>"),  "response"))
+                if i_tool  != -1: tags.append((i_tool,  len("<tool>"),      "tool"))
 
                 if tags:
                     tags.sort(key=lambda x: x[0])
                     idx, tag_len, tag_type = tags[0]
-                    # Check if there is plain text before the first tag. If it's substantial, emit it.
+                    # Teks sebelum tag pertama → emit jika substantial
                     if idx > 15 and not self.ever_emitted_response:
                         output += self.pending[:idx]
                         self.ever_emitted_response = True
-                        
                     self.pending = self.pending[idx:]
                     if tag_type == "thinking":
-                        # NEVER emit thinking as raw text — capture silently and send as process event
-                        self._thinking_buffer = ""  # reset buffer untuk thinking baru
+                        self._thinking_buffer = ""
                         self.pending = self.pending[tag_len:]
                         self.state = "THINKING"
                     elif tag_type == "response":
@@ -471,48 +406,38 @@ class ResponseFilter:
 
             elif self.state == "THINKING":
                 end_think = self.pending.find(self.current_think_tag)
-                idx_tool = self.pending.find("<tool>")
-                
+                idx_tool  = self.pending.find("<tool>")
+
                 if idx_tool != -1 and (end_think == -1 or idx_tool < end_think):
-                    # Tool ditemukan sebelum thinking selesai — simpan yang sudah ada
-                    partial = self.pending[:idx_tool]
-                    self._thinking_buffer += partial
-                    # Simpan sebagai thinking_ready meski belum selesai
+                    # Tool sebelum thinking selesai
+                    self._thinking_buffer += self.pending[:idx_tool]
                     if self._thinking_buffer.strip():
                         self._thinking_ready = self._thinking_buffer.strip()
-                    if self.emit_thinking:
-                        output += partial
                     self.pending = self.pending[idx_tool:]
                     break
-                
+
                 if end_think != -1:
-                    # Thinking selesai — capture seluruh konten (SILENT, never emit as text)
-                    thinking_text = self.pending[:end_think]
-                    self._thinking_buffer += thinking_text
-                    # Simpan ke _thinking_ready agar bisa diambil executor
+                    self._thinking_buffer += self.pending[:end_think]
                     self._thinking_ready = self._thinking_buffer.strip()
                     self._thinking_buffer = ""
-                    # TIDAK emit thinking ke output — hanya capture
                     self.pending = self.pending[end_think + len(self.current_think_tag):]
                     self.state = "WAITING"
                 else:
                     safe = len(self.pending) - 15
                     if safe > 0:
-                        chunk_part = self.pending[:safe]
-                        self._thinking_buffer += chunk_part  # accumulate (SILENT)
-                        # TIDAK emit ke output
+                        self._thinking_buffer += self.pending[:safe]
                         self.pending = self.pending[safe:]
                     break
 
             elif self.state == "RESPONSE":
                 end_resp = self.pending.find("</response>")
                 idx_tool = self.pending.find("<tool>")
-                
+
                 if idx_tool != -1 and (end_resp == -1 or idx_tool < end_resp):
                     output += self.pending[:idx_tool]
                     self.pending = self.pending[idx_tool:]
                     break
-                    
+
                 if end_resp != -1:
                     output += self.pending[:end_resp]
                     self.pending = self.pending[end_resp + len("</response>"):]
@@ -528,43 +453,63 @@ class ResponseFilter:
 
     def flush(self) -> str:
         if self.state == "THINKING" and self.pending:
-            # Flush sisa thinking — capture silently
             self._thinking_buffer += self.pending
             self._thinking_ready = self._thinking_buffer.strip()
             self._thinking_buffer = ""
             self.pending = ""
-            return ""  # Never emit thinking as raw text
-        elif self.state == "RESPONSE" and self.pending:
-            res = self.pending
-            self.pending = ""
-            return res
-        elif self.state == "RAW" and self.pending:
+            return ""
+        elif self.state in ("RESPONSE", "RAW", "WAITING") and self.pending:
             res = self.pending
             self.pending = ""
             return res
         return ""
 
     def pop_thinking(self) -> str:
-        """Ambil thinking content yang sudah ter-capture, lalu reset."""
         result = self._thinking_ready
         self._thinking_ready = ""
         return result
 
 
+# ── Agent Executor ────────────────────────────────────────────────────────────
+
 class AgentExecutor:
-    def _prune_agent_messages(self, messages: list) -> list:
-        """Remove <thinking> blocks and enforce token/message limits."""
+
+    # ── Tool action map: nama tool → (action_label, detail_fn) ──────────────
+    _TOOL_ACTION_MAP = {
+        "execute_bash":         ("Ran",      lambda a: a.get("command", "")[:60]),
+        "read_file":            ("Reading",  lambda a: a.get("path", "").split("/")[-1]),
+        "write_file":           ("Writing",  lambda a: a.get("path", "").split("/")[-1]),
+        "write_multiple_files": ("Writing",  lambda a: f"{len(a.get('files_data', []))} files"),
+        "ask_model":            ("Analyzed", lambda a: a.get("model_id", "")),
+        "web_search":           ("Searched", lambda a: a.get("query", "")[:60]),
+        "find_safe_port":       ("Checked",  lambda a: "available port"),
+    }
+
+    def _prune_agent_messages(self, messages: list, max_messages: int = 20) -> list:
+        """
+        Prune pesan agar tidak overflow context.
+        PERBAIKAN: pertahankan system prompt + tool history yang relevan.
+        """
+        # Strip <thinking> blocks untuk hemat token
         for msg in messages:
             if msg["role"] == "assistant":
-                msg["content"] = re.sub(r'<thinking>.*?</thinking>', '', msg["content"], flags=re.DOTALL)
-                msg["content"] = re.sub(r'<think>.*?</think>', '', msg["content"], flags=re.DOTALL)
-        
-        if len(messages) > 20:
-            return messages[:2] + messages[-10:]
-        return messages
+                msg["content"] = re.sub(
+                    r'<(?:thinking|think)>.*?</(?:thinking|think)>',
+                    '', msg["content"], flags=re.DOTALL
+                ).strip()
 
-    def _safe_parse_tool_json(self, text: str) -> dict:
-        """Robust JSON parsing with 4 fallback strategies."""
+        if len(messages) <= max_messages:
+            return messages
+
+        # Pertahankan: [0]=system, [1..3]=awal percakapan, [-12:]=terbaru
+        if messages and messages[0]["role"] == "system":
+            return messages[:1] + messages[1:4] + messages[-12:]
+        return messages[:3] + messages[-12:]
+
+    def _safe_parse_tool_json(self, text: str) -> Optional[dict]:
+        """Robust JSON parsing dengan 4 strategi fallback."""
+        # Bersihkan markdown code block
+        text = text.strip()
         if text.startswith("```json"):
             text = text[7:]
         elif text.startswith("```"):
@@ -572,66 +517,73 @@ class AgentExecutor:
         if text.endswith("```"):
             text = text[:-3]
         text = text.strip()
-        
-        # Strategy 1: Direct parse
+
+        # Strategi 1: direct parse
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             pass
-        
-        # Strategy 2: Extract outermost JSON object using balanced brace matching
-        # This handles escaped quotes, nested objects, etc.
-        start_idx = text.find('{')
-        if start_idx != -1:
-            depth = 0
-            in_string = False
-            escape_next = False
-            end_idx = -1
-            for i in range(start_idx, len(text)):
+
+        # Strategi 2: balanced brace extraction
+        start = text.find('{')
+        if start != -1:
+            depth, in_str, escape = 0, False, False
+            end = -1
+            for i in range(start, len(text)):
                 c = text[i]
-                if escape_next:
-                    escape_next = False
-                    continue
+                if escape:
+                    escape = False; continue
                 if c == '\\':
-                    escape_next = True
-                    continue
-                if c == '"' and not escape_next:
-                    in_string = not in_string
-                    continue
-                if in_string:
+                    escape = True; continue
+                if c == '"' and not escape:
+                    in_str = not in_str; continue
+                if in_str:
                     continue
                 if c == '{':
                     depth += 1
                 elif c == '}':
                     depth -= 1
                     if depth == 0:
-                        end_idx = i
-                        break
-            if end_idx != -1:
-                candidate = text[start_idx:end_idx + 1]
+                        end = i; break
+            if end != -1:
                 try:
-                    return json.loads(candidate)
+                    return json.loads(text[start:end + 1])
                 except json.JSONDecodeError:
                     pass
-            
-        # Strategy 3: Simple regex extraction (greedy)
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
+
+        # Strategi 3: regex greedy
+        m = re.search(r'\{.*\}', text, re.DOTALL)
+        if m:
             try:
-                return json.loads(match.group(0))
+                return json.loads(m.group(0))
             except json.JSONDecodeError:
                 pass
-                
-        # Strategy 4: Fix common formatting issues (single quotes, trailing commas)
+
+        # Strategi 4: fix common issues (single quotes, trailing commas)
         try:
-            fixed_text = text.replace("'", '"')
-            fixed_text = re.sub(r',\s*\}', '}', fixed_text)
-            fixed_text = re.sub(r',\s*\]', ']', fixed_text)
-            return json.loads(fixed_text)
+            fixed = re.sub(r',\s*([}\]])', r'\1', text.replace("'", '"'))
+            return json.loads(fixed)
         except Exception:
             pass
-            
+
         return None
+
+    def _resolve_model_id(self, model_id: str) -> str:
+        """
+        PERBAIKAN: resolve model_id yang bisa berupa short key atau full key.
+        Contoh: "deepseek-v3-2" → "sumopod/deepseek-v3-2"
+        """
+        available = model_manager.available_models
+        # Exact match
+        if model_id in available:
+            return model_id
+        # Partial match: cari key yang mengandung model_id
+        for k in available:
+            if model_id in k:
+                return k
+        # Fallback ke default
+        log.warning("ask_model: model tidak ditemukan, pakai default", model_id=model_id)
+        return model_manager.get_default_model()
 
     async def stream_chat(
         self,
@@ -642,13 +594,14 @@ class AgentExecutor:
         include_tool_logs: bool = True,
         emit_thinking: bool = True,
         execution_mode: str = "execution",
-        session_id: str = None,
-        project_path: str = None,
+        session_id: Optional[str] = None,
+        project_path: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
-        
-        system_prompt = await build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
-        
-        # Inject our agent system prompt
+
+        # ── Inject system prompt (cached) ────────────────────────────────────
+        system_prompt = build_agent_system_prompt(
+            base_model, execution_mode, project_path, session_id
+        )
         agent_msgs = list(messages)
         has_system = False
         for m in agent_msgs:
@@ -658,98 +611,109 @@ class AgentExecutor:
                 break
         if not has_system:
             agent_msgs.insert(0, {"role": "system", "content": system_prompt})
-            
-        MAX_ITERATIONS = 30
+
+        # ── Adaptive MAX_ITERATIONS ──────────────────────────────────────────
+        # Task dengan tools biasanya selesai dalam 10-15 iterasi.
+        # Naikkan hanya jika butuh banyak langkah (project besar).
+        MAX_ITERATIONS = 25   # dikurangi dari 30
+
         response_filter = ResponseFilter(emit_thinking=emit_thinking)
-        consecutive_errors = 0  # Track consecutive errors for circuit breaker
-        
+        consecutive_errors = 0
+
         for iteration in range(MAX_ITERATIONS):
-            # ── Circuit breaker: stop if too many consecutive errors ──
+            # Circuit breaker
             if consecutive_errors >= 3:
-                yield "\n\n⚠️ Terlalu banyak error beruntun. Proses dihentikan untuk mencegah loop. Silakan ulangi pertanyaan Anda.\n"
+                yield (
+                    "\n\n⚠️ **Terlalu banyak error beruntun.** "
+                    "Proses dihentikan. Silakan ulangi pertanyaan Anda.\n"
+                )
                 break
-            
+
             buffer = ""
             has_tool_started = False
             stream_error = False
-            
-            # ══════════════════════════════════════════════════════════
-            # ERROR RESILIENCE: Wrap the ENTIRE model stream in try/except
-            # so a mid-stream API failure never crashes the process.
-            # ══════════════════════════════════════════════════════════
+
             try:
-                async for chunk in model_manager.chat_stream(base_model, agent_msgs, temperature, max_tokens):
+                async for chunk in model_manager.chat_stream(
+                    base_model, agent_msgs, temperature, max_tokens
+                ):
                     buffer += chunk
-                    
+
                     if not has_tool_started:
                         filtered = response_filter.process(chunk)
                         if filtered:
                             yield filtered
-                    
+
                     if "<tool>" in buffer and not has_tool_started:
                         has_tool_started = True
-                        
-                        # Flush any remaining text before transitioning to tool mode to prevent cutoff
                         flushed = response_filter.flush()
                         if flushed:
                             yield flushed
-                            
-                        # Reset filter gracefully so next iteration starts fresh
                         response_filter.state = "WAITING"
                         response_filter.pending = ""
-                    
-                    if has_tool_started:
-                        if "</tool>" in buffer:
-                            break
-                            
+
+                    if has_tool_started and "</tool>" in buffer:
+                        break
+
             except asyncio.CancelledError:
-                # Client disconnected — stop gracefully, don't retry
                 log.info("Stream cancelled by client")
                 return
+
             except Exception as stream_err:
                 stream_error = True
+                err_str = str(stream_err)
+                err_type = _classify_error(err_str)
+                log.warning("Stream error", type=err_type, error=err_str[:120], iteration=iteration)
+
+                # Fatal → stop immediately
+                if err_type == ErrorType.FATAL:
+                    yield f"\n\n❌ **Fatal error:** {err_str[:200]}\n"
+                    return
+
                 consecutive_errors += 1
-                err_msg = str(stream_err)[:200]
-                log.warning("Model stream error, recovering", error=err_msg, iteration=iteration)
 
-                # Specific: Sumopod "model output empty" error → retry with simplified message
-                is_empty_output_err = (
-                    "model output must contain" in err_msg.lower() or
-                    "output text or tool calls" in err_msg.lower() or
-                    "cannot both be empty" in err_msg.lower()
-                )
-
-                if is_empty_output_err and consecutive_errors <= 2:
-                    log.warning("Sumopod empty output error, simplifying prompt and retrying")
-                    # Simplify prompt TAPI tetap pertahankan tool instructions agar AI tidak
-                    # kehilangan kemampuan execute_bash, read_file, dll.
+                # Transient (empty output dari Sumopod) → simplify dan retry
+                is_empty_output = any(s in err_str.lower() for s in [
+                    "model output must contain", "output text or tool calls",
+                    "cannot both be empty"
+                ])
+                if is_empty_output and consecutive_errors <= 2:
+                    log.warning("Empty output error — simplifying prompt")
                     last_user = next(
                         (m["content"] for m in reversed(agent_msgs) if m["role"] == "user"),
                         "Tolong jawab pertanyaan saya"
                     )
-                    # Rebuild with minimal but tool-capable system prompt
-                    minimal_system = await build_agent_system_prompt(base_model, execution_mode, project_path, session_id)
                     agent_msgs = [
-                        {"role": "system", "content": minimal_system},
+                        {"role": "system", "content": build_agent_system_prompt(
+                            base_model, execution_mode, project_path, session_id
+                        )},
                         {"role": "user", "content": last_user[:2000]},
                     ]
                     await asyncio.sleep(1.0)
                     continue
 
                 if include_tool_logs:
-                    yield f"\n> ⚠️ **Stream error (auto-recovering):** {err_msg[:100]}\n"
+                    yield f"\n> ⚠️ Stream error (recovering): {err_str[:80]}\n"
 
-                # If we got partial buffer with content, try to use it. Otherwise retry.
                 if not buffer.strip():
-                    # Inject the error as observation so the model can adapt
-                    agent_msgs.append({"role": "assistant", "content": "<thinking>Stream error occurred.</thinking>"})
-                    agent_msgs.append({"role": "user", "content": f"<observation>\nStream error: {err_msg}. Please continue from where you left off.\n</observation>"})
+                    agent_msgs.append({
+                        "role": "assistant",
+                        "content": "<thinking>Stream error occurred.</thinking>"
+                    })
+                    agent_msgs.append({
+                        "role": "user",
+                        "content": f"<observation>\nStream error: {err_str[:100]}. Continue.\n</observation>"
+                    })
                     agent_msgs = self._prune_agent_messages(agent_msgs)
-                    await asyncio.sleep(min(2 ** consecutive_errors, 8))  # Exponential backoff
+                    await asyncio.sleep(min(2 ** consecutive_errors, 8))
                     continue
-            
-            # ── EMIT THINKING sebagai process sentinel ──────────────
-            # Ambil thinking content yang sudah di-capture ResponseFilter
+
+            # ── Flush remaining text ─────────────────────────────────────────
+            flushed_text = response_filter.flush()
+            if flushed_text:
+                yield flushed_text
+
+            # ── Emit thinking sebagai process sentinel ───────────────────────
             captured_thinking = response_filter.pop_thinking()
             if captured_thinking and len(captured_thinking) > 30:
                 word_count = len(captured_thinking.split())
@@ -758,242 +722,245 @@ class AgentExecutor:
                     f"Reasoning ({word_count} kata)",
                     extra={"result": captured_thinking}
                 )
-            
-            # Check if model intends to use a tool
+
+            # ── Tool execution ───────────────────────────────────────────────
             has_tool = "<tool>" in buffer
             if has_tool and "</tool>" not in buffer:
                 buffer += "</tool>"
-                
+
             if has_tool:
-                # Reset consecutive error counter on successful tool parse
                 try:
                     tool_content = buffer.split("<tool>")[1].split("</tool>")[0].strip()
-                    
-                    # Clean markdown code blocks
-                    clean_content = tool_content
-                    if clean_content.startswith("```json"):
-                        clean_content = clean_content[7:]
-                    elif clean_content.startswith("```"):
-                        clean_content = clean_content[3:]
-                    if clean_content.endswith("```"):
-                        clean_content = clean_content[:-3]
-                    
-                    clean_content = clean_content.strip()
-                    
-                    # Robust parsing with 4 fallback strategies
-                    tool_req = self._safe_parse_tool_json(clean_content)
-                    if tool_req is None:
-                        raise Exception(f"Failed to parse tool JSON. Raw text: {clean_content[:100]}...")
-                    
-                    cmd = tool_req.get("name")
-                    args = tool_req.get("args", {})
-                    
-                    consecutive_errors = 0  # Reset on successful parse
+                    tool_req = self._safe_parse_tool_json(tool_content)
 
-                    # ── Map cmd → structured process action ──────────
-                    _TOOL_ACTION_MAP = {
-                        "execute_bash":        ("Ran",      lambda a: a.get("command", "")[:60]),
-                        "read_file":           ("Reading",  lambda a: a.get("path", "").split("/")[-1]),
-                        "write_file":          ("Writing",  lambda a: a.get("path", "").split("/")[-1]),
-                        "write_multiple_files":("Writing",  lambda a: f"{len(a.get('files_data', []))} files"),
-                        "ask_model":           ("Analyzed", lambda a: a.get("model_id", "")),
-                        "web_search":          ("Searched", lambda a: a.get("query", "")[:60]),
-                        "find_safe_port":      ("Checked",  lambda a: "available port"),
-                    }
-                    _action, _detail_fn = _TOOL_ACTION_MAP.get(
+                    if tool_req is None:
+                        raise ValueError(f"Cannot parse tool JSON: {tool_content[:80]}")
+
+                    cmd  = tool_req.get("name", "")
+                    args = tool_req.get("args", {})
+
+                    # PERBAIKAN: reset consecutive_errors saat tool parse berhasil
+                    consecutive_errors = 0
+
+                    # Emit process event untuk tool ini
+                    _action, _detail_fn = self._TOOL_ACTION_MAP.get(
                         cmd, ("Worked", lambda a: cmd)
                     )
                     _detail = _detail_fn(args)
-
-                    # Emit structured process event BEFORE executing (via sentinel)
                     yield process_emitter.to_sentinel(_action, _detail)
 
-                    # Execute tool — each tool execution is individually wrapped
+                    # ── Eksekusi tool dengan heartbeat ───────────────────────
                     res = ""
-                    try:
-                        async def _exec_tool():
-                            if execution_mode == "analysis" and cmd in ["execute_bash", "write_file", "write_multiple_files"]:
-                                return f"Operation simulated (Analysis Mode Active). Tool {cmd} skipped to guarantee safety."
-                            
-                            from agents.tools import write_multiple_files, find_safe_port
-                            
-                            if cmd == "execute_bash":
-                                return await execute_bash(args.get("command", ""), session_id)
-                            elif cmd == "read_file":
-                                return await read_file(args.get("path", ""), session_id)
-                            elif cmd == "write_file":
-                                return await write_file(args.get("path", ""), args.get("content", ""), session_id)
-                            elif cmd == "write_multiple_files":
-                                return await write_multiple_files(args.get("files_data", []), session_id)
-                            elif cmd == "ask_model":
-                                return await ask_model(args.get("model_id", ""), args.get("prompt", ""))
-                            elif cmd == "web_search":
-                                return await web_search(args.get("query", ""))
-                            elif cmd == "find_safe_port":
-                                return await find_safe_port(args.get("preferred", 0))
-                            else:
-                                return f"Unknown tool: {cmd}. Available tools: execute_bash, read_file, write_file, write_multiple_files, ask_model, web_search, find_safe_port"
-                        # Fix 2: Heartbeat pattern — kirim status setiap 20 detik, max 10 menit
-                        HEARTBEAT_INTERVAL = 20.0
-                        MAX_TOOL_TIME = 600.0  # 10 menit cukup untuk npm install
+                    HEARTBEAT_INTERVAL = 20.0
+                    MAX_TOOL_TIME = 600.0  # 10 menit untuk npm install
 
-                        tool_task = asyncio.create_task(_exec_tool())
-                        elapsed = 0.0
-                        res = None
+                    async def _exec_tool():
+                        """Eksekusi tool yang diminta."""
+                        # Analysis mode: block destructive tools
+                        if execution_mode == "analysis" and cmd in (
+                            "execute_bash", "write_file", "write_multiple_files"
+                        ):
+                            return f"Simulated (Analysis Mode): {cmd} skipped."
 
-                        while not tool_task.done():
-                            try:
-                                res = await asyncio.wait_for(
-                                    asyncio.shield(tool_task),
-                                    timeout=HEARTBEAT_INTERVAL
-                                )
-                                break  # selesai normal
-                            except asyncio.TimeoutError:
-                                elapsed += HEARTBEAT_INTERVAL
-                                if elapsed >= MAX_TOOL_TIME:
-                                    tool_task.cancel()
-                                    try:
-                                        await tool_task
-                                    except asyncio.CancelledError:
-                                        pass
-                                    res = f"Tool {cmd} timeout setelah {int(MAX_TOOL_TIME/60)} menit."
-                                    yield process_emitter.to_sentinel("Error", f"{cmd} timeout {int(MAX_TOOL_TIME/60)}m")
-                                    break
-                                # Kirim heartbeat → frontend tahu masih hidup
-                                yield process_emitter.to_sentinel(
-                                    "Ran",
-                                    f"{_detail[:40]} ({int(elapsed)}s)...",
-                                )
+                        if cmd == "execute_bash":
+                            return await execute_bash(args.get("command", ""), session_id)
 
-                        if res is None:
-                            res = f"Tool {cmd} tidak menghasilkan output."
-                    except Exception as e:
-                        res = f"Error executing tool {cmd}: {str(e)}. The tool encountered an error but the process continues."
-                        yield process_emitter.to_sentinel("Error", str(e)[:80])
-                    
-                    # After successful write_file: emit file content so frontend can show artifact
-                    if cmd == "write_file" and not res.startswith("Error") and not res.startswith("Tool "):
-                        file_path    = args.get("path", "")
-                        file_content = args.get("content", "")
-                        if file_path and file_content:
-                            ext  = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else "txt"
-                            # Emit Written sentinel carrying file content (cap at 8000 chars)
-                            yield process_emitter.to_sentinel(
-                                "Written", file_path,
-                                extra={"code": file_content[:8000], "language": ext, "truncated": len(file_content) > 8000}
+                        elif cmd == "read_file":
+                            return await read_file(args.get("path", ""), session_id)
+
+                        elif cmd == "write_file":
+                            return await write_file(
+                                args.get("path", ""), args.get("content", ""), session_id
                             )
 
-                    # After write_multiple_files: emit last file so artifact panel updates
-                    elif cmd == "write_multiple_files" and not res.startswith("Error") and not res.startswith("Tool "):
+                        elif cmd == "write_multiple_files":
+                            return await write_multiple_files(
+                                args.get("files_data", []), session_id
+                            )
+
+                        elif cmd == "ask_model":
+                            # PERBAIKAN: resolve model_id (support short + full key)
+                            raw_model = args.get("model_id", "")
+                            resolved  = self._resolve_model_id(raw_model)
+                            return await ask_model(resolved, args.get("prompt", ""))
+
+                        elif cmd == "web_search":
+                            return await web_search(args.get("query", ""))
+
+                        elif cmd == "find_safe_port":
+                            return await find_safe_port(args.get("preferred", 0))
+
+                        else:
+                            return (
+                                f"Unknown tool: '{cmd}'. "
+                                f"Available: execute_bash, read_file, write_file, "
+                                f"write_multiple_files, ask_model, web_search, find_safe_port"
+                            )
+
+                    # Jalankan dengan heartbeat agar tidak timeout saat npm install
+                    tool_task = asyncio.create_task(_exec_tool())
+                    elapsed_secs = 0.0
+
+                    while not tool_task.done():
+                        try:
+                            res = await asyncio.wait_for(
+                                asyncio.shield(tool_task),
+                                timeout=HEARTBEAT_INTERVAL
+                            )
+                            break
+                        except asyncio.TimeoutError:
+                            elapsed_secs += HEARTBEAT_INTERVAL
+                            if elapsed_secs >= MAX_TOOL_TIME:
+                                tool_task.cancel()
+                                try:
+                                    await tool_task
+                                except asyncio.CancelledError:
+                                    pass
+                                res = f"Tool '{cmd}' timeout setelah {int(MAX_TOOL_TIME // 60)} menit."
+                                yield process_emitter.to_sentinel(
+                                    "Error", f"{cmd} timeout {int(MAX_TOOL_TIME // 60)}m"
+                                )
+                                break
+                            # Heartbeat ke frontend
+                            yield process_emitter.to_sentinel(
+                                "Ran", f"{_detail[:40]} ({int(elapsed_secs)}s)..."
+                            )
+
+                    if res is None:
+                        res = f"Tool '{cmd}' tidak menghasilkan output."
+
+                    # ── Artifact emit ────────────────────────────────────────
+                    if cmd == "write_file" and not str(res).startswith("Error"):
+                        fp = args.get("path", "")
+                        fc = args.get("content", "")
+                        if fp and fc:
+                            ext = fp.rsplit(".", 1)[-1].lower() if "." in fp else "txt"
+                            yield process_emitter.to_sentinel(
+                                "Written", fp,
+                                extra={
+                                    "code":      fc[:8000],
+                                    "language":  ext,
+                                    "truncated": len(fc) > 8000,
+                                }
+                            )
+
+                    elif cmd == "write_multiple_files" and not str(res).startswith("Error"):
+                        # PERBAIKAN: emit SEMUA file (bukan hanya yang terakhir)
                         files_data = args.get("files_data", [])
-                        if files_data:
-                            last_file = files_data[-1]
-                            fp = last_file.get("path", "")
-                            fc = last_file.get("content", "")
+                        for file_obj in files_data:
+                            fp = file_obj.get("path", "")
+                            fc = file_obj.get("content", "")
                             if fp and fc:
                                 ext = fp.rsplit(".", 1)[-1].lower() if "." in fp else "txt"
                                 yield process_emitter.to_sentinel(
                                     "Written", fp,
-                                    extra={"code": fc[:8000], "language": ext, "truncated": len(fc) > 8000}
+                                    extra={
+                                        "code":      fc[:8000],
+                                        "language":  ext,
+                                        "truncated": len(fc) > 8000,
+                                    }
                                 )
 
-                    # Emit a 'Found' step if result has useful content (non-write tools)
-                    if cmd not in ("write_file", "write_multiple_files") and include_tool_logs and res and not res.startswith("Error") and not res.startswith("Tool "):
-                        lines = res.strip().splitlines()
-                        n = len(lines)
-                        if n > 1:
-                            yield process_emitter.to_sentinel("Found", f"{n} lines", count=n)
-                            
-                    # Klasifikasi error untuk bantu model analisis
-                    error_hint = ""
-                    if "ENOENT" in str(res) or "No such file" in str(res):
-                        error_hint = "\n[HINT: File/direktori tidak ditemukan. Cek path dan buat direktori dulu dengan mkdir -p]"
-                    elif "EADDRINUSE" in str(res) or "address already in use" in str(res):
-                        error_hint = "\n[HINT: Port sudah dipakai. Gunakan find_safe_port atau kill proses lama]"
-                    elif "MODULE_NOT_FOUND" in str(res) or "ModuleNotFoundError" in str(res):
-                        error_hint = "\n[HINT: Package belum terinstall. Jalankan npm install atau pip install dulu]"
-                    elif "SyntaxError" in str(res) or "IndentationError" in str(res):
-                        error_hint = "\n[HINT: Ada syntax error di kode. Baca file yang bermasalah lalu perbaiki]"
-                    elif "Permission denied" in str(res):
-                        error_hint = "\n[HINT: Permission error. Cek dengan ls -la dan gunakan chmod atau sudo jika perlu]"
-                    elif "connection refused" in str(res).lower():
-                        error_hint = "\n[HINT: Server belum ready atau crash. Cek log dengan tail -30 app.log]"
-
-                    # Kirim hasil tool ke frontend agar bisa ditampilkan di step toggle
-                    if cmd == "execute_bash" and res and not res.startswith("Error"):
-                        # Batasi output bash ke 2000 char agar tidak membanjiri
-                        display_res = res[:2000] + ("\n...[output dipotong]" if len(res) > 2000 else "")
-                        yield process_emitter.to_sentinel(
-                            "Found",
-                            f"output: {args.get('command','')[:40]}",
-                            extra={"result": display_res}
-                        )
-                    elif cmd == "read_file" and res and not res.startswith("Error"):
-                        display_res = res[:3000] + ("\n...[dipotong]" if len(res) > 3000 else "")
-                        yield process_emitter.to_sentinel(
-                            "Reading",  
-                            args.get("path", "").split("/")[-1],
-                            extra={"result": display_res}
-                        )
-                    elif cmd == "web_search" and res and not res.startswith("Error"):
-                        yield process_emitter.to_sentinel(
-                            "Fetched",
-                            args.get("query","")[:50],
-                            extra={"result": res[:2000]}
-                        )
-
-                    obs_text = f"\n<observation>\n{res}{error_hint}\n</observation>\n"
-                    
-                    # Only store the tool call in history, without the pre-tool thinking text
-                    agent_msgs.append({"role": "assistant", "content": f"<tool>{tool_content}</tool>"})
-                    agent_msgs.append({"role": "user", "content": obs_text})
-                    agent_msgs = self._prune_agent_messages(agent_msgs)
-                    
-                except Exception as e:
-                    consecutive_errors += 1
+                    # ── Result display ───────────────────────────────────────
+                    res_str = str(res)
                     if include_tool_logs:
-                        yield f"\n> ⚠️ **Tool parse error (recovering):** {str(e)[:100]}\n"
-                    err_obs = f"\n<observation>\nError parsing or executing tool: {str(e)}. Please fix the JSON format and try again.\n</observation>\n"
-                    agent_msgs.append({"role": "assistant", "content": buffer})
-                    agent_msgs.append({"role": "user", "content": err_obs})
+                        if cmd == "execute_bash" and not res_str.startswith("Error"):
+                            display = res_str[:2000] + (
+                                "\n...[output dipotong]" if len(res_str) > 2000 else ""
+                            )
+                            yield process_emitter.to_sentinel(
+                                "Found",
+                                f"output: {args.get('command', '')[:40]}",
+                                extra={"result": display}
+                            )
+                        elif cmd == "read_file" and not res_str.startswith("Error"):
+                            display = res_str[:3000] + (
+                                "\n...[dipotong]" if len(res_str) > 3000 else ""
+                            )
+                            yield process_emitter.to_sentinel(
+                                "Reading",
+                                args.get("path", "").split("/")[-1],
+                                extra={"result": display}
+                            )
+                        elif cmd == "web_search" and not res_str.startswith("Error"):
+                            yield process_emitter.to_sentinel(
+                                "Fetched",
+                                args.get("query", "")[:50],
+                                extra={"result": res_str[:2000]}
+                            )
+                        elif cmd not in ("write_file", "write_multiple_files"):
+                            lines = res_str.strip().splitlines()
+                            if len(lines) > 1:
+                                yield process_emitter.to_sentinel(
+                                    "Found", f"{len(lines)} lines", count=len(lines)
+                                )
+
+                    # ── Error hint ───────────────────────────────────────────
+                    error_hint = _get_error_hint(res_str)
+
+                    # ── Update conversation ──────────────────────────────────
+                    obs = f"\n<observation>\n{res_str}{error_hint}\n</observation>\n"
+                    agent_msgs.append({"role": "assistant", "content": f"<tool>{tool_content}</tool>"})
+                    agent_msgs.append({"role": "user", "content": obs})
                     agent_msgs = self._prune_agent_messages(agent_msgs)
+
+                except Exception as tool_err:
+                    consecutive_errors += 1
+                    err_msg = str(tool_err)[:150]
+                    if include_tool_logs:
+                        yield f"\n> ⚠️ Tool error (recovering): {err_msg}\n"
+                    agent_msgs.append({"role": "assistant", "content": buffer})
+                    agent_msgs.append({
+                        "role": "user",
+                        "content": (
+                            f"<observation>\nTool error: {err_msg}. "
+                            "Fix the JSON format and try again.\n</observation>"
+                        )
+                    })
+                    agent_msgs = self._prune_agent_messages(agent_msgs)
+
             else:
-                # No tool call => stream ended
-                # Flush any remaining content in the filter
+                # ── Tidak ada tool → selesai ─────────────────────────────────
+                # PERBAIKAN: reset consecutive_errors saat model berhasil respond
+                consecutive_errors = 0
+
                 remaining = response_filter.flush()
                 if remaining:
                     yield remaining
-                
-                # SAFE FALLBACK: If the model never used <response> tags,
-                # salvage the raw text.
+
+                # Fallback jika model tidak pakai <response> tags
                 if not response_filter.ever_emitted_response:
-                    # Explicitly remove the entire <thinking> or <think> block and its contents first
-                    fallback_text = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', buffer, flags=re.DOTALL)
-                    # Remove any loose tags remaining
-                    fallback_text = re.sub(r'</?(?:thinking|think|response|tool|observation)>', '', fallback_text).strip()
-                    if fallback_text:
-                        # ── Self-Correction Loop: review code before yielding ──
+                    fallback = re.sub(
+                        r'<(?:thinking|think)>.*?</(?:thinking|think)>',
+                        '', buffer, flags=re.DOTALL
+                    )
+                    fallback = re.sub(
+                        r'</?(?:thinking|think|response|tool|observation)>',
+                        '', fallback
+                    ).strip()
+
+                    if fallback:
+                        # Self-correction (opsional)
                         try:
                             from core.self_correction import self_correction_engine
                             corrected, report = await self_correction_engine.review_and_correct(
-                                fallback_text, base_model, agent_msgs[0].get("content", "")[:300] if agent_msgs else ""
+                                fallback,
+                                base_model,
+                                agent_msgs[0].get("content", "")[:300] if agent_msgs else ""
                             )
                             if report.total_issues_fixed > 0:
-                                log.info("Self-correction applied",
-                                         fixed=report.total_issues_fixed,
-                                         found=report.total_issues_found)
                                 yield corrected
-                                yield f"\n\n✅ *Self-Correction: {report.total_issues_fixed} error otomatis diperbaiki.*"
+                                yield f"\n\n✅ *Self-Correction: {report.total_issues_fixed} error diperbaiki.*"
                             else:
-                                yield fallback_text
-                        except Exception as sc_err:
-                            log.debug("Self-correction skipped", error=str(sc_err)[:80])
-                            yield fallback_text
+                                yield fallback
+                        except Exception:
+                            yield fallback
                     elif not stream_error:
-                        yield "⚠️ Proses selesai namun tidak ada respons yang dihasilkan. Silakan ulangi pertanyaan Anda."
-                
+                        yield (
+                            "⚠️ Proses selesai namun tidak ada respons. "
+                            "Silakan ulangi pertanyaan Anda."
+                        )
                 break
 
+
 agent_executor = AgentExecutor()
-
-

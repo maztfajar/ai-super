@@ -686,7 +686,7 @@ class Orchestrator:
                     text = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', text, flags=re.DOTALL)
                     for pattern in _LEAK_PATTERNS:
                         text = re.sub(pattern, '', text)
-                    return text.strip()
+                    return text
 
                 async for chunk in model_manager.chat_stream(
                     model=model,
@@ -697,7 +697,6 @@ class Orchestrator:
                     buffer += chunk
                     
                     # Detect and skip <thinking> blocks
-                    # We buffer until we find </thinking> or enough clean text
                     if not response_started:
                         # Skip if we're inside a thinking block
                         if '<thinking>' in buffer or '<think>' in buffer:
@@ -714,16 +713,18 @@ class Orchestrator:
                         # Check for response tag
                         if '<response>' in buffer:
                             response_started = True
-                            before_resp = buffer.split('<response>')[0]
-                            buffer = buffer[buffer.find('<response>') + len('<response>'):]
+                            resp_idx = buffer.find('<response>')
+                            buffer = buffer[resp_idx + len('<response>'):]
                             # Emit anything already in buffer after <response>
-                            clean = _strip_leaked_text(buffer.split('</response>')[0])
-                            if clean:
-                                yield OrchestratorEvent("chunk", clean)
+                            if '</response>' in buffer:
+                                clean = _strip_leaked_text(buffer.split('</response>')[0])
+                                if clean:
+                                    yield OrchestratorEvent("chunk", clean)
+                                buffer = ""
                             continue
                         
-                        # If buffer > 80 chars and no thinking tags, assume direct response
-                        if len(buffer) > 80:
+                        # If buffer > 100 chars and no thinking tags, assume direct response
+                        if len(buffer) > 100:
                             clean = _strip_leaked_text(buffer)
                             if clean:
                                 response_started = True
@@ -736,11 +737,12 @@ class Orchestrator:
                             if clean_part:
                                 yield OrchestratorEvent("chunk", clean_part)
                             buffer = ""
+                            break # End of response
                         else:
-                            # Stream cleaned chunk immediately
-                            clean = _strip_leaked_text(chunk)
-                            if clean:
-                                yield OrchestratorEvent("chunk", clean)
+                            # Stream chunk immediately (NO STRIP)
+                            # We only strip if we suspect a leak pattern is starting
+                            # but for now let's just yield to preserve spaces.
+                            yield OrchestratorEvent("chunk", chunk)
                             buffer = ""
 
                 # Flush remaining buffer
