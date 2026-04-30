@@ -1521,6 +1521,7 @@ export default function Chat() {
   }, [])
   // Multimodal state
   const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
+  const [showMobileAttachMenu, setShowMobileAttachMenu] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
   
@@ -2710,39 +2711,60 @@ export default function Chat() {
                 accept="image/*"
               />
 
-              {/* Tombol Lampirkan File ke Chat */}
-              <button
-                onClick={() => chatContextFileRef.current?.click()}
-                disabled={streaming}
-                className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
-                title="Lampirkan file (PDF, Excel, Word) ke chat"
-              >
-                <FilePlus size={16} className="md:w-[15px] md:h-[15px]" />
-              </button>
+              {/* Attachment Toggle & Menu */}
+              <div className="relative flex items-end gap-2">
+                {/* Toggle Button for Mobile */}
+                <button
+                  onClick={() => setShowMobileAttachMenu(!showMobileAttachMenu)}
+                  className="md:hidden w-11 h-11 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
+                  disabled={streaming}
+                >
+                  <Plus size={18} className={clsx("transition-transform duration-200", showMobileAttachMenu && "rotate-45")} />
+                </button>
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={streaming}
-                className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
-                title="Upload file ke Knowledge Base"
-              >
-                <Paperclip size={16} className="md:w-[15px] md:h-[15px]" />
-              </button>
+                {/* The Buttons Container (Popup di mobile, Inline di desktop) */}
+                <div className={clsx(
+                  "flex md:flex-row gap-2 transition-all duration-200",
+                  "absolute md:relative bottom-[110%] md:bottom-auto left-0 md:left-auto flex-col-reverse bg-bg-3 md:bg-transparent border border-border md:border-none p-2 md:p-0 rounded-2xl shadow-2xl md:shadow-none z-50",
+                  showMobileAttachMenu 
+                    ? "opacity-100 pointer-events-auto translate-y-0 scale-100" 
+                    : "opacity-0 pointer-events-none translate-y-2 scale-95 md:opacity-100 md:pointer-events-auto md:translate-y-0 md:scale-100"
+                )}>
+                  {/* Tombol Lampirkan File ke Chat */}
+                  <button
+                    onClick={() => { chatContextFileRef.current?.click(); setShowMobileAttachMenu(false); }}
+                    disabled={streaming}
+                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
+                    title="Lampirkan file (PDF, Excel, Word) ke chat"
+                  >
+                    <FilePlus size={16} className="md:w-[15px] md:h-[15px]" />
+                  </button>
 
-              {/* Kamera */}
-              <button
-                onClick={() => imagePickerRef.current?.click()}
-                disabled={streaming}
-                className={clsx(
-                  'w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border transition-all disabled:opacity-40',
-                  pendingImage
-                    ? 'border-accent bg-accent/20 text-accent'
-                    : 'border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
-                )}
-                title="Kirim gambar ke AI"
-              >
-                <ImagePlus size={16} className="md:w-[15px] md:h-[15px]" />
-              </button>
+                  <button
+                    onClick={() => { fileInputRef.current?.click(); setShowMobileAttachMenu(false); }}
+                    disabled={streaming}
+                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
+                    title="Upload file ke Knowledge Base"
+                  >
+                    <Paperclip size={16} className="md:w-[15px] md:h-[15px]" />
+                  </button>
+
+                  {/* Kamera */}
+                  <button
+                    onClick={() => { imagePickerRef.current?.click(); setShowMobileAttachMenu(false); }}
+                    disabled={streaming}
+                    className={clsx(
+                      'w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border transition-all disabled:opacity-40',
+                      pendingImage
+                        ? 'border-accent bg-accent/20 text-accent'
+                        : 'border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
+                    )}
+                    title="Kirim gambar ke AI"
+                  >
+                    <ImagePlus size={16} className="md:w-[15px] md:h-[15px]" />
+                  </button>
+                </div>
+              </div>
 
               {/* Mikrofon */}
               <button
