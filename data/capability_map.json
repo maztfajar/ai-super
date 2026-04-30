@@ -31,5 +31,10 @@
     "text",
     "vision",
     "writing"
+  ],
+  "sumopod/gemini/gemini-2.5-flash-lite": [
+    "speed",
+    "text",
+    "vision"
   ]
 }

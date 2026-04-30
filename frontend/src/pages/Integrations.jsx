@@ -716,6 +716,7 @@ export default function Integrations() {
   const [ollamaModels,   setOllamaModels]   = useState('')
   const [waToken,        setWaToken]        = useState('')
   const [waPhoneId,      setWaPhoneId]      = useState('')
+  const [tavilyKey,      setTavilyKey]      = useState('')
 
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('int_active_tab') || 'messaging')
   useEffect(() => { localStorage.setItem('int_active_tab', activeTab) }, [activeTab])
@@ -725,6 +726,7 @@ export default function Integrations() {
     { id: 'model_ai',  label: 'Model AI',  icon: '🤖' },
 
     { id: 'webhook',   label: 'Webhook & Otomasi', icon: '🔗' },
+    { id: 'search',    label: 'Pencarian AI', icon: '🔍' },
     { id: 'api_docs',  label: 'API Endpoints', icon: '🔌' },
   ]
 
@@ -889,6 +891,20 @@ export default function Integrations() {
 
         <div className={clsx(activeTab !== 'webhook' && "hidden")}>
           <WebhookSection/>
+        </div>
+
+        <div className={clsx(activeTab !== 'search' && "hidden")}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <Card icon="🔍" title="Tavily" subtitle="AI Search Engine" configured={status?.tavily?.configured}>
+              <div className="mt-3 space-y-2.5">
+                <MaskedField masked={status?.tavily?.key_masked} label="API Key" value={tavilyKey} onChange={setTavilyKey} onSave={() => save('tavily', { TAVILY_API_KEY: tavilyKey })} saving={saving.tavily}/>
+                <div className="p-3 bg-bg-4 border border-border rounded-xl text-[10px] text-ink-3">
+                  <strong className="text-ink block mb-1">Pencarian Cerdas</strong>
+                  Tavily dirancang khusus untuk agen AI. Dengan API Key ini, AI dapat mengakses informasi terkini secara real-time dari internet.
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
 
         <div className={clsx(activeTab !== 'api_docs' && "hidden")}>

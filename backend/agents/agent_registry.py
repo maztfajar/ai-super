@@ -23,7 +23,7 @@ log = structlog.get_logger()
 MODEL_CAPABILITY_MAP: Dict[str, List[str]] = {
     "sumopod/qwen3.6-flash":           ["coding", "speed", "text", "vision"],
     "sumopod/deepseek-v3-2":           ["coding", "reasoning", "text"],
-    "sumopod/gemini-2.5-flash-lite":   ["speed", "text", "vision"],
+    "sumopod/gemini-2.5-flash":        ["speed", "text", "vision"],
     "sumopod/minimax/speech-2.8-hd":   ["audio", "speed", "tts"],
     "sumopod/claude-haiku-4-5":        ["speed"],
     "sumopod/gpt-4o-mini":             ["analysis", "coding", "reasoning", "speed", "text", "vision", "writing"],
@@ -34,7 +34,7 @@ _DEFAULT_FALLBACK_ORDER = [
     "sumopod/deepseek-v3-2",
     "sumopod/qwen3.6-flash",
     "sumopod/gpt-4o-mini",
-    "sumopod/gemini-2.5-flash-lite",
+    "sumopod/gemini-2.5-flash",
     "sumopod/claude-haiku-4-5",
 ]
 
@@ -72,7 +72,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
+        fallback_models=["sumopod/gemini-2.5-flash", "sumopod/claude-haiku-4-5"],
         required_capabilities=["reasoning"],
         default_temperature=0.3,
         system_prompt_addon=(
@@ -92,7 +92,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "sumopod/qwen3.6-flash",
             "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
+        fallback_models=["sumopod/gemini-2.5-flash", "sumopod/claude-haiku-4-5"],
         required_capabilities=["coding"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
@@ -109,7 +109,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Pengumpulan informasi, pencarian web, fact-checking, perbandingan data",
         skills=["search", "gather", "compare", "summarize", "fact_check", "data_collection"],
         preferred_models=[
-            "sumopod/gemini-2.5-flash-lite",
+            "sumopod/gemini-2.5-flash",
             "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
@@ -153,7 +153,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "sumopod/qwen3.6-flash",
             "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
+        fallback_models=["sumopod/gemini-2.5-flash", "sumopod/claude-haiku-4-5"],
         required_capabilities=["coding"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
@@ -209,7 +209,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Percakapan umum, FAQ, pertanyaan sederhana, salam",
         skills=["conversation", "faq", "general_knowledge"],
         preferred_models=[
-            "sumopod/gemini-2.5-flash-lite",
+            "sumopod/gemini-2.5-flash",
             "sumopod/claude-haiku-4-5",
             "sumopod/gpt-4o-mini",
         ],

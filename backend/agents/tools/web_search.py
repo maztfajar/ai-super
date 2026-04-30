@@ -18,16 +18,15 @@ import structlog
 
 log = structlog.get_logger()
 
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
-
 
 async def web_search(query: str, max_results: int = 5) -> str:
     """
     Cari informasi real-time dari internet.
     Provider chain: Tavily → Jina → DuckDuckGo
     """
-    if TAVILY_API_KEY:
-        result = await _tavily_search(query, max_results)
+    tavily_key = os.environ.get("TAVILY_API_KEY", "")
+    if tavily_key:
+        result = await _tavily_search(query, max_results, tavily_key)
         if not result.startswith("❌"):
             return result
         log.warning("Tavily gagal, mencoba Jina")
@@ -40,11 +39,11 @@ async def web_search(query: str, max_results: int = 5) -> str:
     return await _duckduckgo_fallback(query, max_results)
 
 
-async def _tavily_search(query: str, max_results: int) -> str:
+async def _tavily_search(query: str, max_results: int, api_key: str) -> str:
     """Tavily — dirancang khusus untuk AI agents, paling akurat."""
     url = "https://api.tavily.com/search"
     payload = {
-        "api_key":             TAVILY_API_KEY,
+        "api_key":             api_key,
         "query":               query,
         "max_results":         max_results,
         "search_depth":        "basic",
