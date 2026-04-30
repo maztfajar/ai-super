@@ -24,7 +24,7 @@ cd "$APP_DIR/backend"
 # 3. Restart Service
 echo "----------------------------------------"
 echo "🔄 Merestart AI ORCHESTRATOR service..."
-sudo systemctl restart ai-super-assistant-api.service
+sudo systemctl restart ai-orchestrator-api.service
 
 # 4. Health Check
 echo "----------------------------------------"
@@ -36,7 +36,7 @@ until curl -s http://localhost:7860/api/health > /dev/null; do
     counter=$((counter+1))
     if [ $counter -ge $max_retries ]; then
         echo "❌ Service gagal online dalam 30 detik."
-        echo "Gunakan perintah ini untuk cek log: sudo journalctl -u ai-super-assistant-api.service -n 50 --no-pager"
+        echo "Gunakan perintah ini untuk cek log: sudo journalctl -u ai-orchestrator-api.service -n 50 --no-pager"
         exit 1
     fi
 done

@@ -341,7 +341,8 @@ EOF
 sudo cp /tmp/ai-orchestrator-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable ai-orchestrator-api 2>/dev/null || true
-log "Systemd service installed"
+sudo systemctl restart ai-orchestrator-api 2>/dev/null || sudo systemctl start ai-orchestrator-api 2>/dev/null || true
+log "Systemd service installed and started (background)"
 
 # ── Done ──────────────────────────────────────────────────────
 echo -e "\n${GREEN}${BOLD}"

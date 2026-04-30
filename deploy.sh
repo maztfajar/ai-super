@@ -11,7 +11,7 @@ cd "$APP_DIR/backend"
 ./venv/bin/pip install -r requirements.txt
 
 echo "Restarting AI ORCHESTRATOR service..."
-sudo systemctl restart ai-super-assistant-api.service
+sudo systemctl restart ai-orchestrator-api.service
 
 echo "Waiting for service to become healthy..."
 max_retries=15
@@ -20,7 +20,7 @@ until curl -s http://localhost:7860/api/health > /dev/null; do
     sleep 2
     counter=$((counter+1))
     if [ $counter -ge $max_retries ]; then
-        echo "❌ Service did not become healthy within 30 seconds. Check logs with: sudo journalctl -u ai-super-assistant-api.service -n 50 --no-pager"
+        echo "❌ Service did not become healthy within 30 seconds. Check logs with: sudo journalctl -u ai-orchestrator-api.service -n 50 --no-pager"
         exit 1
     fi
 done
