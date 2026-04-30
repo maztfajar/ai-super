@@ -281,7 +281,7 @@ Output ONLY JSON:
 
     def _get_fast_model(self) -> str:
         """Pick fastest model for validation."""
-        priorities = ["gpt-4o-mini", "gemini-1.5-flash", "claude-3-haiku"]
+        priorities = ["gpt-5-nano", "gemini-2.5-flash-lite", "claude-haiku-4-5"]
         for p in priorities:
             for k in model_manager.available_models.keys():
                 if p in k:

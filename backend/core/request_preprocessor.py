@@ -606,7 +606,7 @@ class RequestPreprocessor:
         priorities = [
             "sumopod/gemini-2.5-flash-lite",
             "sumopod/claude-haiku-4-5",
-            "sumopod/gpt-4o-mini",
+            "sumopod/gpt-5-nano",
             "sumopod/qwen3.6-flash",
         ]
         available = model_manager.available_models

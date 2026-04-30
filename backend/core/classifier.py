@@ -61,7 +61,7 @@ class TaskClassifier:
 
     def _get_fast_model(self) -> str:
         # Prioritize really fast models for classification to reduce wait times
-        priorities = ["gpt-4o-mini", "claude-3-haiku", "gemini-1.5-flash", "llama3.1:latest"]
+        priorities = ["gpt-5-nano", "gemini-2.5-flash-lite", "claude-haiku-4-5", "qwen3.6-flash"]
         
         for p in priorities:
             for k in model_manager.available_models.keys():

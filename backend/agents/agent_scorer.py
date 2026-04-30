@@ -130,7 +130,7 @@ class AgentScorer:
         elif quality_priority == "quality":
             # Boost premium models
             for c in candidates:
-                if any(prem in c.model_id for prem in ["deepseek-v3-2", "qwen3.6-flash",
+                if any(prem in c.model_id for prem in ["deepseek-v4-pro", "qwen3.6-flash",
                                                         "claude-3-opus", "pro"]):
                     c.total_score *= 1.3
 

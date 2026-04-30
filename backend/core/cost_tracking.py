@@ -14,7 +14,7 @@ log = structlog.get_logger()
 # Pricing per 1K tokens (approximate, update based on actual rates)
 TOKEN_PRICING = {
     "gpt-4o": {"input": 0.015, "output": 0.06},
-    "gpt-4o-mini": {"input": 0.0003, "output": 0.0012},
+    "gpt-5-nano": {"input": 0.0003, "output": 0.0012},
     "gpt-4-turbo": {"input": 0.01, "output": 0.03},
     "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
     

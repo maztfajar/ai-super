@@ -151,6 +151,11 @@ async def get_settings(user: User = Depends(get_current_user)):
         },
         "ai_core": {
             "system_prompt": _get_ai_core_prompt(env),
+            "role_mappings": {
+                "coding": env.get("AI_ROLE_CODING", ""),
+                "reasoning": env.get("AI_ROLE_REASONING", ""),
+                "chat": env.get("AI_ROLE_CHAT", ""),
+            }
         },
         "tunnel_status": _get_tunnel_status_dict(),
     }
@@ -594,6 +599,29 @@ async def save_ai_core_settings(req: AiCoreSettingsRequest, user: User = Depends
     prompt_file.write_text(req.system_prompt, encoding="utf-8")
     
     return {"status": "saved", "message": "System Prompt Global berhasil diperbarui"}
+
+
+# ── AI Role Mappings ──────────────────────────────────────────
+class AiRoleSettingsRequest(BaseModel):
+    coding: Optional[str] = None
+    reasoning: Optional[str] = None
+    chat: Optional[str] = None
+
+@router.post("/ai-roles")
+async def save_ai_role_settings(req: AiRoleSettingsRequest, user: User = Depends(get_current_user)):
+    if not user.is_admin:
+        raise HTTPException(403, "Admin only")
+    
+    data = {}
+    if req.coding is not None:    data["AI_ROLE_CODING"] = req.coding
+    if req.reasoning is not None: data["AI_ROLE_REASONING"] = req.reasoning
+    if req.chat is not None:      data["AI_ROLE_CHAT"] = req.chat
+    
+    write_env_batch(data)
+    from core.config import settings
+    settings.reload()
+    
+    return {"status": "saved", "message": "Pemetaan Role AI berhasil diperbarui"}
 
 
 # ── POST: restart server ──────────────────────────────────────

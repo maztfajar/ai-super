@@ -31,7 +31,7 @@ STATIC_CAPABILITY_HINTS: Dict[str, Set[str]] = {
     "big-pickle":                {"text", "coding", "analysis"},
     # OpenAI
     "gpt-4o":                    {"text", "vision", "coding", "reasoning", "analysis", "writing"},
-    "gpt-4o-mini":               {"text", "coding", "reasoning", "speed"},
+    "gpt-5-nano":                 {"text", "coding", "reasoning", "speed"},
     "gpt-image-1":               {"image_gen"},
     "dall-e-3":                  {"image_gen"},
     # Anthropic
@@ -43,7 +43,7 @@ STATIC_CAPABILITY_HINTS: Dict[str, Set[str]] = {
     "gemini-1.5-flash":          {"text", "speed", "vision"},
     "gemini-2.0-flash":          {"text", "speed", "vision"},
     "gemini-2.5-pro":            {"text", "vision", "reasoning", "analysis"},
-    "gemini-2.5-flash":          {"text", "vision", "speed"},
+    "gemini-2.5-flash-lite":     {"text", "vision", "speed"},
     # Seed (Sumopod)
     "seed-2-0-pro":              {"text", "reasoning", "coding", "analysis"},
     # Ollama / local

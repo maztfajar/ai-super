@@ -339,7 +339,7 @@ Example for asking another model:
 1. Plan Evaluation: User wants a poem.
 2. Tool Need Check: I will delegate to another model.
 3. Action & Review: Let's ask deepseek.
-<tool>{{"name": "ask_model", "args": {{"model_id": "deepseek-v3-2", "prompt": "Write a poem"}}}}</tool>
+<tool>{{"name": "ask_model", "args": {{"model_id": "deepseek-v4-pro", "prompt": "Write a poem"}}}}</tool>
 </thinking>
 [receives observation]
 <response>

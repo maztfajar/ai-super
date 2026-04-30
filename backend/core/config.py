@@ -161,6 +161,11 @@ class Settings(BaseSettings):
     CLOUDFLARE_TUNNEL_TOKEN: Optional[str] = None
     CLOUDFLARE_API_TOKEN: Optional[str] = None
 
+    # AI Role Mappings
+    AI_ROLE_CODING: Optional[str] = None
+    AI_ROLE_REASONING: Optional[str] = None
+    AI_ROLE_CHAT: Optional[str] = None
+
     @property
     def allowed_extensions_list(self) -> list:
         return [e.strip().lower() for e in self.ALLOWED_EXTENSIONS.split(",")]

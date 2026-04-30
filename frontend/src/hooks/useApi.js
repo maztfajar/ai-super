@@ -207,6 +207,10 @@ export const api = {
   totpDisable:     (pass, code)  => req('POST', '/auth2fa/totp/disable?password=' + encodeURIComponent(pass) + '&code=' + encodeURIComponent(code)),
   totpVerifyLogin: (uname, code) => req('POST', '/auth2fa/totp/verify-login?username=' + encodeURIComponent(uname) + '&code=' + encodeURIComponent(code)),
   totpStatus:      ()            => req('GET',  '/auth2fa/totp/status'),
+  
+  // ── Settings ──────────────────────────────────────────────
+  getSettings: () => req('GET', '/settings/'),
+  saveAiRoles: (d) => req('POST', '/settings/ai-roles', d),
 
   // ── Health ────────────────────────────────────────────────
   health: () => req('GET', '/health'),

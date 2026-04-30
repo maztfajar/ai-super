@@ -61,8 +61,8 @@ class ModelManager:
                         self.available_models[m.strip()] = {"provider": "openai", "display": f"{m.strip()}", "status": "online"}
             else:
                 self.available_models.update({
-                    "gpt-4o":       {"provider": "openai", "display": "GPT-4o",       "status": "online"},
-                    "gpt-4o-mini":  {"provider": "openai", "display": "GPT-4o Mini",  "status": "online"},
+                    "gpt-4o":      {"provider": "openai", "display": "GPT-4o",     "status": "online"},
+                    "gpt-5-nano": {"provider": "openai", "display": "GPT-5 Nano", "status": "online"},
                 })
             log.info("OpenAI models registered")
 
@@ -568,7 +568,7 @@ class ModelManager:
             log.error("chat_with_image error", model=model_to_use, error=str(e))
             return f"❌ Gagal memproses gambar via {model_to_use}: {e}"
 
-        return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini-2.5-flash, qwen3.6-flash) di menu Integrasi."
+        return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini-2.5-flash-lite, qwen3.6-flash) di menu Integrasi."
 
     # ── Image Generation: teks → gambar ───────────────────────
     async def generate_image(

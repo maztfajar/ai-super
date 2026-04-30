@@ -9,27 +9,27 @@ ROUTING_RULES = {
         "keywords": ["code", "python", "javascript", "debug", "function", "class",
                      "error", "bug", "program", "script", "api", "sql", "kode",
                      "coding", "pemrograman", "syntax"],
-        "preferred": ["deepseek-v3-2", "qwen3.6-flash"],
+        "preferred": ["deepseek-v4-pro", "qwen3.6-flash"],
     },
     "writing": {
         "keywords": ["write", "essay", "article", "blog", "email", "letter",
                      "tulis", "artikel", "laporan", "report", "summary", "rangkum",
                      "cerita", "puisi"],
-        "preferred": ["qwen3.6-flash", "deepseek-v3-2"],
+        "preferred": ["qwen3.6-flash", "deepseek-v4-pro"],
     },
     "analysis": {
         "keywords": ["analyze", "analysis", "compare", "data", "chart", "statistic",
                      "analisa", "bandingkan", "grafik", "tren", "insight"],
-        "preferred": ["deepseek-v3-2", "qwen3.6-flash"],
+        "preferred": ["deepseek-v4-pro", "qwen3.6-flash"],
     },
     "translation": {
         "keywords": ["translate", "terjemah", "bahasa", "language", "indonesian", "english"],
-        "preferred": ["qwen3.6-flash", "deepseek-v3-2"],
+        "preferred": ["qwen3.6-flash", "deepseek-v4-pro"],
     },
     "simple": {
         "keywords": ["hello", "halo", "hi", "thanks", "terima kasih", "apa kabar",
                      "hei", "selamat", "oke", "ok"],
-        "preferred": [f"ollama/{settings.OLLAMA_DEFAULT_MODEL}", "gpt-4o-mini"],
+        "preferred": [f"ollama/{settings.OLLAMA_DEFAULT_MODEL}", "gpt-5-nano"],
     },
 }
 

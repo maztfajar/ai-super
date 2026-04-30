@@ -35,6 +35,9 @@ const intApi = {
   deleteCustomModel:    (id) => api.deleteCustomModel(id),
   testCustomModel:      (id) => api.testCustomModel(id),
   testCustomConnection: (d) => api.testCustomConnection(d),
+  // AI Roles
+  getSettings:          () => api.getSettings(),
+  saveAiRoles:          (d) => api.saveAiRoles(d),
 }
 
 /**
@@ -694,6 +697,104 @@ function WebhookSection() {
 
 
 
+// ── AiRoleMappingSection ──────────────────────────────────────
+function AiRoleMappingSection({ settings, onSave, saving }) {
+  const models = useModelsStore(s => s.models)
+  const [roles, setRoles] = useState({ coding: '', reasoning: '', chat: '' })
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (settings?.ai_core?.role_mappings) {
+      setRoles(settings.ai_core.role_mappings)
+    }
+  }, [settings])
+
+  const handleSave = async () => {
+    try {
+      await onSave(roles)
+      toast.success('Pemetaan Role AI disimpan')
+    } catch (e) {
+      toast.error(e.message)
+    }
+  }
+
+  const RoleSelect = ({ label, value, onChange, icon: Icon }) => (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">
+          <Icon size={12} />
+        </div>
+        <select 
+          value={value} 
+          onChange={e => onChange(e.target.value)}
+          className="w-full bg-bg-2 border border-border-2 rounded-lg pl-9 pr-3 py-2 text-xs text-ink outline-none focus:border-accent appearance-none cursor-pointer"
+        >
+          <option value="">-- Gunakan Default (Cerdas) --</option>
+          {models.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.display || m.id} ({m.provider})
+            </option>
+          ))}
+        </select>
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
+          <ChevronDown size={12} />
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden mt-0">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-bg-4 transition-colors">
+        <div className="flex items-center gap-3 text-left">
+          <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-accent-2 flex-shrink-0"><Zap size={16}/></div>
+          <div>
+            <div className="text-sm font-semibold text-ink">AI Roles Mapping</div>
+            <div className="text-[10px] text-ink-3">Petakan tugas spesifik ke model pilihan Anda</div>
+          </div>
+        </div>
+        {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+      </button>
+
+      <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+        <div className="overflow-hidden">
+          <div className="p-4 space-y-4 border-t border-border">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <RoleSelect 
+                label="Coding Specialist" 
+                icon={Code} 
+                value={roles.coding} 
+                onChange={v => setRoles(r => ({...r, coding: v}))} 
+              />
+              <RoleSelect 
+                label="Reasoning / Logic" 
+                icon={Zap} 
+                value={roles.reasoning} 
+                onChange={v => setRoles(r => ({...r, reasoning: v}))} 
+              />
+              <RoleSelect 
+                label="Simple Chat / Fast" 
+                icon={Globe} 
+                value={roles.chat} 
+                onChange={v => setRoles(r => ({...r, chat: v}))} 
+              />
+            </div>
+            
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <p className="text-[10px] text-ink-3 max-w-xs italic">
+                * Jika dikosongkan, sistem akan otomatis memilih model tercepat/terbaik berdasarkan kemampuannya.
+              </p>
+              <Btn label="Simpan Pemetaan" onClick={handleSave} loading={saving} variant="primary" icon={Save}/>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 // ── Main Integrations ─────────────────────────────────────────
 export default function Integrations() {
   const [status,     setStatus]     = useState(null)
@@ -884,6 +985,11 @@ export default function Integrations() {
               </div>
             </Card>
           </div>
+          <AiRoleMappingSection 
+            settings={status} 
+            onSave={(roles) => intApi.saveAiRoles(roles)} 
+            saving={saving.ai_roles} 
+          />
           <CustomModelSection/>
         </div>
 
