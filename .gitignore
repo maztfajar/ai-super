@@ -1,26 +1,68 @@
+# ── Dependencies ─────────────────────────────────────────────────────────────
 node_modules/
 **/node_modules/
-.next/
-dist/
-build/
-.env
-backend/data/
-data/
-uploads/
-__pycache__/
-**/__pycache__/
-*.log
-.cache/
-tmp/
 venv/
 **/venv/
 scripts/venv/
-*.pyc
-*.pyo
+
+# ── Build output ──────────────────────────────────────────────────────────────
+.next/
+dist/
+build/
+.vite/
+.cache/
+**/dist/
+**/build/
+
+# ── Environment & secrets ─────────────────────────────────────────────────────
+.env
 .webhooks.json
 .custom_models.json
 .domains.json
 
+# ── Database & runtime data ───────────────────────────────────────────────────
+backend/data/
+data/
+uploads/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
 cloudflared*.log
+logs/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.Python
+*.so
+
+# ── Temp / editor ─────────────────────────────────────────────────────────────
+tmp/
 *.swp
-.vite/
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── AI Orchestrator — file berat yang tidak perlu di repo ────────────────────
+# docx_to_pdf_app memiliki venv tersendiri (54MB) — dikecualikan
+backend/docx_to_pdf_app/venv/
+backend/docx_to_pdf_app/converted/
+backend/docx_to_pdf_app/**/__pycache__/
+
+# Zip backup — tidak perlu di repo
+backend/api.zip
+
+# RAG documents — konten user, tidak untuk repo
+rag_documents/
+
+# Scratch files
+scratch_*.py
