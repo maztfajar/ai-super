@@ -165,3 +165,23 @@ async def trigger_healing_check(
         "events_found": len(events),
         "events": events,
     }
+
+
+@router.get("/snapshots")
+async def get_snapshots(
+    limit: int = 15,
+    user: User = Depends(get_admin_user),
+):
+    """Ambil riwayat snapshot AI (git save points)."""
+    from core.snapshot import snapshot_manager
+    return {"snapshots": snapshot_manager.get_history(limit)}
+
+
+@router.post("/snapshots/rollback")
+async def rollback_snapshot(
+    user: User = Depends(get_admin_user),
+):
+    """Rollback ke snapshot AI terakhir."""
+    from core.snapshot import snapshot_manager
+    res = snapshot_manager.rollback()
+    return res

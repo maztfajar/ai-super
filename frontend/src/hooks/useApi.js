@@ -164,6 +164,9 @@ export const api = {
   recentTasks:         (limit) => req('GET', '/monitoring/recent-tasks?limit=' + (limit || 50)),
   systemHealth:        () => req('GET', '/monitoring/health'),
   activeSessions:      () => req('GET', '/monitoring/active-sessions'),
+  healingEvents:       (limit) => req('GET', '/monitoring/self-healing/events?limit=' + (limit || 20)),
+  getSnapshots:        (limit) => req('GET', '/monitoring/snapshots?limit=' + (limit || 20)),
+  rollbackSnapshot:    () => req('POST', '/monitoring/snapshots/rollback'),
 
   // ── Integrations ─────────────────────────────────────────
   integrationsStatus: () => req('GET', '/integrations/status?t=' + Date.now()),

@@ -266,6 +266,9 @@ export default function Analytics() {
   const [showCores, setShowCores] = useState(false)
   const [mediaFiles, setMediaFiles] = useState([])
   const [mediaLoading, setMediaLoading] = useState(false)
+  const [healingEvents, setHealingEvents] = useState([])
+  const [snapshots, setSnapshots] = useState([])
+  const [rollbackLoading, setRollbackLoading] = useState(false)
   const sysTimer = useRef(null)
 
   const formatBytes = (bytes) => {
@@ -304,12 +307,15 @@ export default function Analytics() {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [d, u, tl] = await Promise.allSettled([
+      const [d, u, tl, h, s] = await Promise.allSettled([
         api.dashboard(), api.usage(), api.timeline(),
+        api.healingEvents(10), api.getSnapshots(10)
       ])
       if (d.status === 'fulfilled') setDash(d.value)
       if (u.status === 'fulfilled') setUsage(u.value)
       if (tl.status === 'fulfilled') setTL(tl.value)
+      if (h.status === 'fulfilled') setHealingEvents(h.value.events || [])
+      if (s.status === 'fulfilled') setSnapshots(s.value.snapshots || [])
       setLastRef(new Date())
     } finally { setLoading(false) }
   }, [])
@@ -378,6 +384,24 @@ export default function Analytics() {
       alert('Gagal membersihkan storage: ' + e.message)
     } finally {
       setCleaning(prev => ({ ...prev, [componentId]: false }))
+    }
+  }
+
+  const handleRollback = async () => {
+    if (!confirm('Peringatan: Ini akan mengembalikan sistem ke kondisi stabil terakhir (sebelum aksi AI terakhir). Apakah Anda yakin?')) return
+    setRollbackLoading(true)
+    try {
+      const res = await api.rollbackSnapshot()
+      if (res.success) {
+        alert('Rollback berhasil! Sistem telah dikembalikan ke state sebelumnya.')
+        await fetchAll()
+      } else {
+        alert('Gagal melakukan rollback: ' + res.error)
+      }
+    } catch (e) {
+      alert('Error saat rollback: ' + e.message)
+    } finally {
+      setRollbackLoading(false)
     }
   }
 
@@ -601,6 +625,68 @@ export default function Analytics() {
           ))}
         </div>
       )}
+
+      {/* ── Healing & Snapshots ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Self-Healing Log */}
+        <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-2/30">
+            <ShieldAlert size={14} className="text-success"/>
+            <span className="text-sm font-semibold text-ink">Self-Healing Log</span>
+            <span className="ml-auto text-[10px] text-ink-3">Auto-Fixes</span>
+          </div>
+          <div className="p-2 max-h-72 overflow-y-auto space-y-1">
+            {healingEvents.length > 0 ? (
+              healingEvents.map((ev, i) => (
+                <div key={i} className="p-2 rounded bg-bg-4 border border-border/40 hover:bg-bg-5 transition-colors">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-accent-2">{ev.issue_type?.toUpperCase()}</span>
+                    <span className="text-[9px] text-ink-3">{new Date(ev.timestamp * 1000).toLocaleString()}</span>
+                  </div>
+                  <div className="text-[11px] text-ink-2 mb-1">{ev.description}</div>
+                  <div className="flex items-center gap-1 text-[9px]">
+                    <CheckCircle2 size={10} className="text-success"/>
+                    <span className="text-ink-3">Action:</span>
+                    <span className="text-success font-medium">{ev.action_taken}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="py-10 text-center text-[11px] text-ink-3">Belum ada aktivitas self-healing</div>
+            )}
+          </div>
+        </div>
+
+        {/* AI Snapshots */}
+        <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-2/30">
+            <RotateCcw size={14} className="text-accent"/>
+            <span className="text-sm font-semibold text-ink">AI Snapshots (Git)</span>
+            <button 
+              onClick={handleRollback}
+              disabled={rollbackLoading || snapshots.length === 0}
+              className="ml-auto text-[10px] px-2 py-0.5 rounded bg-accent/10 hover:bg-accent/20 text-accent font-bold border border-accent/20 disabled:opacity-40"
+            >
+              {rollbackLoading ? 'Rolling back...' : 'Rollback Terakhir'}
+            </button>
+          </div>
+          <div className="p-2 max-h-72 overflow-y-auto space-y-1">
+            {snapshots.length > 0 ? (
+              snapshots.map((s, i) => (
+                <div key={i} className="p-2 rounded bg-bg-4 border border-border/40 hover:bg-bg-5 transition-colors group">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-[10px] font-mono text-ink-3">{s.hash?.slice(0, 7)}</span>
+                    <span className="text-[9px] text-ink-3">{s.time}</span>
+                  </div>
+                  <div className="text-[11px] text-ink font-medium truncate" title={s.message}>{s.message}</div>
+                </div>
+              ))
+            ) : (
+              <div className="py-10 text-center text-[11px] text-ink-3">Belum ada snapshot (Save Point)</div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {showReset && <ResetModal onClose={() => setShowReset(false)} onConfirm={handleReset} />}
     </div>

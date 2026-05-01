@@ -24,6 +24,7 @@ import structlog
 
 from core.model_manager import model_manager
 from core.process_emitter import process_emitter, PROCESS_EVENT_PREFIX
+from core.snapshot import snapshot_manager
 
 # ── Pre-import semua tools (bukan di dalam closure per iterasi) ──────────────
 from agents.tools import execute_bash, read_file, write_file, ask_model
@@ -238,6 +239,7 @@ Available tools (gunakan DALAM <thinking> saja):
 5. ask_model — tanya AI lain. Args: model_id (string), prompt (string). Models: {model_list_str}
 6. web_search — cari internet. Args: query (string).
 7. find_safe_port — cari port aman. Args: preferred (int, optional).
+8. rollback — kembalikan sistem ke snapshot terakhir (gunakan jika aplikasi rusak parah).
 
 Tool format:
 <tool>{{"name": "tool_name", "args": {{"key": "value"}}}}</tool>
@@ -749,6 +751,12 @@ class AgentExecutor:
                         cmd, ("Worked", lambda a: cmd)
                     )
                     _detail = _detail_fn(args)
+                    
+                    # ── AUTOMATIC SNAPSHOT (Save Point) ──────────────────────
+                    # Buat snapshot sebelum aksi destruktif agar bisa di-rollback
+                    if cmd in ("write_file", "write_multiple_files", "execute_bash"):
+                        snapshot_manager.create_snapshot(f"Before {cmd}: {_detail[:50]}")
+                        
                     yield process_emitter.to_sentinel(_action, _detail)
 
                     # ── Eksekusi tool dengan heartbeat ───────────────────────
@@ -791,6 +799,12 @@ class AgentExecutor:
 
                         elif cmd == "find_safe_port":
                             return await find_safe_port(args.get("preferred", 0))
+
+                        elif cmd == "rollback":
+                            res = snapshot_manager.rollback()
+                            if res["success"]:
+                                return f"✅ Rollback berhasil ke commit {res['commit'][:8]}. Sistem telah dikembalikan ke state sebelumnya."
+                            return f"❌ Gagal melakukan rollback: {res.get('error')}"
 
                         else:
                             return (
