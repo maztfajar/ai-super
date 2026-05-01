@@ -123,6 +123,11 @@ async def get_messages(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    # Verifikasi apakah sesi ada dan milik user
+    session = await db.get(ChatSession, session_id)
+    if not session or session.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Sesi tidak ditemukan")
+
     result = await db.execute(
         select(Message)
         .where(Message.session_id == session_id)

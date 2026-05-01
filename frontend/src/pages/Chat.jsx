@@ -1552,92 +1552,82 @@ export default function Chat() {
 
   // Watchdog dihapus sesuai permintaan: proses jangan berhenti kecuali pengguna menekan tombol berhenti
 
-  // Load models + sessions
+  // ── MASTER SESSION BOOT LOGIC ─────────────────────────────────────────────
+  // Langkah 1: Segera bersihkan messages dari localStorage SEBELUM server respond
+  //            agar layar tidak menampilkan pesan usang saat komponen mount.
+  // Langkah 2: Minta daftar sesi dari server (ground truth).
+  // Langkah 3: Cocokkan URL session ID dengan daftar dari server.
+  //   - Ada di daftar  → load pesan sesi tersebut
+  //   - Tidak ada      → bersihkan state & redirect ke /chat (new chat)
+  //   - Tidak ada URL  → cek apakah perlu redirect ke sesi terbaru
+
+  const [sessionsLoaded, setSessionsLoaded] = useState(false)
+  const initDoneRef = useRef(false)
+
   useEffect(() => {
-    api.listSessions().then(s => {
-      // Always trust server data — don't keep stale localStorage cache
-      const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+    if (initDoneRef.current) return
+    initDoneRef.current = true
+
+    // LANGKAH 1: Bersihkan messages sekarang juga — jangan tampilkan cache stale
+    // Ini yang menyebabkan pesan lama terlihat meski panel kiri kosong.
+    useChatStore.getState().clearMessages()
+
+    // LANGKAH 2: Ambil daftar sesi dari server
+    api.listSessions().then(async (serverSessions) => {
+      const safe = serverSessions.filter(x => !deletingIdsRef.current.has(x.id))
       setSessions(safe)
-    }).catch(() => { })
-    api.listModels().then(() => {
-      // Re-fetch sessions after models loaded (titles may have been updated)
-      api.listSessions().then((s) => {
-        // Filter out any sessions currently being deleted
-        const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-        setSessions(safe)
-      }).catch(() => { })
-    }).catch(() => { })
+      setSessionsLoaded(true)
+
+      const currentUrlId = window.location.pathname.split('/chat/')[1]?.split('/')[0]
+
+      if (currentUrlId) {
+        // LANGKAH 3a: Ada session ID di URL — cek apakah valid di server
+        const found = safe.find(x => x.id === currentUrlId)
+        if (found) {
+          // Sesi valid → load pesan
+          useChatStore.getState().setCurrentSession(found)
+          try {
+            const msgs = await api.getMessages(currentUrlId)
+            useChatStore.getState().setMessages(msgs || [])
+          } catch {
+            useChatStore.getState().setCurrentSession(null)
+            useChatStore.getState().clearMessages()
+            navigate('/chat', { replace: true })
+          }
+        } else {
+          // Sesi TIDAK ada di server → bersihkan & redirect
+          console.info('[Chat] Session ID di URL tidak ada di server. Redirect ke /chat.')
+          useChatStore.getState().setCurrentSession(null)
+          useChatStore.getState().clearMessages()
+          navigate('/chat', { replace: true })
+        }
+      } else {
+        // LANGKAH 3b: Tidak ada session ID di URL
+        if (safe.length > 0) {
+          // Redirect ke sesi terbaru
+          navigate(`/chat/${safe[0].id}`, { replace: true })
+        } else {
+          // Tidak ada sesi sama sekali → tampilkan new chat kosong
+          useChatStore.getState().setCurrentSession(null)
+          useChatStore.getState().clearMessages()
+        }
+      }
+    }).catch(() => {
+      setSessionsLoaded(true)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Auto-redirect /chat → /chat/:id
-  // Kasus 1: Ada currentSession di store (sudah login sebelumnya di domain ini)
-  // Kasus 2: Tidak ada currentSession (fresh login, misal dari tunnel URL) →
-  //          redirect ke sesi terbaru dari database agar langsung muncul tanpa perlu
-  //          klik sesi secara manual
+  // Sinkronisasi sessions list setelah routing aktif (untuk New Chat & Delete)
+  // Tidak mengganggu pesan yang sudah dimuat oleh boot logic di atas
   useEffect(() => {
-    if (!urlSessionId && currentSession?.id) {
-      // Sudah ada sesi aktif di store → langsung pakai
-      navigate(`/chat/${currentSession.id}`, { replace: true })
-    } else if (!urlSessionId && !currentSession?.id && sessions.length > 0) {
-      // Tidak ada sesi aktif (fresh login / domain baru) → pakai sesi terbaru dari DB
-      navigate(`/chat/${sessions[0].id}`, { replace: true })
-    }
-  }, [urlSessionId, currentSession?.id, sessions])
-
-  // Load session from URL — robust version
-  // Jika messages sudah ada di store untuk sesi yang sama → jangan fetch ulang (navigasi kembali)
-  // Jika tidak ada (pindah menu, reload) → langsung fetch dari API pakai urlSessionId
-  useEffect(() => {
-    if (!urlSessionId) {
-      // Jika di /chat (tanpa ID), pastikan state bersih untuk new chat
-      if (useChatStore.getState().currentSession || useChatStore.getState().messages.length > 0) {
-        useChatStore.getState().setCurrentSession(null)
-        useChatStore.getState().clearMessages()
-      }
-      return
-    }
-
-    const isStreaming = useChatStore.getState().streaming
-
-    // Jangan ganggu jika sedang streaming
-    if (isStreaming) return
-
-    // Coba cari di sessions list kalau sudah ada
-    const s = sessions.find((x) => x.id === urlSessionId)
-    if (s) {
-      loadSession(s)
-      return
-    }
-
-    // Sessions list belum dimuat atau sesi tidak ada di list → fetch langsung dari API
-    // Ini juga berguna untuk memverifikasi apakah urlSessionId dari cache masih valid di database backend
-    ;(async () => {
-      setLoadingMsgs(true)
-      try {
-        const msgs = await api.getMessages(urlSessionId)
-        // Jangan override jika streaming sudah aktif saat ini
-        if (useChatStore.getState().streaming) return
-        
-        // Set currentSession — gunakan data yang sudah ada di store kalau cocok
-        const existingSession = useChatStore.getState().currentSession
-        if (!existingSession || existingSession.id !== urlSessionId) {
-          const found = useChatStore.getState().sessions.find(x => x.id === urlSessionId)
-          useChatStore.getState().setCurrentSession(
-            found || { id: urlSessionId, title: 'Chat', platform: channelType }
-          )
-        }
-        useChatStore.getState().setMessages(msgs || [])
-      } catch (err) {
-        // Jika gagal fetch (misal 404 karena terhapus di database lain), bersihkan sisa cache
-        console.warn('Session tidak ditemukan atau gagal dimuat. Membersihkan sisa cache.')
-        useChatStore.getState().setCurrentSession(null)
-        useChatStore.getState().clearMessages()
-        navigate('/chat', { replace: true })
-      } finally {
-        setLoadingMsgs(false)
-      }
-    })()
-  }, [urlSessionId, sessions, navigate, channelType])
+    if (!sessionsLoaded) return
+    // Sesi sudah divalidasi saat boot — effect ini hanya menjaga sidebar tetap sinkron
+    api.listSessions().then(s => {
+      const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+      setSessions(safe)
+    }).catch(() => {})
+  }, [sessionsLoaded])
 
   async function loadSession(session) {
     // Guard: jangan ganggu saat streaming aktif
