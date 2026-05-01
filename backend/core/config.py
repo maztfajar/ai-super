@@ -59,10 +59,20 @@ class Settings(BaseSettings):
     @property
     def get_db_url(self) -> str:
         if self.DATABASE_URL and self.DATABASE_URL.strip():
-            return self.DATABASE_URL
-        # Selalu gunakan absolute path ke data/ai-orchestrator.db di root project jika kosong
-        root = Path(__file__).resolve().parent.parent.parent
-        db_path = root / "data" / "ai-orchestrator.db"
+            url = self.DATABASE_URL.strip()
+            # FIX: Convert relative SQLite path to absolute based on backend directory 
+            # to prevent split-brain databases if scripts are executed from different CWDs.
+            if url.startswith("sqlite+aiosqlite:///./"):
+                backend_dir = Path(__file__).resolve().parent.parent
+                relative_path = url.replace("sqlite+aiosqlite:///./", "")
+                db_path = backend_dir / relative_path
+                db_path.parent.mkdir(parents=True, exist_ok=True)
+                return f"sqlite+aiosqlite:///{db_path}"
+            return url
+        
+        # Selalu gunakan absolute path ke backend/data/ai-orchestrator.db jika kosong
+        backend_dir = Path(__file__).resolve().parent.parent
+        db_path = backend_dir / "data" / "ai-orchestrator.db"
         # Pastikan folder exists
         db_path.parent.mkdir(parents=True, exist_ok=True)
         return f"sqlite+aiosqlite:///{db_path}"
