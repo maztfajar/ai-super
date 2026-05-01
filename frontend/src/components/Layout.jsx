@@ -290,20 +290,22 @@ export default function Layout() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className={clsx(
-          'border-b border-border bg-bg-2 flex items-center gap-3 flex-shrink-0',
+          'border-b border-border bg-bg-2 flex items-center justify-between flex-shrink-0',
           // Mobile: taller header with better spacing
           isMobile ? 'h-14 px-3' : 'h-12 px-4'
         )}>
-          {/* Desktop menu toggle (hidden on mobile) */}
-          {!isMobile && (
-            <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
-              {sidebarOpen ? <ChevronLeft size={16}/> : <Menu size={16}/>}
-            </button>
-          )}
-          
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse2 flex-shrink-0"/>
-            <span className={clsx('text-ink-3 truncate', isMobile ? 'text-xs' : 'text-xs')}>{appName}</span>
+          <div className="flex items-center gap-3">
+            {/* Desktop menu toggle (hidden on mobile) */}
+            {!isMobile && (
+              <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
+                {sidebarOpen ? <ChevronLeft size={16}/> : <Menu size={16}/>}
+              </button>
+            )}
+            
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse2 flex-shrink-0"/>
+              <span className={clsx('text-ink-3 truncate', isMobile ? 'text-xs' : 'text-xs')}>{appName}</span>
+            </div>
           </div>
           
           <div className={clsx('flex items-center gap-2', isMobile ? 'gap-1.5' : 'gap-2')}>

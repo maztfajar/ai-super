@@ -1109,7 +1109,7 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
           : <Bot size={13} className="text-white" />}
       </div>
 
-      <div className={clsx('max-w-[78%] flex flex-col', isUser ? 'items-end' : 'items-start')}>
+      <div className={clsx('max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] flex flex-col', isUser ? 'items-end' : 'items-start')}>
         <div className={clsx(
           'px-3.5 py-2.5 rounded-xl text-sm relative',
           isUser
@@ -2317,7 +2317,7 @@ export default function Chat() {
   ]
 
   return (
-    <div className="flex h-full relative">
+    <div className="flex w-full h-full relative">
       
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -2372,7 +2372,7 @@ export default function Chat() {
       <div 
         className={clsx(
           'flex flex-col min-w-0 transition-all duration-300 relative',
-          artifact.open ? 'flex-1' : 'flex-1'
+          artifact.open ? 'w-1/2 flex-1' : 'w-full flex-1'
         )}
         {...dragHandlers}
       >
