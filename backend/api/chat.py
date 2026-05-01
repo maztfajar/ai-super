@@ -20,6 +20,9 @@ from memory.manager import memory_manager
 
 router = APIRouter()
 
+import structlog
+log = structlog.get_logger()
+
 # ── Chat Rate Limiter ─────────────────────────────────────────
 # 30 requests per minute per user (prevents API quota abuse)
 _CHAT_RATE_LIMIT   = 30    # max requests
@@ -200,8 +203,6 @@ async def chat_send(
 
     # Debug: Log image data
     if req.image_b64 or req.image_mime:
-        import structlog
-        log = structlog.get_logger()
         log.info("Chat API received image",
                 image_mime=req.image_mime,
                 image_b64_len=len(req.image_b64) if req.image_b64 else 0,
@@ -369,7 +370,9 @@ async def chat_send(
                     try:
                         item = await asyncio.wait_for(q.get(), timeout=15.0)
                     except asyncio.TimeoutError:
-                        yield ": keepalive\n\n"
+                        # Pad keepalive with 4KB of spaces to force proxy (Cloudflare/Nginx) to flush buffer
+                        # This prevents the 100s Cloudflare timeout during long agent tool executions
+                        yield f": keepalive {' ' * 4096}\n\n"
                         continue
                     
                     if item is None:
@@ -494,7 +497,6 @@ async def chat_send(
             # any direct `await` here would instantly raise CancelledError.
             # Spawning a background task guarantees the DB commit completes.
             try:
-                import asyncio
                 loop = asyncio.get_running_loop()
                 loop.create_task(finalize_chat())
             except Exception as e:
@@ -741,8 +743,6 @@ async def save_file_to_directory(
 ):
     """Save AI-generated content to a user-chosen directory on the server."""
     import os
-    import structlog
-    log = structlog.get_logger()
 
     # Sanitize filename — strip path separators to prevent directory traversal
     safe_name = os.path.basename(req.filename)
