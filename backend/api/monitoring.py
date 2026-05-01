@@ -149,7 +149,17 @@ async def get_healing_events(
     return {
         "events": self_healing_engine.get_recent_events(limit),
         "total":  len(self_healing_engine._events),
+        "status": self_healing_engine.get_status(),
     }
+
+
+@router.get("/self-healing/status")
+async def get_healing_status(
+    user: User = Depends(get_current_user),
+):
+    """Ambil status Self-Healing Engine (running, total events, thresholds)."""
+    from core.self_healing import self_healing_engine
+    return self_healing_engine.get_status()
 
 
 @router.post("/self-healing/trigger")
@@ -164,7 +174,18 @@ async def trigger_healing_check(
         "status": "checked",
         "events_found": len(events),
         "events": events,
+        "engine_status": self_healing_engine.get_status(),
     }
+
+
+@router.post("/self-healing/test-telegram")
+async def test_healing_telegram(
+    user: User = Depends(get_admin_user),
+):
+    """Kirim notifikasi test ke Telegram — hanya admin."""
+    from core.self_healing import self_healing_engine
+    result = await self_healing_engine.test_telegram_notification()
+    return result
 
 
 @router.get("/snapshots")

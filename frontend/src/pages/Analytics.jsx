@@ -267,8 +267,12 @@ export default function Analytics() {
   const [mediaFiles, setMediaFiles] = useState([])
   const [mediaLoading, setMediaLoading] = useState(false)
   const [healingEvents, setHealingEvents] = useState([])
+  const [healingStatus, setHealingStatus] = useState(null)
   const [snapshots, setSnapshots] = useState([])
   const [rollbackLoading, setRollbackLoading] = useState(false)
+  const [triggerLoading, setTriggerLoading] = useState(false)
+  const [telegramLoading, setTelegramLoading] = useState(false)
+  const [telegramMsg, setTelegramMsg] = useState(null)
   const sysTimer = useRef(null)
 
   const formatBytes = (bytes) => {
@@ -307,14 +311,15 @@ export default function Analytics() {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [d, u, tl, h, s] = await Promise.allSettled([
+      const [d, u, tl, h, hs, s] = await Promise.allSettled([
         api.dashboard(), api.usage(), api.timeline(),
-        api.healingEvents(10), api.getSnapshots(10)
+        api.healingEvents(20), api.healingStatus(), api.getSnapshots(10)
       ])
       if (d.status === 'fulfilled') setDash(d.value)
       if (u.status === 'fulfilled') setUsage(u.value)
       if (tl.status === 'fulfilled') setTL(tl.value)
       if (h.status === 'fulfilled') setHealingEvents(h.value.events || [])
+      if (hs.status === 'fulfilled') setHealingStatus(hs.value)
       if (s.status === 'fulfilled') setSnapshots(s.value.snapshots || [])
       setLastRef(new Date())
     } finally { setLoading(false) }
@@ -384,6 +389,35 @@ export default function Analytics() {
       alert('Gagal membersihkan storage: ' + e.message)
     } finally {
       setCleaning(prev => ({ ...prev, [componentId]: false }))
+    }
+  }
+
+  const handleTriggerHealing = async () => {
+    setTriggerLoading(true)
+    try {
+      const res = await api.triggerHealingCheck()
+      setHealingEvents(res.events || [])
+      if (res.engine_status) setHealingStatus(res.engine_status)
+    } catch (e) {
+      alert('Gagal trigger check: ' + e.message)
+    } finally {
+      setTriggerLoading(false)
+    }
+  }
+
+  const handleTestTelegram = async () => {
+    setTelegramLoading(true)
+    setTelegramMsg(null)
+    try {
+      const res = await api.testHealingTelegram()
+      setTelegramMsg(res.success
+        ? { ok: true, text: res.message }
+        : { ok: false, text: res.error })
+    } catch (e) {
+      setTelegramMsg({ ok: false, text: e.message })
+    } finally {
+      setTelegramLoading(false)
+      setTimeout(() => setTelegramMsg(null), 6000)
     }
   }
 
@@ -629,13 +663,48 @@ export default function Analytics() {
       {/* ── Healing & Snapshots ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Self-Healing Log */}
-        <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-2/30">
-            <ShieldAlert size={14} className="text-success"/>
-            <span className="text-sm font-semibold text-ink">Self-Healing Log</span>
-            <span className="ml-auto text-[10px] text-ink-3">Auto-Fixes</span>
+        <div className="bg-bg-3 border border-border rounded-xl overflow-hidden flex flex-col">
+          <div className="px-4 py-3 border-b border-border bg-bg-2/30 space-y-3">
+            <div className="flex items-center gap-2">
+              <ShieldAlert size={14} className="text-success"/>
+              <span className="text-sm font-semibold text-ink">Self-Healing Engine</span>
+              {healingStatus && (
+                <span className={clsx("ml-auto text-[10px] px-2 py-0.5 rounded-full font-bold", 
+                  healingStatus.running ? "bg-success/10 text-success border border-success/20" : "bg-danger/10 text-danger border border-danger/20"
+                )}>
+                  {healingStatus.running ? "ACTIVE" : "STOPPED"}
+                </span>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-2">
+              <button 
+                onClick={handleTriggerHealing}
+                disabled={triggerLoading}
+                className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded bg-accent/10 hover:bg-accent/20 text-accent font-bold border border-accent/20 disabled:opacity-50"
+              >
+                <Activity size={11} className={triggerLoading ? "animate-spin" : ""}/>
+                {triggerLoading ? 'Checking...' : 'Trigger Check'}
+              </button>
+              
+              <button 
+                onClick={handleTestTelegram}
+                disabled={telegramLoading}
+                className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold border border-blue-500/20 disabled:opacity-50"
+              >
+                <Monitor size={11} className={telegramLoading ? "animate-spin" : ""}/>
+                {telegramLoading ? 'Sending...' : 'Test Telegram'}
+              </button>
+            </div>
+
+            {telegramMsg && (
+              <div className={clsx("text-[10px] p-2 rounded", telegramMsg.ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger")}>
+                {telegramMsg.text}
+              </div>
+            )}
           </div>
-          <div className="p-2 max-h-72 overflow-y-auto space-y-1">
+          
+          <div className="p-2 max-h-72 overflow-y-auto space-y-1 flex-1">
             {healingEvents.length > 0 ? (
               healingEvents.map((ev, i) => (
                 <div key={i} className="p-2 rounded bg-bg-4 border border-border/40 hover:bg-bg-5 transition-colors">
@@ -645,9 +714,9 @@ export default function Analytics() {
                   </div>
                   <div className="text-[11px] text-ink-2 mb-1">{ev.description}</div>
                   <div className="flex items-center gap-1 text-[9px]">
-                    <CheckCircle2 size={10} className="text-success"/>
+                    <CheckCircle2 size={10} className={ev.success ? "text-success" : "text-danger"}/>
                     <span className="text-ink-3">Action:</span>
-                    <span className="text-success font-medium">{ev.action_taken}</span>
+                    <span className={clsx("font-medium", ev.success ? "text-success" : "text-danger")}>{ev.action_taken}</span>
                   </div>
                 </div>
               ))

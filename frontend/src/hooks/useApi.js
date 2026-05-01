@@ -165,6 +165,9 @@ export const api = {
   systemHealth:        () => req('GET', '/monitoring/health'),
   activeSessions:      () => req('GET', '/monitoring/active-sessions'),
   healingEvents:       (limit) => req('GET', '/monitoring/self-healing/events?limit=' + (limit || 20)),
+  healingStatus:       () => req('GET', '/monitoring/self-healing/status'),
+  triggerHealingCheck: () => req('POST', '/monitoring/self-healing/trigger'),
+  testHealingTelegram: () => req('POST', '/monitoring/self-healing/test-telegram'),
   getSnapshots:        (limit) => req('GET', '/monitoring/snapshots?limit=' + (limit || 20)),
   rollbackSnapshot:    () => req('POST', '/monitoring/snapshots/rollback'),
 

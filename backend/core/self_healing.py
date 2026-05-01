@@ -6,12 +6,13 @@ dan mengirim laporan ke pengguna via Telegram.
 import asyncio
 import os
 import subprocess
+import sys
 import time
 import psutil
 import structlog
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from dataclasses import dataclass, field
 
 log = structlog.get_logger()
@@ -24,6 +25,51 @@ CHECK_INTERVAL_SEC = 30   # cek setiap N detik
 MAX_LOG_SIZE_MB    = 50   # log file > ini akan di-rotate
 
 BASE_DIR = Path(__file__).parent.parent
+
+# ── Deteksi pip dari virtualenv ───────────────────────────────
+def _get_pip_executable() -> str:
+    """
+    Kembalikan path pip yang benar:
+    - Jika berjalan di dalam venv: gunakan pip dari venv
+    - Fallback ke pip/pip3 sistem
+    """
+    # Cek apakah kita di dalam virtualenv
+    venv_pip = Path(sys.executable).parent / "pip"
+    if venv_pip.exists():
+        return str(venv_pip)
+    # Cek venv/bin/pip relatif ke BASE_DIR
+    venv_rel = BASE_DIR / "venv" / "bin" / "pip"
+    if venv_rel.exists():
+        return str(venv_rel)
+    # Fallback ke pip3 atau pip sistem
+    for pip in ["pip3", "pip"]:
+        try:
+            result = subprocess.run([pip, "--version"], capture_output=True, timeout=5)
+            if result.returncode == 0:
+                return pip
+        except Exception:
+            pass
+    return "pip"
+
+# ── Deteksi nama service backend ─────────────────────────────
+def _get_service_name() -> Optional[str]:
+    """Cari nama systemd service yang menjalankan backend ini."""
+    candidates = [
+        "ai-orchestrator", "ai_orchestrator",
+        "ai-super", "orchestrator",
+        "uvicorn",
+    ]
+    try:
+        for name in candidates:
+            r = subprocess.run(
+                ["systemctl", "is-active", name],
+                capture_output=True, text=True, timeout=5
+            )
+            if r.stdout.strip() in ("active", "activating", "inactive", "failed"):
+                return name
+    except Exception:
+        pass
+    return None
 
 
 @dataclass
@@ -98,6 +144,8 @@ class SelfHealingEngine:
             self._check_redis(),
             self._check_log_rotation(),
             self._check_missing_packages(),
+            self._check_network(),
+            self._check_service_health(),
         ]
         results = await asyncio.gather(*checks, return_exceptions=True)
 
@@ -371,13 +419,12 @@ class SelfHealingEngine:
 
     async def _check_missing_packages(self) -> Optional[HealingEvent]:
         """Cek apakah ada package Python yang hilang dan install otomatis."""
-        # Package kritis yang harus ada
         critical_packages = [
-            ("psutil",       "psutil"),
-            ("httpx",        "httpx"),
-            ("structlog",    "structlog"),
-            ("passlib",      "passlib[bcrypt]"),
-            ("tavily",       "tavily-python"),
+            ("psutil",    "psutil"),
+            ("httpx",     "httpx"),
+            ("structlog", "structlog"),
+            ("passlib",   "passlib[bcrypt]"),
+            ("tavily",    "tavily-python"),
         ]
 
         missing = []
@@ -392,34 +439,182 @@ class SelfHealingEngine:
 
         log.warning("Missing packages detected", packages=[m[0] for m in missing])
 
+        pip_exe = _get_pip_executable()
         installed = []
         failed = []
 
         for import_name, pip_name in missing:
             try:
                 result = subprocess.run(
-                    ["pip", "install", pip_name, "--quiet", "--break-system-packages"],
-                    capture_output=True, text=True, timeout=60
+                    [pip_exe, "install", pip_name, "--quiet"],
+                    capture_output=True, text=True, timeout=120
                 )
                 if result.returncode == 0:
                     installed.append(pip_name)
-                    log.info("Package auto-installed", package=pip_name)
+                    log.info("Package auto-installed", package=pip_name, pip=pip_exe)
                 else:
-                    failed.append(pip_name)
+                    # Coba dengan --break-system-packages sebagai fallback
+                    r2 = subprocess.run(
+                        [pip_exe, "install", pip_name, "--quiet", "--break-system-packages"],
+                        capture_output=True, text=True, timeout=120
+                    )
+                    if r2.returncode == 0:
+                        installed.append(pip_name)
+                    else:
+                        failed.append(pip_name)
             except Exception as e:
                 failed.append(f"{pip_name} ({str(e)[:40]})")
 
         return HealingEvent(
             issue_type="missing_package",
             description=f"Package hilang: {', '.join(m[0] for m in missing)}",
-            action_taken=f"Auto-install: berhasil={installed}, gagal={failed}",
+            action_taken=f"Auto-install via {pip_exe}: berhasil={installed}, gagal={failed}",
             success=len(installed) > 0,
             details=f"Installed: {installed}" if installed else f"Failed: {failed}",
+        )
+
+    async def _check_network(self) -> Optional[HealingEvent]:
+        """Cek konektivitas internet — penting untuk pemanggilan API AI."""
+        try:
+            import httpx
+            targets = [
+                ("https://api.openai.com", "OpenAI"),
+                ("https://generativelanguage.googleapis.com", "Google AI"),
+                ("https://api.anthropic.com", "Anthropic"),
+            ]
+            failed_hosts = []
+            async with httpx.AsyncClient(timeout=8.0) as client:
+                for url, name in targets:
+                    try:
+                        r = await client.head(url)
+                        # 200-499 berarti server merespons (meski 401/403 = OK secara network)
+                        if r.status_code >= 500:
+                            failed_hosts.append(name)
+                    except Exception:
+                        failed_hosts.append(name)
+
+            if not failed_hosts:
+                return None  # Semua host OK
+
+            return HealingEvent(
+                issue_type="network",
+                description=f"Koneksi ke {len(failed_hosts)} API host gagal",
+                action_taken="Monitoring aktif — cek konfigurasi jaringan/firewall",
+                success=False,
+                details=f"Host tidak terjangkau: {', '.join(failed_hosts)}",
+            )
+        except ImportError:
+            return None  # httpx belum ada, skip
+        except Exception as e:
+            log.debug("Network check error", error=str(e)[:80])
+            return None
+
+    async def _check_service_health(self) -> Optional[HealingEvent]:
+        """
+        Cek dan restart service pendukung yang mati via systemctl.
+        Menjalankan systemctl restart jika service ditemukan dalam state 'failed'.
+        """
+        services_to_check = [
+            ("postgresql", "Database PostgreSQL"),
+            ("postgresql@*", "Database PostgreSQL"),
+            ("redis-server", "Redis Server"),
+            ("redis", "Redis Server"),
+            ("nginx", "Nginx Web Server"),
+        ]
+
+        restarted = []
+        still_failed = []
+
+        for svc_pattern, svc_label in services_to_check:
+            # Skip wildcard patterns untuk is-active check
+            if "*" in svc_pattern:
+                continue
+            try:
+                r = subprocess.run(
+                    ["systemctl", "is-active", svc_pattern],
+                    capture_output=True, text=True, timeout=5
+                )
+                state = r.stdout.strip()
+                if state == "failed":
+                    log.warning("Service in failed state — attempting restart",
+                                service=svc_pattern)
+                    r2 = subprocess.run(
+                        ["systemctl", "restart", svc_pattern],
+                        capture_output=True, text=True, timeout=30
+                    )
+                    if r2.returncode == 0:
+                        restarted.append(svc_label)
+                        log.info("Service restarted via systemctl", service=svc_pattern)
+                    else:
+                        still_failed.append(f"{svc_label} ({r2.stderr.strip()[:60]}")
+            except FileNotFoundError:
+                # systemctl tidak tersedia (bukan systemd)
+                break
+            except Exception:
+                pass
+
+        if not restarted and not still_failed:
+            return None
+
+        success = len(restarted) > 0
+        return HealingEvent(
+            issue_type="service_restart",
+            description=f"{len(restarted)+len(still_failed)} service dalam state 'failed'",
+            action_taken=f"Restart berhasil: {restarted}" if restarted else "Restart gagal",
+            success=success,
+            details=f"Berhasil: {restarted} | Masih gagal: {still_failed}",
         )
 
     # ══════════════════════════════════════════════════════
     # REPORTING
     # ══════════════════════════════════════════════════════
+
+    async def test_telegram_notification(self) -> dict:
+        """
+        Kirim notifikasi test ke Telegram — dipanggil dari endpoint admin UI.
+        Returns dict dengan status dan pesan.
+        """
+        try:
+            token, chat_id = await self._get_telegram_config()
+            if not token:
+                return {"success": False, "error": "TELEGRAM_BOT_TOKEN belum dikonfigurasi di .env"}
+            if not chat_id:
+                return {"success": False, "error": "Chat ID admin belum dikonfigurasi. Set ADMIN_TELEGRAM_CHAT_ID di .env atau setup Telegram OTP di profil admin."}
+
+            test_event = HealingEvent(
+                issue_type="test",
+                description="Ini adalah notifikasi uji coba dari Self-Healing Engine",
+                action_taken="Sistem berhasil terhubung dengan bot Telegram Anda",
+                success=True,
+                details="Jika Anda menerima pesan ini, notifikasi self-healing berfungsi dengan baik!"
+            )
+            # Paksa kirim (bypass rate limiter)
+            old_time = self._last_report_time
+            self._last_report_time = 0.0
+            await self._send_report([test_event])
+            self._last_report_time = old_time  # kembalikan rate limiter
+
+            return {
+                "success": True,
+                "message": f"Notifikasi test berhasil dikirim ke chat_id {chat_id[:4]}***"
+            }
+        except Exception as e:
+            return {"success": False, "error": str(e)[:200]}
+
+    def get_status(self) -> dict:
+        """Ringkasan status engine untuk monitoring dashboard."""
+        return {
+            "running": self._running,
+            "total_events": len(self._events),
+            "check_interval_sec": CHECK_INTERVAL_SEC,
+            "last_report_ago_sec": round(time.time() - self._last_report_time) if self._last_report_time > 0 else None,
+            "thresholds": {
+                "disk_warn_percent": DISK_WARN_PERCENT,
+                "memory_warn_mb": MEMORY_WARN_MB,
+                "cpu_warn_percent": CPU_WARN_PERCENT,
+                "max_log_size_mb": MAX_LOG_SIZE_MB,
+            }
+        }
 
     async def _send_report(self, events: list[HealingEvent]):
         """Kirim laporan healing ke Telegram yang sudah dikonfigurasi user."""
