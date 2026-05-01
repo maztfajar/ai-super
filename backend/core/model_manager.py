@@ -417,6 +417,19 @@ class ModelManager:
         Generic streaming untuk API yang kompatibel dengan OpenAI format.
         Sumopod, Together AI, Groq, dsb semua pakai format ini.
         """
+        import re as _re
+
+        def _is_html_content(text: str) -> bool:
+            """Detect if a chunk is raw HTML (error page from provider like Sumopod/Cloudflare)."""
+            stripped = text.lstrip()
+            return (
+                stripped.lower().startswith("<!doctype") or
+                stripped.lower().startswith("<html") or
+                "<body" in stripped.lower() or
+                "service is not reachable" in stripped.lower() or
+                "make sure the service is running" in stripped.lower()
+            )
+
         try:
             from openai import AsyncOpenAI
             client = AsyncOpenAI(
@@ -430,12 +443,48 @@ class ModelManager:
                 max_tokens=max_tokens,
                 stream=True,
             )
+            html_buffer = ""
+            html_detected = False
             async for chunk in stream:
                 delta = chunk.choices[0].delta.content
-                if delta:
+                if not delta:
+                    continue
+
+                # Safety: buffer early chunks to detect if provider returned an HTML error page
+                if not html_detected:
+                    html_buffer += delta
+                    if len(html_buffer) >= 64 or chunk.choices[0].finish_reason:
+                        if _is_html_content(html_buffer):
+                            html_detected = True
+                            log.warning(f"HTML error page detected from {provider_name}, suppressing")
+                            yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan tidak dapat dijangkau (server mengembalikan halaman error). Coba lagi nanti atau ganti model."
+                            return
+                        else:
+                            # Buffer is clean — flush it and switch to direct mode
+                            yield html_buffer
+                            html_buffer = ""
+                            html_detected = False  # won't re-enter buffering
+                            # Sentinel: mark that we've already flushed the buffer
+                            html_buffer = None
+                else:
+                    # Past buffering phase — stream directly
                     yield delta
+
+            # Flush remaining buffer if stream ended before threshold
+            if html_buffer is not None and html_buffer:
+                if not _is_html_content(html_buffer):
+                    yield html_buffer
+                else:
+                    yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan tidak dapat dijangkau (server mengembalikan halaman error). Coba lagi nanti atau ganti model."
+
         except Exception as e:
             err_str = str(e)
+
+            # Detect raw HTML error body embedded in exception (some httpx/openai versions do this)
+            if _is_html_content(err_str) or "<!doctype" in err_str.lower() or "<html" in err_str.lower():
+                yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan tidak dapat dijangkau (server down / halaman error). Coba lagi nanti atau ganti model."
+                return
+
             # Handle empty/HTML response errors
             if "expecting value" in err_str.lower() or "char 0" in err_str.lower():
                 yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Provider mengembalikan respons kosong atau tidak valid (kemungkinan sedang maintenance atau limit tercapai)."
@@ -453,8 +502,7 @@ class ModelManager:
             elif "service is not reachable" in err_str.lower() or "502" in err_str or "503" in err_str:
                 yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan sedang tidak dapat dijangkau (Server Down/502/503). Silakan coba lagi nanti atau ganti model."
             else:
-                import re
-                clean_err = re.sub(r"Error code: \d+ - ", "", err_str).strip()
+                clean_err = _re.sub(r"Error code: \d+ - ", "", err_str).strip()
                 if "{'error'" in clean_err or '{"error"' in clean_err:
                     import ast
                     try:

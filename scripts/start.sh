@@ -15,7 +15,6 @@ sudo systemctl start postgresql 2>/dev/null || true
 cd "$DIR/backend"
 source venv/bin/activate
 [ -f "$DIR/.env" ] && { set -a; source "$DIR/.env"; set +a; }
-export DATABASE_URL="sqlite+aiosqlite:///./data/ai-orchestrator.db"
 mkdir -p data/logs data/uploads data/chroma_db
 
 uvicorn main:app --host 0.0.0.0 --port 7860 --workers 2 &

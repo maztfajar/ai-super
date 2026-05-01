@@ -25,7 +25,7 @@ log = structlog.get_logger()
 
 # ── Chat Rate Limiter ─────────────────────────────────────────
 # 30 requests per minute per user (prevents API quota abuse)
-_CHAT_RATE_LIMIT   = 30    # max requests
+_CHAT_RATE_LIMIT   = 100   # ditingkatkan dari 30 agar user lebih leluasa saat debugging
 _CHAT_RATE_WINDOW  = 60    # seconds
 _chat_mem_counters: dict = {}  # fallback in-memory tracker
 
@@ -42,10 +42,12 @@ async def _check_chat_rate_limit(user_id: str) -> None:
                 await redis.expire(key, _CHAT_RATE_WINDOW)
             if count > _CHAT_RATE_LIMIT:
                 ttl = await redis.ttl(key)
+                # Pastikan TTL minimal 1 agar tidak muncul -1 atau 0 di UI
+                wait_time = max(1, ttl)
                 raise HTTPException(
                     status_code=429,
-                    detail=f"Terlalu banyak pesan. Batas {_CHAT_RATE_LIMIT} pesan/{_CHAT_RATE_WINDOW}s. Coba lagi dalam {ttl} detik.",
-                    headers={"Retry-After": str(ttl)},
+                    detail=f"Terlalu banyak pesan. Batas {_CHAT_RATE_LIMIT} pesan/{_CHAT_RATE_WINDOW}s. Coba lagi dalam {wait_time} detik.",
+                    headers={"Retry-After": str(wait_time)},
                 )
             return
     except HTTPException:
@@ -61,7 +63,7 @@ async def _check_chat_rate_limit(user_id: str) -> None:
     rec["count"] += 1
     _chat_mem_counters[user_id] = rec
     if rec["count"] > _CHAT_RATE_LIMIT:
-        wait = int(rec["reset_at"] - now)
+        wait = max(1, int(rec["reset_at"] - now))
         raise HTTPException(
             status_code=429,
             detail=f"Terlalu banyak pesan. Batas {_CHAT_RATE_LIMIT} pesan/{_CHAT_RATE_WINDOW}s. Coba lagi dalam {wait} detik.",

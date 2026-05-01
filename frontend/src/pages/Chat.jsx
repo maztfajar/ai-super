@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import rehypeRaw from 'rehype-raw'
 import { api } from '../hooks/useApi'
 import { copyToClipboard } from "../utils/clipboard"
 import { useAuthStore, useChatStore, useModelsStore, useOrchestratorStore } from '../store'
@@ -1143,7 +1142,6 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
             <div className="prose prose-sm max-w-none">
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeRaw]}
                 components={markdownComponents}
               >{displayContent}</ReactMarkdown>
               {isStreaming && (
