@@ -1588,49 +1588,56 @@ export default function Chat() {
   // Jika messages sudah ada di store untuk sesi yang sama → jangan fetch ulang (navigasi kembali)
   // Jika tidak ada (pindah menu, reload) → langsung fetch dari API pakai urlSessionId
   useEffect(() => {
-    if (!urlSessionId) return
+    if (!urlSessionId) {
+      // Jika di /chat (tanpa ID), pastikan state bersih untuk new chat
+      if (useChatStore.getState().currentSession || useChatStore.getState().messages.length > 0) {
+        useChatStore.getState().setCurrentSession(null)
+        useChatStore.getState().clearMessages()
+      }
+      return
+    }
 
-    const storeMessages = useChatStore.getState().messages
-    const storeSession  = useChatStore.getState().currentSession
-    const isStreaming   = useChatStore.getState().streaming
+    const isStreaming = useChatStore.getState().streaming
 
-    // 1. Sudah ada messages untuk sesi ini → tidak perlu fetch ulang
-    if (storeSession?.id === urlSessionId && storeMessages.length > 0) return
-    // 2. Sedang streaming → jangan ganggu
+    // Jangan ganggu jika sedang streaming
     if (isStreaming) return
 
-    // 3. Coba cari di sessions list kalau sudah ada
+    // Coba cari di sessions list kalau sudah ada
     const s = sessions.find((x) => x.id === urlSessionId)
     if (s) {
       loadSession(s)
       return
     }
 
-    // 4. Sessions list belum dimuat, tapi kita punya urlSessionId → fetch langsung dari API
-    // Ini yang terjadi saat pindah menu → kembali ke /chat/:id
+    // Sessions list belum dimuat atau sesi tidak ada di list → fetch langsung dari API
+    // Ini juga berguna untuk memverifikasi apakah urlSessionId dari cache masih valid di database backend
     ;(async () => {
       setLoadingMsgs(true)
       try {
         const msgs = await api.getMessages(urlSessionId)
         // Jangan override jika streaming sudah aktif saat ini
         if (useChatStore.getState().streaming) return
+        
         // Set currentSession — gunakan data yang sudah ada di store kalau cocok
         const existingSession = useChatStore.getState().currentSession
         if (!existingSession || existingSession.id !== urlSessionId) {
-          // Cari dari sessions list yang mungkin sudah ada
           const found = useChatStore.getState().sessions.find(x => x.id === urlSessionId)
           useChatStore.getState().setCurrentSession(
             found || { id: urlSessionId, title: 'Chat', platform: channelType }
           )
         }
         useChatStore.getState().setMessages(msgs || [])
-      } catch {
-        // Jika gagal fetch, tidak masalah — biarkan kosong
+      } catch (err) {
+        // Jika gagal fetch (misal 404 karena terhapus di database lain), bersihkan sisa cache
+        console.warn('Session tidak ditemukan atau gagal dimuat. Membersihkan sisa cache.')
+        useChatStore.getState().setCurrentSession(null)
+        useChatStore.getState().clearMessages()
+        navigate('/chat', { replace: true })
       } finally {
         setLoadingMsgs(false)
       }
     })()
-  }, [urlSessionId, sessions])
+  }, [urlSessionId, sessions, navigate, channelType])
 
   async function loadSession(session) {
     // Guard: jangan ganggu saat streaming aktif
