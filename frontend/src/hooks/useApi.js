@@ -286,6 +286,7 @@ export const api = {
   chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess) {
     const token      = getToken()
     const controller = new AbortController()
+    let doneReceived = false
 
     fetch(BASE + '/chat/send', {
       method:  'POST',
@@ -296,6 +297,15 @@ export const api = {
       body:   JSON.stringify(payload),
       signal: controller.signal,
     }).then(async function(res) {
+      if (!res.ok) {
+        // HTTP error — unblock the UI
+        const errBody = await res.json().catch(() => ({ detail: res.statusText }))
+        const errMsg = typeof errBody.detail === 'string' ? errBody.detail : 'Request failed'
+        onChunk && onChunk('⚠️ ' + errMsg)
+        doneReceived = true
+        onDone && onDone({ type: 'done', sources: [], error: true })
+        return
+      }
       const reader  = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer    = ''
@@ -311,10 +321,11 @@ export const api = {
             try {
               const data = JSON.parse(line.slice(6))
               if (data.type === 'chunk')        onChunk(data.content)
-              else if (data.type === 'done')    onDone(data)
+              else if (data.type === 'done')    { doneReceived = true; onDone(data) }
               else if (data.type === 'session') onSession && onSession(data)
-              else if (data.type === 'pending_confirmation') onPending && onPending(data)
+              else if (data.type === 'pending_confirmation') { doneReceived = true; onPending && onPending(data) }
               else if (data.type === 'status')  onStatus && onStatus(data.content)
+              else if (data.type === 'error')   { onChunk && onChunk(data.content || '⚠️ Error'); }
               else if (data.type === 'process') {
                 // Structured process step — forward to onProcess if provided, else onStatus
                 if (onProcess) onProcess(data)
@@ -324,8 +335,20 @@ export const api = {
           }
         }
       }
+      // Safety: If stream ended but no done event was received, force-call onDone
+      // to unblock the UI from stuck streaming state
+      if (!doneReceived) {
+        console.warn('[SSE] Stream ended without done event — forcing onDone')
+        onDone && onDone({ type: 'done', sources: [], _forced: true })
+      }
     }).catch(function(e) {
-      if (e.name !== 'AbortError') console.error('Stream error', e)
+      if (e.name !== 'AbortError') {
+        console.error('Stream error', e)
+        // Force onDone to unblock the UI on network errors
+        if (!doneReceived) {
+          onDone && onDone({ type: 'done', sources: [], _forced: true, error: true })
+        }
+      }
     })
 
     return function() { controller.abort() }

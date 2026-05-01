@@ -380,53 +380,53 @@ async def chat_send(
                     
                     event = item
 
-                if event.type == "chunk":
-                    full_response += event.content
-                    yield event.to_sse()
+                    if event.type == "chunk":
+                        full_response += event.content
+                        yield event.to_sse()
 
-                elif event.type == "process":
-                    # Structured process step — forward directly to frontend
-                    yield event.to_sse()
-                    # Also collect for storage
-                    if event.data:
-                        action = event.data.get("action", "")
-                        detail = event.data.get("detail", "")
-                        thinking_steps.append(f"{action}: {detail}" if detail else action)
+                    elif event.type == "process":
+                        # Structured process step — forward directly to frontend
+                        yield event.to_sse()
+                        # Also collect for storage
+                        if event.data:
+                            action = event.data.get("action", "")
+                            detail = event.data.get("detail", "")
+                            thinking_steps.append(f"{action}: {detail}" if detail else action)
 
-                elif event.type == "status":
-                    # Collect thinking steps
-                    thinking_steps.append(event.content)
-                    yield event.to_sse()
+                    elif event.type == "status":
+                        # Collect thinking steps
+                        thinking_steps.append(event.content)
+                        yield event.to_sse()
 
-                elif event.type == "pending_confirmation":
-                    # VPS safety protocol — send confirmation request
-                    payload = {
-                        "type": "pending_confirmation",
-                        "command": req.message,
-                        "purpose": event.data.get("purpose", "") if event.data else "",
-                        "risk": event.data.get("risk", "MEDIUM") if event.data else "MEDIUM",
-                        "session_id": session.id,
-                    }
-                    yield f"data: {json.dumps(payload)}\n\n"
-                    return  # Stop generator
+                    elif event.type == "pending_confirmation":
+                        # VPS safety protocol — send confirmation request
+                        payload = {
+                            "type": "pending_confirmation",
+                            "command": req.message,
+                            "purpose": event.data.get("purpose", "") if event.data else "",
+                            "risk": event.data.get("risk", "MEDIUM") if event.data else "MEDIUM",
+                            "session_id": session.id,
+                        }
+                        yield f"data: {json.dumps(payload)}\n\n"
+                        return  # Stop generator
 
-                elif event.type == "done":
-                    # DB save logic has been moved to the finally block to ensure it always runs.
-                    await save_to_db_if_needed()
+                    elif event.type == "done":
+                        # Save AI response to DB
+                        await save_to_db_if_needed()
 
-                    # Pass through done event with orchestrator metadata + thinking process
-                    done_payload = {"type": "done", "sources": rag_sources}
-                    if event.data:
-                        done_payload.update(event.data)
-                    # Include thinking process for expandable thinking section
-                    done_payload["thinking_process"] = "\n".join(thinking_steps) if thinking_steps else ""
-                    yield f"data: {json.dumps(done_payload)}\n\n"
-                    return # Exit generator cleanly
+                        # Pass through done event with orchestrator metadata + thinking process
+                        done_payload = {"type": "done", "sources": rag_sources}
+                        if event.data:
+                            done_payload.update(event.data)
+                        # Include thinking process for expandable thinking section
+                        done_payload["thinking_process"] = "\n".join(thinking_steps) if thinking_steps else ""
+                        yield f"data: {json.dumps(done_payload)}\n\n"
+                        return # Exit generator cleanly
 
-                elif event.type == "error":
-                    yield event.to_sse()
-                    full_response = f"Error: {event.content}"
-                    error_occurred = True
+                    elif event.type == "error":
+                        yield event.to_sse()
+                        full_response = f"Error: {event.content}"
+                        error_occurred = True
             finally:
                 if not prod_task.done():
                     prod_task.cancel()
@@ -434,20 +434,6 @@ async def chat_send(
                         await prod_task
                     except (asyncio.CancelledError, Exception):
                         pass
-            import traceback
-            traceback.print_exc()
-            err_str = "⏱️ Operasi timeout - permintaan Anda memerlukan waktu terlalu lama. Sistem akan melanjutkan dengan respons yang sudah ada."
-            log.error("Chat timeout", message=req.message[:50])
-            
-            # Try to get partial response before timeout
-            if full_response.strip():
-                yield f"data: {json.dumps({'type': 'chunk', 'content': '\\n\\n⚠️ Partial response due to timeout:\\n\\n' + full_response[-1000:]})}\n\n"
-                yield f"data: {json.dumps({'type': 'done', 'partial': True, 'sources': rag_sources})}\n\n"
-            else:
-                yield f"data: {json.dumps({'type': 'error', 'content': err_str})}\n\n"
-                full_response = err_str
-            error_occurred = True
-            thinking_steps.append(f"❌ Timeout error: {err_str}")
 
         except asyncio.CancelledError:
             log.info("Chat stream cancelled by client", session_id=session.id)

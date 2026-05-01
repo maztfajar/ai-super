@@ -1557,16 +1557,16 @@ export default function Chat() {
   // Load models + sessions
   useEffect(() => {
     api.listSessions().then(s => {
-      const currentSessions = useChatStore.getState().sessions
-      setSessions((currentSessions.length > 0 && s.length === 0) ? currentSessions : s)
+      // Always trust server data — don't keep stale localStorage cache
+      const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
+      setSessions(safe)
     }).catch(() => { })
     api.listModels().then(() => {
       // Re-fetch sessions after models loaded (titles may have been updated)
       api.listSessions().then((s) => {
         // Filter out any sessions currently being deleted
         const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-        const currentSessions = useChatStore.getState().sessions
-        setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
+        setSessions(safe)
       }).catch(() => { })
     }).catch(() => { })
   }, [])
@@ -1635,22 +1635,15 @@ export default function Chat() {
   }, [urlSessionId, sessions])
 
   async function loadSession(session) {
-    // Skip if already displaying this session with messages (e.g. returning from another menu)
-    const storeMessages = useChatStore.getState().messages
-    const storeSession  = useChatStore.getState().currentSession
     // Guard: jangan ganggu saat streaming aktif
     if (useChatStore.getState().streaming) return
-    if (storeSession?.id === session.id && storeMessages.length > 0) {
-      // Just make sure currentSession is set correctly, messages already in store
-      setCurrentSession(session)
-      return
-    }
     setCurrentSession(session)
+    // Always fetch fresh messages from API — never trust stale localStorage cache
     clearMessages()
     setLoadingMsgs(true)
     try {
       const msgs = await api.getMessages(session.id)
-      setMessages(msgs)
+      setMessages(msgs || [])
     } catch { toast.error('Gagal memuat pesan') }
     finally { setLoadingMsgs(false) }
   }
@@ -1689,8 +1682,7 @@ export default function Chat() {
             // Refresh session list — but filter out sessions being deleted
             api.listSessions().then((s) => {
               const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-              const currentSessions = useChatStore.getState().sessions
-              setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
+              setSessions(safe)
             }).catch(() => {})
           }
         }
