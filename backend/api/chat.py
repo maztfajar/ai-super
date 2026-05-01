@@ -336,20 +336,48 @@ async def chat_send(
             # ═══════════════════════════════════════════════════════
             # DELEGATE TO ORCHESTRATOR — all intelligence lives there
             # ═══════════════════════════════════════════════════════
-            async for event in orchestrator.process(
-                message=req.message,
-                user_id=user.id,
-                session_id=session.id,
-                user_model_choice=req.model,
-                system_prompt=system_prompt,
-                history=history,
-                temperature=req.temperature,
-                max_tokens=req.max_tokens,
-                use_rag=req.use_rag,
-                image_b64=req.image_b64,
-                image_mime=req.image_mime,
-                project_path=project_path,
-            ):
+            async def orchestrator_producer(q: asyncio.Queue):
+                try:
+                    async for event in orchestrator.process(
+                        message=req.message,
+                        user_id=user.id,
+                        session_id=session.id,
+                        user_model_choice=req.model,
+                        system_prompt=system_prompt,
+                        history=history,
+                        temperature=req.temperature,
+                        max_tokens=req.max_tokens,
+                        use_rag=req.use_rag,
+                        image_b64=req.image_b64,
+                        image_mime=req.image_mime,
+                        project_path=project_path,
+                    ):
+                        await q.put(event)
+                except asyncio.CancelledError:
+                    pass
+                except Exception as e:
+                    await q.put(e)
+                finally:
+                    await q.put(None)
+
+            q = asyncio.Queue()
+            prod_task = asyncio.create_task(orchestrator_producer(q))
+
+            while True:
+                try:
+                    item = await asyncio.wait_for(q.get(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                    
+                if item is None:
+                    break
+                    
+                if isinstance(item, Exception):
+                    raise item
+                    
+                event = item
+
                 if event.type == "chunk":
                     full_response += event.content
                     yield event.to_sse()
@@ -548,13 +576,39 @@ async def execute_pending(
     async def generate():
         full_response = ""
         yield f"data: {json.dumps({'type': 'chunk', 'content': '*(Execution Approved)*\\n\\n'})}\n\n"
+        async def executor_producer(q: asyncio.Queue):
+            try:
+                async for chunk in agent_executor.stream_chat(
+                    base_model=model,
+                    messages=messages,
+                    temperature=0.4,
+                    max_tokens=4096,
+                ):
+                    await q.put(chunk)
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                await q.put(e)
+            finally:
+                await q.put(None)
+
+        q = asyncio.Queue()
+        prod_task = asyncio.create_task(executor_producer(q))
+
         try:
-            async for chunk in agent_executor.stream_chat(
-                base_model=model,
-                messages=messages,
-                temperature=0.4,
-                max_tokens=4096,
-            ):
+            while True:
+                try:
+                    chunk = await asyncio.wait_for(q.get(), timeout=15.0)
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+                    continue
+                    
+                if chunk is None:
+                    break
+                    
+                if isinstance(chunk, Exception):
+                    raise chunk
+
                 # Detect process-event sentinels from executor
                 from core.process_emitter import PROCESS_EVENT_PREFIX
                 if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
