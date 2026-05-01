@@ -444,34 +444,31 @@ class ModelManager:
                 stream=True,
             )
             html_buffer = ""
-            html_detected = False
+            is_buffering = True
             async for chunk in stream:
                 delta = chunk.choices[0].delta.content
                 if not delta:
                     continue
 
                 # Safety: buffer early chunks to detect if provider returned an HTML error page
-                if not html_detected:
+                if is_buffering:
                     html_buffer += delta
                     if len(html_buffer) >= 64 or chunk.choices[0].finish_reason:
                         if _is_html_content(html_buffer):
-                            html_detected = True
                             log.warning(f"HTML error page detected from {provider_name}, suppressing")
                             yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan tidak dapat dijangkau (server mengembalikan halaman error). Coba lagi nanti atau ganti model."
                             return
                         else:
                             # Buffer is clean — flush it and switch to direct mode
                             yield html_buffer
-                            html_buffer = ""
-                            html_detected = False  # won't re-enter buffering
-                            # Sentinel: mark that we've already flushed the buffer
+                            is_buffering = False
                             html_buffer = None
                 else:
                     # Past buffering phase — stream directly
                     yield delta
 
             # Flush remaining buffer if stream ended before threshold
-            if html_buffer is not None and html_buffer:
+            if is_buffering and html_buffer:
                 if not _is_html_content(html_buffer):
                     yield html_buffer
                 else:
