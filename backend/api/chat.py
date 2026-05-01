@@ -364,20 +364,21 @@ async def chat_send(
             q = asyncio.Queue()
             prod_task = asyncio.create_task(orchestrator_producer(q))
 
-            while True:
-                try:
-                    item = await asyncio.wait_for(q.get(), timeout=15.0)
-                except asyncio.TimeoutError:
-                    yield ": keepalive\n\n"
-                    continue
+            try:
+                while True:
+                    try:
+                        item = await asyncio.wait_for(q.get(), timeout=15.0)
+                    except asyncio.TimeoutError:
+                        yield ": keepalive\n\n"
+                        continue
                     
-                if item is None:
-                    break
+                    if item is None:
+                        break
                     
-                if isinstance(item, Exception):
-                    raise item
+                    if isinstance(item, Exception):
+                        raise item
                     
-                event = item
+                    event = item
 
                 if event.type == "chunk":
                     full_response += event.content
@@ -426,8 +427,13 @@ async def chat_send(
                     yield event.to_sse()
                     full_response = f"Error: {event.content}"
                     error_occurred = True
-
-        except asyncio.TimeoutError:
+            finally:
+                if not prod_task.done():
+                    prod_task.cancel()
+                    try:
+                        await prod_task
+                    except (asyncio.CancelledError, Exception):
+                        pass
             import traceback
             traceback.print_exc()
             err_str = "⏱️ Operasi timeout - permintaan Anda memerlukan waktu terlalu lama. Sistem akan melanjutkan dengan respons yang sudah ada."
@@ -624,6 +630,14 @@ async def execute_pending(
         except Exception as e:
             full_response = f"Error: {e}"
             yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+            
+        finally:
+            if not prod_task.done():
+                prod_task.cancel()
+                try:
+                    await prod_task
+                except (asyncio.CancelledError, Exception):
+                    pass
             
         # Update memory
         await memory_manager.save_chat_to_redis(session.id, "user", f"[Approved Execution] {req.command}")
