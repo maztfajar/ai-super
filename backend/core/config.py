@@ -115,7 +115,7 @@ class Settings(BaseSettings):
 
     RAG_DOCUMENTS_DIR: str = "../rag_documents"
     RAG_TIMEOUT_SECONDS: int = 45
-    EMBEDDING_PROVIDER: str = "sumopod"
+    EMBEDDING_PROVIDER: str = "local"
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
 

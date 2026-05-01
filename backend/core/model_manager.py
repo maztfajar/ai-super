@@ -436,6 +436,11 @@ class ModelManager:
                     yield delta
         except Exception as e:
             err_str = str(e)
+            # Handle empty/HTML response errors
+            if "expecting value" in err_str.lower() or "char 0" in err_str.lower():
+                yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Provider mengembalikan respons kosong atau tidak valid (kemungkinan sedang maintenance atau limit tercapai)."
+                return
+
             # "Model output empty" — Sumopod-specific transient error, raise so executor can retry
             if ("model output must contain" in err_str.lower() or
                     "output text or tool calls" in err_str.lower() or
@@ -445,6 +450,8 @@ class ModelManager:
                 yield f"\n❌ API Key ({provider_name}) Anda kehabisan saldo. Silakan isi ulang saldo / ganti API Key di menu Integrations."
             elif "401" in err_str or "user not found" in err_str.lower() or "unauthorized" in err_str.lower() or "invalid_api_key" in err_str.lower():
                 yield f"\n❌ API Key / Autentikasi ({provider_name}) tidak valid (401). Silakan periksa kembali API Key di menu Integrasi."
+            elif "service is not reachable" in err_str.lower() or "502" in err_str or "503" in err_str:
+                yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan sedang tidak dapat dijangkau (Server Down/502/503). Silakan coba lagi nanti atau ganti model."
             else:
                 import re
                 clean_err = re.sub(r"Error code: \d+ - ", "", err_str).strip()

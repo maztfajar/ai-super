@@ -148,7 +148,8 @@ async def get_new_messages(
     if after_ts:
         try:
             from datetime import datetime as _dt
-            cutoff = _dt.fromisoformat(after_ts.replace("Z", "+00:00"))
+            # FIX: Postgres is strict about aware vs naive. Match DB naive UTC.
+            cutoff = _dt.fromisoformat(after_ts.replace("Z", "+00:00")).replace(tzinfo=None)
             query = query.where(Message.created_at > cutoff)
         except ValueError:
             pass  # ignore bad timestamp, return all
@@ -330,10 +331,15 @@ async def chat_send(
         yield f"data: {json.dumps({'type': 'session', 'session_id': session.id, 'model': final_model})}\n\n"
 
         try:
-            # Get project path if set
+            # Get project path if set (Robust handling for dict or JSON str)
             project_path = None
             if session.project_metadata:
-                project_path = session.project_metadata.get("project_path")
+                meta = session.project_metadata
+                if isinstance(meta, str):
+                    try:
+                        meta = json.loads(meta)
+                    except: meta = {}
+                project_path = meta.get("project_path") if isinstance(meta, dict) else None
 
             # ═══════════════════════════════════════════════════════
             # DELEGATE TO ORCHESTRATOR — all intelligence lives there
@@ -657,7 +663,14 @@ async def set_project_location(
         raise HTTPException(400, "Project path must be in user home directory")
     
     # Store project location in session metadata
-    metadata = dict(session.project_metadata) if session.project_metadata else {}
+    # Robust dict conversion (handle case where DB returns JSON string)
+    meta = session.project_metadata
+    if isinstance(meta, str):
+        try:
+            meta = json.loads(meta)
+        except: meta = {}
+    
+    metadata = dict(meta) if meta else {}
     metadata["project_path"] = project_path
     session.project_metadata = metadata
     
@@ -681,7 +694,12 @@ async def get_project_location(
     
     project_path = None
     if session.project_metadata:
-        project_path = session.project_metadata.get("project_path")
+        meta = session.project_metadata
+        if isinstance(meta, str):
+            try:
+                meta = json.loads(meta)
+            except: meta = {}
+        project_path = meta.get("project_path") if isinstance(meta, dict) else None
     
     return {"project_path": project_path}
 

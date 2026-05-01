@@ -199,14 +199,15 @@ async def web_search_realtime(query: str, max_results: int = 5) -> list:
     Versi yang return list of dict.
     Dipakai orchestrator di Phase 0 untuk inject search context.
     """
-    if not TAVILY_API_KEY:
+    tavily_key = os.environ.get("TAVILY_API_KEY", "")
+    if not tavily_key:
         log.warning("TAVILY_API_KEY tidak dikonfigurasi")
         return [{"title": "Tavily tidak dikonfigurasi", "snippet":
                  "Set TAVILY_API_KEY di .env untuk web search real-time. Daftar gratis di tavily.com", "url": ""}]
 
     url = "https://api.tavily.com/search"
     payload = {
-        "api_key":             TAVILY_API_KEY,
+        "api_key":             tavily_key,
         "query":               query,
         "max_results":         max_results,
         "search_depth":        "basic",

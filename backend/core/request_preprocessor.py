@@ -477,12 +477,17 @@ class RequestPreprocessor:
         try:
             return json.loads(result_str)
         except json.JSONDecodeError:
-            # Coba ekstrak JSON dari teks yang tidak bersih
+            # Coba ekstrak JSON dari teks yang tidak bersih (mencari kurung kurawal pertama dan terakhir)
             import re
             json_match = re.search(r'\{.*\}', result_str, re.DOTALL)
             if json_match:
-                return json.loads(json_match.group())
-            raise
+                try:
+                    return json.loads(json_match.group())
+                except:
+                    pass
+            
+            log.warning("Preprocessor: Gagal mem-parse JSON dari LLM", result=result_str[:100])
+            return {}
 
     def _fallback_classify(self, message: str, spec: TaskSpecification,
                             history: List[Dict] = None) -> TaskSpecification:
