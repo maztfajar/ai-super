@@ -16,17 +16,41 @@ NC='\033[0m'
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo -e "${CYAN}"
-cat << 'EOF'
-█████╗ ██╗      ███████╗██╗   ██╗██████╗ ███████╗██████╗
-██╔══██╗██║      ██╔════╝██║   ██║██╔══██╗██╔════╝██╔══██╗
-███████║██║      ███████╗██║   ██║██████╔╝█████╗  ██████╔╝
-██╔══██║██║      ╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗
-██║  ██║██║      ███████║╚██████╔╝██║     ███████╗██║  ██║
-╚═╝  ╚═╝╚═╝      ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝
-                    A S S I S T A N T
-EOF
-echo -e "${NC}"
+RESET='\033[0m'
+BOLD='\033[1m'
+RED='\033[0;31m'
+BRED='\033[1;31m'
+LRED='\033[38;5;203m'
+WHITE='\033[1;37m'
+GRAY='\033[0;37m'
+YELLOW='\033[1;33m'
+
+clear
+echo ""
+echo -e "${BRED}"
+echo -e "  ██████████████████████████████████████████████████████████████████████████"
+echo -e "  ██                                                                      ██"
+echo -e "  ██    █████╗ ██╗     ██████╗ ██████╗  ██████╗██╗  ██╗███████╗███████╗  ██"
+echo -e "  ██   ██╔══██╗██║    ██╔═══██╗██╔══██╗██╔════╝██║  ██║██╔════╝██╔════╝  ██"
+echo -e "  ██   ███████║██║    ██║   ██║██████╔╝██║     ███████║█████╗  ███████╗  ██"
+echo -e "  ██   ██╔══██║██║    ██║   ██║██╔══██╗██║     ██╔══██║██╔══╝  ╚════██║  ██"
+echo -e "  ██   ██║  ██║██║    ╚██████╔╝██║  ██║╚██████╗██║  ██║███████╗███████║  ██"
+echo -e "  ██   ╚═╝  ╚═╝╚═╝     ╚═════╝ ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝  ██"
+echo -e "  ██                                                                      ██"
+echo -e "${LRED}  ██${WHITE}  ████████╗██████╗  █████╗ ██╗████████╗██████╗  █████╗ ████████╗ ██████╗ ██████╗  ${LRED}██"
+echo -e "${LRED}  ██${WHITE}  ╚══██╔══╝██╔══██╗██╔══██╗██║╚══██╔══╝██╔══██╗██╔══██╗╚══██╔══╝██╔═══██╗██╔══██╗ ${LRED}██"
+echo -e "${LRED}  ██${WHITE}     ██║   ██████╔╝███████║██║   ██║   ██████╔╝███████║   ██║   ██║   ██║██████╔╝ ${LRED}██"
+echo -e "${LRED}  ██${WHITE}     ██║   ██╔══██╗██╔══██║██║   ██║   ██╔══██╗██╔══██║   ██║   ██║   ██║██╔══██╗ ${LRED}██"
+echo -e "${LRED}  ██${WHITE}     ██║   ██║  ██║██║  ██║██║   ██║   ██║  ██║██║  ██║   ██║   ╚██████╔╝██║  ██║ ${LRED}██"
+echo -e "${LRED}  ██${WHITE}     ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝ ${LRED}██"
+echo -e "${BRED}  ██                                                                      ██"
+echo -e "  ██████████████████████████████████████████████████████████████████████████"
+echo -e "${RESET}"
+echo -e "  ${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "  ${WHITE}${BOLD}                       ✦  BY FAJAR WAHYUDI  ✦${RESET}"
+echo -e "  ${YELLOW}${BOLD}                        One Stop Solution 🚀${RESET}"
+echo -e "  ${GRAY}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo ""
 
 log()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn() { echo -e "${YELLOW}[!]${NC} $1"; }
@@ -239,8 +263,29 @@ if [ "$WZ_DB_TYPE" = "2" ]; then
     sudo systemctl enable postgresql 2>/dev/null || true
     sudo systemctl start postgresql 2>/dev/null || true
 
-    sudo -u postgres psql -c "CREATE USER $WZ_DB_USER WITH PASSWORD '$WZ_DB_PASS';" 2>/dev/null || true
-    sudo -u postgres psql -c "CREATE DATABASE $WZ_DB_NAME OWNER $WZ_DB_USER;" 2>/dev/null || true
+    # Tunggu PostgreSQL benar-benar siap menerima koneksi (maks 30 detik)
+    log "Menunggu PostgreSQL siap..."
+    PG_READY=0
+    for i in $(seq 1 15); do
+        if sudo -u postgres psql -c "SELECT 1;" > /dev/null 2>&1; then
+            PG_READY=1
+            break
+        fi
+        sleep 2
+    done
+
+    if [ "$PG_READY" -eq 0 ]; then
+        err "PostgreSQL tidak siap setelah 30 detik. Coba: sudo systemctl status postgresql"
+    fi
+
+    sudo -u postgres psql -c "CREATE USER $WZ_DB_USER WITH PASSWORD '$WZ_DB_PASS';" 2>/dev/null \
+        && log "User DB '$WZ_DB_USER' dibuat" \
+        || warn "User '$WZ_DB_USER' sudah ada, lanjut..."
+
+    sudo -u postgres psql -c "CREATE DATABASE $WZ_DB_NAME OWNER $WZ_DB_USER;" 2>/dev/null \
+        && log "Database '$WZ_DB_NAME' dibuat" \
+        || warn "Database '$WZ_DB_NAME' sudah ada, lanjut..."
+
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $WZ_DB_NAME TO $WZ_DB_USER;" 2>/dev/null || true
 
     log "PostgreSQL ready (db: $WZ_DB_NAME, user: $WZ_DB_USER)"
@@ -333,27 +378,65 @@ done
 step "Initializing Database & Admin User"
 
 cd "$APP_DIR/backend"
-mkdir -p data/logs data/uploads data/chroma_db
+mkdir -p "$APP_DIR/backend/data/logs" \
+         "$APP_DIR/backend/data/uploads" \
+         "$APP_DIR/backend/data/chroma_db"
 
+# Load .env ke environment shell dulu
 set -a
 source "$APP_DIR/.env"
 set +a
 
-"$VENV_DIR/bin/python3" - << 'PYEOF'
-import asyncio, sys
-sys.path.insert(0, '.')
+# Tulis script Python ke file sementara agar variabel shell bisa di-expand
+# (heredoc dengan 'PYEOF' tidak expand variabel — ini root cause bug login gagal)
+INIT_SCRIPT="$APP_DIR/backend/_init_admin_tmp.py"
+
+cat > "$INIT_SCRIPT" << PYEOF
+import asyncio, sys, os
+
+# Pastikan working directory benar dan .env terbaca
+os.chdir("$APP_DIR/backend")
+sys.path.insert(0, "$APP_DIR/backend")
+
+# Load .env secara eksplisit dari path absolut
+from dotenv import load_dotenv
+load_dotenv("$APP_DIR/.env", override=True)
 
 async def main():
-    from db.database import init_db, AsyncSessionLocal
-    from core.auth import ensure_admin_exists
-    from core.config import settings
-    await init_db()
-    async with AsyncSessionLocal() as db:
-        await ensure_admin_exists(db)
-    print(f"  Admin siap: {settings.ADMIN_USERNAME}")
+    try:
+        from db.database import init_db, AsyncSessionLocal
+        from core.auth import ensure_admin_exists
+        from core.config import settings
+
+        print(f"  [DB] Membuat tabel database...")
+        await init_db()
+
+        print(f"  [DB] Membuat admin user: {settings.ADMIN_USERNAME}")
+        async with AsyncSessionLocal() as db:
+            await ensure_admin_exists(db)
+
+        print(f"  [OK] Admin '{settings.ADMIN_USERNAME}' berhasil dibuat")
+        print(f"  [OK] Database siap di: {settings.DATABASE_URL}")
+
+    except Exception as e:
+        print(f"  [ERROR] {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 asyncio.run(main())
 PYEOF
+
+# Jalankan script init
+"$VENV_DIR/bin/python3" "$INIT_SCRIPT"
+INIT_STATUS=$?
+
+# Hapus script sementara
+rm -f "$INIT_SCRIPT"
+
+if [ $INIT_STATUS -ne 0 ]; then
+    err "Gagal inisialisasi database/admin. Cek error di atas."
+fi
 
 log "Database & admin user siap"
 
