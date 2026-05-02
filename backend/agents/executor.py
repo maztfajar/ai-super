@@ -353,9 +353,15 @@ class ResponseFilter:
 
         if self.state == "RAW":
             self.ever_emitted_response = True
-            out = self.pending
-            self.pending = ""
-            return out
+            i_tool = self.pending.find("<tool>")
+            if i_tool != -1:
+                out = self.pending[:i_tool]
+                self.pending = self.pending[i_tool:]
+                return out
+            else:
+                out = self.pending
+                self.pending = ""
+                return out
 
         while self.pending and self.state != "RAW":
             if self.state == "WAITING":
@@ -388,9 +394,13 @@ class ResponseFilter:
                     tags.sort(key=lambda x: x[0])
                     idx, tag_len, tag_type = tags[0]
                     # Teks sebelum tag pertama → emit jika substantial
-                    if idx > 15 and not self.ever_emitted_response:
+                    if not self.ever_emitted_response:
+                        if idx > 15:
+                            output += self.pending[:idx]
+                            self.ever_emitted_response = True
+                    else:
                         output += self.pending[:idx]
-                        self.ever_emitted_response = True
+                    
                     self.pending = self.pending[idx:]
                     if tag_type == "thinking":
                         self._thinking_buffer = ""
@@ -621,10 +631,10 @@ class AgentExecutor:
         # Naikkan hanya jika butuh banyak langkah (project besar).
         MAX_ITERATIONS = 25   # dikurangi dari 30
 
-        response_filter = ResponseFilter(emit_thinking=emit_thinking)
         consecutive_errors = 0
 
         for iteration in range(MAX_ITERATIONS):
+            response_filter = ResponseFilter(emit_thinking=emit_thinking)
             # Circuit breaker
             if consecutive_errors >= 3:
                 yield (
@@ -650,9 +660,8 @@ class AgentExecutor:
 
                     if "<tool>" in buffer and not has_tool_started:
                         has_tool_started = True
-                        flushed = response_filter.flush()
-                        if flushed:
-                            yield flushed
+                        # Do not yield flushed output here to avoid leaking the <tool> string to the UI
+                        response_filter.flush()
                         response_filter.state = "WAITING"
                         response_filter.pending = ""
 
