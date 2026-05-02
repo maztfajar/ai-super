@@ -51,6 +51,48 @@ class SnapshotManager:
             log.warning("Snapshot manager error", error=str(e)[:100])
         return False
 
+    async def create_snapshot_async(self, message: str) -> bool:
+        """
+        Versi asinkronus dari create_snapshot untuk menghindari pemblokiran event loop.
+        """
+        import asyncio
+        try:
+            # 1. Cek apakah ini git repo
+            if not os.path.exists(os.path.join(self.root_dir, ".git")):
+                p_init = await asyncio.create_subprocess_exec("git", "init", cwd=self.root_dir, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+                await p_init.communicate()
+
+            # 2. Cek apakah ada perubahan
+            p_status = await asyncio.create_subprocess_exec(
+                "git", "status", "--short",
+                cwd=self.root_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            stdout, _ = await p_status.communicate()
+            if not stdout.strip():
+                return False
+
+            # 3. Simpan perubahan
+            p_add = await asyncio.create_subprocess_exec("git", "add", ".", cwd=self.root_dir, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            await p_add.communicate()
+
+            # 4. Commit
+            commit_msg = f"AI_SNAPSHOT: {message}"
+            p_commit = await asyncio.create_subprocess_exec(
+                "git", "commit", "-m", commit_msg, "--no-verify",
+                cwd=self.root_dir, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            )
+            _, stderr = await p_commit.communicate()
+            
+            if p_commit.returncode == 0:
+                log.info("Snapshot created successfully (async)", action=message)
+                return True
+            else:
+                log.debug("Git commit skipped or failed (async)", output=stderr.decode().strip())
+                
+        except Exception as e:
+            log.warning("Async Snapshot manager error", error=str(e)[:100])
+        return False
+
     def rollback(self) -> dict:
         """
         Kembalikan sistem ke Snapshot AI terakhir.

@@ -46,7 +46,7 @@ def _project_path_key(project_path: Optional[str]) -> str:
     return project_path[-40:]  # 40 char terakhir sudah cukup unik
 
 
-def build_agent_system_prompt(
+async def build_agent_system_prompt_async(
     current_model: str,
     execution_mode: str = "execution",
     project_path: Optional[str] = None,
@@ -54,8 +54,7 @@ def build_agent_system_prompt(
 ) -> str:
     """
     Bangun system prompt untuk agent executor.
-    PERBAIKAN: di-cache per (model, mode, project_path) — tidak rebuilt tiap iterasi.
-    project_context (file listing) tetap fresh karena di-generate saat cache miss.
+    Versi asinkronus untuk menghindari pemblokiran event loop.
     """
     cache_key = (current_model, execution_mode, _project_path_key(project_path))
     if cache_key in _PROMPT_CACHE:
@@ -97,28 +96,42 @@ def build_agent_system_prompt(
     # Project context: fresh setiap kali (tidak di-cache karena file bisa berubah)
     project_context = ""
     if project_path:
+        import asyncio
         try:
-            result = subprocess.run(
+            p_find = await asyncio.create_subprocess_shell(
                 f"find {project_path} -type f "
                 f"-not -path '*/node_modules/*' -not -path '*/.git/*' "
                 f"-not -path '*/dist/*' | head -40 | sort",
-                shell=True, capture_output=True, text=True, timeout=5
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            if result.stdout.strip():
-                project_context = (
-                    f"\n**PROJECT STATE — FILE YANG SUDAH ADA:**\n"
-                    f"{result.stdout.strip()}\n"
-                    f"⚠️ File di atas SUDAH ADA. JANGAN tulis ulang kecuali ada bug."
-                )
-            ports = subprocess.run(
+            try:
+                stdout_find, _ = await asyncio.wait_for(p_find.communicate(), timeout=5.0)
+                find_res = stdout_find.decode()
+                if find_res.strip():
+                    project_context = (
+                        f"\n**PROJECT STATE — FILE YANG SUDAH ADA:**\n"
+                        f"{find_res.strip()}\n"
+                        f"⚠️ File di atas SUDAH ADA. JANGAN tulis ulang kecuali ada bug."
+                    )
+            except asyncio.TimeoutError:
+                try: p_find.kill()
+                except OSError: pass
+
+            p_ss = await asyncio.create_subprocess_shell(
                 "ss -tlnp | grep -E ':8[0-9]{3}'",
-                shell=True, capture_output=True, text=True, timeout=3
+                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
             )
-            if ports.stdout.strip():
-                project_context += (
-                    f"\n**SERVERS BERJALAN:**\n{ports.stdout.strip()}\n"
-                    "⚠️ Server sudah running. Jangan start ulang kecuali diminta."
-                )
+            try:
+                stdout_ss, _ = await asyncio.wait_for(p_ss.communicate(), timeout=3.0)
+                ss_res = stdout_ss.decode()
+                if ss_res.strip():
+                    project_context += (
+                        f"\n**SERVERS BERJALAN:**\n{ss_res.strip()}\n"
+                        "⚠️ Server sudah running. Jangan start ulang kecuali diminta."
+                    )
+            except asyncio.TimeoutError:
+                try: p_ss.kill()
+                except OSError: pass
         except Exception:
             pass
 
@@ -341,6 +354,9 @@ class ResponseFilter:
         self.current_think_tag = "</thinking>"
         self._thinking_buffer = ""
         self._thinking_ready = ""
+        # Delta streaming support
+        self._thinking_delta_cursor = 0  # tracks how much of _thinking_buffer has been sent
+        self._thinking_done = False      # True when </thinking> tag is found
 
     def process(self, chunk: str) -> str:
         self.pending += chunk
@@ -433,7 +449,7 @@ class ResponseFilter:
                 if end_think != -1:
                     self._thinking_buffer += self.pending[:end_think]
                     self._thinking_ready = self._thinking_buffer.strip()
-                    self._thinking_buffer = ""
+                    self._thinking_done = True
                     self.pending = self.pending[end_think + len(self.current_think_tag):]
                     self.state = "WAITING"
                 else:
@@ -482,6 +498,28 @@ class ResponseFilter:
         result = self._thinking_ready
         self._thinking_ready = ""
         return result
+
+    def pop_thinking_delta(self) -> str:
+        """Return unsent portion of thinking buffer for real-time streaming."""
+        buf = self._thinking_buffer
+        if len(buf) > self._thinking_delta_cursor:
+            delta = buf[self._thinking_delta_cursor:]
+            self._thinking_delta_cursor = len(buf)
+            return delta
+        # Also check _thinking_ready (set when </thinking> is found)
+        if self._thinking_ready and self._thinking_delta_cursor > 0:
+            # The buffer was finalized — emit any remaining text
+            remaining = self._thinking_ready[self._thinking_delta_cursor:]
+            self._thinking_delta_cursor = len(self._thinking_ready)
+            return remaining
+        return ""
+
+    def is_thinking_done(self) -> bool:
+        """Returns True once when </thinking> tag has been found (one-shot)."""
+        if self._thinking_done:
+            self._thinking_done = False
+            return True
+        return False
 
 
 # ── Agent Executor ────────────────────────────────────────────────────────────
@@ -613,7 +651,7 @@ class AgentExecutor:
     ) -> AsyncGenerator[str, None]:
 
         # ── Inject system prompt (cached) ────────────────────────────────────
-        system_prompt = build_agent_system_prompt(
+        system_prompt = await build_agent_system_prompt_async(
             base_model, execution_mode, project_path, session_id
         )
         agent_msgs = list(messages)
@@ -658,6 +696,21 @@ class AgentExecutor:
                         if filtered:
                             yield filtered
 
+                        # ── Stream thinking delta in real-time ────────────
+                        thinking_delta = response_filter.pop_thinking_delta()
+                        if thinking_delta:
+                            yield process_emitter.to_sentinel(
+                                "thinking_delta", "", extra={"delta": thinking_delta}
+                            )
+                        if response_filter.is_thinking_done():
+                            full_think = response_filter.pop_thinking()
+                            word_count = len(full_think.split()) if full_think else 0
+                            yield process_emitter.to_sentinel(
+                                "thinking_done",
+                                f"Reasoning ({word_count} kata)",
+                                extra={"result": full_think}
+                            )
+
                     if "<tool>" in buffer and not has_tool_started:
                         has_tool_started = True
                         # Do not yield flushed output here to avoid leaking the <tool> string to the UI
@@ -697,7 +750,7 @@ class AgentExecutor:
                         "Tolong jawab pertanyaan saya"
                     )
                     agent_msgs = [
-                        {"role": "system", "content": build_agent_system_prompt(
+                        {"role": "system", "content": await build_agent_system_prompt_async(
                             base_model, execution_mode, project_path, session_id
                         )},
                         {"role": "user", "content": last_user[:2000]},
@@ -726,12 +779,14 @@ class AgentExecutor:
             if flushed_text:
                 yield flushed_text
 
-            # ── Emit thinking sebagai process sentinel ───────────────────────
+            # ── Emit final thinking summary (legacy compat) ────────────────
+            # Thinking deltas are already streamed live above; this emits
+            # a final "done" event with word count so the panel can update.
             captured_thinking = response_filter.pop_thinking()
             if captured_thinking and len(captured_thinking) > 30:
                 word_count = len(captured_thinking.split())
                 yield process_emitter.to_sentinel(
-                    "Thinking",
+                    "thinking_done",
                     f"Reasoning ({word_count} kata)",
                     extra={"result": captured_thinking}
                 )
@@ -764,7 +819,7 @@ class AgentExecutor:
                     # ── AUTOMATIC SNAPSHOT (Save Point) ──────────────────────
                     # Buat snapshot sebelum aksi destruktif agar bisa di-rollback
                     if cmd in ("write_file", "write_multiple_files", "execute_bash"):
-                        snapshot_manager.create_snapshot(f"Before {cmd}: {_detail[:50]}")
+                        await snapshot_manager.create_snapshot_async(f"Before {cmd}: {_detail[:50]}")
                         
                     yield process_emitter.to_sentinel(_action, _detail)
 

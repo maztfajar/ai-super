@@ -53,6 +53,12 @@ export const useChatStore = create(
 
       setProcessSteps: (steps) => set({ processSteps: steps }),
       addProcessStep: (step) => set((s) => ({ processSteps: [...s.processSteps, step] })),
+      updateLastProcessStep: (patch) => set((s) => {
+        if (s.processSteps.length === 0) return s
+        const updated = [...s.processSteps]
+        updated[updated.length - 1] = { ...updated[updated.length - 1], ...patch }
+        return { processSteps: updated }
+      }),
       finalizeProcessSteps: () => set((s) => ({ lastProcessSteps: s.processSteps })),
       clearProcessSteps: () => set({ processSteps: [], lastProcessSteps: [] }),
       setStatusText: (t) => set({ statusText: t }),

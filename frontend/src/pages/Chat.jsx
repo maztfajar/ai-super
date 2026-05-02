@@ -161,14 +161,16 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStrea
   // Ambil konten yang bisa ditampilkan untuk setiap step
   const getStepContent = (step, stepIdx) => {
     const isLastStep = stepIdx === steps.length - 1
-    // Live streaming untuk step terakhir
-    if (isLastStep && isStreaming && step._textOffset != null && streamingText) {
+    // Live streaming text untuk jawaban (bukan thinking)
+    if (isLastStep && isStreaming && step._textOffset != null && streamingText && !step._isLiveThinking) {
       const live = streamingText.substring(step._textOffset)
       if (live.trim()) return { content: live, isLive: true }
     }
     // Field konten dengan prioritas
     const content = step.liveContent || step.code || step.result
-    if (content && content.trim()) return { content: content.trim(), isLive: false }
+    if (content && content.trim()) {
+      return { content: content.trim(), isLive: !!step._isLiveThinking }
+    }
     return null
   }
 
@@ -1943,6 +1945,52 @@ export default function Chat() {
       console.log(`Step "${data.action}" hasContent:`, !!(data.code || data.result), 'data:', data)
       const currentOffset = useChatStore.getState().streamingText.length
       const steps = useChatStore.getState().processSteps
+
+      // ── Real-time thinking delta: append text to existing Thinking step ──
+      if (data.action === 'thinking_delta' && data.delta) {
+        const lastStep = steps[steps.length - 1]
+        if (lastStep && lastStep.action === 'Thinking' && lastStep._isLiveThinking) {
+          // Append delta to existing live thinking step
+          useChatStore.getState().updateLastProcessStep({
+            liveContent: (lastStep.liveContent || '') + data.delta,
+          })
+        } else {
+          // Create new live thinking step
+          useChatStore.getState().addProcessStep({
+            action: 'Thinking',
+            detail: 'Reasoning...',
+            ts: Date.now(),
+            _textOffset: currentOffset,
+            liveContent: data.delta,
+            _isLiveThinking: true,
+          })
+        }
+        return
+      }
+
+      // ── Thinking done: finalize the thinking step with word count ──
+      if (data.action === 'thinking_done') {
+        const lastStep = steps[steps.length - 1]
+        if (lastStep && lastStep.action === 'Thinking' && lastStep._isLiveThinking) {
+          // Update existing step with final content and detail
+          useChatStore.getState().updateLastProcessStep({
+            detail: data.detail || 'Reasoning complete',
+            result: data.result || lastStep.liveContent || '',
+            _isLiveThinking: false,
+          })
+        } else {
+          // Fallback: add as a regular step (thinking block was too short for deltas)
+          useChatStore.getState().addProcessStep({
+            action: 'Thinking',
+            detail: data.detail || 'Reasoning',
+            ts: data.ts || Date.now(),
+            _textOffset: currentOffset,
+            liveContent: data.result || null,
+            result: data.result || null,
+          })
+        }
+        return
+      }
 
       // Finalize liveContent untuk step sebelumnya
       if (steps.length > 0) {
