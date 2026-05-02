@@ -1,153 +1,301 @@
-# 🧠 AI ORCHESTRATOR — Platform AI Self-Hosted v2.5
+# 🧠 AI ORCHESTRATOR
 
-Platform AI Self-Hosted tercanggih dengan **Multi-AI Parallel Voting**, **Agent Scorer Engine**, knowledge base RAG, workflow otomatis, dan keamanan enterprise.
+Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration, knowledge base RAG, workflow otomatis, integrasi Telegram/WhatsApp, dan keamanan 2FA.
+
+> **Stack:** FastAPI · React · Vite · ChromaDB · Celery · Redis
 
 ---
 
 ## ✨ Fitur Utama
 
-### 🤖 **Multi-AI & Orchestration Engine**
-- **Multi-AI Parallel Voting (v2.5)**: Verifikasi jawaban melalui eksekusi paralel beberapa model (DeepSeek, Qwen, Gemini) untuk akurasi maksimal.
-- **Agent Scorer & Selection Engine**: Pemilihan model dinamis berdasarkan skor kapabilitas, performa historis, dan ketersediaan real-time.
-- **Smart Routing**: Auto-routing cerdas untuk coding, analisis, vision, dan creative writing.
-- **Dynamic AI Role Mapping**: Personalisasi model untuk peran spesifik (Coding, Reasoning, Chat) langsung dari UI.
+### 🤖 AI Orchestrator Engine
+- **Multi-Model Intelligence** — Otomatis routing ke model terbaik berdasarkan jenis tugas
+- **VISION_GATE Engine** — Analisis gambar: objek, aktivitas, situasi, dan konteks
+- **Multimodal Chat** — Chat dengan gambar + teks secara bersamaan
+- **Smart Routing** — Auto-pilih model untuk coding, analysis, vision, audio, dll.
 
-### 🔍 **Smart Search & Vision**
-- **Tavily Web Search Integration**: Akses internet real-time untuk riset mendalam dan data terbaru.
-- **VISION_GATE Engine**: Analisis gambar lengkap - objek, aktivitas, situasi, dan konteks dengan dukungan OCR.
-- **Multimodal Chat**: Interaksi teks, gambar, dan dokumen dalam satu sesi percakapan.
+### 📸 Vision & Image Analysis
+- Upload gambar dan dapatkan analisis detail
+- Deteksi objek, aktivitas, situasi, dan konteks dalam foto
+- OCR (Optical Character Recognition) untuk teks dalam gambar
+- Screenshot analysis untuk debugging error
 
-### 🛠️ **AI Execution Pipeline (Agentic Workflow)**
-- **Mandatory Planning Phase**: AI merencanakan arsitektur dan langkah eksekusi secara mendetail sebelum menulis kode.
-- **Process Step Tracking**: Pantau proses *thinking*, *planning*, *execution*, dan *verification* secara real-time.
-- **Execution Sandbox**: Lingkungan terisolasi untuk eksekusi kode/bash dengan *auto-correction* saat error.
-- **App Verification Loop**: Pre-flight check otomatis untuk memastikan aplikasi hasil generate benar-benar berjalan.
+### 🗄️ RAG (Retrieval Augmented Generation)
+- Knowledge base dengan vector search (ChromaDB)
+- Upload dokumen PDF, DOC, TXT untuk augmentasi AI
+- Context-aware responses dengan sumber referensi
+- Auto-indexing dan semantic search
 
-### 🗄️ **RAG & Knowledge Management**
-- **Knowledge Base RAG**: Unggah PDF, DOC, TXT dengan indexing otomatis menggunakan vector search.
-- **Context-Aware Responses**: Jawaban cerdas yang merujuk pada dokumen internal Anda.
-- **Persistent Project Storage**: Manajemen folder proyek otomatis yang tersimpan per sesi chat.
+### 🔄 Workflow Automation
+- Buat workflow otomatis dengan trigger & actions
+- Integrasi dengan berbagai platform via webhook
+- Scheduled tasks dan background processing (Celery)
+- Visual workflow builder
 
-### 🔒 **Enterprise Security & Multi-Channel**
-- **Two-Factor Authentication (2FA)**: Keamanan ekstra dengan TOTP dan Telegram OTP.
-- **Multi-Channel Integration**: Akses melalui Web Interface, Telegram Bot, dan WhatsApp (experimental).
-- **PostgreSQL Support**: Pilihan database skala enterprise untuk stabilitas data yang lebih baik.
-- **Self-Healing Infrastructure (New)**: Deteksi otomatis dan perbaikan mandiri terhadap crash server, disk penuh, error permission, dan masalah konektivitas database/Redis.
+### 📁 Project Management System
+- **Smart Project Location** — Auto-deteksi saat pembuatan aplikasi
+- **Persistent Storage** — Lokasi proyek tersimpan per session
+- **File Browser** — Popup untuk memilih folder penyimpanan
+- **Auto-Organization** — Semua file aplikasi tersimpan di lokasi yang sama
+- **Security Validation** — Hanya mengizinkan lokasi di user home directory
+- **Relative Path Support** — Path relatif otomatis di-resolve ke lokasi proyek
+
+### 📱 Multi-Channel Integration
+- **Telegram Bot** — Chat AI langsung di Telegram
+- **WhatsApp Integration** — Coming soon
+- **Web Interface** — Full-featured web app
+- **API Endpoints** — RESTful API untuk integrasi eksternal
+
+### 🔒 Enterprise Security
+- Two-Factor Authentication (TOTP + Telegram OTP)
+- JWT tokens dengan expiry management
+- Brute force protection (5x gagal → kunci 5 menit)
+- Multi-level user roles & permissions
+- Encrypted data storage
+
+### 📊 Analytics & Monitoring
+- Real-time system monitoring
+- Usage analytics dan performance metrics
+- Agent performance tracking
+- System health dashboard
+- Log management & rotation
+
+### 🎵 Text-to-Speech (TTS)
+- High-quality voice synthesis
+- Multiple voice options
+- Audio file generation & download
+
+---
+
+## 🆕 Recent Updates (v2.5)
+
+- ✅ **Project Management System** — Auto-deteksi lokasi proyek untuk aplikasi
+- ✅ **Enhanced Session Reliability** — Timeout improvements dengan partial responses
+- ✅ **Fixed Model Management** — Mencegah deleted models muncul di monitoring
+- ✅ **Better Error Recovery** — Increased iterations dan timeout handling
+- ✅ **Smart File Organization** — Path relatif otomatis ke lokasi proyek
+- ✅ **Improved Code Styling** — Code block background sesuai tema aplikasi
 
 ---
 
 ## ⚡ Instalasi Cepat
 
 ```bash
-# Clone repository
 git clone https://github.com/maztfajar/ai-super.git
 cd ai-super
-
-# Jalankan installer interaktif
 bash install.sh
-
-# Mulai layanan
-bash update_and_restart.sh
 ```
 
-Buka: **http://localhost:7860**  
-Login default: `admin` / `admin`
+Buka: **http://localhost:7860**
 
-> ⚠️ **PENTING**: Segera ganti password default dan aktifkan 2FA di menu Profile setelah login pertama.
+> ⚠️ Saat instalasi, wizard akan meminta username dan password. **Jangan gunakan password lemah.** `SECRET_KEY` akan di-generate otomatis.
 
 ---
 
 ## 📋 System Requirements
 
-| Komponen | Minimum | Rekomendasi |
-|---|---|---|
-| OS | Ubuntu 20.04+ | Ubuntu 22.04 LTS |
-| RAM | 4 GB | 16 GB+ (untuk multi-model) |
-| CPU | 2 cores | 8+ cores |
-| Storage | 10 GB | 50 GB+ (SSD recommended) |
-| Python | 3.10+ | 3.11 |
-| Node.js | 18+ | 20 LTS |
+|           | Minimum        | Rekomendasi              |
+|-----------|----------------|--------------------------|
+| OS        | Ubuntu 20.04+  | Ubuntu 22.04 LTS         |
+| RAM       | 2 GB           | 8 GB+ (untuk vision models) |
+| CPU       | 2 cores        | 4+ cores                 |
+| Storage   | 5 GB           | 20 GB+ (untuk knowledge base) |
+| Python    | 3.10+          | 3.11                     |
+| Node.js   | 18+            | 20 LTS                   |
+
+---
+
+## 🗂️ Struktur Folder
+
+```
+ai-super/
+├── backend/                  # FastAPI Python backend
+│   ├── api/                  # REST API endpoints
+│   │   ├── chat.py           # Chat & multimodal endpoints
+│   │   ├── media.py          # Image upload & analysis
+│   │   ├── rag.py            # Knowledge base management
+│   │   ├── workflow.py       # Workflow automation
+│   │   └── tts.py            # Text-to-speech
+│   ├── core/                 # Core services
+│   │   ├── orchestrator.py   # AI orchestration engine
+│   │   ├── model_manager.py  # Multi-model management
+│   │   ├── request_preprocessor.py # Intent classification
+│   │   └── vision_gate.py    # Image analysis engine
+│   ├── db/                   # Database models & migrations
+│   └── integrations/         # External integrations
+├── frontend/                 # React + Vite frontend
+│   └── src/
+│       ├── pages/            # Main application pages
+│       ├── components/       # Reusable UI components
+│       └── hooks/            # React hooks & API calls
+├── scripts/                  # Utility scripts
+├── data/                     # Static data & configurations
+├── .env.example              # Configuration template
+├── install.sh                # Script instalasi
+├── deploy.sh                 # Script deploy
+└── update_and_restart.sh     # Script update & restart
+```
 
 ---
 
 ## ⚙️ Konfigurasi (.env)
 
-```env
-# Basic
-APP_NAME="AI ORCHESTRATOR"
-SECRET_KEY=ganti-dengan-string-random-32-karakter
+Salin `.env.example` ke `.env` lalu sesuaikan:
 
-# AI Providers
+```bash
+cp .env.example .env
+nano .env
+```
+
+Variabel penting yang **wajib** diisi:
+
+```env
+# Nama aplikasi
+APP_NAME="AI ORCHESTRATOR"
+
+# WAJIB diganti — generate otomatis oleh install.sh
+SECRET_KEY="..."
+
+# Kredensial admin — WAJIB diganti dari default
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=password-kuat-anda
+
+# Isi minimal satu AI provider
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AIza...
-TAVILY_API_KEY=tvly-...  # Untuk fitur Web Search
-
-# Database (Pilih salah satu)
-# SQLite (Default)
-DATABASE_URL=sqlite:///./data/app.db
-# PostgreSQL (Recommended for Production)
-# DATABASE_URL=postgresql://user:pass@localhost/dbname
-
-# Telegram Bot (2FA & Notifications)
-TELEGRAM_BOT_TOKEN=1234567890:ABC...
-TELEGRAM_CHAT_ID=123456789
+OLLAMA_HOST=http://localhost:11434  # Gratis, lokal
 ```
 
----
-
-## 🆕 **Update Terbaru (v2.5)**
-- 🗳️ **Voting Engine**: Integrasi sistem voting antar-model untuk meningkatkan reliabilitas jawaban kompleks.
-- 📈 **Agent Scorer**: Algoritma baru untuk memilih model terbaik berdasarkan beban kerja dan tingkat kesuksesan sebelumnya.
-- 🌐 **Web Search Integration**: Pencarian web otonom menggunakan Tavily API untuk menjawab pertanyaan berbasis data terkini.
-- 🎭 **Role Mapping UI**: Antarmuka baru di menu Integrations untuk memetakan model ke peran (misal: DeepSeek untuk Coding, Gemini untuk Reasoning).
-- ⚡ **Response Stability**: Perbaikan logika streaming untuk mencegah coupling karakter ("teks gandeng") pada koneksi lambat.
-- 🐘 **PostgreSQL Ready**: Dukungan penuh untuk PostgreSQL sebagai backend database utama.
-- 🔧 **Self-Healing Engine**: Sistem pemantauan background 24/7 yang dapat memperbaiki masalah infrastruktur secara otomatis dan mengirim laporan via Telegram.
-
-## 🆕 **Update Sebelumnya (v2.4)**
-- 🧠 **Mandatory Planning**: AI wajib membuat rencana langkah demi langkah sebelum eksekusi kode.
-- ✅ **Verification Loop**: Auto-check port dan status aplikasi setelah proses pembuatan selesai.
-- 👁️ **Aggressive Context**: Deteksi file proyek secara otomatis untuk mengurangi redundansi penulisan kode.
-- 🛡️ **Smart Error Hinting**: Injeksi saran perbaikan otomatis saat AI menemui error sistem (EADDRINUSE, etc).
+Lihat `.env.example` untuk daftar lengkap semua variabel.
 
 ---
 
-## 🗂️ Struktur Folder Utama
+## 🚀 Panduan Penggunaan
 
-- `backend/`: FastAPI core, orchestrator, dan integrasi AI.
-- `frontend/`: React + Vite UI components.
-- `scripts/`: Kumpulan utility untuk instalasi, update, dan maintenance.
-- `data/`: Lokasi penyimpanan database, dokumen RAG, dan log.
-- `rag_documents/`: Folder default untuk dokumen yang akan di-index.
+### 💬 Multimodal Chat dengan Vision
+1. Klik tombol **📷 Kamera** untuk upload gambar
+2. Ketik pertanyaan tentang gambar tersebut
+3. Sistem akan mengaktifkan **VISION_GATE Engine**
+4. Dapatkan analisis detail: objek, aktivitas, situasi, konteks
+
+### 📚 Knowledge Base RAG
+1. Upload dokumen ke menu **RAG**
+2. Sistem akan auto-index dokumen
+3. AI akan menggunakan knowledge base untuk jawaban yang lebih akurat
+4. Lihat sumber referensi pada setiap jawaban
+
+### 🔄 Workflow Automation
+1. Buat workflow baru di menu **Workflow**
+2. Set trigger (schedule, webhook, manual)
+3. Tambah actions (send message, API call, file operations)
+4. Jalankan atau schedule workflow
+
+### 📁 Project Management System
+1. Saat minta AI buat aplikasi, sistem otomatis meminta lokasi proyek
+2. Popup muncul untuk memilih folder (Desktop, Home, atau custom)
+3. Lokasi tersimpan per session chat
+4. Semua file aplikasi otomatis tersimpan di lokasi yang sama
+
+### 🤖 Telegram Integration
+1. Setup bot token di menu **Integrations**
+2. Chat dengan AI langsung di Telegram
+3. Support untuk gambar dan dokumen
+4. 2FA verification via Telegram
+
+---
+
+## 🛠️ Script Utility
+
+```bash
+# Instalasi & Setup
+bash install.sh                   # Install semua dependencies
+bash scripts/install-rag.sh       # Setup RAG dengan ChromaDB
+bash scripts/setup-cloudflare.sh  # Setup Cloudflare tunnel
+
+# Deployment
+bash deploy.sh                    # Deploy ke server
+bash update_and_restart.sh        # Update kode + restart server
+
+# Service Management
+bash scripts/start.sh             # Jalankan aplikasi lengkap
+bash scripts/stop.sh              # Hentikan semua services
+bash scripts/dev.sh               # Development mode
+
+# Database & Data
+bash scripts/migrate-db.sh        # Migrasi database
+bash scripts/reindex-rag.sh       # Re-index RAG documents
+bash scripts/reset-password.sh    # Reset password darurat
+
+# Maintenance
+bash scripts/backup.sh            # Backup data & konfigurasi
+bash scripts/cleanup.sh           # Cleanup temporary files
+```
 
 ---
 
 ## 🔧 Troubleshooting
 
-Jika menemui kendala, gunakan script troubleshooter:
-```bash
-bash troubleshoot-vps.sh
-```
+**Gambar tidak bisa diupload**
+- Pastikan file < 10MB
+- Format yang didukung: JPG, PNG, GIF, WebP
+- Cek logs: `tail -f data/logs/ai-orchestrator.log`
 
-Masalah umum:
-- **Blank Screen (Tunnel)**: Pastikan CORS dikonfigurasi dengan URL tunnel Anda di `.env`.
-- **Database Locked**: Jika menggunakan SQLite, pastikan tidak ada proses backend ganda yang berjalan.
-- **Model Timeout**: Gunakan model "flash" (seperti Gemini Flash) jika koneksi internet terbatas.
-- **Server Issues**: Gunakan fitur **Self-Healing** yang otomatis berjalan di background untuk memulihkan layanan yang macet. Cek log di `data/logs/` untuk detail tindakan yang diambil.
+**Vision analysis tidak berfungsi**
+- Pastikan model vision tersedia (GPT-4o, Gemini, dll)
+- Cek API keys di menu **Integrations**
+- Lihat status model di dashboard **Monitoring**
+
+**RAG tidak menggunakan knowledge base**
+- Pastikan dokumen sudah ter-index
+- Cek ChromaDB: `bash scripts/check-rag.sh`
+- Re-index jika perlu: `bash scripts/reindex-rag.sh`
+
+**Telegram bot tidak merespon**
+- Verify bot token di @BotFather
+- Cek webhook URL di menu **Integrations**
+- Lihat logs: `tail -f data/logs/ai-orchestrator.log`
+
+Lihat **TROUBLESHOOTING.md** untuk panduan lengkap.
 
 ---
 
-## 📖 Dokumentasi
-Panduan lengkap tersedia dalam format:
-- `VPS_DEPLOY.md`: Panduan khusus deployment di VPS.
-- `Laporan_Evaluasi_AI_Orchestrator.md`: Analisis performa dan kapabilitas sistem.
+## 🔐 Keamanan
+
+- **Brute Force Protection** — 5x gagal login → akun dikunci 5 menit
+- **Two-Factor Authentication** — TOTP (Google Authenticator) + Telegram OTP
+- **JWT Security** — Token expiry 7 hari dengan refresh mechanism
+- **Password Recovery** — via Email / Telegram OTP / Recovery Token
+- **Audit Logging** — Semua aktivitas tercatat untuk compliance
+- **Role-Based Access** — Multi-level permissions system
 
 ---
 
-## 📄 Lisensi & Legal
+## 🤝 Contributing
+
+1. Fork repository
+2. Buat feature branch: `git checkout -b feature/nama-fitur`
+3. Commit changes: `git commit -am 'feat: deskripsi singkat'`
+4. Push ke branch: `git push origin feature/nama-fitur`
+5. Buat Pull Request
+
+---
+
+## 🆘 Support
+
+- **Issues** — Buat issue di GitHub repository
+- **Dokumentasi** — Lihat `TROUBLESHOOTING.md`
+
+---
+
+## 📄 License
+
 Copyright (c) 2026 maztfajarwahyudi. All rights reserved.
-**Proprietary Software**: Penggunaan, penggandaan, atau distribusi tanpa izin tertulis dari pemilik sah sangat dilarang.
+
+Source code ini dilisensikan untuk keperluan **viewing only**.  
+Anda **tidak diizinkan** untuk menggunakan, menyalin, memodifikasi, mendistribusikan, atau menjual kode ini tanpa izin tertulis dari pemilik.
 
 ---
-*Built with ❤️ by maztfajarwahyudi*
+
+*AI ORCHESTRATOR v2.1 — Self-Hosted AI Platform with Vision & Multimodal Intelligence*  
+*Built with ❤️ using FastAPI, React, and cutting-edge AI models*

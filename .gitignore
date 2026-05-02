@@ -1,68 +1,118 @@
-# ── Dependencies ─────────────────────────────────────────────────────────────
-node_modules/
-**/node_modules/
-venv/
-**/venv/
-scripts/venv/
+# ============================================================
+# AI ORCHESTRATOR — .gitignore
+# ============================================================
 
-# ── Build output ──────────────────────────────────────────────────────────────
-.next/
+# ── Kredensial & Konfigurasi Sensitif ────────────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+
+# ── Python ───────────────────────────────────────────────────
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg-info/
+*.egg
+.eggs/
 dist/
 build/
-.vite/
-.cache/
-**/dist/
-**/build/
+wheels/
 
-# ── Environment & secrets ─────────────────────────────────────────────────────
-.env
+# Virtual environment
+venv/
+**/venv/
+.venv/
+**/.venv/
+scripts/venv/
+env/
+ENV/
+
+# ── Node.js / Frontend ───────────────────────────────────────
+node_modules/
+**/node_modules/
+
+# Vite build cache (jangan di-commit!)
+.vite/
+**/.vite/
+frontend/.vite/
+
+# Build output
+dist/
+build/
+.next/
+out/
+frontend/dist/
+frontend/build/
+
+# ── Log Files ────────────────────────────────────────────────
+*.log
+*.log.*
+logs/
+**/logs/
+data/logs/
+cloudflared*.log
+nohup.out
+
+# ── Data & Upload ─────────────────────────────────────────────
+data/
+backend/data/
+uploads/
+**/uploads/
+
+# Vector database (ChromaDB) — dibuat ulang saat runtime
+data/chroma_db/
+**/chroma_db/
+
+# PID files
+*.pid
+data/*.pid
+
+# ── Database ─────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── Cache & Temp ─────────────────────────────────────────────
+.cache/
+**/.cache/
+tmp/
+temp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# ── OS Files ─────────────────────────────────────────────────
+.DS_Store
+**/.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE & Editor ─────────────────────────────────────────────
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+
+# ── File Konfigurasi Runtime ─────────────────────────────────
+# (di-generate otomatis, bukan bagian source code)
 .webhooks.json
 .custom_models.json
 .domains.json
 
-# ── Database & runtime data ───────────────────────────────────────────────────
-backend/data/
-data/
-uploads/
-*.db
-*.db-wal
-*.db-shm
-*.sqlite
-*.sqlite3
+# ── Testing ───────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
 
-# ── Logs ─────────────────────────────────────────────────────────────────────
-*.log
-cloudflared*.log
-logs/
-
-# ── Python cache ──────────────────────────────────────────────────────────────
-__pycache__/
-**/__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-.Python
-*.so
-
-# ── Temp / editor ─────────────────────────────────────────────────────────────
-tmp/
-*.swp
-*.swo
-.DS_Store
-Thumbs.db
-
-# ── AI Orchestrator — file berat yang tidak perlu di repo ────────────────────
-# docx_to_pdf_app memiliki venv tersendiri (54MB) — dikecualikan
-backend/docx_to_pdf_app/venv/
-backend/docx_to_pdf_app/converted/
-backend/docx_to_pdf_app/**/__pycache__/
-
-# Zip backup — tidak perlu di repo
-backend/api.zip
-
-# RAG documents — konten user, tidak untuk repo
-rag_documents/
-
-# Scratch files
-scratch_*.py
+# ── Docker ───────────────────────────────────────────────────
+.docker/

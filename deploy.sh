@@ -1,38 +1,150 @@
 #!/bin/bash
-# Detect the project directory dynamically
+
+# ============================================================
+# AI SUPER ASSISTANT — Deploy Script
+# Usage: bash deploy.sh
+# ============================================================
+
+set -e
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+log()  { echo -e "${GREEN}[✓]${NC} $1"; }
+warn() { echo -e "${YELLOW}[!]${NC} $1"; }
+err()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
+step() { echo -e "\n${BOLD}${CYAN}━━━ $1 ━━━${NC}\n"; }
+
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "Deploying application from $APP_DIR..."
+BACKEND_DIR="$APP_DIR/backend"
+VENV_PYTHON="$BACKEND_DIR/venv/bin/python3"
+VENV_PIP="$BACKEND_DIR/venv/bin/pip"
+VENV_UVICORN="$BACKEND_DIR/venv/bin/uvicorn"
 
-git fetch origin main
-git reset --hard origin/main
+# ── Validasi ─────────────────────────────────────────────────
+step "Validasi Environment"
 
-# Masuk ke folder backend dan update library
-cd "$APP_DIR/backend"
-./venv/bin/pip install -r requirements.txt
+[ -d "$BACKEND_DIR" ]       || err "Folder backend tidak ditemukan di: $BACKEND_DIR"
+[ -f "$VENV_PYTHON" ]       || err "Virtual environment tidak ditemukan. Jalankan install.sh terlebih dahulu."
+[ -f "$APP_DIR/.env" ]      || err "File .env tidak ditemukan. Salin dari .env.example lalu isi konfigurasi."
+[ -f "$BACKEND_DIR/main.py" ] || err "File backend/main.py tidak ditemukan."
 
-echo "Restarting AI ORCHESTRATOR service..."
-SERVICE_NAME="ai-orchestrator-api.service"
-if systemctl list-unit-files | grep -q "$SERVICE_NAME"; then
-    sudo systemctl restart "$SERVICE_NAME"
+log "Semua validasi lolos"
+
+# ── Cek & Generate SECRET_KEY jika masih default ─────────────
+step "Cek Keamanan .env"
+
+CURRENT_SECRET=$(grep -E '^SECRET_KEY=' "$APP_DIR/.env" | cut -d= -f2- | tr -d '"')
+
+if [[ -z "$CURRENT_SECRET" || "$CURRENT_SECRET" == *"ganti"* || "$CURRENT_SECRET" == *"random"* || "$CURRENT_SECRET" == *"pitakonku-secret"* ]]; then
+    warn "SECRET_KEY masih default/kosong. Membuat SECRET_KEY baru secara otomatis..."
+    NEW_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+    # Ganti atau tambahkan SECRET_KEY di .env
+    if grep -q '^SECRET_KEY=' "$APP_DIR/.env"; then
+        sed -i "s|^SECRET_KEY=.*|SECRET_KEY=\"$NEW_SECRET\"|" "$APP_DIR/.env"
+    else
+        echo "SECRET_KEY=\"$NEW_SECRET\"" >> "$APP_DIR/.env"
+    fi
+    log "SECRET_KEY baru telah di-generate dan disimpan ke .env"
 else
-    echo "⚠️ Unit $SERVICE_NAME not found. Restarting manually..."
-    PID=$(lsof -t -i:7860)
-    [ -n "$PID" ] && kill -9 $PID
-    cd "$APP_DIR/backend"
-    nohup ./venv/bin/uvicorn main:app --host 0.0.0.0 --port 7860 > "$APP_DIR/data/logs/manual_restart.log" 2>&1 &
+    log "SECRET_KEY sudah diset dengan benar"
 fi
 
-echo "Waiting for service to become healthy..."
-max_retries=20
-counter=0
-until curl -s http://localhost:7860/api/health > /dev/null; do
-    sleep 2
-    counter=$((counter+1))
-    if [ $counter -ge $max_retries ]; then
-        echo "❌ Service did not become healthy within 40 seconds."
-        [ -f "$APP_DIR/data/logs/manual_restart.log" ] && echo "Check logs: $APP_DIR/data/logs/manual_restart.log"
-        exit 1
-    fi
-done
+# ── Stop proses lama (AMAN: hanya matikan uvicorn app ini) ────
+step "Menghentikan Proses Lama"
 
-echo "✅ AI ORCHESTRATOR Berhasil Diupdate dan Berjalan Normal!"
+# Hanya matikan proses uvicorn yang menjalankan app ini,
+# BUKAN semua proses python3 di server
+if pgrep -f "uvicorn main:app" > /dev/null 2>&1; then
+    pkill -f "uvicorn main:app"
+    sleep 2
+    log "Proses uvicorn lama berhasil dihentikan"
+else
+    log "Tidak ada proses uvicorn yang berjalan sebelumnya"
+fi
+
+# ── Pull update dari Git ──────────────────────────────────────
+step "Mengambil Update dari Git"
+
+cd "$APP_DIR"
+
+# Simpan perubahan lokal sebelum reset (jika ada)
+if ! git diff --quiet 2>/dev/null; then
+    warn "Ada perubahan lokal yang belum di-commit. Menyimpan ke git stash..."
+    git stash push -m "auto-stash sebelum deploy $(date '+%Y-%m-%d %H:%M:%S')"
+fi
+
+git fetch origin main || err "Gagal fetch dari remote. Cek koneksi internet atau akses repo."
+git reset --hard origin/main
+log "Kode berhasil diperbarui ke versi terbaru"
+
+# ── Update Python dependencies ────────────────────────────────
+step "Update Python Dependencies"
+
+cd "$BACKEND_DIR"
+
+if [ -f "requirements.txt" ]; then
+    "$VENV_PIP" install -r requirements.txt --quiet \
+        && log "Dependencies Python berhasil diperbarui" \
+        || warn "Beberapa package gagal diupdate. Cek log di atas."
+else
+    warn "requirements.txt tidak ditemukan, lewati update dependencies"
+fi
+
+# ── Jalankan migrasi database (jika ada) ─────────────────────
+step "Migrasi Database"
+
+cd "$BACKEND_DIR"
+source "$APP_DIR/.env" 2>/dev/null || true
+
+if [ -f "migrate.py" ]; then
+    "$VENV_PYTHON" migrate.py && log "Migrasi database selesai" || warn "Migrasi gagal, periksa log"
+elif [ -f "../scripts/migrate-db.sh" ]; then
+    bash "$APP_DIR/scripts/migrate-db.sh" && log "Migrasi database selesai" || warn "Migrasi gagal"
+else
+    log "Tidak ada script migrasi ditemukan, melewati langkah ini"
+fi
+
+# ── Jalankan Uvicorn ──────────────────────────────────────────
+step "Menjalankan Server"
+
+cd "$BACKEND_DIR"
+
+# Load .env agar variabel tersedia untuk uvicorn
+set -a
+source "$APP_DIR/.env"
+set +a
+
+nohup "$VENV_UVICORN" main:app \
+    --host 0.0.0.0 \
+    --port "${PORT:-7860}" \
+    --workers "${UVICORN_WORKERS:-2}" \
+    >> "$APP_DIR/data/logs/uvicorn.log" 2>&1 &
+
+UVICORN_PID=$!
+sleep 2
+
+# Verifikasi server berhasil jalan
+if kill -0 "$UVICORN_PID" 2>/dev/null; then
+    log "Server berhasil dijalankan (PID: $UVICORN_PID)"
+    echo "$UVICORN_PID" > "$APP_DIR/data/uvicorn.pid"
+else
+    err "Server gagal dijalankan. Cek log: tail -f $APP_DIR/data/logs/uvicorn.log"
+fi
+
+# ── Selesai ───────────────────────────────────────────────────
+echo -e "\n${GREEN}${BOLD}"
+cat << 'EOF'
+╔══════════════════════════════════════════════╗
+║   Deploy Selesai! Server sedang berjalan 🚀  ║
+╚══════════════════════════════════════════════╝
+EOF
+echo -e "${NC}"
+echo -e " ${CYAN}Akses aplikasi:${NC}   ${YELLOW}http://localhost:${PORT:-7860}${NC}"
+echo -e " ${CYAN}Lihat log:${NC}        ${YELLOW}tail -f $APP_DIR/data/logs/uvicorn.log${NC}"
+echo -e " ${CYAN}Hentikan server:${NC}  ${YELLOW}pkill -f 'uvicorn main:app'${NC}"
+echo ""

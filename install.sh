@@ -1,7 +1,8 @@
 #!/bin/bash
+
 # ============================================================
-#  AI ORCHESTRATOR — Install Script
-#  Usage: bash install.sh
+# AI ORCHESTRATOR — Install Script
+# Usage: bash install.sh
 # ============================================================
 
 set -e
@@ -17,13 +18,13 @@ APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo -e "${CYAN}"
 cat << 'EOF'
-   █████╗ ██╗  ███████╗██╗   ██╗██████╗ ███████╗██████╗ 
-  ██╔══██╗██║  ██╔════╝██║   ██║██╔══██╗██╔════╝██╔══██╗
-  ███████║██║  ███████╗██║   ██║██████╔╝█████╗  ██████╔╝
-  ██╔══██║██║  ╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗
-  ██║  ██║██║  ███████║╚██████╔╝██║     ███████╗██║  ██║
-  ╚═╝  ╚═╝╚═╝  ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝
-                A S S I S T A N T
+█████╗ ██╗      ███████╗██╗   ██╗██████╗ ███████╗██████╗
+██╔══██╗██║      ██╔════╝██║   ██║██╔══██╗██╔════╝██╔══██╗
+███████║██║      ███████╗██║   ██║██████╔╝█████╗  ██████╔╝
+██╔══██║██║      ╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗
+██║  ██║██║      ███████║╚██████╔╝██║     ███████╗██║  ██║
+╚═╝  ╚═╝╚═╝      ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝
+                    A S S I S T A N T
 EOF
 echo -e "${NC}"
 
@@ -34,6 +35,7 @@ step() { echo -e "\n${BOLD}${CYAN}━━━ $1 ━━━${NC}\n"; }
 
 # ── Detect OS ────────────────────────────────────────────────
 step "Detecting System"
+
 if command -v apt-get &>/dev/null; then
     PKG="apt"; log "Ubuntu/Debian detected"
 elif command -v pacman &>/dev/null; then
@@ -41,7 +43,7 @@ elif command -v pacman &>/dev/null; then
 elif command -v dnf &>/dev/null; then
     PKG="dnf"; log "Fedora/RHEL detected"
 else
-    err "Unsupported OS."
+    err "Unsupported OS. Hanya mendukung Ubuntu/Debian, Arch, atau Fedora/RHEL."
 fi
 
 # ── Interactive Wizard ───────────────────────────────────────
@@ -52,21 +54,28 @@ echo -e "${CYAN}Tekan ENTER untuk menggunakan nilai [Default].${NC}\n"
 read -p "1. Nama Aplikasi [Default: AI ORCHESTRATOR]: " WZ_APP_NAME
 WZ_APP_NAME=${WZ_APP_NAME:-"AI ORCHESTRATOR"}
 
-echo -e "\n2. Konfigurasi Database (dijalankan otomatis oleh sistem)"
-echo "   [1] SQLite (Ringan, Tanpa Konfigurasi Ekstra)"
-echo "   [2] PostgreSQL (Disarankan untuk Server/Production)"
+echo -e "\n2. Konfigurasi Database"
+echo "   [1] SQLite    (Ringan, cocok untuk personal/development)"
+echo "   [2] PostgreSQL (Disarankan untuk production/server)"
 read -p "   Pilih tipe database [1/2, Default: 1]: " WZ_DB_TYPE
 WZ_DB_TYPE=${WZ_DB_TYPE:-1}
 
 if [ "$WZ_DB_TYPE" = "2" ]; then
-    read -p "   Nama User DB [Default: ai_orchestrator]: " WZ_DB_USER
-    WZ_DB_USER=${WZ_DB_USER:-ai_orchestrator}
-    
+    read -p "   Nama User DB [Default: ai_orchestrator_user]: " WZ_DB_USER
+    WZ_DB_USER=${WZ_DB_USER:-ai_orchestrator_user}
     read -p "   Nama Database [Default: ai_orchestrator_db]: " WZ_DB_NAME
     WZ_DB_NAME=${WZ_DB_NAME:-ai_orchestrator_db}
-    
-    read -p "   Password DB [Default: admin]: " WZ_DB_PASS
-    WZ_DB_PASS=${WZ_DB_PASS:-admin}
+
+    # Password DB wajib diisi, tidak boleh kosong
+    while true; do
+        read -s -p "   Password DB (wajib diisi, min 8 karakter): " WZ_DB_PASS
+        echo ""
+        if [ ${#WZ_DB_PASS} -ge 8 ]; then
+            break
+        else
+            warn "Password DB minimal 8 karakter. Coba lagi."
+        fi
+    done
 else
     WZ_DB_USER="-"
     WZ_DB_NAME="-"
@@ -76,74 +85,123 @@ fi
 echo -e "\n3. Kredensial Login Aplikasi AI"
 read -p "   Username Login [Default: admin]: " WZ_ADMIN_USER
 WZ_ADMIN_USER=${WZ_ADMIN_USER:-admin}
-read -p "   Password Login [Default: admin]: " WZ_ADMIN_PASS
-WZ_ADMIN_PASS=${WZ_ADMIN_PASS:-admin}
+
+# Password admin wajib diisi dan tidak boleh "admin"
+while true; do
+    read -s -p "   Password Login (wajib diisi, min 8 karakter, bukan 'admin'): " WZ_ADMIN_PASS
+    echo ""
+    if [ ${#WZ_ADMIN_PASS} -lt 8 ]; then
+        warn "Password minimal 8 karakter. Coba lagi."
+    elif [ "$WZ_ADMIN_PASS" = "admin" ] || [ "$WZ_ADMIN_PASS" = "password" ] || [ "$WZ_ADMIN_PASS" = "123456" ]; then
+        warn "Password terlalu lemah. Gunakan password yang lebih kuat."
+    else
+        break
+    fi
+done
 
 echo -e "\n4. Integrasi & Model AI (Tekan ENTER untuk melewati)"
-read -p "   OpenAI API Key: " WZ_OPENAI
-read -p "   Anthropic API Key: " WZ_ANTHROPIC
+read -p "   OpenAI API Key    : " WZ_OPENAI
+read -p "   Anthropic API Key : " WZ_ANTHROPIC
 read -p "   Telegram Bot Token: " WZ_TELEGRAM
-read -p "   WhatsApp Access Token: " WZ_WHATSAPP
-read -p "   Tavily API Key (Tekan ENTER untuk melewati): " WZ_TAVILY
+read -p "   WhatsApp Token    : " WZ_WHATSAPP
 
-# Copy env.example
+# ── Buat .env dari template ───────────────────────────────────
+echo ""
+step "Menyiapkan File Konfigurasi .env"
+
+if [ ! -f "$APP_DIR/.env.example" ]; then
+    err ".env.example tidak ditemukan. Pastikan file ini ada di root project."
+fi
+
 if [ ! -f "$APP_DIR/.env" ]; then
     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
     log ".env dibuat dari template .env.example"
 else
-    log ".env sudah ada. Akan disesuaikan dengan isian wizard..."
+    warn ".env sudah ada. Nilai dari wizard akan diterapkan..."
 fi
 
-# Update .env
-if [ -f "$APP_DIR/.env" ]; then
-    sed -i -e "s/^APP_NAME=.*/APP_NAME=\"$WZ_APP_NAME\"/" "$APP_DIR/.env"
-    sed -i -e "s/^ADMIN_USERNAME=.*/ADMIN_USERNAME=\"$WZ_ADMIN_USER\"/" "$APP_DIR/.env"
-    sed -i -e "s/^ADMIN_PASSWORD=.*/ADMIN_PASSWORD=\"$WZ_ADMIN_PASS\"/" "$APP_DIR/.env"
+# Auto-generate SECRET_KEY yang aman (32 byte hex = 64 karakter)
+NEW_SECRET=$(python3 -c "import secrets; print(secrets.token_hex(32))")
+if grep -q '^SECRET_KEY=' "$APP_DIR/.env"; then
+    sed -i "s|^SECRET_KEY=.*|SECRET_KEY=\"$NEW_SECRET\"|" "$APP_DIR/.env"
+else
+    echo "SECRET_KEY=\"$NEW_SECRET\"" >> "$APP_DIR/.env"
+fi
+log "SECRET_KEY baru di-generate secara otomatis"
 
-    if [ -n "$WZ_OPENAI" ]; then sed -i -e "s/^OPENAI_API_KEY=.*/OPENAI_API_KEY=\"$WZ_OPENAI\"/" "$APP_DIR/.env"; fi
-    if [ -n "$WZ_ANTHROPIC" ]; then sed -i -e "s/^ANTHROPIC_API_KEY=.*/ANTHROPIC_API_KEY=\"$WZ_ANTHROPIC\"/" "$APP_DIR/.env"; fi
-    if [ -n "$WZ_TELEGRAM" ]; then sed -i -e "s/^TELEGRAM_BOT_TOKEN=.*/TELEGRAM_BOT_TOKEN=\"$WZ_TELEGRAM\"/" "$APP_DIR/.env"; fi
-    if [ -n "$WZ_WHATSAPP" ]; then sed -i -e "s/^WHATSAPP_ACCESS_TOKEN=.*/WHATSAPP_ACCESS_TOKEN=\"$WZ_WHATSAPP\"/" "$APP_DIR/.env"; fi
-    if [ -n "$WZ_TAVILY" ]; then sed -i -e "s/^TAVILY_API_KEY=.*/TAVILY_API_KEY=\"$WZ_TAVILY\"/" "$APP_DIR/.env"; fi
+# Update nilai dari wizard ke .env
+sed -i "s|^APP_NAME=.*|APP_NAME=\"$WZ_APP_NAME\"|" "$APP_DIR/.env"
+sed -i "s|^ADMIN_USERNAME=.*|ADMIN_USERNAME=\"$WZ_ADMIN_USER\"|" "$APP_DIR/.env"
+sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$WZ_ADMIN_PASS\"|" "$APP_DIR/.env"
 
+[ -n "$WZ_OPENAI" ]    && sed -i "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=\"$WZ_OPENAI\"|" "$APP_DIR/.env"
+[ -n "$WZ_ANTHROPIC" ] && sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=\"$WZ_ANTHROPIC\"|" "$APP_DIR/.env"
+[ -n "$WZ_TELEGRAM" ]  && sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=\"$WZ_TELEGRAM\"|" "$APP_DIR/.env"
+[ -n "$WZ_WHATSAPP" ]  && sed -i "s|^WHATSAPP_ACCESS_TOKEN=.*|WHATSAPP_ACCESS_TOKEN=\"$WZ_WHATSAPP\"|" "$APP_DIR/.env"
+
+if [ "$WZ_DB_TYPE" = "2" ]; then
+    DB_URL="postgresql+asyncpg://$WZ_DB_USER:$WZ_DB_PASS@localhost/$WZ_DB_NAME"
+    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=$DB_URL|" "$APP_DIR/.env"
+    log "Database: PostgreSQL ($WZ_DB_NAME)"
+else
+    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=sqlite+aiosqlite:///./data/ai-orchestrator.db|" "$APP_DIR/.env"
+    log "Database: SQLite"
+fi
+
+log ".env berhasil dikonfigurasi"
+
+# ── System dependencies ───────────────────────────────────────
+step "Installing System Dependencies"
+
+if [ "$PKG" = "apt" ]; then
+    sudo apt-get update -qq
+
+    # Paket dasar — selalu diinstall
+    sudo apt-get install -y \
+        curl wget git \
+        python3 python3-pip python3-venv python3-full \
+        redis-server \
+        build-essential libssl-dev libffi-dev \
+        python3-dev gcc g++ make 2>/dev/null \
+        || warn "Beberapa paket mungkin sudah terinstall"
+
+    # PostgreSQL — HANYA jika user memilih PostgreSQL
     if [ "$WZ_DB_TYPE" = "2" ]; then
-        # PostgreSQL
-        DB_URL="postgresql+asyncpg:\/\/$WZ_DB_USER:$WZ_DB_PASS@localhost\/$WZ_DB_NAME"
-        sed -i -e "s/^DATABASE_URL=.*/DATABASE_URL=$DB_URL/" "$APP_DIR/.env"
+        sudo apt-get install -y postgresql postgresql-contrib libpq-dev 2>/dev/null \
+            || warn "PostgreSQL mungkin sudah terinstall"
+        log "PostgreSQL diinstall"
     else
-        # SQLite
-        DB_URL="sqlite+aiosqlite:\/\/\/.\/data\/ai-orchestrator.db"
-        sed -i -e "s/^DATABASE_URL=.*/DATABASE_URL=$DB_URL/" "$APP_DIR/.env"
+        log "SQLite dipilih — PostgreSQL tidak diinstall"
+    fi
+
+elif [ "$PKG" = "pacman" ]; then
+    sudo pacman -Syu --noconfirm python python-pip redis \
+        base-devel openssl libffi 2>/dev/null || true
+    if [ "$WZ_DB_TYPE" = "2" ]; then
+        sudo pacman -S --noconfirm postgresql 2>/dev/null || true
+    fi
+
+elif [ "$PKG" = "dnf" ]; then
+    sudo dnf install -y python3 python3-pip redis \
+        gcc gcc-c++ make openssl-devel libffi-devel python3-devel \
+        curl wget git 2>/dev/null || true
+    if [ "$WZ_DB_TYPE" = "2" ]; then
+        sudo dnf install -y postgresql-server postgresql-devel 2>/dev/null || true
     fi
 fi
 
-# ── System dependencies (TANPA nodejs/npm dari apt) ──────────
-step "Installing System Dependencies"
-if [ "$PKG" = "apt" ]; then
-    sudo apt-get update -qq
-    sudo apt-get install -y curl wget git \
-        python3 python3-pip python3-venv python3-full \
-        redis-server postgresql postgresql-contrib \
-        build-essential libpq-dev libssl-dev libffi-dev \
-        python3-dev gcc g++ make 2>/dev/null \
-        || warn "Some packages may already be installed"
-elif [ "$PKG" = "pacman" ]; then
-    sudo pacman -Syu --noconfirm python python-pip nodejs npm redis postgresql \
-        base-devel openssl libffi 2>/dev/null || true
-elif [ "$PKG" = "dnf" ]; then
-    sudo dnf install -y python3 python3-pip redis postgresql-server \
-        gcc gcc-c++ make openssl-devel libffi-devel python3-devel \
-        curl wget git 2>/dev/null || true
-fi
 log "System dependencies installed"
 
-# ── Node.js via nvm (hindari konflik apt nodejs/npm) ─────────
+# ── Node.js via nvm ───────────────────────────────────────────
 step "Installing Node.js via nvm"
+
 export NVM_DIR="$HOME/.nvm"
+
 if [ ! -s "$NVM_DIR/nvm.sh" ]; then
     log "Installing nvm..."
     curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 fi
+
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 [ -s "$NVM_DIR/bash_completion" ] && source "$NVM_DIR/bash_completion"
 
@@ -159,56 +217,57 @@ fi
 NVM_INIT='
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"'
+
 for RC in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
     [ -f "$RC" ] && ! grep -q "NVM_DIR" "$RC" && echo "$NVM_INIT" >> "$RC"
 done
+
 log "Node.js $(node --version) ready"
 log "npm $(npm --version) ready"
 
 # ── Redis ─────────────────────────────────────────────────────
 step "Setting Up Redis"
+
 sudo systemctl enable redis-server 2>/dev/null || sudo systemctl enable redis 2>/dev/null || true
 sudo systemctl start redis-server 2>/dev/null || sudo systemctl start redis 2>/dev/null || true
 log "Redis started"
 
-# ── PostgreSQL ────────────────────────────────────────────────
+# ── PostgreSQL (hanya jika dipilih) ──────────────────────────
 if [ "$WZ_DB_TYPE" = "2" ]; then
     step "Setting Up PostgreSQL"
+
     sudo systemctl enable postgresql 2>/dev/null || true
     sudo systemctl start postgresql 2>/dev/null || true
+
     sudo -u postgres psql -c "CREATE USER $WZ_DB_USER WITH PASSWORD '$WZ_DB_PASS';" 2>/dev/null || true
     sudo -u postgres psql -c "CREATE DATABASE $WZ_DB_NAME OWNER $WZ_DB_USER;" 2>/dev/null || true
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $WZ_DB_NAME TO $WZ_DB_USER;" 2>/dev/null || true
+
     log "PostgreSQL ready (db: $WZ_DB_NAME, user: $WZ_DB_USER)"
-else
-    step "Setting Up PostgreSQL"
-    log "Menggunakan SQLite, melewati instalasi PostgreSQL setup."
 fi
 
 # ── Python Backend ────────────────────────────────────────────
 step "Setting Up Python Backend"
-cd "$APP_DIR/backend"
 
 VENV_DIR="$APP_DIR/backend/venv"
 
-# Selalu hapus dan buat ulang venv agar tidak pakai path lama/rusak
 if [ -d "$VENV_DIR" ]; then
-    warn "Hapus venv lama..."
+    warn "Menghapus venv lama dan membuat ulang..."
     rm -rf "$VENV_DIR"
 fi
 
 log "Membuat venv baru di: $VENV_DIR"
 python3 -m venv "$VENV_DIR"
 
-if [ ! -f "$VENV_DIR/bin/pip" ]; then
-    err "Gagal membuat venv! Coba: sudo apt install python3-venv python3-full"
-fi
+[ -f "$VENV_DIR/bin/pip" ] || err "Gagal membuat venv! Coba: sudo apt install python3-venv python3-full"
 
 source "$VENV_DIR/bin/activate"
 log "venv aktif: $(which python3)"
+
 "$VENV_DIR/bin/pip" install --upgrade pip setuptools wheel -q
 
 log "Installing Python packages (estimasi 3-5 menit)..."
+
 PACKAGES=(
     "fastapi==0.111.0"
     "uvicorn[standard]==0.29.0"
@@ -242,18 +301,21 @@ PACKAGES=(
     "gTTS>=2.5.1"
     "psutil>=5.9.0"
     "python-pptx>=0.6.23"
-    "asyncpg>=0.29.0"
-    "psycopg2-binary>=2.9.9"
     "pandas>=2.0.0"
     "tabulate>=0.9.0"
     "pdfplumber>=0.11.0"
     "docx2txt>=0.8"
-    "tavily-python>=0.3.3"
 )
+
+# Tambah asyncpg & psycopg2 hanya jika pakai PostgreSQL
+if [ "$WZ_DB_TYPE" = "2" ]; then
+    PACKAGES+=("asyncpg>=0.29.0" "psycopg2-binary>=2.9.9")
+fi
 
 TOTAL=${#PACKAGES[@]}
 COUNT=0
 FAILED=()
+
 for pkg in "${PACKAGES[@]}"; do
     COUNT=$((COUNT + 1))
     printf "  [%2d/%d] %-45s" "$COUNT" "$TOTAL" "$pkg"
@@ -265,51 +327,39 @@ for pkg in "${PACKAGES[@]}"; do
     fi
 done
 
-[ ${#FAILED[@]} -gt 0 ] && warn "Gagal: ${FAILED[*]}" || log "Semua package terinstall!"
+[ ${#FAILED[@]} -gt 0 ] && warn "Gagal install: ${FAILED[*]}" || log "Semua package berhasil diinstall!"
 
-# ─────────────────────────────────────────────────────────────
-# INIT DATABASE & ADMIN USER — WAJIB, jangan hapus
-# ─────────────────────────────────────────────────────────────
+# ── Init Database & Admin ─────────────────────────────────────
 step "Initializing Database & Admin User"
+
 cd "$APP_DIR/backend"
 mkdir -p data/logs data/uploads data/chroma_db
 
-if [ -f "$APP_DIR/.env" ]; then
-    set -a
-    source "$APP_DIR/.env"
-    set +a
-fi
+set -a
+source "$APP_DIR/.env"
+set +a
 
-# Cari Python yang benar di venv
-VENV_PYTHON=""
-for try_path in \
-    "$APP_DIR/backend/venv/bin/python3" \
-    "$APP_DIR/venv/bin/python3" \
-    "$HOME/.venv/bin/python3" \
-    "$(which python3 2>/dev/null)"; do
-    if [ -x "$try_path" ]; then
-        VENV_PYTHON="$try_path"
-        break
-    fi
-done
+"$VENV_DIR/bin/python3" - << 'PYEOF'
+import asyncio, sys
+sys.path.insert(0, '.')
 
-if [ -z "$VENV_PYTHON" ]; then
-    err "❌ Python tidak ditemukan di venv!"
-fi
+async def main():
+    from db.database import init_db, AsyncSessionLocal
+    from core.auth import ensure_admin_exists
+    from core.config import settings
+    await init_db()
+    async with AsyncSessionLocal() as db:
+        await ensure_admin_exists(db)
+    print(f"  Admin siap: {settings.ADMIN_USERNAME}")
 
-echo "   Python: $VENV_PYTHON"
-$VENV_PYTHON db/init_admin.py
+asyncio.run(main())
+PYEOF
 
-if [ $? -eq 0 ]; then
-    log "Database & admin user siap"
-else
-    warn ""
-    warn "⚠️  Init admin gagal otomatis. Jalankan manual:"
-    warn "   cd $APP_DIR/backend && source venv/bin/activate && python3 db/init_admin.py"
-fi
+log "Database & admin user siap"
 
 # ── Frontend ──────────────────────────────────────────────────
 step "Building Frontend"
+
 cd "$APP_DIR/frontend"
 log "Installing npm packages..."
 npm install --silent
@@ -317,20 +367,13 @@ log "Building React app..."
 npm run build
 log "Frontend built"
 
-# ── Systemd services ─────────────────────────────────────────
-step "Installing System Services"
-
-# Kill any existing process on port 7860 to avoid conflicts
-PID_OLD=$(sudo lsof -t -i:7860 2>/dev/null || true)
-if [ -n "$PID_OLD" ]; then
-    warn "Menghentikan proses lama pada port 7860 (PID: $PID_OLD)..."
-    sudo kill -9 $PID_OLD || true
-fi
+# ── Systemd service ───────────────────────────────────────────
+step "Installing Systemd Service"
 
 cat > /tmp/ai-orchestrator-api.service << EOF
 [Unit]
 Description=AI ORCHESTRATOR API Server
-After=network.target redis.service postgresql.service
+After=network.target redis.service
 
 [Service]
 Type=simple
@@ -346,44 +389,25 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-log "Memasang service file ke /etc/systemd/system/..."
-if sudo cp /tmp/ai-orchestrator-api.service /etc/systemd/system/; then
-    sudo systemctl daemon-reload
-    sudo systemctl enable ai-orchestrator-api 2>/dev/null || true
-    if sudo systemctl restart ai-orchestrator-api 2>/dev/null; then
-        log "Systemd service berhasil dipasang dan dijalankan!"
-    else
-        warn "Gagal menjalankan service via systemctl. Mencoba 'start'..."
-        sudo systemctl start ai-orchestrator-api || warn "Gagal memulai service. Anda mungkin perlu menjalankannya secara manual."
-    fi
-else
-    err "Gagal menyalin file service! Pastikan Anda memiliki hak akses sudo."
-fi
+sudo cp /tmp/ai-orchestrator-api.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable ai-orchestrator-api 2>/dev/null || true
+log "Systemd service installed"
 
-# ── Done ──────────────────────────────────────────────────────
+# ── Selesai ───────────────────────────────────────────────────
 echo -e "\n${GREEN}${BOLD}"
 cat << 'EOF'
-  ╔═════════════════════════════════════════════════╗
-  ║    AI ORCHESTRATOR Installation Complete! 🎉 ║
-  ╚═════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════╗
+║   AI ORCHESTRATOR Installation Complete! 🎉  ║
+╚═════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
-echo -e "  ${CYAN}Langkah berikutnya:${NC}"
-echo -e "  1. Edit API key (opsional) : ${YELLOW}nano $APP_DIR/.env${NC}"
-echo -e "  2. Jalankan server         : ${YELLOW}bash $APP_DIR/scripts/dev.sh${NC}"
-echo -e "  3. Buka browser            : ${YELLOW}http://localhost:7860${NC}"
-echo ""
-echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  ${BOLD}${GREEN}  🔐 KREDENSIAL LOGIN APLIKASI${NC}"
-echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  ${CYAN}  URL      :${NC} ${YELLOW}http://localhost:7860${NC}"
-echo -e "  ${CYAN}  Username :${NC} ${YELLOW}$WZ_ADMIN_USER${NC}"
-echo -e "  ${CYAN}  Password :${NC} ${YELLOW}$WZ_ADMIN_PASS${NC}"
-echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "  ${YELLOW}  ⚠️  Jika lupa password, default fallback: admin / admin123${NC}"
-echo -e "  ${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo ""
-echo -e "  ${CYAN}RAG/LangChain (opsional):${NC}"
+echo -e " ${CYAN}Langkah berikutnya:${NC}"
+echo -e "  1. Tambahkan API key (opsional) : ${YELLOW}nano $APP_DIR/.env${NC}"
+echo -e "  2. Jalankan server              : ${YELLOW}bash $APP_DIR/scripts/dev.sh${NC}"
+echo -e "     atau update & restart        : ${YELLOW}bash $APP_DIR/update_and_restart.sh${NC}"
+echo -e "  3. Buka browser                 : ${YELLOW}http://localhost:7860${NC}"
+echo -e "  4. Login dengan username        : ${YELLOW}$WZ_ADMIN_USER${NC}"
+echo -e "\n ${CYAN}RAG/LangChain (opsional):${NC}"
 echo -e "  bash $APP_DIR/scripts/install-rag.sh"
 echo ""
-
