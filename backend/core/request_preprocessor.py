@@ -1,5 +1,5 @@
 """
-Super Agent Orchestrator — Request Preprocessor (v2.1 — Performance Optimized)
+AI Orchestrator Orchestrator — Request Preprocessor (v2.1 — Performance Optimized)
 =================================================================================
 Perbaikan dari v1:
   1. Threshold trivial diturunkan: 120 → 60 chars (lebih konservatif, hanya skip yg benar2 trivial)

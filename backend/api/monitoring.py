@@ -1,5 +1,5 @@
 """
-Super Agent Orchestrator — Monitoring API
+AI Orchestrator Orchestrator — Monitoring API
 Exposes orchestrator performance metrics, agent health,
 and task execution history for the monitoring dashboard.
 """

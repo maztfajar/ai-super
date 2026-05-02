@@ -1,5 +1,5 @@
 """
-Super Agent Orchestrator — Result Aggregator & Synthesizer
+AI Orchestrator Orchestrator — Result Aggregator & Synthesizer
 Merges outputs from multiple agents/subtasks into a coherent final response.
 Handles: parallel result merging, conflict reconciliation, format standardization.
 """

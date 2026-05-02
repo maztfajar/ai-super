@@ -1,5 +1,5 @@
 """
-Super Agent Orchestrator — Agent Registry (v2.1 — Performance Optimized)
+AI Orchestrator Orchestrator — Agent Registry (v2.1 — Performance Optimized)
 ==========================================================================
 Perbaikan dari v1:
   1. preferred_models kini pakai full key "sumopod/..." agar resolve tepat

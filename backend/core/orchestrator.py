@@ -1,5 +1,5 @@
 """
-Super Agent Orchestrator — Core Orchestration Engine
+AI Orchestrator Orchestrator — Core Orchestration Engine
 The heart of the system. Coordinates request preprocessing, task decomposition,
 agent selection, parallel execution, quality validation, and result aggregation.
 

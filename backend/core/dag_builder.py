@@ -1,5 +1,5 @@
 """
-Super Agent Orchestrator — DAG Builder
+AI Orchestrator Orchestrator — DAG Builder
 Constructs and validates Directed Acyclic Graphs for task execution planning.
 Supports topological sorting, parallel group identification, and critical path analysis.
 """

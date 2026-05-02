@@ -1,5 +1,5 @@
 """
-Super Agent Orchestrator — Task Decomposer
+AI Orchestrator Orchestrator — Task Decomposer
 Uses LLM to break complex tasks into atomic subtasks with dependencies.
 Implements HTN (Hierarchical Task Network) style decomposition.
 """
