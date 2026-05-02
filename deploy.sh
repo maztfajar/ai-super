@@ -68,6 +68,15 @@ else
 fi
 
 PORT_NUM="${PORT:-7860}"
+
+# Matikan service systemd lama (legacy) yang mungkin merebut port
+for service in ai-super-assistant-api.service pitakonku-api.service; do
+    if systemctl list-unit-files | grep -q "$service" 2>/dev/null; then
+        warn "Mematikan service lama: $service..."
+        sudo systemctl stop "$service" 2>/dev/null || true
+        sudo systemctl disable "$service" 2>/dev/null || true
+    fi
+done
 for i in {1..5}; do
     if ! lsof -ti ":$PORT_NUM" >/dev/null 2>&1 && ! fuser "$PORT_NUM/tcp" >/dev/null 2>&1; then
         break

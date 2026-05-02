@@ -94,6 +94,15 @@ fi
 # Tunggu port benar-benar bebas
 sleep 2
 
+# Matikan service systemd lama (legacy) yang mungkin merebut port
+for service in ai-super-assistant-api.service pitakonku-api.service; do
+    if systemctl list-unit-files | grep -q "$service" 2>/dev/null; then
+        warn "Mematikan service lama: $service..."
+        sudo systemctl stop "$service" 2>/dev/null || true
+        sudo systemctl disable "$service" 2>/dev/null || true
+    fi
+done
+
 # Paksa bebaskan port jika masih terpakai
 PORT_NUM="${PORT:-7860}"
 for i in {1..5}; do
