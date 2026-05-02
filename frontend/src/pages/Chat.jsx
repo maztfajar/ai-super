@@ -2531,18 +2531,7 @@ export default function Chat() {
           {/* ── PROCESS STEPS PANEL — selalu di atas jawaban ── */}
           {/* Live: tampil saat streaming */}
           {streaming && processSteps.length > 0 && (
-            <div
-              onClickCapture={(e) => {
-                if (!e.target.closest('[data-allow-propagation]')) {
-                  e.stopPropagation()
-                }
-              }}
-              onMouseDownCapture={(e) => {
-                if (!e.target.closest('[data-allow-propagation]')) {
-                  e.stopPropagation()
-                }
-              }}
-            >
+            <div>
               <ProcessStepsPanel
                 steps={processSteps}
                 isStreaming={streaming}

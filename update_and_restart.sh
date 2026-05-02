@@ -67,12 +67,20 @@ fi
 # ── Stop proses lama ──────────────────────────────────────────
 step "3. Menghentikan Proses Lama"
 
+# Cek apakah berjalan sebagai systemd service
+if systemctl list-unit-files | grep -q "ai-orchestrator-api.service"; then
+    if systemctl is-active --quiet ai-orchestrator-api; then
+        sudo systemctl stop ai-orchestrator-api
+        log "Systemd service ai-orchestrator-api dihentikan"
+    fi
+fi
+
 # Stop uvicorn (server utama) — HANYA proses app ini, bukan semua Python
-if pgrep -f "uvicorn main:app" > /dev/null 2>&1; then
-    pkill -f "uvicorn main:app"
+if pgrep -f "uvicorn" > /dev/null 2>&1; then
+    pkill -f "uvicorn"
     log "Uvicorn berhasil dihentikan"
 else
-    log "Tidak ada proses uvicorn yang berjalan"
+    log "Tidak ada proses uvicorn mandiri yang berjalan"
 fi
 
 # Stop celery worker (jika ada — untuk workflow automation)
@@ -100,15 +108,16 @@ step "4. Mengambil Update dari Git"
 
 cd "$APP_DIR"
 
+log "Update dari Git dinonaktifkan sementara untuk melindungi perubahan lokal Anda."
 # Simpan perubahan lokal jika ada agar tidak hilang
-if ! git diff --quiet 2>/dev/null; then
-    warn "Ada perubahan lokal, menyimpan ke git stash..."
-    git stash push -m "auto-stash sebelum update $(date '+%Y-%m-%d %H:%M:%S')"
-fi
-
-git fetch origin main || err "Gagal fetch dari remote. Cek koneksi internet."
-git reset --hard origin/main
-log "Kode berhasil diperbarui ke versi terbaru"
+# if ! git diff --quiet 2>/dev/null; then
+#     warn "Ada perubahan lokal, menyimpan ke git stash..."
+#     git stash push -m "auto-stash sebelum update $(date '+%Y-%m-%d %H:%M:%S')"
+# fi
+#
+# git fetch origin main || err "Gagal fetch dari remote. Cek koneksi internet."
+# git reset --hard origin/main
+# log "Kode berhasil diperbarui ke versi terbaru"
 
 # ── Update Python dependencies ────────────────────────────────
 step "5. Update Python Dependencies"
@@ -140,6 +149,24 @@ else
     log "Tidak ada script migrasi, melewati langkah ini"
 fi
 
+# ── Build Frontend ────────────────────────────────────────────
+step "6.5. Build Frontend"
+
+cd "$APP_DIR/frontend"
+if ! command -v npm &>/dev/null; then
+    warn "npm tidak ditemukan, melewati build frontend."
+else
+    log "Menginstall npm packages..."
+    npm install --silent 2>&1 | tail -2
+    log "Membangun ulang frontend UI..."
+    npm run build 2>&1 | tail -5
+    if [ $? -eq 0 ]; then
+        log "Frontend berhasil di-build"
+    else
+        warn "Build frontend gagal! Cek error npm di atas."
+    fi
+fi
+
 # ── Jalankan ulang Uvicorn ────────────────────────────────────
 step "7. Menjalankan Server"
 
@@ -150,21 +177,34 @@ set -a
 source "$APP_DIR/.env"
 set +a
 
-nohup "$VENV_UVICORN" main:app \
-    --host 0.0.0.0 \
-    --port "${PORT:-7860}" \
-    --workers "${UVICORN_WORKERS:-2}" \
-    >> "$LOG_FILE" 2>&1 &
-
-UVICORN_PID=$!
-sleep 2
-
-# Verifikasi server benar-benar jalan
-if kill -0 "$UVICORN_PID" 2>/dev/null; then
-    echo "$UVICORN_PID" > "$PID_FILE"
-    log "Server berhasil dijalankan (PID: $UVICORN_PID)"
+if systemctl list-unit-files | grep -q "ai-orchestrator-api.service"; then
+    log "Ditemukan systemd service. Menjalankan via systemctl..."
+    sudo systemctl daemon-reload
+    sudo systemctl start ai-orchestrator-api
+    
+    if systemctl is-active --quiet ai-orchestrator-api; then
+        log "Server berhasil dijalankan via systemd (ai-orchestrator-api.service)"
+    else
+        err "Server gagal dijalankan via systemd. Cek log: sudo journalctl -u ai-orchestrator-api -f"
+    fi
 else
-    err "Server gagal dijalankan. Cek log: tail -f $LOG_FILE"
+    log "Systemd service tidak ditemukan. Menjalankan via nohup..."
+    nohup "$VENV_UVICORN" main:app \
+        --host 0.0.0.0 \
+        --port "${PORT:-7860}" \
+        --workers "${UVICORN_WORKERS:-2}" \
+        >> "$LOG_FILE" 2>&1 &
+
+    UVICORN_PID=$!
+    sleep 2
+
+    # Verifikasi server benar-benar jalan
+    if kill -0 "$UVICORN_PID" 2>/dev/null; then
+        echo "$UVICORN_PID" > "$PID_FILE"
+        log "Server berhasil dijalankan (PID: $UVICORN_PID)"
+    else
+        err "Server gagal dijalankan. Cek log: tail -f $LOG_FILE"
+    fi
 fi
 
 # ── Jalankan ulang Celery (jika Redis tersedia) ───────────────

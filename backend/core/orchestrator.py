@@ -975,7 +975,7 @@ class Orchestrator:
                     temperature=kwargs.get("temperature", 0.5),
                     max_tokens=kwargs.get("max_tokens", 8192),
                     include_tool_logs=False,
-                    emit_thinking=False,
+                    emit_thinking=stream_chunks,
                     execution_mode="execution",
                     project_path=project_path,
                 ):
