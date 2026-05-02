@@ -297,5 +297,5 @@ Anda **tidak diizinkan** untuk menggunakan, menyalin, memodifikasi, mendistribus
 
 ---
 
-*AI ORCHESTRATOR v2.1 — Self-Hosted AI Platform with Vision & Multimodal Intelligence*  
+*AI ORCHESTRATOR v2.5 — Self-Hosted AI Platform with Vision & Multimodal Intelligence*  
 *Built with ❤️ using FastAPI, React, and cutting-edge AI models*
