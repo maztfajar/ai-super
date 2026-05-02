@@ -96,17 +96,19 @@ sleep 2
 
 # Paksa bebaskan port jika masih terpakai
 PORT_NUM="${PORT:-7860}"
-if command -v fuser > /dev/null 2>&1; then
-    if fuser "$PORT_NUM/tcp" > /dev/null 2>&1; then
-        warn "Port $PORT_NUM masih terpakai, paksa kill (fuser)..."
-        fuser -k -9 "$PORT_NUM/tcp" > /dev/null 2>&1 || true
-        sleep 2
+for i in {1..5}; do
+    if ! lsof -ti ":$PORT_NUM" >/dev/null 2>&1 && ! fuser "$PORT_NUM/tcp" >/dev/null 2>&1; then
+        break
     fi
-fi
-if lsof -ti ":$PORT_NUM" > /dev/null 2>&1; then
-    warn "Port $PORT_NUM masih terpakai, paksa kill (lsof)..."
+    warn "Menunggu port $PORT_NUM bebas (percobaan $i)..."
+    fuser -k -9 "$PORT_NUM/tcp" >/dev/null 2>&1 || true
     lsof -ti ":$PORT_NUM" | xargs kill -9 2>/dev/null || true
     sleep 2
+done
+
+# Pastikan port benar-benar kosong
+if lsof -ti ":$PORT_NUM" >/dev/null 2>&1 || fuser "$PORT_NUM/tcp" >/dev/null 2>&1; then
+    err "Gagal membebaskan port $PORT_NUM. Server lama mungkin masih berjalan (zombie process)."
 fi
 log "Port $PORT_NUM bebas"
 
