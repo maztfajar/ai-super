@@ -543,7 +543,7 @@ export default function Dashboard() {
         <div className="space-y-2">
           <div className="flex items-center gap-3 text-accent transition-all hover:translate-x-1">
             <Bot size={22} className="animate-bounce" />
-            <span className="text-xs font-black uppercase tracking-[0.5em] opacity-70">AI Super Agent</span>
+            <span className="text-xs font-black uppercase tracking-[0.5em] opacity-70">AI Orchestrator</span>
           </div>
           <h1 className="text-5xl font-black tracking-tighter text-ink lg:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-ink to-ink-3">Dashboard</h1>
         </div>
