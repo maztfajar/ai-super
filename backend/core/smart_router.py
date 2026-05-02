@@ -58,6 +58,9 @@ class SmartRouter:
         for model in candidates:
             if model in model_manager.available_models:
                 return model
+            for k in model_manager.available_models:
+                if model in k:
+                    return k
 
         # Last resort
         return settings.DEFAULT_MODEL

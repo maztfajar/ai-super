@@ -73,7 +73,7 @@ _SPEED_MODELS = [
 ]
 # Model yang dianggap "premium/kuat" (boost jika priority = quality)
 _QUALITY_MODELS = [
-    "sumopod/deepseek-v3-2",
+    "sumopod/deepseek-v4-pro",
     "sumopod/gpt-4o-mini",
     "sumopod/qwen3.6-flash",
 ]

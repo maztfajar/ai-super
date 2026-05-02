@@ -623,7 +623,7 @@ class AgentExecutor:
     def _resolve_model_id(self, model_id: str) -> str:
         """
         PERBAIKAN: resolve model_id yang bisa berupa short key atau full key.
-        Contoh: "deepseek-v3-2" → "sumopod/deepseek-v3-2"
+        Contoh: "deepseek-v4-pro" → "sumopod/deepseek-v4-pro"
         """
         available = model_manager.available_models
         # Exact match
