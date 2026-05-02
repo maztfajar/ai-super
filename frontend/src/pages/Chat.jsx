@@ -1492,6 +1492,7 @@ export default function Chat() {
   }, [speakingId])
 
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
+  const [pendingPlan, setPendingPlan] = useState(null)  // Interactive planning
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Artifacts Panel state
@@ -2125,7 +2126,7 @@ export default function Chat() {
       )
       useChatStore.getState().setAbortRequest(abortFn)
     } else {
-      // chatStream(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess)
+      // chatStream(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess, onPlan)
       const abortFn = api.chatStream(
         {
           session_id: sessionId,
@@ -2195,7 +2196,12 @@ export default function Chat() {
           setPendingConfirmation(pendingData)
         },
         (status) => useChatStore.getState().setStatusText(status),
-        (procData) => handleAddProcessStep(procData)
+        (procData) => handleAddProcessStep(procData),
+        // onPlan — Interactive planning confirmation
+        (planData) => {
+          setPendingPlan(planData)
+          useChatStore.getState().setStatusText('⏸️ Menunggu persetujuan rencana...')
+        }
       )
       useChatStore.getState().setAbortRequest(abortFn)
     }
@@ -2646,6 +2652,59 @@ export default function Chat() {
                  </div>
                </div>
              </div>
+          )}
+
+          {/* ── Interactive Plan Confirmation UI ──────────────────── */}
+          {pendingPlan && (
+            <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
+              <div className="flex gap-4 w-full">
+                <div className="w-8 h-8 flex-shrink-0 bg-amber-500/20 border border-amber-500/50 rounded-lg flex items-center justify-center">
+                  <span className="text-lg">📋</span>
+                </div>
+                <div className="flex-1 min-w-0 bg-bg-2 border border-amber-500/30 rounded-2xl rounded-tl-sm px-5 py-4 shadow-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm font-bold text-ink">Rencana Eksekusi</span>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">
+                      {pendingPlan.subtask_count} sub-task
+                    </span>
+                  </div>
+                  <div className="text-xs text-ink-2 whitespace-pre-wrap leading-relaxed mb-4 font-mono bg-bg-3 p-3 rounded-lg border border-border-2 max-h-64 overflow-y-auto">
+                    {pendingPlan.plan}
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        const sid = pendingPlan.session_id
+                        setPendingPlan(null)
+                        useChatStore.getState().setStatusText('✅ Rencana disetujui, mengeksekusi...')
+                        try {
+                          await api.confirmPlan(sid)
+                        } catch (e) {
+                          console.warn('Plan confirm error:', e)
+                        }
+                      }}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                    >
+                      ▶️ Lanjutkan Eksekusi
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPendingPlan(null)
+                        // Abort the stream — orchestrator will timeout and auto-proceed
+                        const abortFn = useChatStore.getState().abortRequest
+                        if (abortFn && typeof abortFn === 'function') abortFn()
+                        clearStreaming()
+                        useChatStore.getState().setStatusText('')
+                        useChatStore.getState().finalizeProcessSteps()
+                      }}
+                      className="flex-1 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink font-medium py-2.5 border border-border rounded-lg text-xs transition-all"
+                    >
+                      Batalkan
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           <div ref={messagesEndRef} className="h-4" />

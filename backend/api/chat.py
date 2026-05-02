@@ -381,7 +381,7 @@ async def chat_send(
             try:
                 while True:
                     try:
-                        item = await asyncio.wait_for(q.get(), timeout=15.0)
+                        item = await asyncio.wait_for(q.get(), timeout=8.0)
                     except asyncio.TimeoutError:
                         # Pad keepalive with 4KB of spaces to force proxy (Cloudflare/Nginx) to flush buffer
                         # This prevents the 100s Cloudflare timeout during long agent tool executions
@@ -413,6 +413,19 @@ async def chat_send(
                         # Collect thinking steps
                         thinking_steps.append(event.content)
                         yield event.to_sse()
+
+                    elif event.type == "pending_plan":
+                        # Interactive planning — send plan for user review
+                        payload = {
+                            "type": "pending_plan",
+                            "plan": event.data.get("plan", "") if event.data else "",
+                            "subtask_count": event.data.get("subtask_count", 0) if event.data else 0,
+                            "session_id": session.id,
+                            "assignment_summary": event.data.get("assignment_summary", "") if event.data else "",
+                        }
+                        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                        # Do NOT return — orchestrator is waiting for confirmation
+                        # Keep the SSE stream alive with keepalives while waiting
 
                     elif event.type == "pending_confirmation":
                         # VPS safety protocol — send confirmation request
@@ -543,6 +556,24 @@ async def chat_send(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class ConfirmPlanRequest(BaseModel):
+    session_id: str
+
+
+@router.post("/confirm_plan")
+async def confirm_plan(
+    req: ConfirmPlanRequest,
+    user: User = Depends(get_current_user),
+):
+    """Confirm an interactive execution plan so the orchestrator proceeds."""
+    from core.orchestrator import _pending_plans
+    event = _pending_plans.get(req.session_id)
+    if event:
+        event.set()
+        return {"status": "confirmed", "session_id": req.session_id}
+    return {"status": "no_pending_plan", "session_id": req.session_id}
 
 
 class PendingExecutionRequest(BaseModel):

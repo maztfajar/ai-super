@@ -32,6 +32,12 @@ from memory.manager import memory_manager
 
 log = structlog.get_logger()
 
+# ── Pending Plans Registry ───────────────────────────────────────────────────
+# Stores plan confirmation futures keyed by session_id.
+# When orchestrator emits a plan for approval, it creates an asyncio.Event
+# here and awaits it. The /chat/confirm_plan endpoint sets the event.
+_pending_plans: Dict[str, asyncio.Event] = {}
+
 
 @dataclass
 class OrchestratorEvent:
@@ -299,11 +305,53 @@ class Orchestrator:
             yield OrchestratorEvent("status",
                 f"  → {agent_name}: {st.description[:80]}...")
 
-        # ─── PHASE 5: EXECUTE ─────────────────────────────────────
+        # ─── PHASE 4.5: INTERACTIVE PLAN CONFIRMATION ────────────
+        # In web mode, show the plan and wait for user approval.
+        # In auto_execute mode (Telegram/API), skip confirmation.
         assignment_summary = "\n".join([
             f"• {st.description[:50]} → {st.assigned_agent or 'general'} ({st.assigned_model or 'default'})"
             for st in assigned_subtasks
         ])
+
+        if not auto_execute and len(assigned_subtasks) > 1:
+            # Build plan detail for user review
+            plan_detail = "📋 **Rencana Eksekusi:**\n\n"
+            for i, st in enumerate(assigned_subtasks):
+                agent_info = agent_registry.get_agent(st.assigned_agent)
+                agent_name = agent_info.display_name if agent_info else st.assigned_agent
+                model_short = (st.assigned_model or "default").split("/")[-1]
+                deps = f" (setelah: {', '.join(st.dependencies)})" if st.dependencies else ""
+                plan_detail += f"{i+1}. **[{st.task_type}]** {st.description[:100]}\n"
+                plan_detail += f"   🤖 Agent: {agent_name} | Model: `{model_short}`{deps}\n\n"
+
+            plan_detail += f"⏱️ Estimasi: {len(assigned_subtasks)} sub-task"
+            parallel_groups = len(dag.execution_order)
+            if parallel_groups < len(assigned_subtasks):
+                plan_detail += f" ({parallel_groups} batch, sebagian paralel)"
+            plan_detail += "\n"
+
+            # Emit the plan to frontend for review
+            yield OrchestratorEvent("pending_plan", "", {
+                "plan": plan_detail,
+                "subtask_count": len(assigned_subtasks),
+                "session_id": session_id,
+                "assignment_summary": assignment_summary,
+            })
+
+            # Wait for confirmation (max 5 minutes)
+            confirm_event = asyncio.Event()
+            _pending_plans[session_id] = confirm_event
+            try:
+                await asyncio.wait_for(confirm_event.wait(), timeout=300.0)
+                log.info("Plan confirmed by user", session_id=session_id)
+                yield OrchestratorEvent("status", "✅ Rencana disetujui! Memulai eksekusi...")
+            except asyncio.TimeoutError:
+                log.warning("Plan confirmation timeout", session_id=session_id)
+                yield OrchestratorEvent("status", "⏱️ Timeout menunggu konfirmasi. Melanjutkan eksekusi otomatis...")
+            finally:
+                _pending_plans.pop(session_id, None)
+
+        # ─── PHASE 5: EXECUTE ─────────────────────────────────────
         yield OrchestratorEvent.proc("Worked", f"{len(subtasks)} sub-tasks", count=len(subtasks), extra={
             "result": f"Agent assignments:\n{assignment_summary}"
         })
@@ -664,6 +712,10 @@ class Orchestrator:
                 import re
                 buffer = ""
                 response_started = False
+                _thinking_stall_chars = 0  # Track chars accumulated during thinking
+                _THINKING_MAX_BUFFER = 5000  # Emergency flush if thinking > 5000 chars
+                _RESPONSE_FLUSH_INTERVAL = 2000  # Flush every N chars in response mode
+                _response_unflushed = 0  # Track unflushed chars in response mode
                 
                 # Patterns that indicate leaked internal reasoning — must be stripped
                 _LEAK_PATTERNS = [
@@ -706,8 +758,23 @@ class Orchestrator:
                                 # Found end of thinking block, strip it and continue
                                 after_think = re.sub(r'<(?:thinking|think)>.*?</(?:thinking|think)>', '', buffer, flags=re.DOTALL)
                                 buffer = after_think
+                                _thinking_stall_chars = 0
                             else:
-                                # Still inside thinking block, skip
+                                _thinking_stall_chars += len(chunk)
+                                # EMERGENCY: Jika thinking block sudah > 5000 chars tanpa
+                                # closing tag, model kemungkinan tidak akan menutupnya.
+                                # Strip thinking dan emit sisa buffer sebagai response.
+                                if _thinking_stall_chars > _THINKING_MAX_BUFFER:
+                                    log.warning("Thinking block unclosed after %d chars, emergency flush",
+                                                _thinking_stall_chars)
+                                    # Remove the opening thinking tag and everything before it
+                                    stripped = re.sub(r'<(?:thinking|think)>', '', buffer)
+                                    clean = _strip_leaked_text(stripped)
+                                    if clean.strip():
+                                        response_started = True
+                                        yield OrchestratorEvent("chunk", clean)
+                                    buffer = ""
+                                    _thinking_stall_chars = 0
                                 continue
                         
                         # Check for response tag
@@ -736,14 +803,21 @@ class Orchestrator:
                             clean_part = _strip_leaked_text(buffer.split('</response>')[0])
                             if clean_part:
                                 yield OrchestratorEvent("chunk", clean_part)
-                            buffer = ""
-                            break # End of response
+                            # Ambil sisa setelah </response> — mungkin masih ada konten
+                            after_resp = buffer.split('</response>', 1)[1] if '</response>' in buffer else ""
+                            buffer = after_resp.strip()
+                            # Jika tidak ada sisa konten, selesai
+                            if not buffer:
+                                break
+                            # Jika masih ada sisa, lanjutkan streaming
                         else:
-                            # Stream chunk immediately (NO STRIP)
-                            # We only strip if we suspect a leak pattern is starting
-                            # but for now let's just yield to preserve spaces.
+                            # Stream chunk immediately
                             yield OrchestratorEvent("chunk", chunk)
+                            _response_unflushed += len(chunk)
                             buffer = ""
+                            # Periodic flush — reset accumulation counter
+                            if _response_unflushed > _RESPONSE_FLUSH_INTERVAL:
+                                _response_unflushed = 0
 
                 # Flush remaining buffer
                 if buffer:

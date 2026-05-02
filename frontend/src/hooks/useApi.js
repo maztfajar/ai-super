@@ -111,6 +111,7 @@ export const api = {
   },
   setProjectLocation: (sessionId, projectPath) => req('POST', '/chat/set_project_location', { session_id: sessionId, project_path: projectPath }),
   getProjectLocation: (sessionId) => req('GET', '/chat/get_project_location/' + sessionId),
+  confirmPlan: (sessionId) => req('POST', '/chat/confirm_plan', { session_id: sessionId }),
 
   // ── File Saving ───────────────────────────────────────────
   saveFile: (directory, filename, content) => req('POST', '/chat/save-file', { directory, filename, content }),
@@ -286,7 +287,7 @@ export const api = {
   },
 
   // ── Streaming chat via SSE ────────────────────────────────
-  chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess) {
+  chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess, onPlan) {
     const token      = getToken()
     const controller = new AbortController()
     let doneReceived = false
@@ -327,6 +328,7 @@ export const api = {
               else if (data.type === 'done')    { doneReceived = true; onDone(data) }
               else if (data.type === 'session') onSession && onSession(data)
               else if (data.type === 'pending_confirmation') { doneReceived = true; onPending && onPending(data) }
+              else if (data.type === 'pending_plan')  { onPlan && onPlan(data) }
               else if (data.type === 'status')  onStatus && onStatus(data.content)
               else if (data.type === 'error')   { onChunk && onChunk(data.content || '⚠️ Error'); }
               else if (data.type === 'process') {
