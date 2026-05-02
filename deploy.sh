@@ -67,6 +67,20 @@ else
     log "Tidak ada proses uvicorn yang berjalan sebelumnya"
 fi
 
+PORT_NUM="${PORT:-7860}"
+if command -v fuser > /dev/null 2>&1; then
+    if fuser "$PORT_NUM/tcp" > /dev/null 2>&1; then
+        warn "Port $PORT_NUM masih terpakai, paksa kill (fuser)..."
+        fuser -k -9 "$PORT_NUM/tcp" > /dev/null 2>&1 || true
+        sleep 2
+    fi
+fi
+if lsof -ti ":$PORT_NUM" > /dev/null 2>&1; then
+    warn "Port $PORT_NUM masih terpakai, paksa kill (lsof)..."
+    lsof -ti ":$PORT_NUM" | xargs kill -9 2>/dev/null || true
+    sleep 2
+fi
+
 # ── Pull update dari Git ──────────────────────────────────────
 step "Mengambil Update dari Git"
 
@@ -123,17 +137,17 @@ nohup "$VENV_UVICORN" main:app \
     --host 0.0.0.0 \
     --port "${PORT:-7860}" \
     --workers "${UVICORN_WORKERS:-2}" \
-    >> "$APP_DIR/data/logs/uvicorn.log" 2>&1 &
+    >> "$APP_DIR/data/logs/ai_orchestrator.log" 2>&1 &
 
 UVICORN_PID=$!
-sleep 2
+sleep 3
 
 # Verifikasi server berhasil jalan
 if kill -0 "$UVICORN_PID" 2>/dev/null; then
     log "Server berhasil dijalankan (PID: $UVICORN_PID)"
     echo "$UVICORN_PID" > "$APP_DIR/data/uvicorn.pid"
 else
-    err "Server gagal dijalankan. Cek log: tail -f $APP_DIR/data/logs/uvicorn.log"
+    err "Server gagal dijalankan.\n\n=== LOG ERROR TERAKHIR ===\n$(tail -n 20 $APP_DIR/data/logs/ai_orchestrator.log)\n==========================\n\nCek log lengkap: tail -f $APP_DIR/data/logs/ai_orchestrator.log"
 fi
 
 # ── Selesai ───────────────────────────────────────────────────
@@ -145,6 +159,6 @@ cat << 'EOF'
 EOF
 echo -e "${NC}"
 echo -e " ${CYAN}Akses aplikasi:${NC}   ${YELLOW}http://localhost:${PORT:-7860}${NC}"
-echo -e " ${CYAN}Lihat log:${NC}        ${YELLOW}tail -f $APP_DIR/data/logs/uvicorn.log${NC}"
+echo -e " ${CYAN}Lihat log:${NC}        ${YELLOW}tail -f $APP_DIR/data/logs/ai_orchestrator.log${NC}"
 echo -e " ${CYAN}Hentikan server:${NC}  ${YELLOW}pkill -f 'uvicorn main:app'${NC}"
 echo ""

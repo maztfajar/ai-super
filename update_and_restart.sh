@@ -25,7 +25,7 @@ VENV_PYTHON="$BACKEND_DIR/venv/bin/python3"
 VENV_PIP="$BACKEND_DIR/venv/bin/pip"
 VENV_UVICORN="$BACKEND_DIR/venv/bin/uvicorn"
 PID_FILE="$APP_DIR/data/uvicorn.pid"
-LOG_FILE="$APP_DIR/data/logs/uvicorn.log"
+LOG_FILE="$APP_DIR/data/logs/ai_orchestrator.log"
 
 echo -e "${CYAN}${BOLD}"
 cat << 'EOF'
@@ -96,10 +96,17 @@ sleep 2
 
 # Paksa bebaskan port jika masih terpakai
 PORT_NUM="${PORT:-7860}"
+if command -v fuser > /dev/null 2>&1; then
+    if fuser "$PORT_NUM/tcp" > /dev/null 2>&1; then
+        warn "Port $PORT_NUM masih terpakai, paksa kill (fuser)..."
+        fuser -k -9 "$PORT_NUM/tcp" > /dev/null 2>&1 || true
+        sleep 2
+    fi
+fi
 if lsof -ti ":$PORT_NUM" > /dev/null 2>&1; then
-    warn "Port $PORT_NUM masih terpakai, paksa kill..."
+    warn "Port $PORT_NUM masih terpakai, paksa kill (lsof)..."
     lsof -ti ":$PORT_NUM" | xargs kill -9 2>/dev/null || true
-    sleep 1
+    sleep 2
 fi
 log "Port $PORT_NUM bebas"
 
@@ -196,14 +203,14 @@ else
         >> "$LOG_FILE" 2>&1 &
 
     UVICORN_PID=$!
-    sleep 2
+    sleep 3
 
     # Verifikasi server benar-benar jalan
     if kill -0 "$UVICORN_PID" 2>/dev/null; then
         echo "$UVICORN_PID" > "$PID_FILE"
         log "Server berhasil dijalankan (PID: $UVICORN_PID)"
     else
-        err "Server gagal dijalankan. Cek log: tail -f $LOG_FILE"
+        err "Server gagal dijalankan.\n\n=== LOG ERROR TERAKHIR ===\n$(tail -n 20 $LOG_FILE)\n==========================\n\nCek log lengkap: tail -f $LOG_FILE"
     fi
 fi
 
