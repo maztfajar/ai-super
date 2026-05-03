@@ -94,7 +94,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
         required_capabilities=["coding"],
-        tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
+        tools_allowed=["execute_bash", "read_file", "write_file"],
         default_temperature=0.2,
         default_max_tokens=8192,
         system_prompt_addon=(
@@ -155,7 +155,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
         required_capabilities=["coding"],
-        tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
+        tools_allowed=["execute_bash", "read_file", "write_file"],
         default_temperature=0.2,
         system_prompt_addon=(
             "Prioritaskan keamanan. ANDA ADALAH AGEN OTONOM. Eksekusi semua perintah secara mandiri menggunakan tool execute_bash. "

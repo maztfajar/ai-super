@@ -8,7 +8,6 @@ from .core_tools import (
     execute_bash,
     read_file,
     write_file,
-    write_multiple_files,
     ask_model,
     find_safe_port,
 )
@@ -44,7 +43,6 @@ TOOLS = {
     "execute_bash":          execute_bash,
     "read_file":             read_file,
     "write_file":            write_file,
-    "write_multiple_files":  write_multiple_files,
     "ask_model":             ask_model,
     "find_safe_port":        find_safe_port,
     "web_search":            web_search,

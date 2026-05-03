@@ -29,7 +29,7 @@ from core.process_emitter import process_emitter, PROCESS_EVENT_PREFIX
 from core.snapshot import snapshot_manager
 
 from agents.tools import execute_bash, read_file, write_file, ask_model
-from agents.tools import write_multiple_files, find_safe_port
+from agents.tools import find_safe_port
 from agents.tools.web_search import web_search
 from agents.tools.filesystem import (
     list_directory, file_tree, find_files, search_in_files, make_directory,
@@ -166,7 +166,7 @@ Panggil find_safe_port SEBELUM start server apapun.
 
 **APP CREATION WORKFLOW:**
 1. find_safe_port → port aman
-2. write_multiple_files → scaffold SEMUA file sekaligus (jangan satu per satu)
+2. write_file → Tulis file secara sekuensial dan periksa hasilnya. Jangan pernah mencoba menggabungkan banyak file dalam satu output.
 3. execute_bash: install deps (non-interactive: npm install --yes)
 4. execute_bash: start server background (nohup ... > app.log 2>&1 &)
 5. execute_bash: verifikasi (sleep 3 && curl -s http://localhost:PORT)
@@ -184,7 +184,7 @@ Available tools (gunakan DALAM <thinking> saja):
 1. execute_bash — jalankan bash command. Args: command (string).
 2. read_file — baca isi file. Args: path (string).
 3. write_file — tulis/buat file. Args: path (string), content (string).
-4. write_multiple_files — tulis beberapa file sekaligus. Args: files_data (list of {{"path","content"}}).
+4. write_file — tulis atau timpa satu file. Args: path, content.
 5. ask_model — tanya AI lain. Args: model_id (string), prompt (string).
 6. web_search — cari internet. Args: query (string).
 7. find_safe_port — cari port aman. Args: preferred (int, optional).
@@ -482,7 +482,6 @@ class AgentExecutor:
         "execute_bash":         ("Ran",      lambda a: a.get("command", "")[:60]),
         "read_file":            ("Reading",  lambda a: a.get("path", "").split("/")[-1]),
         "write_file":           ("Writing",  lambda a: a.get("path", "").split("/")[-1]),
-        "write_multiple_files": ("Writing",  lambda a: f"{len(a.get('files_data', []))} files"),
         "ask_model":            ("Analyzed", lambda a: a.get("model_id", "")),
         "web_search":           ("Searched", lambda a: a.get("query", "")[:60]),
         "find_safe_port":       ("Checked",  lambda a: "available port"),
@@ -800,7 +799,7 @@ class AgentExecutor:
                     )
                     _detail = _detail_fn(args)
 
-                    if cmd in ("write_file", "write_multiple_files", "execute_bash"):
+                    if cmd in ("write_file", "execute_bash"):
                         await snapshot_manager.create_snapshot_async(f"Before {cmd}: {_detail[:50]}")
 
                     yield process_emitter.to_sentinel(_action, _detail)
@@ -811,7 +810,7 @@ class AgentExecutor:
 
                     async def _exec_tool():
                         if execution_mode == "analysis" and cmd in (
-                            "execute_bash", "write_file", "write_multiple_files"
+                            "execute_bash", "write_file"
                         ):
                             return f"Simulated (Analysis Mode): {cmd} skipped."
 
@@ -823,10 +822,6 @@ class AgentExecutor:
                             return await write_file(
                                 args.get("path", ""), args.get("content", ""), session_id
                             )
-                        elif cmd == "write_multiple_files":
-                            return await write_multiple_files(
-                                args.get("files_data", []), session_id
-                            )
                         elif cmd == "ask_model":
                             raw_model = args.get("model_id", "")
                             resolved  = self._resolve_model_id(raw_model)
@@ -835,11 +830,6 @@ class AgentExecutor:
                             return await web_search(args.get("query", ""))
                         elif cmd == "find_safe_port":
                             return await find_safe_port(args.get("preferred", 0))
-                        elif cmd == "rollback":
-                            res = snapshot_manager.rollback()
-                            if res["success"]:
-                                return "Rollback berhasil ke commit " + res['commit'][:8]
-                            return "Rollback gagal: " + str(res.get('error'))
                         elif cmd == "list_directory":
                             from agents.tools.filesystem import list_directory
                             return await list_directory(
@@ -925,7 +915,7 @@ class AgentExecutor:
                             return (
                                 "Unknown tool: '" + cmd + "'. "
                                 "Available: execute_bash, read_file, write_file, "
-                                "write_multiple_files, ask_model, web_search, find_safe_port, "
+                                "ask_model, web_search, find_safe_port, "
                                 "list_directory, file_tree, find_files, search_in_files, "
                                 "make_directory, move_file, copy_file, delete_file, "
                                 "get_project_path, set_project_path, list_all_projects, get_file_info"
@@ -991,18 +981,6 @@ class AgentExecutor:
                         except Exception:
                             pass
 
-                    elif cmd == "write_multiple_files" and not str(res).startswith("Error"):
-                        files_data = args.get("files_data", [])
-                        for file_obj in files_data:
-                            fp = file_obj.get("path", "")
-                            fc = file_obj.get("content", "")
-                            if fp and fc:
-                                ext = fp.rsplit(".", 1)[-1].lower() if "." in fp else "txt"
-                                yield process_emitter.to_sentinel(
-                                    "Written", fp,
-                                    extra={"code": fc[:8000], "language": ext, "truncated": len(fc) > 8000}
-                                )
-
                     res_str = str(res)
                     if include_tool_logs:
                         if cmd == "execute_bash" and not res_str.startswith("Error"):
@@ -1025,7 +1003,7 @@ class AgentExecutor:
                                 args.get("query", "")[:50],
                                 extra={"result": res_str[:2000]}
                             )
-                        elif cmd not in ("write_file", "write_multiple_files"):
+                        elif cmd != "write_file":
                             lines = res_str.strip().splitlines()
                             if len(lines) > 1:
                                 yield process_emitter.to_sentinel(
