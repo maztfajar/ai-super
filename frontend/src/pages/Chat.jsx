@@ -134,12 +134,11 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStrea
   const [staleSeconds, setStaleSeconds] = useState(0)
   const staleCountRef = useRef(steps.length)
 
-  // Fix 4: useCallback dengan dependency array kosong — tidak re-create setiap render
   const toggleStep = useCallback((i, e) => {
-    e.stopPropagation()   // Fix 2: cegah event bubble ke parent
-    e.preventDefault()    // Fix 2: cegah default behavior
-    setExpandedIdx(prev => prev === i ? null : i) // functional update, aman dari stale closure
-  }, []) // empty deps — setExpandedIdx dari useState selalu stabil
+    e.stopPropagation()
+    e.preventDefault()
+    setExpandedIdx(prev => prev === i ? null : i)
+  }, [])
 
   useEffect(() => {
     if (!isStreaming) { setStaleSeconds(0); return }
@@ -154,19 +153,12 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStrea
 
   if (!steps || steps.length === 0) return null
 
-  const latest = steps[steps.length - 1]
-  const meta = ACTION_META[latest?.action] || DEFAULT_META
-  const LatestIcon = meta.icon
-
-  // Ambil konten yang bisa ditampilkan untuk setiap step
   const getStepContent = (step, stepIdx) => {
     const isLastStep = stepIdx === steps.length - 1
-    // Live streaming text untuk jawaban (bukan thinking)
     if (isLastStep && isStreaming && step._textOffset != null && streamingText && !step._isLiveThinking) {
       const live = streamingText.substring(step._textOffset)
       if (live.trim()) return { content: live, isLive: true }
     }
-    // Field konten dengan prioritas
     const content = step.liveContent || step.code || step.result
     if (content && content.trim()) {
       return { content: content.trim(), isLive: !!step._isLiveThinking }
@@ -174,211 +166,151 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStrea
     return null
   }
 
+  const latest = steps[steps.length - 1]
+  const toggleTitle = isStreaming 
+    ? `⚡ ${latest?.action} ${latest?.detail ? `· ${latest.detail}` : '...'}`
+    : `✓ Eksekusi selesai (${steps.length} langkah)`
+
   return (
-    <div
-      className="flex gap-2.5 mb-2 animate-fade"
-    >
-      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0 mt-0.5">
-        <Bot size={13} className="text-white" />
-      </div>
+    <div className="mb-6 mt-1 animate-fade">
+      {/* Main Minimalist Toggle */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          setOpen(o => !o)
+        }}
+        className="flex items-center gap-2 text-[13px] text-ink-3 hover:text-ink transition-colors group mb-3 select-none"
+      >
+        <span className={clsx("transition-transform duration-200", open ? "rotate-180" : "")}>
+          <ChevronDown size={14} />
+        </span>
+        <span className="font-medium text-ink-2 group-hover:text-ink transition-colors">{toggleTitle}</span>
+        {isStreaming && <Loader2 size={12} className="animate-spin ml-1 text-accent-2" />}
+      </button>
 
-      <div className="flex-1 max-w-[90%]">
-        {/* Header utama */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation()  // Fix 2: cegah bubble ke parent
-            e.preventDefault()
-            setOpen(o => !o)
-          }}
-          className="w-full flex items-center justify-between px-3 py-2 bg-bg-4 border border-border rounded-xl rounded-tl-sm hover:bg-bg-5 transition-all"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            {isStreaming ? (
-              <div className="flex gap-0.5 flex-shrink-0">
-                {[0,1,2].map(i => (
-                  <span key={i} className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse"
-                    style={{ animationDelay: `${i * 0.18}s` }} />
-                ))}
-              </div>
-            ) : (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-400/15 text-emerald-400 border border-emerald-400/20 flex-shrink-0">
-                ✓ Selesai
-              </span>
-            )}
-            <div className={clsx('flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium flex-shrink-0', meta.bg, meta.color)}>
-              <LatestIcon size={10} />
-              <span>{latest?.action}</span>
-            </div>
-            {latest?.detail && (
-              <span className="text-[11px] text-ink-3 truncate">{latest.detail}</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-            <span className="text-[10px] text-ink-3 tabular-nums">
-              {steps.length} step{steps.length !== 1 ? 's' : ''}
-            </span>
-            {open ? <ChevronUp size={13} className="text-ink-3" /> : <ChevronDown size={13} className="text-ink-3" />}
-          </div>
-        </button>
+      {/* Expanded Timeline List */}
+      {open && (
+        <div className="ml-[7px] pl-5 border-l-[1.5px] border-border/70 relative">
+          {/* Subtle gradient to hide the top/bottom of the line slightly */}
+          <div className="absolute top-0 bottom-0 -left-[1.5px] w-[1.5px] bg-gradient-to-b from-bg via-transparent to-bg pointer-events-none" />
 
-        {/* Daftar steps */}
-        {open && (
-          <div className="mt-1.5 border border-border bg-bg-3 rounded-xl rounded-tl-sm overflow-hidden">
-            <div className="max-h-[500px] overflow-y-auto divide-y divide-border/40">
-              {steps.map((step, i) => {
-                const m = ACTION_META[step.action] || DEFAULT_META
-                const Icon = m.icon
-                const isLast = i === steps.length - 1
-                const isExpanded = expandedIdx === i
-                const contentData = getStepContent(step, i)
-                // Semua step bisa diklik — yang tidak punya konten rich tampilkan info minimal
-                const displayContent = contentData?.content ||
-                  `Action: ${step.action}\nDetail: ${step.detail || '—'}\nTimestamp: ${new Date(step.ts || Date.now()).toLocaleTimeString('id-ID')}`
+          <div className="flex flex-col gap-4">
+            {steps.map((step, i) => {
+              const m = ACTION_META[step.action] || DEFAULT_META
+              const Icon = m.icon
+              const isLast = i === steps.length - 1
+              const isExpanded = expandedIdx === i
+              const contentData = getStepContent(step, i)
+              const displayContent = contentData?.content || `Action: ${step.action}\nDetail: ${step.detail || '—'}`
 
-                return (
-                  <div key={i}>
-                    {/* Step row */}
-                    <button
-                      className={clsx(
-                        'w-full flex items-center gap-2.5 px-3 py-2.5 text-[11px] transition-colors text-left group',
-                        isLast && isStreaming ? 'bg-accent/5' : 'hover:bg-bg-4',
-                        isExpanded ? 'bg-bg-4' : ''
-                      )}
-                      onClick={(e) => toggleStep(i, e)}  // Fix 2: kirim event ke toggleStep
-                    >
-                      <span className="text-[9px] text-ink-3 tabular-nums w-5 text-right flex-shrink-0 font-mono">
-                        {i + 1}
-                      </span>
+              return (
+                <div key={i} className="relative group/step">
+                  {/* Timeline Node Dot */}
+                  <div className="absolute -left-[25px] top-1.5 w-2 h-2 rounded-full bg-bg border-2 border-border group-hover/step:border-accent-2 transition-colors z-10" />
 
-                      {isLast && isStreaming && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-accent-2 animate-pulse flex-shrink-0" />
-                      )}
-
-                      <div className={clsx('flex items-center gap-1 px-1.5 py-0.5 rounded-full flex-shrink-0', m.bg, m.color)}>
-                        <Icon size={9} />
-                        <span className="font-semibold text-[10px]">{step.action}</span>
-                      </div>
-
-                      <span className={clsx(
-                        'truncate flex-1 min-w-0 text-[11px]',
-                        isLast && isStreaming ? 'text-ink font-medium' : 'text-ink-3'
-                      )}>
-                        {step.detail || '—'}
-                      </span>
-
-                      {step.count != null && (
-                        <span className="tabular-nums text-[10px] font-mono px-1.5 py-0.5 rounded bg-bg-5 text-ink-3 border border-border flex-shrink-0">
-                          {step.count}
+                  {/* Step Header (Clickable) */}
+                  <div 
+                    className="flex items-start gap-3 cursor-pointer rounded-lg hover:bg-bg-3/50 transition-colors -ml-2 p-1.5 pr-3"
+                    onClick={(e) => toggleStep(i, e)}
+                  >
+                    <div className={clsx("mt-0.5 w-6 h-6 rounded flex items-center justify-center flex-shrink-0", m.bg, m.color)}>
+                      <Icon size={12} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={clsx(
+                          "text-[13px] leading-snug break-words", 
+                          isLast && isStreaming ? "text-ink font-medium" : "text-ink-2"
+                        )}>
+                          {step.detail || step.action}
                         </span>
-                      )}
-
-                      {/* Selalu tampilkan chevron di setiap step */}
-                      <span className={clsx(
-                        'flex-shrink-0 transition-transform duration-200 opacity-0 group-hover:opacity-100',
-                        isExpanded ? 'opacity-100 rotate-180' : ''
-                      )}>
-                        <ChevronDown size={11} className="text-ink-3" />
-                      </span>
-                    </button>
-
-                    {/* Expandable content */}
-                    {isExpanded && (
-                      <div className="bg-bg-2 border-b border-border/40">
-                        <div className="flex items-center justify-between px-3 py-1.5 bg-bg-3 border-b border-border/30">
-                          <div className="flex items-center gap-2">
-                            <Icon size={9} className={m.color} />
-                            <span className="text-[10px] text-ink-3 font-medium">
-                              {step.action === 'Thinking' ? '💭 Proses Berpikir' :
-                               step.action === 'Analyzed' ? '🔍 Hasil Analisis' :
-                               step.action === 'Planned'  ? '📋 Rencana Eksekusi' :
-                               step.action === 'Worked'   ? '⚡ Eksekusi Sub-tasks' :
-                               step.action === 'Written'  ? `📄 ${step.detail?.split('/').pop()}` :
-                               step.action === 'Ran'      ? '💻 Output Terminal' :
-                               step.action === 'Reading'  ? `📖 ${step.detail}` :
-                               step.action === 'Searched' ? `🔍 Hasil: ${step.detail}` :
-                               step.detail || step.action}
-                            </span>
-                            {step.language && (
-                              <span className={clsx(
-                                'text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border',
-                                LANG_COLORS[step.language?.toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
-                              )}>
-                                {step.language}
-                              </span>
-                            )}
-                            {contentData?.isLive && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent/10 text-accent-2 border border-accent/20 animate-pulse">
-                                ● live
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()   // Fix 2
-                              e.preventDefault()
-                              copyToClipboard(displayContent)
-                            }}
-                            className="p-1 rounded hover:bg-bg-5 transition-colors"
-                            title="Copy"
-                          >
-                            <Copy size={10} className="text-ink-3" />
-                          </button>
-                        </div>
-
-                        <pre className="text-[11px] leading-relaxed font-mono p-3 whitespace-pre-wrap overflow-x-auto text-ink-2 max-h-72 overflow-y-auto">
-                          {displayContent}
-                          {contentData?.isLive && (
-                            <span className="inline-block w-1 h-3 bg-accent-2 animate-pulse ml-0.5 align-middle" />
-                          )}
-                        </pre>
-
-                        {/* Tombol buka di Artifacts untuk file Written */}
-                        {step.action === 'Written' && step.code && onOpenArtifactCard && (
-                          <div className="px-3 py-2 border-t border-border/30 bg-bg-3 flex justify-between items-center">
-                            <span className="text-[10px] text-ink-3">{step.detail}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()  // Fix 2
-                                e.preventDefault()
-                                const ext = (step.language || step.detail?.split('.').pop() || 'txt').toLowerCase()
-                                onOpenArtifactCard(step.code, ext, `✍️ ${step.detail?.split('/').pop()}`, false)
-                              }}
-                              className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 transition-all"
-                            >
-                              <ExternalLink size={9} /> Buka di Artifacts
-                            </button>
-                          </div>
+                        
+                        {step.language && (
+                          <span className="text-[10px] px-1.5 py-[1px] rounded bg-bg-4 text-ink-3 font-mono border border-border flex-shrink-0">
+                            {step.language}
+                          </span>
+                        )}
+                        
+                        {isLast && isStreaming && (
+                          <span className="flex gap-[2px] ml-1">
+                            {[0,1,2].map(idx => (
+                              <span key={idx} className="w-1 h-1 rounded-full bg-accent-2 animate-pulse" style={{ animationDelay: `${idx * 0.2}s` }} />
+                            ))}
+                          </span>
                         )}
                       </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+                    </div>
 
-            {/* Footer */}
-            {isStreaming && staleSeconds >= 8 && (
-              <div className="px-3 py-2 border-t border-border/40 bg-amber-400/5 flex items-center gap-2">
-                <Loader2 size={10} className="animate-spin text-amber-400 flex-shrink-0" />
-                <span className="text-[11px] text-amber-400">
-                  Masih memproses... ({staleSeconds}s) — AI menunggu hasil tool
-                </span>
-              </div>
-            )}
-            {isStreaming && onStop && (
-              <div className="px-3 py-2 border-t border-border">
+                    <span className={clsx(
+                      "flex-shrink-0 transition-transform duration-200 mt-1 opacity-0 group-hover/step:opacity-100",
+                      isExpanded ? "opacity-100 rotate-180" : ""
+                    )}>
+                      <ChevronDown size={14} className="text-ink-4" />
+                    </span>
+                  </div>
+
+                  {/* Expanded Content Box */}
+                  {isExpanded && (
+                    <div className="mt-2 ml-7 mb-1 rounded-lg bg-bg-3 border border-border/60 overflow-hidden shadow-sm animate-fade">
+                      <div className="flex items-center justify-between px-3 py-1.5 bg-bg-4 border-b border-border/60">
+                         <span className="text-[10px] text-ink-3 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                           <Icon size={10} className={m.color} /> {step.action}
+                         </span>
+                         <button onClick={(e) => { e.stopPropagation(); copyToClipboard(displayContent); }} className="p-1 rounded hover:bg-bg-5 transition-colors" title="Copy">
+                           <Copy size={12} className="text-ink-3" />
+                         </button>
+                      </div>
+                      <pre className="p-3 text-[11px] font-mono leading-relaxed text-ink-2 overflow-x-auto whitespace-pre-wrap max-h-72 overflow-y-auto">
+                        {displayContent}
+                        {contentData?.isLive && (
+                          <span className="inline-block w-1.5 h-3 bg-accent-2 animate-pulse ml-0.5 align-middle" />
+                        )}
+                      </pre>
+                      {step.action === 'Written' && step.code && onOpenArtifactCard && (
+                        <div className="px-3 py-2 border-t border-border/60 bg-bg-4/50 text-right">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              const ext = (step.language || step.detail?.split('.').pop() || 'txt').toLowerCase()
+                              onOpenArtifactCard(step.code, ext, `✍️ ${step.detail?.split('/').pop()}`, false)
+                            }}
+                            className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 transition-all font-medium"
+                          >
+                            <ExternalLink size={10} /> Buka di Artifacts
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Stale / Stop Indicators */}
+          {(isStreaming && (staleSeconds >= 8 || onStop)) && (
+            <div className="mt-4 ml-3 flex items-center gap-3">
+              {staleSeconds >= 8 && (
+                <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-medium">
+                  <Loader2 size={12} className="animate-spin" />
+                  Menunggu pemrosesan tool... ({staleSeconds}s)
+                </div>
+              )}
+              {onStop && (
                 <button
                   data-allow-propagation="true"
                   onClick={(e) => { e.stopPropagation(); onStop() }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/25 text-danger text-[11px] font-medium transition-all"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-danger/10 hover:bg-danger/20 text-danger text-[10px] transition-all font-bold tracking-wide"
                 >
-                  <Square size={10} fill="currentColor" /> Hentikan
+                  <Square size={9} fill="currentColor" /> HENTIKAN
                 </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 })

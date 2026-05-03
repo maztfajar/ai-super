@@ -538,3 +538,109 @@ async def ask_model(model_id: str, prompt: str) -> str:
         return response.strip() or "No response from model."
     except Exception as e:
         return "Error asking model " + model_id + ": " + str(e)
+
+async def list_dir(path: str, session_id: str = None) -> str:
+    """List directory contents."""
+    try:
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.project_metadata:
+                        meta = session.project_metadata
+                        if isinstance(meta, str):
+                            try:
+                                import json as _json
+                                meta = _json.loads(meta)
+                            except:
+                                meta = {}
+                        project_base_path = meta.get("project_path") if isinstance(meta, dict) else None
+            except Exception:
+                pass
+
+        if project_base_path and not os.path.isabs(path):
+            abs_path = os.path.join(project_base_path, path)
+        elif not os.path.isabs(path) and session_id:
+            safe_folder = session_id[:8]
+            abs_path = os.path.join(os.path.expanduser(f"~/projects/{safe_folder}"), path)
+        else:
+            abs_path = os.path.abspath(path)
+
+        if not os.path.exists(abs_path) or not os.path.isdir(abs_path):
+            return f"Error: Directory not found or is not a directory: {abs_path}"
+
+        items = os.listdir(abs_path)
+        result = []
+        for item in sorted(items):
+            full_item = os.path.join(abs_path, item)
+            if os.path.isdir(full_item):
+                result.append(f"[DIR]  {item}/")
+            else:
+                size = os.path.getsize(full_item)
+                result.append(f"[FILE] {item} ({size} bytes)")
+
+        return f"Contents of {abs_path}:\n" + "\n".join(result)
+    except Exception as e:
+        return "Error listing directory: " + str(e)
+
+async def search_files(query: str, path: str = ".", session_id: str = None) -> str:
+    """Search for files matching query or content."""
+    try:
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.project_metadata:
+                        meta = session.project_metadata
+                        if isinstance(meta, str):
+                            try:
+                                import json as _json
+                                meta = _json.loads(meta)
+                            except:
+                                meta = {}
+                        project_base_path = meta.get("project_path") if isinstance(meta, dict) else None
+            except Exception:
+                pass
+
+        if project_base_path and not os.path.isabs(path):
+            abs_path = os.path.join(project_base_path, path)
+        elif not os.path.isabs(path) and session_id:
+            safe_folder = session_id[:8]
+            abs_path = os.path.join(os.path.expanduser(f"~/projects/{safe_folder}"), path)
+        else:
+            abs_path = os.path.abspath(path)
+
+        if not os.path.exists(abs_path):
+            return f"Error: Path not found: {abs_path}"
+
+        import shlex
+        safe_query = shlex.quote(query)
+        safe_path = shlex.quote(abs_path)
+        
+        # 1. Cari konten
+        cmd_content = f"grep -irl {safe_query} {safe_path} --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=venv | head -n 20"
+        proc = await asyncio.create_subprocess_shell(cmd_content, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30.0)
+        output = stdout.decode().strip()
+
+        # 2. Jika tidak ada konten, cari nama file
+        if not output:
+            cmd_name = f"find {safe_path} -type f -not -path '*/node_modules/*' -not -path '*/.git/*' -iname '*{query}*' | head -n 20"
+            proc2 = await asyncio.create_subprocess_shell(cmd_name, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            stdout2, _ = await asyncio.wait_for(proc2.communicate(), timeout=30.0)
+            output = stdout2.decode().strip()
+
+        if not output:
+            return f"No results found for '{query}' in {abs_path}"
+        return f"Search results for '{query}' in {abs_path}:\n{output}"
+    except asyncio.TimeoutError:
+        return "Error: Search timed out after 30 seconds."
+    except Exception as e:
+        return "Error searching files: " + str(e)
+

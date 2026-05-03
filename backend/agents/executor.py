@@ -28,7 +28,7 @@ from core.snapshot import snapshot_manager
 
 # ── Pre-import semua tools (bukan di dalam closure per iterasi) ──────────────
 from agents.tools import execute_bash, read_file, write_file, ask_model
-from agents.tools import write_multiple_files, find_safe_port
+from agents.tools import write_multiple_files, find_safe_port, list_dir, search_files
 from agents.tools.web_search import web_search
 
 log = structlog.get_logger()
@@ -207,6 +207,8 @@ Available tools (gunakan DENGAN FORMAT JSON TEPAT):
 6. web_search — cari internet. Args: query (string).
 7. find_safe_port — cari port aman. Args: preferred (int, optional).
 8. rollback — kembalikan sistem ke snapshot terakhir.
+9. list_dir — lihat isi direktori. Args: path (string).
+10. search_files — cari teks/file di project. Args: query (string), path (string, optional).
 {project_context}
 """
     # Cache prompt (kecuali project_context yang fresh tiap kali)
@@ -485,6 +487,8 @@ class AgentExecutor:
         "ask_model":            ("Analyzed", lambda a: a.get("model_id", "")),
         "web_search":           ("Searched", lambda a: a.get("query", "")[:60]),
         "find_safe_port":       ("Checked",  lambda a: "available port"),
+        "list_dir":             ("Listed",   lambda a: a.get("path", "")[:60]),
+        "search_files":         ("Searched", lambda a: a.get("query", "")[:60]),
     }
 
     def _prune_agent_messages(self, messages: list, max_messages: int = 20) -> list:
@@ -836,11 +840,17 @@ class AgentExecutor:
                                 return f"✅ Rollback berhasil ke commit {res['commit'][:8]}. Sistem telah dikembalikan ke state sebelumnya."
                             return f"❌ Gagal melakukan rollback: {res.get('error')}"
 
+                        elif cmd == "list_dir":
+                            return await list_dir(args.get("path", "."), session_id)
+
+                        elif cmd == "search_files":
+                            return await search_files(args.get("query", ""), args.get("path", "."), session_id)
+
                         else:
                             return (
                                 f"Unknown tool: '{cmd}'. "
                                 f"Available: execute_bash, read_file, write_file, "
-                                f"write_multiple_files, ask_model, web_search, find_safe_port"
+                                f"write_multiple_files, ask_model, web_search, find_safe_port, list_dir, search_files"
                             )
 
                     # Jalankan dengan heartbeat agar tidak timeout saat npm install
