@@ -1057,6 +1057,17 @@ class AgentExecutor:
                         '', fallback
                     ).strip()
 
+                    # If model just stopped generating mid-thought without tool or response
+                    if fallback and not stream_error and step < max_steps - 1:
+                        yield "\n> ⚠️ Menunggu model menyelesaikan instruksi (auto-continue)...\n"
+                        agent_msgs.append({"role": "assistant", "content": buffer})
+                        agent_msgs.append({
+                            "role": "user",
+                            "content": "<observation>\nAnda berhenti menghasilkan teks sebelum memanggil <tool> atau memberikan <response>. Silakan lanjutkan dan pastikan menggunakan format yang benar (wajib gunakan <tool> atau <response>).\n</observation>"
+                        })
+                        agent_msgs = self._prune_agent_messages(agent_msgs)
+                        continue
+
                     if fallback:
                         try:
                             from core.self_correction import self_correction_engine

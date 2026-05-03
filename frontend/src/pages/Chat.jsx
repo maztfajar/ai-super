@@ -922,7 +922,7 @@ function ArtifactCard({ artifact, onOpen }) {
 
 
 // ── Message bubble ────────────────────────────────────────────
-function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpenArtifact, onOpenArtifactCard }) {
+const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpenArtifact, onOpenArtifactCard }) {
   const [copied, setCopied] = useState(false)
   const [showThinking, setShowThinking] = useState(false) // Default: collapsed
   const [showSaveDialog, setShowSaveDialog] = useState(false)
@@ -1335,7 +1335,7 @@ function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpe
       </div>
     </div>
   )
-}
+})
 
 // ── Komponen FileChip ────────────────────────────────────────────────────────
 function FileChip({ file, onRemove }) {
