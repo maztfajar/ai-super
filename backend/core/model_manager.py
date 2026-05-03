@@ -487,6 +487,11 @@ class ModelManager:
                 yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Provider mengembalikan respons kosong atau tidak valid (kemungkinan sedang maintenance atau limit tercapai)."
                 return
 
+            # "Request blocked" — content filter triggered, raise so executor can retry with simplified prompt
+            if "request was blocked" in err_str.lower() or "content filter" in err_str.lower() or "content_filter" in err_str.lower():
+                log.warning(f"{provider_name}: request blocked by content filter, raising for retry", error=err_str[:120])
+                raise RuntimeError(f"content filter blocked: {err_str}") from e
+
             # "Model output empty" — Sumopod-specific transient error, raise so executor can retry
             if ("model output must contain" in err_str.lower() or
                     "output text or tool calls" in err_str.lower() or
