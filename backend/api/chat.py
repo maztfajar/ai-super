@@ -790,6 +790,48 @@ async def list_directories(
     except Exception as e:
         raise HTTPException(500, f"Error reading directory: {str(e)}")
 
+class CreateDirectoryRequest(BaseModel):
+    parent_path: str
+    folder_name: str
+
+@router.post("/create_directory")
+async def create_directory(
+    req: CreateDirectoryRequest,
+    user: User = Depends(get_current_user),
+):
+    """Create a new subdirectory inside a given parent path."""
+    import os
+    
+    try:
+        parent_dir = os.path.abspath(req.parent_path)
+        
+        # Security check: Ensure we can only browse within allowed boundaries
+        if not parent_dir.startswith(os.path.expanduser("~")) and not parent_dir.startswith("/home/"):
+            raise HTTPException(403, "Akses ditolak: hanya boleh membuat folder di direktori home")
+            
+        safe_name = os.path.basename(req.folder_name)
+        if not safe_name:
+            raise HTTPException(400, "Nama folder tidak valid")
+            
+        new_dir_path = os.path.join(parent_dir, safe_name)
+        
+        if os.path.exists(new_dir_path):
+            raise HTTPException(400, "Folder sudah ada")
+            
+        os.makedirs(new_dir_path)
+        
+        return {
+            "ok": True,
+            "path": new_dir_path,
+            "message": f"Folder {safe_name} berhasil dibuat"
+        }
+    except PermissionError:
+        raise HTTPException(403, f"Tidak memiliki izin membuat folder di {parent_dir}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, f"Gagal membuat folder: {str(e)}")
+
 
 class SaveFileRequest(BaseModel):
     directory: str

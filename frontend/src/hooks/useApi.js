@@ -116,6 +116,7 @@ export const api = {
   // ── File Saving ───────────────────────────────────────────
   saveFile: (directory, filename, content) => req('POST', '/chat/save-file', { directory, filename, content }),
   listDirectories: (path) => req('POST', '/chat/list_directories', { path: path || '~' }),
+  createDirectory: (parentPath, folderName) => req('POST', '/chat/create_directory', { parent_path: parentPath || '~', folder_name: folderName }),
 
   // ── RAG ───────────────────────────────────────────────────
   listDocs:   ()     => req('GET',    '/rag/documents'),

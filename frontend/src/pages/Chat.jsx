@@ -496,6 +496,11 @@ function SaveFileDialog({ filename, content, onClose }) {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  // New Folder State
+  const [showNewFolder, setShowNewFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [creatingFolder, setCreatingFolder] = useState(false)
+
   // Load initial directory
   useEffect(() => {
     loadDirs('~')
@@ -503,6 +508,8 @@ function SaveFileDialog({ filename, content, onClose }) {
 
   async function loadDirs(path) {
     setLoading(true)
+    setShowNewFolder(false)
+    setNewFolderName('')
     try {
       const result = await api.listDirectories(path)
       setDirs(result.directories || [])
@@ -513,6 +520,21 @@ function SaveFileDialog({ filename, content, onClose }) {
       toast.error('Gagal memuat direktori')
     }
     setLoading(false)
+  }
+
+  async function handleCreateFolder(e) {
+    e.preventDefault()
+    if (!newFolderName.trim()) return
+    setCreatingFolder(true)
+    try {
+      const result = await api.createDirectory(currentPath, newFolderName.trim())
+      toast.success(result.message || 'Folder berhasil dibuat')
+      // Masuk ke folder baru tersebut
+      loadDirs(result.path)
+    } catch (e) {
+      toast.error(e.message || 'Gagal membuat folder')
+    }
+    setCreatingFolder(false)
   }
 
   async function handleSave() {
@@ -566,11 +588,19 @@ function SaveFileDialog({ filename, content, onClose }) {
 
         {/* Directory Browser */}
         <div className="px-5 py-3 flex-1 overflow-hidden flex flex-col">
-          <label className="text-[11px] text-ink-3 uppercase tracking-wider font-medium mb-1.5 block">Direktori Tujuan</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[11px] text-ink-3 uppercase tracking-wider font-medium block">Direktori Tujuan</label>
+            <button
+              onClick={() => setShowNewFolder(!showNewFolder)}
+              className="text-[10px] flex items-center gap-1 font-medium text-accent-2 hover:text-accent-2/80 transition-colors"
+            >
+              <Plus size={12} /> Buat Folder
+            </button>
+          </div>
           
           {/* Current path */}
           <div className="flex items-center gap-1.5 mb-2">
-            <div className="flex-1 px-3 py-1.5 bg-bg-3 border border-border rounded-lg text-xs text-ink font-mono truncate">
+            <div className="flex-1 px-3 py-1.5 bg-bg-3 border border-border rounded-lg text-xs text-ink font-mono truncate" title={currentPath || '~'}>
               📁 {currentPath || '~'}
             </div>
             {parentPath && (
@@ -583,6 +613,26 @@ function SaveFileDialog({ filename, content, onClose }) {
               </button>
             )}
           </div>
+
+          {/* Create New Folder Inline */}
+          {showNewFolder && (
+            <form onSubmit={handleCreateFolder} className="flex gap-2 mb-2 animate-fade">
+              <input 
+                autoFocus
+                placeholder="Nama folder baru..."
+                value={newFolderName}
+                onChange={e => setNewFolderName(e.target.value)}
+                className="flex-1 px-3 py-1.5 bg-bg-3 border border-border rounded-lg text-xs text-ink focus:outline-none focus:border-accent-2"
+              />
+              <button
+                type="submit"
+                disabled={creatingFolder || !newFolderName.trim()}
+                className="px-3 py-1.5 rounded-lg bg-accent-2/10 text-accent-2 border border-accent-2/20 text-xs font-medium hover:bg-accent-2/20 disabled:opacity-50 transition-colors"
+              >
+                {creatingFolder ? 'Membuat...' : 'Buat'}
+              </button>
+            </form>
+          )}
 
           {/* Directory list */}
           <div className="flex-1 overflow-y-auto border border-border rounded-lg bg-bg-3 min-h-[140px] max-h-[200px]">

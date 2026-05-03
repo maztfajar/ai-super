@@ -487,10 +487,38 @@ class ModelManager:
                 yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Provider mengembalikan respons kosong atau tidak valid (kemungkinan sedang maintenance atau limit tercapai)."
                 return
 
-            # "Request blocked" — content filter triggered, raise so executor can retry with simplified prompt
+            # "Request blocked" — content filter triggered
+            # Auto-retry once with stripped/minimal system prompt before raising
             if "request was blocked" in err_str.lower() or "content filter" in err_str.lower() or "content_filter" in err_str.lower():
-                log.warning(f"{provider_name}: request blocked by content filter, raising for retry", error=err_str[:120])
-                raise RuntimeError(f"content filter blocked: {err_str}") from e
+                log.warning(f"{provider_name}: request blocked by content filter, retrying with minimal prompt", error=err_str[:120])
+                
+                # Build simplified messages: strip heavy system prompt, keep user messages
+                minimal_sys = (
+                    "You are AI Orchestrator, a helpful AI assistant. "
+                    "Respond naturally in Bahasa Indonesia. Be concise and professional."
+                )
+                retry_messages = [{"role": "system", "content": minimal_sys}]
+                for m in messages:
+                    if m["role"] != "system":
+                        retry_messages.append(m)
+                
+                try:
+                    retry_stream = await client.chat.completions.create(
+                        model=model,
+                        messages=retry_messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=True,
+                    )
+                    async for rchunk in retry_stream:
+                        rdelta = rchunk.choices[0].delta.content
+                        if rdelta:
+                            yield rdelta
+                    log.info(f"{provider_name}: content filter retry succeeded")
+                    return
+                except Exception as retry_err:
+                    log.error(f"{provider_name}: content filter retry also failed", error=str(retry_err)[:120])
+                    raise RuntimeError(f"content filter blocked: {err_str}") from e
 
             # "Model output empty" — Sumopod-specific transient error, raise so executor can retry
             if ("model output must contain" in err_str.lower() or
