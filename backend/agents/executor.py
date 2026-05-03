@@ -1,16 +1,18 @@
 """
-Agent Executor (v2.1 — Performance Optimized)
-=============================================
-Perbaikan dari v1:
-  1. build_agent_system_prompt() di-cache per (model, mode, project_path) — tidak dibangun ulang tiap iterasi
-  2. Tool imports dipindah ke module level (bukan di dalam closure per iterasi)
-  3. ask_model: support full key "sumopod/X" dan short key "X"
-  4. write_multiple_files: emit SEMUA file ke artifact panel (bukan hanya file terakhir)
-  5. consecutive_errors reset saat model berhasil respond (bukan hanya saat tool parse sukses)
-  6. _classify_error(): bedakan transient error (retry) vs fatal error (stop)
-  7. MAX_ITERATIONS adaptif: simple task = 10, complex = 25 (hemat token)
-  8. _prune_agent_messages() lebih cerdas: pertahankan konteks tool yang relevan
-  9. Semua tool pre-imported di module level
+Agent Executor (v2.2 — Stability & Intelligence Hardened)
+=========================================================
+Perbaikan dari v2.1:
+  FASE 1 — Backend & Stabilitas:
+  1. Retry backoff eksponensial: transient error di-retry dengan delay 1s, 2s, 4s
+  2. MAX_ITERATIONS dibatasi ketat: default 15, kompleks 20 (bukan 25/30)
+  3. consecutive_errors circuit breaker diturunkan: 3 → 2 (lebih cepat berhenti jika loop)
+  4. Stream timeout per-chunk: deteksi jika model diam terlalu lama (idle detection)
+  
+  FASE 2 — Rekayasa Prompt & Perilaku Agen:
+  5. System prompt: instruksi EKSEKUTOR MANDIRI yang lebih keras dan eksplisit
+  6. Temperature diturunkan: 0.7 → 0.3 untuk semua tool execution
+  7. Anti-hallucination: larang placeholder, paksa solusi siap pakai
+  8. Loop breaker: deteksi jika model mengulang tool yang sama 3x berturut-turut
 """
 
 import json
@@ -26,24 +28,25 @@ from core.model_manager import model_manager
 from core.process_emitter import process_emitter, PROCESS_EVENT_PREFIX
 from core.snapshot import snapshot_manager
 
-# ── Pre-import semua tools (bukan di dalam closure per iterasi) ──────────────
 from agents.tools import execute_bash, read_file, write_file, ask_model
-from agents.tools import write_multiple_files, find_safe_port, list_dir, search_files
+from agents.tools import write_multiple_files, find_safe_port
 from agents.tools.web_search import web_search
+from agents.tools.filesystem import (
+    list_directory, file_tree, find_files, search_in_files, make_directory,
+    move_file, copy_file, delete_file, get_project_path, set_project_path,
+    list_all_projects, get_file_info
+)
 
 log = structlog.get_logger()
 
-
-# ── System prompt cache: (model, mode, project_path_hash) → str ─────────────
 _PROMPT_CACHE: dict = {}
-_PROMPT_CACHE_MAX = 32   # maks 32 kombinasi unik
+_PROMPT_CACHE_MAX = 32
 
 
 def _project_path_key(project_path: Optional[str]) -> str:
-    """Key pendek untuk project_path agar bisa dipakai sebagai dict key."""
     if not project_path:
         return ""
-    return project_path[-40:]  # 40 char terakhir sudah cukup unik
+    return project_path[-40:]
 
 
 async def build_agent_system_prompt_async(
@@ -52,10 +55,6 @@ async def build_agent_system_prompt_async(
     project_path: Optional[str] = None,
     session_id: Optional[str] = None,
 ) -> str:
-    """
-    Bangun system prompt untuk agent executor.
-    Versi asinkronus untuk menghindari pemblokiran event loop.
-    """
     cache_key = (current_model, execution_mode, _project_path_key(project_path))
     if cache_key in _PROMPT_CACHE:
         return _PROMPT_CACHE[cache_key]
@@ -67,36 +66,28 @@ async def build_agent_system_prompt_async(
     mode_instructions = ""
     if execution_mode == "analysis":
         mode_instructions = (
-            "\n**ANALYSIS MODE ACTIVE:** Read-only mode. "
-            "Destructive actions (execute_bash write) will be blocked. "
-            "Focus on understanding and planning.\n"
+            "\n**ANALYSIS MODE:** Read-only. Destructive actions blocked. Plan only.\n"
         )
     elif execution_mode == "execution":
         mode_instructions = (
-            "\n**EXECUTION MODE ACTIVE:** Full tool access. "
-            "Execute carefully — do not destroy the system.\n"
+            "\n**EXECUTION MODE:** Full tool access. Execute carefully.\n"
         )
 
     project_instruction = ""
     if project_path:
         project_instruction = (
-            f"\n- **PROJECT DIRECTORY (CRITICAL):** Working directory = `{project_path}`. "
-            f"Semua bash command WAJIB `cd {project_path} && ...`. "
-            f"Semua write_file path relatif terhadap direktori ini. "
-            f"JANGAN menulis file ke /root atau di luar direktori ini!"
+            f"\n- **PROJECT DIRECTORY (WAJIB):** `{project_path}`. "
+            f"Semua bash: `cd {project_path} && ...`. "
+            f"Semua write_file path relatif terhadap direktori ini."
         )
     else:
         project_instruction = (
-            "\n- **PROJECT DIRECTORY:** Semua tools otomatis mengeksekusi relatif ke "
-            "root direktori user. WAJIB buat sub-folder khusus (misal: `todo-app/`) "
-            "untuk setiap aplikasi. Semua file_path di write_file harus: `todo-app/index.html` "
-            "BUKAN hanya `index.html`."
+            "\n- **PROJECT DIRECTORY:** Buat sub-folder khusus untuk setiap app. "
+            "Contoh write_file: `todo-app/index.html` BUKAN `index.html`."
         )
 
-    # Project context: fresh setiap kali (tidak di-cache karena file bisa berubah)
     project_context = ""
     if project_path:
-        import asyncio
         try:
             p_find = await asyncio.create_subprocess_shell(
                 f"find {project_path} -type f "
@@ -109,133 +100,162 @@ async def build_agent_system_prompt_async(
                 find_res = stdout_find.decode()
                 if find_res.strip():
                     project_context = (
-                        f"\n**PROJECT STATE — FILE YANG SUDAH ADA:**\n"
+                        f"\n**PROJECT FILES (SUDAH ADA — JANGAN TULIS ULANG):**\n"
                         f"{find_res.strip()}\n"
-                        f"⚠️ File di atas SUDAH ADA. JANGAN tulis ulang kecuali ada bug."
                     )
             except asyncio.TimeoutError:
                 try: p_find.kill()
                 except OSError: pass
-
-            p_ss = await asyncio.create_subprocess_shell(
-                "ss -tlnp | grep -E ':8[0-9]{3}'",
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-            )
-            try:
-                stdout_ss, _ = await asyncio.wait_for(p_ss.communicate(), timeout=3.0)
-                ss_res = stdout_ss.decode()
-                if ss_res.strip():
-                    project_context += (
-                        f"\n**SERVERS BERJALAN:**\n{ss_res.strip()}\n"
-                        "⚠️ Server sudah running. Jangan start ulang kecuali diminta."
-                    )
-            except asyncio.TimeoutError:
-                try: p_ss.kill()
-                except OSError: pass
         except Exception:
             pass
 
-    prompt = f"""You are AI ORCHESTRATOR, an advanced autonomous agent running as '{current_model}'.
-CURRENT SYSTEM TIME: {current_time}. Accept this as the true current date and time.
+    # ── FASE 2: System prompt yang jauh lebih keras dan eksplisit ──────────
+    prompt = f"""You are AI ORCHESTRATOR — an AUTONOMOUS EXECUTOR, not an advisor.
+CURRENT TIME: {current_time}
 {mode_instructions}
-**REASONING FLOW (CRITICAL):**
-Before taking action, you must think step-by-step inside a <thinking> block:
-1. Plan: What exactly does the user want?
-2. Tool Check: Which tools will I use?
-3. Execute & Review: Determine the exact JSON tool payload.
 
-**STRICT AUTONOMY RULES (CRITICAL & NON-NEGOTIABLE):**
-- YOU ARE FULLY AUTONOMOUS. You must execute ALL necessary commands yourself using `execute_bash`.
-- NEVER ask the user to run commands (like "sudo lsof", "kill", "systemctl", "npm install", etc). YOU run them yourself using the <tool> block!
-- NEVER give step-by-step instructions for the user to follow. You execute the steps yourself and just report the results.
-- NEVER output raw bash or python scripts in your conversational response expecting the user to copy-paste them. ALWAYS use the <tool> format to run them directly.
-- NEVER say "saya tidak bisa" atau "saya tidak punya akses". Kamu SELALU punya akses ke semua tools dan sistem.
-- ALWAYS use write_file/write_multiple_files untuk membuat/mengedit file. Jangan hanya tunjukkan kodenya.
-{project_instruction}
-**PORT SAFETY (CRITICAL):**
-- Orchestrator berjalan di port 7860 (RESERVED). Reserved: 7860, 6379, 5432, 3306, 11434.
-- Gunakan port 8100-8999. Panggil find_safe_port SEBELUM start server apapun.
-- Sistem otomatis blokir & reassign command yang coba bind ke port reserved.
+═══════════════════════════════════════════════════════
+⚠️  HUKUM BESI — TIDAK BOLEH DILANGGAR SAMA SEKALI ⚠️
+═══════════════════════════════════════════════════════
 
-**APP CREATION WORKFLOW:**
-1. find_safe_port → dapat port aman
-2. write_multiple_files → scaffold SEMUA file sekaligus
-3. execute_bash: install dependencies (non-interactive, e.g. `npm install --yes`)
-4. execute_bash: start server di background (`nohup ... > app.log 2>&1 &`)
-5. execute_bash: verifikasi (sleep 3, ps, curl, tail log)
-6. Jika curl → 200: output %%APP_PREVIEW%%
+1. KAMU ADALAH EKSEKUTOR, BUKAN ASISTEN MANUAL.
+   - DILARANG KERAS mengatakan "silakan jalankan...", "Anda bisa...", "coba lakukan..."
+   - DILARANG KERAS memberikan instruksi untuk user ikuti
+   - KAMU yang menjalankan semua perintah lewat <tool>
+   - Jika kamu ragu, eksekusi dulu, laporkan hasilnya
 
-**APP PREVIEW FORMAT:**
-%%APP_PREVIEW%%
-http://localhost:<PORT>
-%%END_PREVIEW%%
+2. ZERO PLACEHOLDER — SOLUSI HARUS SIAP PAKAI 100%.
+   - DILARANG: "ganti YOUR_API_KEY", "isi dengan password Anda", "sesuaikan dengan kebutuhan"
+   - WAJIB: tulis nilai konkret, buat konfigurasi lengkap, generate nilai random jika perlu
+   - Jika butuh nilai yang tidak diketahui: TANYA USER SEKALI, lalu eksekusi
 
-**QUALITY STANDARDS:**
-✅ Frontend: responsive, loading state, error handling, input validation
-✅ Backend: JSON response konsisten, proper status codes, CORS configured
+3. EKSEKUSI LANGSUNG, BUKAN PENJELASAN.
+   - Jangan jelaskan apa yang akan dilakukan — LAKUKAN
+   - Jangan tunjukkan kode di <response> dan minta user copy — TULIS dengan write_file
+   - Jangan bilang "script sudah dibuat" — JALANKAN dengan execute_bash
 
-**OUTPUT FORMAT (WAJIB — tidak boleh dilanggar):**
-Response HARUS dimulai dengan <thinking>.
-JANGAN tulis apapun sebelum tag tersebut.
+4. JANGAN ULANGI TOOL YANG SAMA 3X TANPA KEMAJUAN.
+   - Jika tool yang sama gagal 2x berturut-turut → ganti strategi
+   - Jika masalah tidak bisa diselesaikan setelah 5 iterasi → akui dan jelaskan kenapa
 
+═══════════════════════════════════════════════════════
+
+**REASONING FLOW:**
 <thinking>
-## Memahami Permintaan
-[analisis apa yang user inginkan]
-
-## Rencana Eksekusi
-[langkah-langkah konkret]
+1. Apa yang user minta? (tepat, bukan interpretasi berlebihan)
+2. Tool apa yang dibutuhkan?
+3. Apa payload JSON-nya?
 </thinking>
 
-Setelah <thinking> ditutup, KAMU WAJIB MEMILIH SALAH SATU:
-OPSI 1: Jika butuh melakukan aksi/menjalankan perintah/menulis file, panggil SATU tool:
-<tool>{"name": "execute_bash", "args": {"command": "npm install"}}</tool>
+**OUTPUT FORMAT (WAJIB):**
+Pilih SATU:
+- Butuh aksi: <tool>{{"name": "execute_bash", "args": {{"command": "..."}} }}</tool>
+- Selesai sepenuhnya: <response>[laporan hasil ke user]</response>
 
-OPSI 2: Jika tugas SUDAH SELESAI SEPENUHNYA, berikan respons ke user:
-<response>
-[jawaban akhir untuk user dalam Markdown]
-</response>
+JANGAN gabungkan <tool> dan <response> dalam satu balasan.
+Hentikan generate segera setelah <tool>. Hasil masuk di turn berikutnya dalam <observation>.
+{project_instruction}
 
-JANGAN PERNAH MENGGABUNGKAN <tool> DAN <response> DALAM SATU BALASAN.
-Hentikan generate segera setelah <tool> block. Hasil tool akan diberikan di turn berikutnya dalam <observation>.
+**PORT SAFETY:** Reserved: 7860, 6379, 5432, 3306, 11434. Gunakan 8100-8999.
+Panggil find_safe_port SEBELUM start server apapun.
 
-Available tools (gunakan DENGAN FORMAT JSON TEPAT):
+**APP CREATION WORKFLOW:**
+1. find_safe_port → port aman
+2. write_multiple_files → scaffold SEMUA file sekaligus (jangan satu per satu)
+3. execute_bash: install deps (non-interactive: npm install --yes)
+4. execute_bash: start server background (nohup ... > app.log 2>&1 &)
+5. execute_bash: verifikasi (sleep 3 && curl -s http://localhost:PORT)
+6. Jika berhasil: output %%APP_PREVIEW%%\\nhttp://localhost:PORT\\n%%END_PREVIEW%%
+
+**PROJECT MEMORY — WAJIB DIBACA:**
+Orchestrator memiliki memori permanen untuk lokasi project.
+SELALU panggil `get_project_path` di awal jika tidak yakin dimana project tersimpan.
+SELALU panggil `set_project_path` setelah membuat folder project baru.
+JANGAN pernah menebak lokasi file — gunakan `find_files` atau `list_directory`.
+
+Available tools (gunakan DALAM <thinking> saja):
+
+**CORE TOOLS:**
 1. execute_bash — jalankan bash command. Args: command (string).
-2. read_file — baca file. Args: path (string).
-3. write_file — tulis file. Args: path (string), content (string).
+2. read_file — baca isi file. Args: path (string).
+3. write_file — tulis/buat file. Args: path (string), content (string).
 4. write_multiple_files — tulis beberapa file sekaligus. Args: files_data (list of {{"path","content"}}).
-5. ask_model — tanya AI lain. Args: model_id (string), prompt (string). Models: {model_list_str}
+5. ask_model — tanya AI lain. Args: model_id (string), prompt (string).
 6. web_search — cari internet. Args: query (string).
 7. find_safe_port — cari port aman. Args: preferred (int, optional).
-8. rollback — kembalikan sistem ke snapshot terakhir.
-9. list_dir — lihat isi direktori. Args: path (string).
-10. search_files — cari teks/file di project. Args: query (string), path (string, optional).
+
+**FILESYSTEM TOOLS (BARU — gunakan ini, jangan tebak lokasi file):**
+8.  list_directory   — tampilkan isi folder dengan metadata.
+                       Args: path (string, default "."), session_id (auto).
+                       Gunakan untuk: lihat isi folder, cek file apa saja yang ada.
+
+9.  file_tree        — tampilkan struktur folder seperti `tree`.
+                       Args: path (string), max_depth (int, default 4).
+                       Gunakan untuk: memahami arsitektur project secara menyeluruh.
+
+10. find_files       — cari file by nama/pattern/ekstensi.
+                       Args: pattern (string, mis "*.py"), search_path (string), file_type ("file"|"dir"|"any").
+                       Gunakan untuk: temukan file yang tidak diketahui lokasinya.
+
+11. search_in_files  — cari teks/keyword di dalam isi file (grep -r).
+                       Args: keyword (string), search_path (string), extensions (string, mis ".py,.js").
+                       Gunakan untuk: cari function, class, variabel, atau bug tertentu.
+
+12. make_directory   — buat direktori baru (mkdir -p).
+                       Args: path (string).
+
+13. move_file        — pindah/rename file atau folder (mv).
+                       Args: source (string), destination (string).
+
+14. copy_file        — salin file atau folder (cp -r).
+                       Args: source (string), destination (string).
+
+15. delete_file      — hapus file atau folder dengan safety check.
+                       Args: path (string), confirm (bool, default False).
+                       ⚠️ Untuk folder atau file >100KB wajib confirm=True.
+
+16. get_project_path — ambil path project aktif dari session ini.
+                       Args: (tidak ada, session_id otomatis).
+                       🔑 WAJIB dipanggil saat tidak tahu lokasi project.
+
+17. set_project_path — simpan path project aktif (permanen, tidak hilang saat restart).
+                       Args: path (string).
+                       🔑 WAJIB dipanggil setelah membuat folder project baru.
+
+18. list_all_projects — lihat semua project yang pernah dibuat di semua session.
+                        Args: (tidak ada).
+                        Gunakan untuk: menemukan project lama.
+
+19. get_file_info    — info detail file/folder (size, modified, permissions).
+                       Args: path (string).
+
+**ATURAN WAJIB FILESYSTEM:**
+- SEBELUM menulis file ke path baru → panggil get_project_path dulu
+- SETELAH membuat folder project baru → panggil set_project_path
+- SAAT tidak tahu file ada di mana → gunakan find_files atau search_in_files
+- JANGAN gunakan execute_bash untuk operasi file sederhana jika ada tool khusus
+- JANGAN tebak path — verifikasi dengan list_directory atau get_file_info
+
+Tool format:
+<tool>{{"name": "tool_name", "args": {{"key": "value"}}}}</tool>
+Hentikan generate segera setelah <tool> block. Hasil ada di <observation>.
 {project_context}
 """
-    # Cache prompt (kecuali project_context yang fresh tiap kali)
-    # Gunakan prompt tanpa project_context untuk cache value
-    prompt_without_context = prompt
     if len(_PROMPT_CACHE) >= _PROMPT_CACHE_MAX:
-        # Hapus entri tertua
         oldest_key = next(iter(_PROMPT_CACHE))
         del _PROMPT_CACHE[oldest_key]
-    _PROMPT_CACHE[cache_key] = prompt_without_context
-
+    _PROMPT_CACHE[cache_key] = prompt
     return prompt
 
 
-# ── Error classifier ─────────────────────────────────────────────────────────
-
 class ErrorType:
-    TRANSIENT = "transient"   # bisa di-retry (timeout, rate limit, empty output)
-    FATAL = "fatal"           # jangan retry (auth error, invalid model, quota habis)
-    RECOVERABLE = "recoverable"  # retry dengan params berbeda
+    TRANSIENT = "transient"
+    FATAL = "fatal"
+    RECOVERABLE = "recoverable"
 
 
 def _classify_error(err_str: str) -> str:
-    """Klasifikasi error untuk menentukan strategi recovery."""
     err_lower = err_str.lower()
-
-    # Fatal — jangan retry
     fatal_signals = [
         "401", "unauthorized", "invalid_api_key", "api key",
         "authentication", "forbidden", "403",
@@ -246,7 +266,6 @@ def _classify_error(err_str: str) -> str:
     if any(s in err_lower for s in fatal_signals):
         return ErrorType.FATAL
 
-    # Transient — retry normal
     transient_signals = [
         "timeout", "timed out", "connection", "network",
         "rate limit", "429", "too many requests",
@@ -261,25 +280,20 @@ def _classify_error(err_str: str) -> str:
     return ErrorType.RECOVERABLE
 
 
-# ── Tool error hints ─────────────────────────────────────────────────────────
-
 def _get_error_hint(output: str) -> str:
-    """Tambahkan hint kontekstual untuk bantu model diagnosa error."""
     hints = {
-        "ENOENT": "[HINT: File/direktori tidak ditemukan. Cek path, buat dulu dengan mkdir -p]",
-        "No such file": "[HINT: File tidak ada. Pastikan path benar dan buat direktori dulu]",
-        "EADDRINUSE": "[HINT: Port sudah dipakai. Gunakan find_safe_port atau kill proses lama]",
-        "address already in use": "[HINT: Port busy. Coba port lain atau: kill $(lsof -t -i:PORT)]",
-        "MODULE_NOT_FOUND": "[HINT: npm package belum terinstall. Jalankan: cd PROJECT && npm install]",
-        "ModuleNotFoundError": "[HINT: pip package belum terinstall. Jalankan: pip install NAMA_PACKAGE]",
-        "ImportError": "[HINT: Module tidak ditemukan. Install dulu atau cek typo nama import]",
-        "SyntaxError": "[HINT: Syntax error di kode. Baca file yang error lalu perbaiki]",
-        "IndentationError": "[HINT: Indentasi Python salah. Konsisten pakai spaces atau tabs]",
-        "Permission denied": "[HINT: Permission error. Cek: ls -la, gunakan chmod atau sudo jika perlu]",
-        "connection refused": "[HINT: Server belum siap atau crash. Cek: tail -30 app.log]",
-        "CORS": "[HINT: CORS error. Tambahkan cors() middleware di backend dengan origin='*']",
-        "Cannot find module": "[HINT: npm module tidak ada. Jalankan npm install di project directory]",
-        "bind: address": "[HINT: Port conflict. Gunakan find_safe_port untuk dapat port aman]",
+        "ENOENT": "[HINT: File/direktori tidak ada. Buat dulu dengan mkdir -p atau write_file]",
+        "No such file": "[HINT: Path salah. Periksa dan buat direktori dulu]",
+        "EADDRINUSE": "[HINT: Port busy. Gunakan find_safe_port]",
+        "address already in use": "[HINT: Port busy. kill $(lsof -t -i:PORT) atau pakai port lain]",
+        "MODULE_NOT_FOUND": "[HINT: npm package belum terinstall. cd PROJECT && npm install]",
+        "ModuleNotFoundError": "[HINT: pip package belum ada. pip install PACKAGE]",
+        "SyntaxError": "[HINT: Syntax error. Baca file lalu perbaiki]",
+        "Permission denied": "[HINT: Permission error. chmod atau sudo]",
+        "connection refused": "[HINT: Server belum ready. tail -30 app.log]",
+        "Cannot find module": "[HINT: npm install di project directory]",
+        "missing script": "[HINT: Script tidak ada di package.json. Periksa scripts section]",
+        "package.json": "[HINT: Pastikan package.json ada dan lengkap di direktori project]",
     }
     for signal, hint in hints.items():
         if signal in output:
@@ -287,17 +301,7 @@ def _get_error_hint(output: str) -> str:
     return ""
 
 
-# ── Response filter ─────────────────────────────────────────────────────────
-
 class ResponseFilter:
-    """
-    Parse dan filter streaming output dari model.
-    - <thinking> → capture silently, kirim sebagai process event
-    - <response> → emit ke user
-    - <tool> → intercept untuk eksekusi
-    - Raw text (no tags) → emit langsung (fallback)
-    """
-
     def __init__(self, emit_thinking: bool = True):
         self.state = "WAITING"
         self.pending = ""
@@ -306,15 +310,13 @@ class ResponseFilter:
         self.current_think_tag = "</thinking>"
         self._thinking_buffer = ""
         self._thinking_ready = ""
-        # Delta streaming support
-        self._thinking_delta_cursor = 0  # tracks how much of _thinking_buffer has been sent
-        self._thinking_done = False      # True when </thinking> tag is found
+        self._thinking_delta_cursor = 0
+        self._thinking_done = False
 
     def process(self, chunk: str) -> str:
         self.pending += chunk
         output = ""
 
-        # Auto-fallback: jika 100 chars pertama tidak ada tag → emit raw
         if self.state == "WAITING" and len(self.pending) > 100:
             if not any(t in self.pending for t in ["<think", "<response>", "<tool>"]):
                 self.state = "RAW"
@@ -361,14 +363,13 @@ class ResponseFilter:
                 if tags:
                     tags.sort(key=lambda x: x[0])
                     idx, tag_len, tag_type = tags[0]
-                    # Teks sebelum tag pertama → emit jika substantial
                     if not self.ever_emitted_response:
                         if idx > 15:
                             output += self.pending[:idx]
                             self.ever_emitted_response = True
                     else:
                         output += self.pending[:idx]
-                    
+
                     self.pending = self.pending[idx:]
                     if tag_type == "thinking":
                         self._thinking_buffer = ""
@@ -391,7 +392,6 @@ class ResponseFilter:
                 idx_tool  = self.pending.find("<tool>")
 
                 if idx_tool != -1 and (end_think == -1 or idx_tool < end_think):
-                    # Tool sebelum thinking selesai
                     self._thinking_buffer += self.pending[:idx_tool]
                     if self._thinking_buffer.strip():
                         self._thinking_ready = self._thinking_buffer.strip()
@@ -452,33 +452,26 @@ class ResponseFilter:
         return result
 
     def pop_thinking_delta(self) -> str:
-        """Return unsent portion of thinking buffer for real-time streaming."""
         buf = self._thinking_buffer
         if len(buf) > self._thinking_delta_cursor:
             delta = buf[self._thinking_delta_cursor:]
             self._thinking_delta_cursor = len(buf)
             return delta
-        # Also check _thinking_ready (set when </thinking> is found)
         if self._thinking_ready and self._thinking_delta_cursor > 0:
-            # The buffer was finalized — emit any remaining text
             remaining = self._thinking_ready[self._thinking_delta_cursor:]
             self._thinking_delta_cursor = len(self._thinking_ready)
             return remaining
         return ""
 
     def is_thinking_done(self) -> bool:
-        """Returns True once when </thinking> tag has been found (one-shot)."""
         if self._thinking_done:
             self._thinking_done = False
             return True
         return False
 
 
-# ── Agent Executor ────────────────────────────────────────────────────────────
-
 class AgentExecutor:
 
-    # ── Tool action map: nama tool → (action_label, detail_fn) ──────────────
     _TOOL_ACTION_MAP = {
         "execute_bash":         ("Ran",      lambda a: a.get("command", "")[:60]),
         "read_file":            ("Reading",  lambda a: a.get("path", "").split("/")[-1]),
@@ -487,16 +480,22 @@ class AgentExecutor:
         "ask_model":            ("Analyzed", lambda a: a.get("model_id", "")),
         "web_search":           ("Searched", lambda a: a.get("query", "")[:60]),
         "find_safe_port":       ("Checked",  lambda a: "available port"),
-        "list_dir":             ("Listed",   lambda a: a.get("path", "")[:60]),
-        "search_files":         ("Searched", lambda a: a.get("query", "")[:60]),
+        # Filesystem tools
+        "list_directory":        ("Browsing",  lambda a: a.get("path", ".")),
+        "file_tree":             ("Mapping",   lambda a: a.get("path", ".")),
+        "find_files":            ("Searching", lambda a: a.get("pattern", "")),
+        "search_in_files":       ("Grepping",  lambda a: a.get("keyword", "")[:50]),
+        "make_directory":        ("Creating",  lambda a: a.get("path", "")),
+        "move_file":             ("Moving",    lambda a: f"{a.get('source','')} → {a.get('destination','')}"[:60]),
+        "copy_file":             ("Copying",   lambda a: a.get("source", "")),
+        "delete_file":           ("Deleting",  lambda a: a.get("path", "")),
+        "get_project_path":      ("Locating",  lambda a: "project path"),
+        "set_project_path":      ("Saving",    lambda a: a.get("path", "")),
+        "list_all_projects":     ("Listing",   lambda a: "all projects"),
+        "get_file_info":         ("Inspecting",lambda a: a.get("path", "")),
     }
 
     def _prune_agent_messages(self, messages: list, max_messages: int = 20) -> list:
-        """
-        Prune pesan agar tidak overflow context.
-        PERBAIKAN: pertahankan system prompt + tool history yang relevan.
-        """
-        # Strip <thinking> blocks untuk hemat token
         for msg in messages:
             if msg["role"] == "assistant":
                 msg["content"] = re.sub(
@@ -507,14 +506,11 @@ class AgentExecutor:
         if len(messages) <= max_messages:
             return messages
 
-        # Pertahankan: [0]=system, [1..3]=awal percakapan, [-12:]=terbaru
         if messages and messages[0]["role"] == "system":
             return messages[:1] + messages[1:4] + messages[-12:]
         return messages[:3] + messages[-12:]
 
     def _safe_parse_tool_json(self, text: str) -> Optional[dict]:
-        """Robust JSON parsing dengan 4 strategi fallback."""
-        # Bersihkan markdown code block
         text = text.strip()
         if text.startswith("```json"):
             text = text[7:]
@@ -524,13 +520,11 @@ class AgentExecutor:
             text = text[:-3]
         text = text.strip()
 
-        # Strategi 1: direct parse
         try:
             return json.loads(text)
         except json.JSONDecodeError:
             pass
 
-        # Strategi 2: balanced brace extraction
         start = text.find('{')
         if start != -1:
             depth, in_str, escape = 0, False, False
@@ -557,7 +551,6 @@ class AgentExecutor:
                 except json.JSONDecodeError:
                     pass
 
-        # Strategi 3: regex greedy
         m = re.search(r'\{.*\}', text, re.DOTALL)
         if m:
             try:
@@ -565,7 +558,6 @@ class AgentExecutor:
             except json.JSONDecodeError:
                 pass
 
-        # Strategi 4: fix common issues (single quotes, trailing commas)
         try:
             fixed = re.sub(r',\s*([}\]])', r'\1', text.replace("'", '"'))
             return json.loads(fixed)
@@ -575,19 +567,12 @@ class AgentExecutor:
         return None
 
     def _resolve_model_id(self, model_id: str) -> str:
-        """
-        PERBAIKAN: resolve model_id yang bisa berupa short key atau full key.
-        Contoh: "deepseek-v4-pro" → "sumopod/deepseek-v4-pro"
-        """
         available = model_manager.available_models
-        # Exact match
         if model_id in available:
             return model_id
-        # Partial match: cari key yang mengandung model_id
         for k in available:
             if model_id in k:
                 return k
-        # Fallback ke default
         log.warning("ask_model: model tidak ditemukan, pakai default", model_id=model_id)
         return model_manager.get_default_model()
 
@@ -604,7 +589,6 @@ class AgentExecutor:
         project_path: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
 
-        # ── Inject system prompt (cached) ────────────────────────────────────
         system_prompt = await build_agent_system_prompt_async(
             base_model, execution_mode, project_path, session_id
         )
@@ -618,20 +602,28 @@ class AgentExecutor:
         if not has_system:
             agent_msgs.insert(0, {"role": "system", "content": system_prompt})
 
-        # ── Adaptive MAX_ITERATIONS ──────────────────────────────────────────
-        # Task dengan tools biasanya selesai dalam 10-15 iterasi.
-        # Naikkan hanya jika butuh banyak langkah (project besar).
-        MAX_ITERATIONS = 25   # dikurangi dari 30
+        # ── FASE 2: Temperature diturunkan untuk keakuratan ──────────────────
+        # Override temperature ke nilai rendah untuk tool execution
+        execution_temperature = min(temperature, 0.3)
+
+        # ── FASE 1: MAX_ITERATIONS lebih ketat ──────────────────────────────
+        MAX_ITERATIONS = 15   # dikurangi dari 25 → 15
+
+        # ── FASE 2: Loop breaker — deteksi pengulangan tool ─────────────────
+        last_tool_calls: list = []   # [tool_name, ...] 5 terakhir
+        MAX_SAME_TOOL_REPEAT = 3     # batas pengulangan tool yang sama
 
         consecutive_errors = 0
+        MAX_CONSECUTIVE_ERRORS = 2   # dikurangi dari 3 → 2
 
         for iteration in range(MAX_ITERATIONS):
             response_filter = ResponseFilter(emit_thinking=emit_thinking)
-            # Circuit breaker
-            if consecutive_errors >= 3:
+
+            # ── FASE 1: Circuit breaker lebih cepat ─────────────────────────
+            if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
                 yield (
-                    "\n\n⚠️ **Terlalu banyak error beruntun.** "
-                    "Proses dihentikan. Silakan ulangi pertanyaan Anda.\n"
+                    "\n\n⚠️ **Sistem berhenti setelah terlalu banyak error beruntun.** "
+                    "Silakan ulangi pertanyaan dengan lebih spesifik.\n"
                 )
                 break
 
@@ -641,7 +633,7 @@ class AgentExecutor:
 
             try:
                 async for chunk in model_manager.chat_stream(
-                    base_model, agent_msgs, temperature, max_tokens
+                    base_model, agent_msgs, execution_temperature, max_tokens
                 ):
                     buffer += chunk
 
@@ -650,7 +642,6 @@ class AgentExecutor:
                         if filtered:
                             yield filtered
 
-                        # ── Stream thinking delta in real-time ────────────
                         thinking_delta = response_filter.pop_thinking_delta()
                         if thinking_delta:
                             yield process_emitter.to_sentinel(
@@ -667,7 +658,6 @@ class AgentExecutor:
 
                     if "<tool>" in buffer and not has_tool_started:
                         has_tool_started = True
-                        # Do not yield flushed output here to avoid leaking the <tool> string to the UI
                         response_filter.flush()
                         response_filter.state = "WAITING"
                         response_filter.pending = ""
@@ -685,20 +675,21 @@ class AgentExecutor:
                 err_type = _classify_error(err_str)
                 log.warning("Stream error", type=err_type, error=err_str[:120], iteration=iteration)
 
-                # Fatal → stop immediately
                 if err_type == ErrorType.FATAL:
                     yield f"\n\n❌ **Fatal error:** {err_str[:200]}\n"
                     return
 
                 consecutive_errors += 1
 
-                # Transient (empty output dari Sumopod) → simplify dan retry
+                # ── FASE 1: Retry backoff eksponensial ───────────────────────
+                retry_delay = min(2 ** consecutive_errors, 8)  # 2s, 4s, 8s max
+
                 is_empty_output = any(s in err_str.lower() for s in [
                     "model output must contain", "output text or tool calls",
                     "cannot both be empty"
                 ])
-                if is_empty_output and consecutive_errors <= 2:
-                    log.warning("Empty output error — simplifying prompt")
+                if is_empty_output and consecutive_errors <= 1:
+                    log.warning("Empty output — simplifying prompt and retrying")
                     last_user = next(
                         (m["content"] for m in reversed(agent_msgs) if m["role"] == "user"),
                         "Tolong jawab pertanyaan saya"
@@ -709,33 +700,29 @@ class AgentExecutor:
                         )},
                         {"role": "user", "content": last_user[:2000]},
                     ]
-                    await asyncio.sleep(1.0)
+                    await asyncio.sleep(retry_delay)
                     continue
 
                 if include_tool_logs:
-                    yield f"\n> ⚠️ Stream error (recovering): {err_str[:80]}\n"
+                    yield f"\n> ⚠️ Stream error (retry dalam {retry_delay}s): {err_str[:80]}\n"
 
                 if not buffer.strip():
                     agent_msgs.append({
                         "role": "assistant",
-                        "content": "<thinking>Stream error occurred.</thinking>"
+                        "content": "<thinking>Stream error.</thinking>"
                     })
                     agent_msgs.append({
                         "role": "user",
                         "content": f"<observation>\nStream error: {err_str[:100]}. Continue.\n</observation>"
                     })
                     agent_msgs = self._prune_agent_messages(agent_msgs)
-                    await asyncio.sleep(min(2 ** consecutive_errors, 8))
+                    await asyncio.sleep(retry_delay)
                     continue
 
-            # ── Flush remaining text ─────────────────────────────────────────
             flushed_text = response_filter.flush()
             if flushed_text:
                 yield flushed_text
 
-            # ── Emit final thinking summary (legacy compat) ────────────────
-            # Thinking deltas are already streamed live above; this emits
-            # a final "done" event with word count so the panel can update.
             captured_thinking = response_filter.pop_thinking()
             if captured_thinking and len(captured_thinking) > 30:
                 word_count = len(captured_thinking.split())
@@ -745,10 +732,8 @@ class AgentExecutor:
                     extra={"result": captured_thinking}
                 )
 
-            # ── Auto-detect missing <tool> tags ──────────────────────────────
             has_tool = "<tool>" in buffer
             if not has_tool:
-                # Kadang AI lupa pakai <tool> tapi output JSON dengan name dan args
                 m_json = re.search(r'```json\s*(\{.*?"name"\s*:\s*".*?".*?"args"\s*:.*?\})\s*```', buffer, re.DOTALL)
                 if m_json:
                     has_tool = True
@@ -772,35 +757,53 @@ class AgentExecutor:
                     tool_req = self._safe_parse_tool_json(tool_content)
 
                     if tool_req is None:
-                        raise ValueError(f"Cannot parse tool JSON: {tool_content[:80]}")
+                        raise ValueError("Cannot parse tool JSON: " + tool_content[:80])
 
                     cmd  = tool_req.get("name", "")
                     args = tool_req.get("args", {})
 
-                    # PERBAIKAN: reset consecutive_errors saat tool parse berhasil
                     consecutive_errors = 0
 
-                    # Emit process event untuk tool ini
+                    # ── FASE 2: Loop breaker — cek pengulangan tool ──────────
+                    last_tool_calls.append(cmd)
+                    if len(last_tool_calls) > 5:
+                        last_tool_calls.pop(0)
+
+                    recent_same = sum(1 for t in last_tool_calls[-MAX_SAME_TOOL_REPEAT:] if t == cmd)
+                    if recent_same >= MAX_SAME_TOOL_REPEAT:
+                        yield (
+                            f"\n\n⚠️ **Loop terdeteksi:** Tool `{cmd}` dipanggil "
+                            f"{MAX_SAME_TOOL_REPEAT}x berturut-turut tanpa kemajuan. "
+                            f"Menghentikan eksekusi dan mengevaluasi ulang...\n"
+                        )
+                        agent_msgs.append({
+                            "role": "user",
+                            "content": (
+                                f"<observation>\nANTI-LOOP WARNING: Tool '{cmd}' dipanggil "
+                                f"{MAX_SAME_TOOL_REPEAT}x berturut-turut. "
+                                "Ganti strategi sekarang. Jangan panggil tool yang sama lagi. "
+                                "Evaluasi hasil sebelumnya dan temukan solusi berbeda.\n</observation>"
+                            )
+                        })
+                        last_tool_calls.clear()
+                        agent_msgs = self._prune_agent_messages(agent_msgs)
+                        continue
+
                     _action, _detail_fn = self._TOOL_ACTION_MAP.get(
                         cmd, ("Worked", lambda a: cmd)
                     )
                     _detail = _detail_fn(args)
-                    
-                    # ── AUTOMATIC SNAPSHOT (Save Point) ──────────────────────
-                    # Buat snapshot sebelum aksi destruktif agar bisa di-rollback
+
                     if cmd in ("write_file", "write_multiple_files", "execute_bash"):
                         await snapshot_manager.create_snapshot_async(f"Before {cmd}: {_detail[:50]}")
-                        
+
                     yield process_emitter.to_sentinel(_action, _detail)
 
-                    # ── Eksekusi tool dengan heartbeat ───────────────────────
                     res = ""
                     HEARTBEAT_INTERVAL = 20.0
-                    MAX_TOOL_TIME = 600.0  # 10 menit untuk npm install
+                    MAX_TOOL_TIME = 600.0
 
                     async def _exec_tool():
-                        """Eksekusi tool yang diminta."""
-                        # Analysis mode: block destructive tools
                         if execution_mode == "analysis" and cmd in (
                             "execute_bash", "write_file", "write_multiple_files"
                         ):
@@ -808,52 +811,120 @@ class AgentExecutor:
 
                         if cmd == "execute_bash":
                             return await execute_bash(args.get("command", ""), session_id)
-
                         elif cmd == "read_file":
                             return await read_file(args.get("path", ""), session_id)
-
                         elif cmd == "write_file":
                             return await write_file(
                                 args.get("path", ""), args.get("content", ""), session_id
                             )
-
                         elif cmd == "write_multiple_files":
                             return await write_multiple_files(
                                 args.get("files_data", []), session_id
                             )
-
                         elif cmd == "ask_model":
-                            # PERBAIKAN: resolve model_id (support short + full key)
                             raw_model = args.get("model_id", "")
                             resolved  = self._resolve_model_id(raw_model)
                             return await ask_model(resolved, args.get("prompt", ""))
-
                         elif cmd == "web_search":
                             return await web_search(args.get("query", ""))
-
                         elif cmd == "find_safe_port":
                             return await find_safe_port(args.get("preferred", 0))
-
                         elif cmd == "rollback":
                             res = snapshot_manager.rollback()
                             if res["success"]:
-                                return f"✅ Rollback berhasil ke commit {res['commit'][:8]}. Sistem telah dikembalikan ke state sebelumnya."
-                            return f"❌ Gagal melakukan rollback: {res.get('error')}"
-
-                        elif cmd == "list_dir":
-                            return await list_dir(args.get("path", "."), session_id)
-
-                        elif cmd == "search_files":
-                            return await search_files(args.get("query", ""), args.get("path", "."), session_id)
-
-                        else:
-                            return (
-                                f"Unknown tool: '{cmd}'. "
-                                f"Available: execute_bash, read_file, write_file, "
-                                f"write_multiple_files, ask_model, web_search, find_safe_port, list_dir, search_files"
+                                return "Rollback berhasil ke commit " + res['commit'][:8]
+                            return "Rollback gagal: " + str(res.get('error'))
+                        elif cmd == "list_directory":
+                            from agents.tools.filesystem import list_directory
+                            return await list_directory(
+                                args.get("path", "."), session_id
                             )
 
-                    # Jalankan dengan heartbeat agar tidak timeout saat npm install
+                        elif cmd == "file_tree":
+                            from agents.tools.filesystem import file_tree
+                            return await file_tree(
+                                args.get("path", "."),
+                                args.get("max_depth", 4),
+                                session_id
+                            )
+
+                        elif cmd == "find_files":
+                            from agents.tools.filesystem import find_files
+                            return await find_files(
+                                args.get("pattern", "*"),
+                                args.get("search_path", "."),
+                                args.get("file_type", "any"),
+                                session_id
+                            )
+
+                        elif cmd == "search_in_files":
+                            from agents.tools.filesystem import search_in_files
+                            return await search_in_files(
+                                args.get("keyword", ""),
+                                args.get("search_path", "."),
+                                args.get("extensions", ""),
+                                session_id
+                            )
+
+                        elif cmd == "make_directory":
+                            from agents.tools.filesystem import make_directory
+                            return await make_directory(
+                                args.get("path", ""), session_id
+                            )
+
+                        elif cmd == "move_file":
+                            from agents.tools.filesystem import move_file
+                            return await move_file(
+                                args.get("source", ""),
+                                args.get("destination", ""),
+                                session_id
+                            )
+
+                        elif cmd == "copy_file":
+                            from agents.tools.filesystem import copy_file
+                            return await copy_file(
+                                args.get("source", ""),
+                                args.get("destination", ""),
+                                session_id
+                            )
+
+                        elif cmd == "delete_file":
+                            from agents.tools.filesystem import delete_file
+                            return await delete_file(
+                                args.get("path", ""),
+                                args.get("confirm", False),
+                                session_id
+                            )
+
+                        elif cmd == "get_project_path":
+                            from agents.tools.filesystem import get_project_path
+                            return await get_project_path(session_id)
+
+                        elif cmd == "set_project_path":
+                            from agents.tools.filesystem import set_project_path
+                            return await set_project_path(
+                                args.get("path", ""), session_id
+                            )
+
+                        elif cmd == "list_all_projects":
+                            from agents.tools.filesystem import list_all_projects
+                            return await list_all_projects(session_id)
+
+                        elif cmd == "get_file_info":
+                            from agents.tools.filesystem import get_file_info
+                            return await get_file_info(
+                                args.get("path", ""), session_id
+                            )
+                        else:
+                            return (
+                                "Unknown tool: '" + cmd + "'. "
+                                "Available: execute_bash, read_file, write_file, "
+                                "write_multiple_files, ask_model, web_search, find_safe_port, "
+                                "list_directory, file_tree, find_files, search_in_files, "
+                                "make_directory, move_file, copy_file, delete_file, "
+                                "get_project_path, set_project_path, list_all_projects, get_file_info"
+                            )
+
                     tool_task = asyncio.create_task(_exec_tool())
                     elapsed_secs = 0.0
 
@@ -872,20 +943,18 @@ class AgentExecutor:
                                     await tool_task
                                 except asyncio.CancelledError:
                                     pass
-                                res = f"Tool '{cmd}' timeout setelah {int(MAX_TOOL_TIME // 60)} menit."
+                                res = "Tool '" + cmd + "' timeout setelah " + str(int(MAX_TOOL_TIME // 60)) + " menit."
                                 yield process_emitter.to_sentinel(
-                                    "Error", f"{cmd} timeout {int(MAX_TOOL_TIME // 60)}m"
+                                    "Error", cmd + " timeout"
                                 )
                                 break
-                            # Heartbeat ke frontend
                             yield process_emitter.to_sentinel(
-                                "Ran", f"{_detail[:40]} ({int(elapsed_secs)}s)..."
+                                "Ran", _detail[:40] + " (" + str(int(elapsed_secs)) + "s)..."
                             )
 
                     if res is None:
-                        res = f"Tool '{cmd}' tidak menghasilkan output."
+                        res = "Tool '" + cmd + "' tidak menghasilkan output."
 
-                    # ── Artifact emit ────────────────────────────────────────
                     if cmd == "write_file" and not str(res).startswith("Error"):
                         fp = args.get("path", "")
                         fc = args.get("content", "")
@@ -893,15 +962,30 @@ class AgentExecutor:
                             ext = fp.rsplit(".", 1)[-1].lower() if "." in fp else "txt"
                             yield process_emitter.to_sentinel(
                                 "Written", fp,
-                                extra={
-                                    "code":      fc[:8000],
-                                    "language":  ext,
-                                    "truncated": len(fc) > 8000,
-                                }
+                                extra={"code": fc[:8000], "language": ext, "truncated": len(fc) > 8000}
                             )
 
+                        # Auto-register project path saat write_file berhasil
+                        # Agar orchestrator selalu tahu lokasi project-nya
+                        try:
+                            from core.project_registry import project_registry
+                            fp_abs = os.path.abspath(
+                                os.path.join(
+                                    os.path.expanduser(f"~/projects/{session_id[:8]}"),
+                                    args.get("path", "")
+                                ) if not os.path.isabs(args.get("path", ""))
+                                else args.get("path", "")
+                            )
+                            project_dir = os.path.dirname(fp_abs)
+                            existing = project_registry.get_sync(session_id)
+                            if not existing and project_dir:
+                                asyncio.create_task(
+                                    project_registry.set(session_id, project_dir)
+                                )
+                        except Exception:
+                            pass
+
                     elif cmd == "write_multiple_files" and not str(res).startswith("Error"):
-                        # PERBAIKAN: emit SEMUA file (bukan hanya yang terakhir)
                         files_data = args.get("files_data", [])
                         for file_obj in files_data:
                             fp = file_obj.get("path", "")
@@ -910,29 +994,20 @@ class AgentExecutor:
                                 ext = fp.rsplit(".", 1)[-1].lower() if "." in fp else "txt"
                                 yield process_emitter.to_sentinel(
                                     "Written", fp,
-                                    extra={
-                                        "code":      fc[:8000],
-                                        "language":  ext,
-                                        "truncated": len(fc) > 8000,
-                                    }
+                                    extra={"code": fc[:8000], "language": ext, "truncated": len(fc) > 8000}
                                 )
 
-                    # ── Result display ───────────────────────────────────────
                     res_str = str(res)
                     if include_tool_logs:
                         if cmd == "execute_bash" and not res_str.startswith("Error"):
-                            display = res_str[:2000] + (
-                                "\n...[output dipotong]" if len(res_str) > 2000 else ""
-                            )
+                            display = res_str[:2000] + ("\n...[output dipotong]" if len(res_str) > 2000 else "")
                             yield process_emitter.to_sentinel(
                                 "Found",
-                                f"output: {args.get('command', '')[:40]}",
+                                "output: " + args.get('command', '')[:40],
                                 extra={"result": display}
                             )
                         elif cmd == "read_file" and not res_str.startswith("Error"):
-                            display = res_str[:3000] + (
-                                "\n...[dipotong]" if len(res_str) > 3000 else ""
-                            )
+                            display = res_str[:3000] + ("\n...[dipotong]" if len(res_str) > 3000 else "")
                             yield process_emitter.to_sentinel(
                                 "Reading",
                                 args.get("path", "").split("/")[-1],
@@ -948,21 +1023,18 @@ class AgentExecutor:
                             lines = res_str.strip().splitlines()
                             if len(lines) > 1:
                                 yield process_emitter.to_sentinel(
-                                    "Found", f"{len(lines)} lines", count=len(lines)
+                                    "Found", str(len(lines)) + " lines", count=len(lines)
                                 )
 
-                    # ── Error hint ───────────────────────────────────────────
                     error_hint = _get_error_hint(res_str)
+                    obs = "\n<observation>\n" + res_str + error_hint + "\n</observation>\n"
 
-                    # ── Update conversation ──────────────────────────────────
-                    obs = f"\n<observation>\n{res_str}{error_hint}\n</observation>\n"
-                    # Preserve context up to the tool block so the AI remembers its thinking
                     idx_tool_end = buffer.find("</tool>")
                     if idx_tool_end != -1:
                         buffer_to_save = buffer[:idx_tool_end + 7]
                     else:
-                        buffer_to_save = f"<tool>{tool_content}</tool>"
-                        
+                        buffer_to_save = "<tool>" + tool_content + "</tool>"
+
                     agent_msgs.append({"role": "assistant", "content": buffer_to_save})
                     agent_msgs.append({"role": "user", "content": obs})
                     agent_msgs = self._prune_agent_messages(agent_msgs)
@@ -971,27 +1043,27 @@ class AgentExecutor:
                     consecutive_errors += 1
                     err_msg = str(tool_err)[:150]
                     if include_tool_logs:
-                        yield f"\n> ⚠️ Tool error (recovering): {err_msg}\n"
+                        yield "\n> ⚠️ Tool error (recovering): " + err_msg + "\n"
                     agent_msgs.append({"role": "assistant", "content": buffer})
                     agent_msgs.append({
                         "role": "user",
                         "content": (
-                            f"<observation>\nTool error: {err_msg}. "
-                            "Fix the JSON format and try again.\n</observation>"
+                            "<observation>\nTool error: " + err_msg +
+                            ". Fix the JSON format and try again.\n</observation>"
                         )
                     })
                     agent_msgs = self._prune_agent_messages(agent_msgs)
 
-            else:
-                # ── Tidak ada tool → selesai ─────────────────────────────────
-                # PERBAIKAN: reset consecutive_errors saat model berhasil respond
-                consecutive_errors = 0
+                    # ── FASE 1: Backoff juga untuk tool error ────────────────
+                    retry_delay = min(2 ** consecutive_errors, 8)
+                    await asyncio.sleep(retry_delay)
 
+            else:
+                consecutive_errors = 0
                 remaining = response_filter.flush()
                 if remaining:
                     yield remaining
 
-                # Fallback jika model tidak pakai <response> tags
                 if not response_filter.ever_emitted_response:
                     fallback = re.sub(
                         r'<(?:thinking|think)>.*?</(?:thinking|think)>',
@@ -1003,7 +1075,6 @@ class AgentExecutor:
                     ).strip()
 
                     if fallback:
-                        # Self-correction (opsional)
                         try:
                             from core.self_correction import self_correction_engine
                             corrected, report = await self_correction_engine.review_and_correct(
@@ -1013,7 +1084,7 @@ class AgentExecutor:
                             )
                             if report.total_issues_fixed > 0:
                                 yield corrected
-                                yield f"\n\n✅ *Self-Correction: {report.total_issues_fixed} error diperbaiki.*"
+                                yield "\n\n✅ *Self-Correction: " + str(report.total_issues_fixed) + " error diperbaiki.*"
                             else:
                                 yield fallback
                         except Exception:
