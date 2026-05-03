@@ -166,7 +166,7 @@ Panggil find_safe_port SEBELUM start server apapun.
 
 **APP CREATION WORKFLOW:**
 1. find_safe_port → port aman
-2. write_file → Tulis file secara sekuensial dan periksa hasilnya. Jangan pernah mencoba menggabungkan banyak file dalam satu output.
+2. write_file → Tulis file SATU PER SATU (sekuensial). JANGAN PERNAH menggunakan execute_bash + cat untuk membuat file. JANGAN PERNAH mencoba menggabungkan banyak file dalam satu output karena akan merusak struktur JSON!
 3. execute_bash: install deps (non-interactive: npm install --yes)
 4. execute_bash: start server background (nohup ... > app.log 2>&1 &)
 5. execute_bash: verifikasi (sleep 3 && curl -s http://localhost:PORT)
@@ -183,8 +183,7 @@ Available tools (gunakan DALAM <thinking> saja):
 **CORE TOOLS:**
 1. execute_bash — jalankan bash command. Args: command (string).
 2. read_file — baca isi file. Args: path (string).
-3. write_file — tulis/buat file. Args: path (string), content (string).
-4. write_file — tulis atau timpa satu file. Args: path, content.
+3. write_file — tulis atau timpa SATU file. Args: path (string), content (string). PERINGATAN: Hanya tulis SATU file per pemanggilan tool!
 5. ask_model — tanya AI lain. Args: model_id (string), prompt (string).
 6. web_search — cari internet. Args: query (string).
 7. find_safe_port — cari port aman. Args: preferred (int, optional).
