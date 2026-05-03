@@ -493,6 +493,10 @@ async def chat_send(
                 user_friendly_err = "🛑 Terlalu banyak request - silakan tunggu beberapa detik sebelum mencoba lagi"
                 yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
                 full_response = user_friendly_err
+            elif "content filter" in err_str.lower() or "request was blocked" in err_str.lower():
+                user_friendly_err = "🔒 Permintaan diblokir oleh filter konten provider. Silakan coba ulangi pesan Anda."
+                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
+                full_response = user_friendly_err
             elif "connection" in err_str.lower() or "network" in err_str.lower():
                 user_friendly_err = "🌐 Gagal terhubung ke layanan AI. Periksa koneksi dan coba lagi."
                 yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
