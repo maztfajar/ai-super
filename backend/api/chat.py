@@ -24,8 +24,9 @@ import structlog
 log = structlog.get_logger()
 
 # ── Chat Rate Limiter ─────────────────────────────────────────
-# 30 requests per minute per user (prevents API quota abuse)
-_CHAT_RATE_LIMIT   = 100   # ditingkatkan dari 30 agar user lebih leluasa saat debugging
+# 500 requests per minute per user — tinggi karena orchestrator internal loop
+# bisa menghasilkan banyak request saat tool execution (15 iterasi × multi-event)
+_CHAT_RATE_LIMIT   = 500
 _CHAT_RATE_WINDOW  = 60    # seconds
 _chat_mem_counters: dict = {}  # fallback in-memory tracker
 
