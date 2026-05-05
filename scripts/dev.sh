@@ -59,7 +59,7 @@ cd "$DIR/backend"
 # Biarkan mengikuti konfigurasi dari .env
 
 # ── Buat direktori data ───────────────────────────────────────
-mkdir -p data/logs data/uploads data/chroma_db
+mkdir -p data/logs data/uploads data/chroma_db ../rag_documents
 
 # ── Init DB & admin ───────────────────────────────────────────
 step "Inisialisasi Database"

@@ -17,8 +17,9 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright dependencies
-RUN pip install playwright && playwright install-deps chromium
+# Install Playwright and its dependencies
+RUN pip install playwright && \
+    playwright install --with-deps chromium
 
 # Copy backend requirements
 COPY backend/requirements.txt ./backend/
@@ -40,16 +41,25 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 # Copy other necessary files
 COPY .env.example .env
 
+# Create data directories
+RUN mkdir -p /app/data/uploads /app/data/chroma_db /app/data/logs /app/rag_documents
+
 # Expose the application port
 EXPOSE 7860
 
 # Volume for persistent data
-VOLUME ["/app/data"]
+VOLUME ["/app/data", "/app/rag_documents"]
 
 # Set environment variables
 ENV PYTHONPATH=/app/backend
 ENV HOST=0.0.0.0
 ENV PORT=7860
+ENV PYTHONUNBUFFERED=1
 
-# Run the application (Python akan otomatis menjalankan file .pyc)
+# Healthcheck to monitor API status
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:7860/api/health || exit 1
+
+# Run the application using the compiled main.pyc
 CMD ["python", "backend/main.pyc"]
+

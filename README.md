@@ -100,19 +100,20 @@ Anda juga bisa menjalankan AI Orchestrator menggunakan Docker tanpa perlu instal
 
 ```bash
 # Pull image dari Docker Hub
-docker pull your-username/ai-super:latest
+docker pull maztfajar/ai-super:latest
 
 # Jalankan container
 docker run -d \
   -p 7860:7860 \
   -v $(pwd)/data:/app/data \
+  -v $(pwd)/rag_documents:/app/rag_documents \
   --env-file .env \
   --name ai-orchestrator \
-  your-username/ai-super:latest
+  maztfajar/ai-super:latest
 ```
 
 > [!TIP]
-> Ganti `your-username` dengan username Docker Hub Anda. Pastikan file `.env` sudah dikonfigurasi sebelum menjalankan container.
+> Ganti `maztfajar` dengan username Docker Hub Anda jika Anda menggunakan fork. Pastikan file `.env` sudah dikonfigurasi sebelum menjalankan container.
 
 ---
 

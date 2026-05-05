@@ -7,11 +7,18 @@ services:
       - "7860:7860"
     volumes:
       - ./data:/app/data
+      - ./rag_documents:/app/rag_documents
     env_file:
       - .env
     # Label ini penting untuk Watchtower agar hanya memantau container ini jika diinginkan
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/api/health"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   watchtower:
     image: containrrr/watchtower

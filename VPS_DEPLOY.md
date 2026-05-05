@@ -38,13 +38,32 @@ cd ..
 
 ---
 
-## Step 3: Restart Services
+## Step 3: Restart Services (Manual)
 
 ```bash
 bash scripts/stop.sh
 sleep 2
 bash scripts/start.sh
 ```
+
+---
+
+## 🐳 Step 4: Docker Deployment (Recommended)
+
+Jika Anda ingin menggunakan Docker untuk kemudahan manajemen dan update otomatis:
+
+```bash
+cd ~/ai-super
+
+# 1. Jalankan dengan Docker Compose
+docker-compose up -d
+
+# 2. Check logs
+docker logs -f ai-orchestrator
+```
+
+**Update otomatis dengan Watchtower:**
+Docker Compose sudah dikonfigurasi dengan Watchtower yang akan mengecek update image di Docker Hub setiap 5 menit. Cukup `push` ke GitHub, dan VPS Anda akan terupdate otomatis.
 
 ---
 

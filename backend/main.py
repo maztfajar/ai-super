@@ -131,7 +131,7 @@ async def lifespan(app: FastAPI):
     log.info("Starting AI ORCHESTRATOR...")
 
     # Buat direktori data
-    for d in ["./data/uploads", "./data/chroma_db", "./data/logs", "./data/audit_logs"]:
+    for d in ["./data/uploads", "./data/chroma_db", "./data/logs", "./data/audit_logs", settings.RAG_DOCUMENTS_DIR]:
         Path(d).mkdir(parents=True, exist_ok=True)
 
     # ── Security: Harden file permissions at startup ──────────
