@@ -198,12 +198,21 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         # /start
         if text == "/start":
             await _send(token, chat_id,
-                "Halo " + from_name + "! Saya *AI ORCHESTRATOR*, AI Orchestrator kamu.\n\n"
-                "Ketik pertanyaan apa saja dan saya akan menjawab!\n\n"
-                "Perintah:\n"
+                f"Halo <b>{_escape(from_name)}</b>! 👋\n\n"
+                "Saya adalah <b>AI ORCHESTRATOR</b> — platform AI otonom yang berjalan di VPS Anda.\n\n"
+                "🔧 <b>Yang bisa saya lakukan:</b>\n"
+                "• Eksekusi perintah di server (cek health, lihat log, dll)\n"
+                "• Cari informasi real-time di internet\n"
+                "• Buat dan kelola file di server\n"
+                "• Otomasi browser (buka website, isi form, screenshot)\n"
+                "• Akses Gmail, Calendar, Sheets, Drive (jika disetup)\n"
+                "• Memori jangka panjang — saya ingat proyek Anda\n\n"
+                "📌 <b>Perintah:</b>\n"
                 "/start - Mulai\n"
-                "/help - Bantuan\n"
-                "/clear - Hapus konteks chat\n"
+                "/help - Bantuan lengkap\n"
+                "/skills - Daftar semua skill\n"
+                "/status - Status server\n"
+                "/clear - Reset konteks chat\n"
                 "/model - Lihat model aktif"
             )
             return
@@ -211,17 +220,22 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         # /help
         if text == "/help":
             await _send(token, chat_id,
-                "*AI ORCHESTRATOR Bot*\n\n"
-                "Kirim pesan teks biasa untuk chat dengan AI.\n\n"
-                "Fitur:\n"
-                "- Chat dengan AI (auto-pilih model terbaik)\n"
-                "- Cari di knowledge base (RAG)\n"
-                "- Ingat konteks percakapan\n\n"
-                "Perintah:\n"
-                "/start - Mulai bot\n"
-                "/help - Tampilkan bantuan ini\n"
-                "/clear - Reset konteks chat\n"
-                "/model - Model yang digunakan"
+                "<b>🧠 AI ORCHESTRATOR — Panduan Penggunaan</b>\n\n"
+                "<b>Contoh perintah yang bisa langsung dicoba:</b>\n"
+                "• <code>cek kesehatan server</code>\n"
+                "• <code>cek koneksi internet</code>\n"
+                "• <code>lihat penggunaan disk</code>\n"
+                "• <code>cari berita AI terbaru</code>\n"
+                "• <code>buka website X dan ambil datanya</code>\n"
+                "• <code>cek email baru dari Gmail</code>\n"
+                "• <code>jadwalkan meeting besok jam 10</code>\n\n"
+                "<b>Perintah Bot:</b>\n"
+                "/start — Mulai bot\n"
+                "/help — Panduan ini\n"
+                "/skills — Lihat semua skill\n"
+                "/status — Status server sekarang\n"
+                "/clear — Reset konteks chat\n"
+                "/model — Model AI yang aktif"
             )
             return
 
@@ -237,7 +251,95 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             from core.model_manager import model_manager
             default_model = model_manager.get_default_model()
             models_list = ", ".join(list(model_manager.available_models.keys())[:5])
-            await _send(token, chat_id, f"Model default: `{default_model}`\nModel tersedia: `{models_list}`")
+            await _send(token, chat_id, f"Model default: <code>{default_model}</code>\nModel tersedia: <code>{models_list}</code>")
+            return
+
+        # /skills
+        if text == "/skills":
+            await _send(token, chat_id,
+                "<b>🚀 AI ORCHESTRATOR — Autonomous Skills Suite</b>\n\n"
+                "<b>🔧 Background Skills (Selalu Aktif):</b>\n"
+                "⚡ <b>QMD</b> — Hemat token hingga 80% dengan distilasi context\n"
+                "🧠 <b>Capability Evolver</b> — Self-improvement otomatis tiap 30 menit\n"
+                "✍️ <b>Humanizer</b> — Memoles output agar natural seperti tulisan manusia\n"
+                "🧭 <b>Byte Rover</b> — Memori jangka panjang berbasis ChromaDB\n"
+                "🏛️ <b>Command Center</b> — Koordinator multi-agent paralel\n\n"
+                "<b>🛠️ On-Demand Tools:</b>\n"
+                "💻 <b>execute_bash</b> — Jalankan perintah shell di VPS\n"
+                "🌐 <b>web_search</b> — Cari informasi real-time di internet\n"
+                "📁 <b>filesystem</b> — Baca, tulis, kelola file di server\n"
+                "🌍 <b>Browser Automation</b> — Operasikan Chrome secara headless\n"
+                "📧 <b>GOG CLI</b> — Gmail, Calendar, Sheets, Drive\n\n"
+                "💡 Ketik perintah dalam bahasa natural, saya akan memilih tool yang tepat!"
+            )
+            return
+
+        # /status — cek kesehatan server secara langsung
+        if text == "/status":
+            await _send_typing(token, chat_id)
+            await _send(token, chat_id, "⚙️ <b>Mengecek status server...</b>")
+            import asyncio, subprocess
+            try:
+                def _run_checks():
+                    results = {}
+                    # Uptime
+                    try:
+                        r = subprocess.run(["uptime", "-p"], capture_output=True, text=True, timeout=5)
+                        results["uptime"] = r.stdout.strip()
+                    except Exception:
+                        results["uptime"] = "N/A"
+                    # Memory
+                    try:
+                        r = subprocess.run(["free", "-h"], capture_output=True, text=True, timeout=5)
+                        lines = r.stdout.strip().split("\n")
+                        if len(lines) > 1:
+                            parts = lines[1].split()
+                            results["mem_total"] = parts[1] if len(parts) > 1 else "N/A"
+                            results["mem_used"] = parts[2] if len(parts) > 2 else "N/A"
+                            results["mem_free"] = parts[3] if len(parts) > 3 else "N/A"
+                    except Exception:
+                        results["mem_total"] = results["mem_used"] = results["mem_free"] = "N/A"
+                    # Disk
+                    try:
+                        r = subprocess.run(["df", "-h", "/"], capture_output=True, text=True, timeout=5)
+                        lines = r.stdout.strip().split("\n")
+                        if len(lines) > 1:
+                            parts = lines[1].split()
+                            results["disk_total"] = parts[1] if len(parts) > 1 else "N/A"
+                            results["disk_used"] = parts[2] if len(parts) > 2 else "N/A"
+                            results["disk_free"] = parts[3] if len(parts) > 3 else "N/A"
+                            results["disk_pct"] = parts[4] if len(parts) > 4 else "N/A"
+                    except Exception:
+                        results["disk_total"] = results["disk_used"] = results["disk_free"] = results["disk_pct"] = "N/A"
+                    # Internet
+                    try:
+                        r = subprocess.run(["ping", "-c", "2", "-W", "3", "8.8.8.8"], capture_output=True, text=True, timeout=10)
+                        results["internet"] = "✅ Terhubung" if r.returncode == 0 else "❌ Tidak ada koneksi"
+                    except Exception:
+                        results["internet"] = "❓ Tidak diketahui"
+                    # Load average
+                    try:
+                        with open("/proc/loadavg") as f:
+                            load = f.read().split()[:3]
+                            results["load"] = " / ".join(load)
+                    except Exception:
+                        results["load"] = "N/A"
+                    return results
+
+                res = await asyncio.get_event_loop().run_in_executor(None, _run_checks)
+                msg = (
+                    "<b>🖥️ Status Server — AI ORCHESTRATOR</b>\n\n"
+                    f"⏱️ <b>Uptime:</b> {res['uptime']}\n"
+                    f"📊 <b>Load Avg:</b> {res['load']}\n\n"
+                    f"💾 <b>Memory:</b>\n"
+                    f"   • Total: {res['mem_total']} | Digunakan: {res['mem_used']} | Bebas: {res['mem_free']}\n\n"
+                    f"💿 <b>Disk (/):</b>\n"
+                    f"   • Total: {res['disk_total']} | Digunakan: {res['disk_used']} ({res['disk_pct']}) | Bebas: {res['disk_free']}\n\n"
+                    f"🌐 <b>Internet:</b> {res['internet']}"
+                )
+                await _send(token, chat_id, msg)
+            except Exception as e:
+                await _send(token, chat_id, f"❌ Gagal mengecek status: {str(e)[:100]}")
             return
 
         # Pesan biasa → proses AI
@@ -262,8 +364,17 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             model = model_manager.get_default_model() if available_models else available_models[0]
         system = await memory_manager.build_system_prompt(user_id, "tg_" + str(chat_id))
 
-        # Telegram context
-        system += "\n\n[PENTING: SUMBER TELEGRAM]\nAnda sedang berkomunikasi melalui bot Telegram. Jika pengguna meminta untuk membuat file, script, atau aplikasi, JANGAN menyimpannya di root direktori AI Orchestrator. Selalu simpan file-file yang dihasilkan ke dalam folder terpisah (misalnya /home/bamuskal/Documents/ai-super/data/generated_apps/). Selalu buat folder tujuan menggunakan command line dengan format absolut dan gunakan path absolut tersebut di semua perintah file/folder selanjutnya (contoh: `mkdir -p /absolute/path/nama-app` lalu `cd /absolute/path/nama-app`). DILARANG KERAS menggunakan perintah `cd` dengan path relatif karena sesi eksekusi terminal tidak persisten antar-langkah."
+        # Telegram-specific context — reinforce tool awareness
+        system += (
+            "\n\n## KONTEKS SESI: TELEGRAM BOT"
+            "\nAnda sedang berkomunikasi melalui Telegram Bot. Aturan penting:"
+            "\n- Anda TETAP memiliki akses ke semua tools (execute_bash, web_search, dll)"
+            "\n- Saat diminta cek server: LANGSUNG jalankan `execute_bash` dengan perintah sistem (df -h, free -h, uptime, dll)"
+            "\n- Saat diminta cek internet: LANGSUNG jalankan `execute_bash` dengan `ping -c 2 8.8.8.8`"
+            "\n- Saat ditanya skill/kemampuan: jawab berdasarkan daftar AUTONOMOUS SKILLS SUITE di atas, bukan kemampuan AI generik"
+            "\n- Format file yang dibuat: simpan ke `/home/bamuskal/Documents/ai-super/data/generated_apps/`"
+            "\n- DILARANG menggunakan perintah `cd` dengan path relatif"
+        )
 
         # RAG context
         try:
