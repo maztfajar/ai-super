@@ -88,7 +88,7 @@ Anda juga bisa menjalankan AI Orchestrator menggunakan Docker tanpa perlu instal
 
 ```bash
 # Pull image dari Docker Hub
-docker pull your-username/ai-orchestrator:latest
+docker pull your-username/ai-super:latest
 
 # Jalankan container
 docker run -d \
@@ -96,7 +96,7 @@ docker run -d \
   -v $(pwd)/data:/app/data \
   --env-file .env \
   --name ai-orchestrator \
-  your-username/ai-orchestrator:latest
+  your-username/ai-super:latest
 ```
 
 > [!TIP]
