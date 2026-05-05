@@ -1,5 +1,5 @@
 """
-AI Orchestrator Orchestrator — Agent Registry (v2.1 — Performance Optimized)
+Super Agent Orchestrator — Agent Registry (v2.1 — Performance Optimized)
 ==========================================================================
 Perbaikan dari v1:
   1. preferred_models kini pakai full key "sumopod/..." agar resolve tepat
@@ -21,19 +21,19 @@ log = structlog.get_logger()
 # ── Capability map: model → tags (sinkron dengan .capability_map.json) ──────
 # Ini adalah "single source of truth" untuk routing tanpa import circular.
 MODEL_CAPABILITY_MAP: Dict[str, List[str]] = {
-    "sumopod/qwen3.6-flash":              ["coding", "speed", "text", "vision"],
-    "sumopod/deepseek-v4-pro":            ["coding", "reasoning", "text"],
-    "sumopod/gemini-2.5-flash-lite":      ["speed", "text", "vision"],
-    "sumopod/minimax/speech-2.8-hd":      ["audio", "speed", "tts"],
-    "sumopod/claude-haiku-4-5":           ["speed", "writing", "text"],
-    "sumopod/gpt-5-nano":                 ["analysis", "coding", "reasoning", "speed", "text", "vision", "writing"],
+    "sumopod/qwen3.6-flash":           ["coding", "speed", "text", "vision"],
+    "sumopod/deepseek-v4-pro":           ["coding", "reasoning", "text"],
+    "sumopod/gemini-2.5-flash-lite":   ["speed", "text", "vision"],
+    "sumopod/minimax/speech-2.8-hd":   ["audio", "speed", "tts"],
+    "sumopod/claude-haiku-4-5":        ["speed"],
+    "sumopod/gpt-4o-mini":             ["analysis", "coding", "reasoning", "speed", "text", "vision", "writing"],
 }
 
 # Urutan preferensi global jika agent tidak punya preferred_models tersendiri
 _DEFAULT_FALLBACK_ORDER = [
     "sumopod/deepseek-v4-pro",
     "sumopod/qwen3.6-flash",
-    "sumopod/gpt-5-nano",
+    "sumopod/gpt-4o-mini",
     "sumopod/gemini-2.5-flash-lite",
     "sumopod/claude-haiku-4-5",
 ]
@@ -69,7 +69,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
                 "problem_solving", "critical_thinking"],
         preferred_models=[
             "sumopod/deepseek-v4-pro",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
@@ -90,11 +90,11 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         preferred_models=[
             "sumopod/deepseek-v4-pro",
             "sumopod/qwen3.6-flash",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
         required_capabilities=["coding"],
-        tools_allowed=["execute_bash", "read_file", "write_file"],
+        tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         default_max_tokens=8192,
         system_prompt_addon=(
@@ -110,7 +110,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["search", "gather", "compare", "summarize", "fact_check", "data_collection"],
         preferred_models=[
             "sumopod/gemini-2.5-flash-lite",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
         fallback_models=["sumopod/claude-haiku-4-5", "sumopod/deepseek-v4-pro"],
@@ -130,7 +130,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
                 "content_creation", "copywriting", "email"],
         preferred_models=[
             "sumopod/claude-haiku-4-5",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/deepseek-v4-pro"],
@@ -151,17 +151,15 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         preferred_models=[
             "sumopod/deepseek-v4-pro",
             "sumopod/qwen3.6-flash",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
         required_capabilities=["coding"],
-        tools_allowed=["execute_bash", "read_file", "write_file"],
+        tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
         system_prompt_addon=(
-            "Prioritaskan keamanan. ANDA ADALAH AGEN OTONOM. Eksekusi semua perintah secara mandiri menggunakan tool execute_bash. "
-            "JANGAN PERNAH menyuruh user untuk menjalankan perintah secara manual. "
-            "Gunakan sudo jika diperlukan untuk menyelesaikan tugas (seperti kill proses atau systemctl terkait aplikasi). "
-            "PERINGATAN: JANGAN PERNAH menjalankan perintah destruktif yang dapat merusak sistem OS utama (seperti rm -rf /, format disk, atau mematikan layanan OS kritikal)."
+            "Prioritaskan keamanan. Selalu jelaskan apa yang dilakukan perintah sebelum mengeksekusi. "
+            "Gunakan sudo hanya jika diperlukan."
         ),
     ),
 
@@ -173,7 +171,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
                 "innovation", "storytelling"],
         preferred_models=[
             "sumopod/claude-haiku-4-5",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite"],
@@ -193,7 +191,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
                 "code_review", "proofreading"],
         preferred_models=[
             "sumopod/deepseek-v4-pro",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
         fallback_models=["sumopod/claude-haiku-4-5"],
@@ -212,8 +210,8 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["conversation", "faq", "general_knowledge"],
         preferred_models=[
             "sumopod/gemini-2.5-flash-lite",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-5-nano",
+            "sumopod/claude-haiku-4-5",
+            "sumopod/gpt-4o-mini",
         ],
         fallback_models=["sumopod/qwen3.6-flash"],
         required_capabilities=["speed"],
@@ -227,7 +225,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         description="Membuat gambar dari deskripsi teks menggunakan model vision",
         skills=["image_gen", "vision", "creative", "design"],
         preferred_models=[
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
         ],
         fallback_models=["sumopod/gemini-2.5-flash-lite"],
@@ -250,7 +248,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         preferred_models=[
             "sumopod/minimax/speech-2.8-hd",
         ],
-        fallback_models=["sumopod/gpt-5-nano"],
+        fallback_models=["sumopod/gpt-4o-mini"],
         required_capabilities=["tts"],
         default_temperature=0.5,
         default_max_tokens=512,
@@ -267,7 +265,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["vision", "audio", "text", "analysis", "reasoning"],
         preferred_models=[
             "sumopod/qwen3.6-flash",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/gemini-2.5-flash-lite",
         ],
         fallback_models=["sumopod/deepseek-v4-pro"],
@@ -285,7 +283,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["vision", "image_analysis", "ocr", "object_detection"],
         preferred_models=[
             "sumopod/qwen3.6-flash",
-            "sumopod/gpt-5-nano",
+            "sumopod/gpt-4o-mini",
             "sumopod/gemini-2.5-flash-lite",
         ],
         fallback_models=["sumopod/deepseek-v4-pro"],
@@ -424,27 +422,6 @@ class AgentRegistryManager:
         """
         mm = self.model_manager
         available = set(mm.available_models.keys())
-
-        # 0. Check for Dynamic AI Role Mappings in settings
-        from core.config import settings
-        role_map = {
-            "coding": settings.AI_ROLE_CODING,
-            "reasoning": settings.AI_ROLE_REASONING,
-            "general": settings.AI_ROLE_CHAT,
-        }
-        
-        mapped_model = role_map.get(agent_type)
-        if mapped_model:
-            # Check for direct match or sumopod/ prefix
-            if mapped_model in available:
-                log.debug("resolve_model: role_mapping match", agent=agent_type, model=mapped_model)
-                return mapped_model
-            
-            # Check with provider prefix
-            sumopod_key = f"sumopod/{mapped_model}"
-            if sumopod_key in available:
-                log.debug("resolve_model: role_mapping sumopod match", agent=agent_type, model=sumopod_key)
-                return sumopod_key
 
         # 1. User explicitly chose a model
         if user_preferred and user_preferred in available:

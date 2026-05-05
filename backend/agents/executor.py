@@ -768,25 +768,26 @@ class AgentExecutor:
 
                     consecutive_errors = 0
 
-                    # ── FASE 2: Loop breaker — cek pengulangan tool ──────────
-                    last_tool_calls.append(cmd)
+                    # ── FASE 2: Loop breaker — cek pengulangan tool secara presisi ──────────
+                    tool_signature = json.dumps(tool_req, sort_keys=True)
+                    last_tool_calls.append(tool_signature)
                     if len(last_tool_calls) > 5:
                         last_tool_calls.pop(0)
 
-                    recent_same = sum(1 for t in last_tool_calls[-MAX_SAME_TOOL_REPEAT:] if t == cmd)
+                    recent_same = sum(1 for t in last_tool_calls[-MAX_SAME_TOOL_REPEAT:] if t == tool_signature)
                     if recent_same >= MAX_SAME_TOOL_REPEAT:
                         yield (
-                            f"\n\n⚠️ **Loop terdeteksi:** Tool `{cmd}` dipanggil "
+                            f"\n\n⚠️ **Loop terdeteksi:** Tool `{cmd}` dipanggil dengan argumen yang sama persis "
                             f"{MAX_SAME_TOOL_REPEAT}x berturut-turut tanpa kemajuan. "
                             f"Menghentikan eksekusi dan mengevaluasi ulang...\n"
                         )
                         agent_msgs.append({
                             "role": "user",
                             "content": (
-                                f"<observation>\nANTI-LOOP WARNING: Tool '{cmd}' dipanggil "
+                                f"<observation>\nANTI-LOOP WARNING: Tool '{cmd}' dipanggil dengan argumen yang sama persis "
                                 f"{MAX_SAME_TOOL_REPEAT}x berturut-turut. "
-                                "Ganti strategi sekarang. Jangan panggil tool yang sama lagi. "
-                                "Evaluasi hasil sebelumnya dan temukan solusi berbeda.\n</observation>"
+                                "Anda terjebak dalam loop. Ganti strategi sekarang. Jangan ulangi perintah yang gagal. "
+                                "Evaluasi hasil error sebelumnya dan temukan solusi atau command yang berbeda.\n</observation>"
                             )
                         })
                         last_tool_calls.clear()
