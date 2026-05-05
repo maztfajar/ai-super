@@ -242,6 +242,32 @@ class RAGEngine:
             log.error("Index gagal", file=file_path, error=str(e))
             return {"status": "error", "message": str(e), "chunks": 0}
 
+    async def index_text(self, text: str, metadata: dict) -> dict:
+        """
+        Index teks mentah langsung ke vectorstore (berguna untuk Byte Rover / Long-term Memory).
+        """
+        if not self._ready:
+            return {"status": "skipped", "message": "RAG belum aktif.", "chunks": 0}
+            
+        try:
+            from langchain_core.documents import Document
+            doc = Document(page_content=text, metadata=metadata)
+            
+            # Split document if it's too long
+            if self.text_splitter:
+                split_docs = self.text_splitter.split_documents([doc])
+            else:
+                split_docs = [doc]
+                
+            await asyncio.get_event_loop().run_in_executor(
+                None, self._add_to_store, split_docs
+            )
+            
+            return {"status": "indexed", "chunks": len(split_docs)}
+        except Exception as e:
+            log.error("Index teks gagal", error=str(e))
+            return {"status": "error", "message": str(e), "chunks": 0}
+
     def _add_processed_chunks(self, chunks):
         """Tambahkan ProcessedChunk ke vectorstore."""
         from langchain_core.documents import Document

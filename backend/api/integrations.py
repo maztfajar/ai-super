@@ -361,6 +361,107 @@ async def test_sumopod(user: User = Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(500, str(e))
 
+# ══════════════════════════════════════════════════════════════
+# GOOGLE ECOSYSTEM OAUTH FLOW
+# ══════════════════════════════════════════════════════════════
+
+GOOGLE_CREDENTIALS_FILE = Path(__file__).parent.parent.parent / ".google_credentials.json"
+GOOGLE_TOKEN_FILE = Path(__file__).parent.parent.parent / ".google_token.json"
+
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/spreadsheets',
+    'https://www.googleapis.com/auth/drive'
+]
+
+class GoogleAuthUrlReq(BaseModel):
+    credentials_json: str
+    redirect_uri: str
+
+@router.post("/google/auth/url")
+async def get_google_auth_url(req: GoogleAuthUrlReq, user: User = Depends(get_current_user)):
+    """Menyimpan credentials.json dan menghasilkan Auth URL."""
+    try:
+        creds_data = json.loads(req.credentials_json)
+        # Ensure it's a valid web or installed credential
+        if "web" not in creds_data and "installed" not in creds_data:
+            raise HTTPException(400, "credentials.json tidak valid. Pastikan itu adalah OAuth 2.0 Client ID.")
+            
+        GOOGLE_CREDENTIALS_FILE.write_text(json.dumps(creds_data))
+        
+        from google_auth_oauthlib.flow import Flow
+        flow = Flow.from_client_secrets_file(
+            str(GOOGLE_CREDENTIALS_FILE),
+            scopes=SCOPES,
+            redirect_uri=req.redirect_uri
+        )
+        
+        auth_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent'
+        )
+        
+        return {"status": "ok", "auth_url": auth_url}
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Format JSON tidak valid")
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+class GoogleAuthCallbackReq(BaseModel):
+    code: str
+    redirect_uri: str
+
+@router.post("/google/auth/callback")
+async def google_auth_callback(req: GoogleAuthCallbackReq, user: User = Depends(get_current_user)):
+    """Menukar authorization code dengan token."""
+    if not GOOGLE_CREDENTIALS_FILE.exists():
+        raise HTTPException(400, "Credentials belum dikonfigurasi.")
+        
+    try:
+        from google_auth_oauthlib.flow import Flow
+        flow = Flow.from_client_secrets_file(
+            str(GOOGLE_CREDENTIALS_FILE),
+            scopes=SCOPES,
+            redirect_uri=req.redirect_uri
+        )
+        
+        flow.fetch_token(code=req.code)
+        creds = flow.credentials
+        
+        token_data = {
+            'token': creds.token,
+            'refresh_token': creds.refresh_token,
+            'token_uri': creds.token_uri,
+            'client_id': creds.client_id,
+            'client_secret': creds.client_secret,
+            'scopes': creds.scopes
+        }
+        
+        GOOGLE_TOKEN_FILE.write_text(json.dumps(token_data))
+        
+        return {"status": "ok", "message": "Google Ecosystem berhasil diotorisasi!"}
+    except Exception as e:
+        log.error("Google Auth Callback error", error=str(e))
+        raise HTTPException(500, f"Otorisasi gagal: {str(e)}")
+
+@router.get("/google/status")
+async def get_google_status(user: User = Depends(get_current_user)):
+    """Cek apakah kredensial google dan token sudah ada."""
+    return {
+        "configured": GOOGLE_CREDENTIALS_FILE.exists() and GOOGLE_TOKEN_FILE.exists(),
+        "has_credentials_file": GOOGLE_CREDENTIALS_FILE.exists()
+    }
+
+@router.delete("/google/disconnect")
+async def disconnect_google(user: User = Depends(get_current_user)):
+    if GOOGLE_CREDENTIALS_FILE.exists():
+        GOOGLE_CREDENTIALS_FILE.unlink()
+    if GOOGLE_TOKEN_FILE.exists():
+        GOOGLE_TOKEN_FILE.unlink()
+    return {"status": "ok", "message": "Terputus dari Google Ecosystem."}
+
 
 # ── Webhook Telegram ──────────────────────────────────────────
 @router.post("/telegram/webhook")

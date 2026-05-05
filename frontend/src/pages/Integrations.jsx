@@ -794,6 +794,209 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
   )
 }
 
+// ── Google Ecosystem Section (GOG CLI) ───────────────────────
+const gog_api = {
+  status:       () => api.get('/integrations/google/status'),
+  getAuthUrl:   (credentials_json, redirect_uri) => api.post('/integrations/google/auth/url', { credentials_json, redirect_uri }),
+  callback:     (code, redirect_uri) => api.post('/integrations/google/auth/callback', { code, redirect_uri }),
+  disconnect:   () => api.delete('/integrations/google/disconnect'),
+}
+
+function GoogleEcosystemSection() {
+  const [open, setOpen] = useState(false)
+  const [configured, setConfigured] = useState(false)
+  const [hasCredentials, setHasCredentials] = useState(false)
+  const [credsJson, setCredsJson] = useState('')
+  const [authStep, setAuthStep] = useState('idle') // idle | pasting | authorizing | callback
+  const [authCode, setAuthCode] = useState('')
+  const [authUrl, setAuthUrl] = useState('')
+  const [acting, setActing] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  const redirectUri = `${window.location.origin}/integrations/google/callback`
+
+  const loadStatus = async () => {
+    try {
+      const r = await gog_api.status()
+      setConfigured(r.configured)
+      setHasCredentials(r.has_credentials_file)
+    } catch {}
+  }
+
+  useEffect(() => { loadStatus() }, [])
+
+  const handleGetAuthUrl = async () => {
+    if (!credsJson.trim()) { toast.error('Tempel isi credentials.json terlebih dahulu'); return }
+    setActing(true)
+    try {
+      const r = await gog_api.getAuthUrl(credsJson.trim(), redirectUri)
+      setAuthUrl(r.auth_url)
+      setAuthStep('authorizing')
+      window.open(r.auth_url, '_blank')
+    } catch (e) {
+      toast.error(`Gagal: ${e.message}`)
+    } finally { setActing(false) }
+  }
+
+  const handleCallback = async () => {
+    if (!authCode.trim()) { toast.error('Masukkan authorization code'); return }
+    setActing(true)
+    try {
+      await gog_api.callback(authCode.trim(), redirectUri)
+      toast.success('🎉 Google Ecosystem berhasil terhubung!')
+      setAuthStep('idle'); setCredsJson(''); setAuthCode(''); setAuthUrl('')
+      await loadStatus()
+    } catch (e) {
+      toast.error(`Gagal: ${e.message}`)
+    } finally { setActing(false) }
+  }
+
+  const handleDisconnect = async () => {
+    if (!confirm('Putuskan koneksi Google? Semua token akan dihapus.')) return
+    setDisconnecting(true)
+    try {
+      await gog_api.disconnect()
+      toast('🔌 Terputus dari Google Ecosystem', { icon: '🔌' })
+      setConfigured(false); setHasCredentials(false)
+    } catch (e) { toast.error(e.message) }
+    finally { setDisconnecting(false) }
+  }
+
+  const SERVICES = [
+    { icon: '📧', name: 'Gmail', desc: 'Baca & kirim email', cmd: 'gog_read_emails / gog_send_email' },
+    { icon: '📅', name: 'Google Calendar', desc: 'Buat & lihat jadwal', cmd: 'gog_create_calendar_event / gog_list_calendar_events' },
+    { icon: '📊', name: 'Google Sheets', desc: 'Baca & tulis data spreadsheet', cmd: 'gog_read_sheet / gog_append_sheet_row' },
+    { icon: '📁', name: 'Google Drive', desc: 'Cari & daftarkan file', cmd: 'gog_list_drive_files' },
+  ]
+
+  return (
+    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-bg-4 transition-colors">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg flex-shrink-0" style={{background:'linear-gradient(135deg,#4285f4,#34a853,#fbbc05,#ea4335)'}}>
+          <span>G</span>
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <div className="text-sm font-semibold text-ink">GOG CLI — Google Ecosystem</div>
+          <div className="text-[10px] text-ink-3">Gmail · Calendar · Sheets · Drive — dikendalikan oleh AI</div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {configured
+            ? <span className="flex items-center gap-1 text-[10px] font-medium text-success bg-success/10 border border-success/20 px-2 py-0.5 rounded-full"><CheckCircle2 size={10}/>Terhubung</span>
+            : <span className="flex items-center gap-1 text-[10px] font-medium text-ink-3 bg-bg-4 border border-border px-2 py-0.5 rounded-full"><XCircle size={10}/>Belum Setup</span>
+          }
+          {open ? <ChevronUp size={14} className="text-ink-3"/> : <ChevronDown size={14} className="text-ink-3"/>}
+        </div>
+      </button>
+
+      <div className={clsx('grid transition-all duration-300 ease-in-out', open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+        <div className="overflow-hidden">
+          <div className="px-4 pb-5 pt-3 border-t border-border space-y-4">
+
+            {/* Services Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {SERVICES.map(s => (
+                <div key={s.name} className={clsx('rounded-xl border p-3 text-center transition-all', configured ? 'bg-success/5 border-success/20' : 'bg-bg-4 border-border opacity-60')}>
+                  <div className="text-2xl mb-1">{s.icon}</div>
+                  <div className="text-[11px] font-semibold text-ink">{s.name}</div>
+                  <div className="text-[9px] text-ink-3 mt-0.5">{s.desc}</div>
+                </div>
+              ))}
+            </div>
+
+            {configured ? (
+              <div className="space-y-3">
+                <div className="bg-success/5 border border-success/20 rounded-xl p-3.5 flex items-center gap-3">
+                  <CheckCircle2 size={18} className="text-success flex-shrink-0"/>
+                  <div>
+                    <div className="text-xs font-semibold text-ink">Google Ecosystem Aktif</div>
+                    <div className="text-[10px] text-ink-3 mt-0.5">AI dapat mengakses Gmail, Calendar, Sheets, dan Drive Anda secara otonom.</div>
+                  </div>
+                </div>
+                <div className="bg-bg-4 rounded-xl p-3 border border-border">
+                  <div className="text-[10px] text-ink-2 font-semibold mb-2">💡 Contoh Perintah</div>
+                  <div className="space-y-1">
+                    {[
+                      '"Cek email baru dari bos saya"',
+                      '"Jadwalkan meeting besok jam 10 pagi"',
+                      '"Tambahkan data ini ke Google Sheets"',
+                      '"Carikan file laporan Q1 di Drive saya"',
+                    ].map((cmd, i) => (
+                      <div key={i} className="text-[10px] text-ink-3 font-mono flex items-start gap-2">
+                        <span className="text-accent-2">→</span> {cmd}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <Btn label="Putuskan Koneksi Google" onClick={handleDisconnect} loading={disconnecting} variant="danger" icon={XCircle} full/>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Setup Instructions */}
+                <div className="bg-accent/5 border border-accent/20 rounded-xl p-3.5 space-y-2">
+                  <div className="text-xs font-semibold text-ink">📋 Cara Setup (3 langkah)</div>
+                  {[
+                    ['Buka', 'console.cloud.google.com', '→ buat project baru'],
+                    ['Aktifkan API: Gmail, Calendar, Sheets, Drive di', 'Library'],
+                    ['Buat', 'OAuth 2.0 Client ID', '(tipe: Desktop App) → Download JSON'],
+                  ].map((parts, i) => (
+                    <div key={i} className="text-[10px] text-ink-3 flex gap-1.5">
+                      <span className="text-accent-2 font-bold flex-shrink-0">{i+1}.</span>
+                      <span>{parts.map((p, j) => p.startsWith('console') || p === 'Library' || p === 'OAuth 2.0 Client ID'
+                        ? <code key={j} className="font-mono text-accent-2 bg-accent/10 px-1 rounded">{p}</code>
+                        : p
+                      )}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {authStep === 'idle' && (
+                  <div className="space-y-2">
+                    <Label>Isi credentials.json (tempel seluruh teks JSON)</Label>
+                    <textarea
+                      value={credsJson}
+                      onChange={e => setCredsJson(e.target.value)}
+                      rows={6}
+                      placeholder={'{ "installed": { "client_id": "...", "client_secret": "...", ... } }'}
+                      className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-[10px] text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none"
+                    />
+                    <Btn label="Otorisasi dengan Google →" onClick={handleGetAuthUrl} loading={acting} variant="primary" icon={Globe} full/>
+                  </div>
+                )}
+
+                {authStep === 'authorizing' && (
+                  <div className="space-y-3">
+                    <div className="bg-warn/8 border border-warn/25 rounded-xl p-3.5 space-y-2">
+                      <div className="text-xs font-semibold text-warn">⏳ Langkah 2 dari 2</div>
+                      <div className="text-[10px] text-ink-3">
+                        Tab Google baru telah dibuka. Setelah Anda memberi izin, Google akan menampilkan <strong className="text-ink">Authorization Code</strong>. Salin kode tersebut dan tempel di bawah.
+                      </div>
+                      <button onClick={() => window.open(authUrl, '_blank')} className="text-[10px] text-accent underline">Buka ulang halaman Google</button>
+                    </div>
+                    <div>
+                      <Label>Authorization Code</Label>
+                      <input
+                        type="text"
+                        value={authCode}
+                        onChange={e => setAuthCode(e.target.value)}
+                        placeholder="4/0AX4..."
+                        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Btn label="Batal" onClick={() => { setAuthStep('idle'); setAuthUrl('') }} variant="default"/>
+                      <Btn label="Selesaikan Otorisasi" onClick={handleCallback} loading={acting} variant="success" icon={CheckCircle2} full/>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 // ── Main Integrations ─────────────────────────────────────────
 export default function Integrations() {
@@ -825,7 +1028,7 @@ export default function Integrations() {
   const TABS = [
     { id: 'messaging', label: 'Messaging', icon: '💬' },
     { id: 'model_ai',  label: 'Model AI',  icon: '🤖' },
-
+    { id: 'google',    label: 'Google',    icon: '🟢' },
     { id: 'webhook',   label: 'Webhook & Otomasi', icon: '🔗' },
     { id: 'search',    label: 'Pencarian AI', icon: '🔍' },
     { id: 'api_docs',  label: 'API Endpoints', icon: '🔌' },
@@ -995,7 +1198,11 @@ export default function Integrations() {
 
 
 
-        <div className={clsx(activeTab !== 'webhook' && "hidden")}>
+        <div className={clsx(activeTab !== 'google' && 'hidden')}>
+          <GoogleEcosystemSection/>
+        </div>
+
+        <div className={clsx(activeTab !== 'webhook' && 'hidden')}>
           <WebhookSection/>
         </div>
 

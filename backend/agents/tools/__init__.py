@@ -37,6 +37,30 @@ from .filesystem import (
     get_file_info,
 )
 
+# ── Browser Automation tools ───────────────────────────────────────────────
+from .browser_automation import (
+    browser_navigate,
+    browser_click,
+    browser_type,
+    browser_extract_text,
+    browser_screenshot,
+)
+
+# ── Google Ecosystem tools (GOG CLI) ────────────────────────────────────────
+try:
+    from .google_tools import (
+        gog_read_emails,
+        gog_send_email,
+        gog_create_calendar_event,
+        gog_list_calendar_events,
+        gog_read_sheet,
+        gog_append_sheet_row,
+        gog_list_drive_files,
+    )
+    _GOOGLE_TOOLS_AVAILABLE = True
+except ImportError:
+    _GOOGLE_TOOLS_AVAILABLE = False
+
 # ── Tool registry — mapping nama → fungsi ────────────────────────────────────
 TOOLS = {
     # ── Core tools ────────────────────────────────────────────
@@ -60,6 +84,26 @@ TOOLS = {
     "set_project_path":      set_project_path,  # simpan path project
     "list_all_projects":     list_all_projects, # lihat semua project
     "get_file_info":         get_file_info,     # stat file detail
+    
+    # ── Browser Automation tools ──────────────────────────────
+    "browser_navigate":      browser_navigate,
+    "browser_click":         browser_click,
+    "browser_type":          browser_type,
+    "browser_extract_text":  browser_extract_text,
+    "browser_screenshot":    browser_screenshot,
 }
+
+# Inject Google tools jika library tersedia
+if _GOOGLE_TOOLS_AVAILABLE:
+    TOOLS.update({
+        # ── GOG CLI: Google Ecosystem ──────────────────────────
+        "gog_read_emails":           gog_read_emails,
+        "gog_send_email":            gog_send_email,
+        "gog_create_calendar_event": gog_create_calendar_event,
+        "gog_list_calendar_events":  gog_list_calendar_events,
+        "gog_read_sheet":            gog_read_sheet,
+        "gog_append_sheet_row":      gog_append_sheet_row,
+        "gog_list_drive_files":      gog_list_drive_files,
+    })
 
 __all__ = ["TOOLS"] + list(TOOLS.keys())

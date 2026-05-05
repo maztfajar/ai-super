@@ -268,6 +268,15 @@ async def chat_send(
     if rag_context:
         system_prompt += f"\n\n{rag_context}"
 
+    # ── Byte Rover: Long-term Memory Recall ──
+    try:
+        from core.byte_rover import byte_rover
+        memory_context = await byte_rover.recall(req.message)
+        if memory_context:
+            system_prompt += f"\n\n{memory_context}"
+    except Exception as e:
+        log.warning("Gagal me-recall Byte Rover memory", error=str(e))
+
     # Get conversation history from memory
     history = await memory_manager.get_context(session.id, user.id)
 

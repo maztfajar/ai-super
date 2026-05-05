@@ -107,7 +107,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         agent_type="research",
         display_name="🔍 Research Agent",
         description="Pengumpulan informasi, pencarian web, fact-checking, perbandingan data",
-        skills=["search", "gather", "compare", "summarize", "fact_check", "data_collection"],
+        skills=["search", "gather", "compare", "summarize", "fact_check", "data_collection", "browser_automation"],
         preferred_models=[
             "sumopod/gemini-2.5-flash-lite",
             "sumopod/gpt-4o-mini",
@@ -115,10 +115,11 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         ],
         fallback_models=["sumopod/claude-haiku-4-5", "sumopod/deepseek-v4-pro"],
         required_capabilities=["text"],
+        tools_allowed=["web_search", "browser_navigate", "browser_click", "browser_type", "browser_extract_text", "browser_screenshot"],
         default_temperature=0.5,
         system_prompt_addon=(
             "Lakukan riset secara menyeluruh. Sebutkan sumber bila memungkinkan. "
-            "Sajikan temuan dalam format terstruktur."
+            "Sajikan temuan dalam format terstruktur. Anda juga memiliki akses ke browser automation untuk menelusuri web secara langsung."
         ),
     ),
 
@@ -293,6 +294,18 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "Analisis gambar secara detail. Sebutkan semua objek, aktivitas, teks, "
             "dan konteks yang terlihat dalam gambar."
         ),
+    ),
+
+    "orchestrator": AgentCapability(
+        agent_type="orchestrator",
+        display_name="⚙️ Orchestrator Core",
+        description="Layanan background otomatis yang mengoptimasi sistem dan output AI",
+        skills=["QMD (Token Killer)", "Capability Evolver", "Humanizer (Anti-Slop)", "Byte Rover (Memory)", "Browser Automation", "Command Center", "GOG CLI (Google Ecosystem)"],
+        preferred_models=[],
+        fallback_models=[],
+        required_capabilities=[],
+        default_temperature=0.0,
+        system_prompt_addon="",
     ),
 }
 

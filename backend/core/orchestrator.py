@@ -393,46 +393,41 @@ class Orchestrator:
                     yield OrchestratorEvent("status",
                         f"  ❌ {result.task_id}: gagal — {result.error}")
             else:
-                # Multiple tasks — execute in parallel
-                yield OrchestratorEvent("status",
-                    f"  🔀 Menjalankan {len(group_tasks)} task secara paralel...")
-
-                # Mark all agents as busy
-                for st in group_tasks:
-                    agent_registry.mark_busy(st.assigned_agent or "general", st.id)
-
+                # Multiple tasks — execute in parallel via Command Center
+                from core.command_center import command_center
+                
                 event_queue = asyncio.Queue()
-                gather_task = asyncio.create_task(asyncio.gather(*(
-                    self._execute_subtask(st, system_prompt, history, spec, event_queue, project_path=project_path)
-                    for st in group_tasks
-                ), return_exceptions=True))
-
-                while not gather_task.done():
+                
+                # Buat task coordinate_team
+                coord_task = asyncio.create_task(command_center.coordinate_team(
+                    group_tasks=group_tasks,
+                    execute_fn=self._execute_subtask,
+                    system_prompt=system_prompt,
+                    history=history,
+                    spec=spec,
+                    project_path=project_path,
+                    ui_event_queue=event_queue
+                ))
+                
+                # Stream events while waiting
+                while not coord_task.done():
                     try:
                         event = await asyncio.wait_for(event_queue.get(), timeout=0.2)
                         yield event
                     except asyncio.TimeoutError:
                         continue
                 
-                parallel_results = gather_task.result()
-
-                # Mark all agents as idle
-                for st in group_tasks:
-                    agent_registry.mark_idle(st.assigned_agent or "general", st.id)
-
+                # Flush remaining events
+                while not event_queue.empty():
+                    try:
+                        yield event_queue.get_nowait()
+                    except Exception:
+                        pass
+                        
+                parallel_results = coord_task.result()
+                
                 for pr in parallel_results:
-                    if isinstance(pr, Exception):
-                        results.append(SubTaskResult(
-                            task_id="error",
-                            description="Execution error",
-                            agent_type="unknown",
-                            model_used="unknown",
-                            response="",
-                            success=False,
-                            error=str(pr)[:200],
-                        ))
-                    else:
-                        results.append(pr)
+                    results.append(pr)
 
             # Inject successful results into context for next group
             for r in results:
@@ -644,9 +639,31 @@ class Orchestrator:
         messages += history[-10:]  # Limit history to prevent context overflow
         messages.append({"role": "user", "content": spec.original_message})
 
-        # Cap tokens for simple/general responses to avoid model wandering
-        if spec.primary_intent in ("general",) and spec.complexity_score < 0.3:
-            max_tokens = min(max_tokens, 1024)
+        # ── QMD: The Token Killer — distill messages ─────────────
+        try:
+            from core.qmd import qmd
+            messages, qmd_result = qmd.distill(
+                messages=messages,
+                query=spec.original_message,
+                max_token_budget=6000,
+                keep_system=True,
+                keep_last_n=4,
+            )
+            if qmd_result.savings_pct > 5:
+                yield OrchestratorEvent("status",
+                    f"⚡ QMD: hemat {qmd_result.savings_pct:.0f}% token "
+                    f"({qmd_result.original_tokens_est}→{qmd_result.distilled_tokens_est})")
+        except Exception as e:
+            log.debug("QMD skip", error=str(e)[:60])
+
+        # ── Humanizer: Anti AI Slop ──────────────────────────────
+        try:
+            from core.humanizer import humanizer
+            messages, injected = humanizer.inject_anti_slop(messages, intent=spec.primary_intent)
+            if injected:
+                yield OrchestratorEvent("status", "✍️ Humanizer: Memoles gaya bahasa...")
+        except Exception as e:
+            log.debug("Humanizer skip", error=str(e)[:60])
 
         yield OrchestratorEvent("status", "Merespons...")
 
@@ -1056,6 +1073,28 @@ class Orchestrator:
             f"Your Sub-task: {subtask.description}\n\n"
             f"Focus ONLY on this sub-task. Provide a clear, complete answer."
         )})
+
+        # ── QMD: distill subtask messages ─────────────────────────
+        try:
+            from core.qmd import qmd
+            messages, _ = qmd.distill(
+                messages=messages,
+                query=subtask.description,
+                max_token_budget=5000,
+                keep_system=True,
+                keep_last_n=2,
+            )
+        except Exception:
+            pass
+
+        # ── Humanizer: Anti AI Slop ──────────────────────────────
+        try:
+            from core.humanizer import humanizer
+            messages, injected = humanizer.inject_anti_slop(messages, intent=subtask.task_type)
+            if injected and event_queue is not None:
+                event_queue.put_nowait(OrchestratorEvent("status", f"  ✍️ Humanizer memoles output {agent_type}..."))
+        except Exception:
+            pass
 
         try:
             from agents.executor import agent_executor

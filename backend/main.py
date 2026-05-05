@@ -41,6 +41,7 @@ from api.tts import router as tts_router
 from api.capability import router as capability_router
 from api.compliance import router as compliance_router
 from api.evolver import router as evolver_router
+from api.qmd import router as qmd_router
 
 # Import new systems (untuk initialization di lifespan)
 from core.cost_tracking import cost_engine
@@ -192,6 +193,11 @@ async def lifespan(app: FastAPI):
     capability_evolver.start()
     log.info("✅ Capability Evolver daemon started")
 
+    # Byte Rover — Long-term Memory
+    from core.byte_rover import byte_rover
+    asyncio.create_task(byte_rover.background_loop())
+    log.info("✅ Byte Rover (Long-term Memory) daemon started")
+
     if settings.TELEGRAM_BOT_TOKEN:
         from integrations.telegram_bot import start_polling, start_watchdog, stop_watchdog, stop_polling
         started = start_polling(settings.TELEGRAM_BOT_TOKEN)
@@ -316,6 +322,7 @@ app.include_router(tts_router,           prefix="/api/media",        tags=["TTS"
 app.include_router(capability_router,    prefix="/api/capability",   tags=["Capability"])
 app.include_router(compliance_router,    prefix="/api/compliance",   tags=["Compliance & Security"])
 app.include_router(evolver_router,       prefix="/api/evolver",      tags=["Evolver"])
+app.include_router(qmd_router,           prefix="/api/qmd",          tags=["QMD Token Killer"])
 
 
 @app.get("/api/health")

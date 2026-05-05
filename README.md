@@ -1,8 +1,8 @@
 # 🧠 AI ORCHESTRATOR
 
-Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration, knowledge base RAG, workflow otomatis, integrasi Telegram/WhatsApp, dan keamanan 2FA.
+Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration, knowledge base RAG, workflow otomatis, integrasi Telegram/WhatsApp, dan keamanan 2FA — kini diperkuat dengan **10 Autonomous Skills** yang bekerja bersama sebagai tim digital.
 
-> **Stack:** FastAPI · React · Vite · ChromaDB · Celery · Redis
+> **Stack:** FastAPI · React · Vite · ChromaDB · SQLite WAL · Playwright
 
 ---
 
@@ -29,7 +29,7 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 ### 🔄 Workflow Automation
 - Buat workflow otomatis dengan trigger & actions
 - Integrasi dengan berbagai platform via webhook
-- Scheduled tasks dan background processing (Celery)
+- Scheduled tasks dan background processing
 - Visual workflow builder
 
 ### 📁 Project Management System
@@ -38,7 +38,6 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 - **File Browser** — Popup untuk memilih folder penyimpanan
 - **Auto-Organization** — Semua file aplikasi tersimpan di lokasi yang sama
 - **Security Validation** — Hanya mengizinkan lokasi di user home directory
-- **Relative Path Support** — Path relatif otomatis di-resolve ke lokasi proyek
 
 ### 📱 Multi-Channel Integration
 - **Telegram Bot** — Chat AI langsung di Telegram
@@ -67,14 +66,75 @@ Platform AI Self-Hosted dengan **VISION_GATE Engine**, multi-model orchestration
 
 ---
 
-## 🆕 Recent Updates (v2.5)
+## 🚀 Autonomous Skills Suite
 
+AI Orchestrator dilengkapi **10 Autonomous Skills** yang terbagi dalam dua kategori. Setiap skill bekerja di belakang layar secara otomatis, **tanpa perlu konfigurasi tambahan**.
+
+### 🔧 Background Skills (Selalu Aktif)
+
+Skill-skill ini berjalan otomatis, mengoptimasi setiap interaksi tanpa perlu intervensi pengguna.
+
+| # | Skill | Fungsi | Status |
+|---|-------|--------|--------|
+| 1 | ⚡ **QMD — The Token Killer** | Menghemat biaya API hingga 80% dengan hanya mengambil potongan teks paling relevan dari history percakapan panjang sebelum dikirim ke AI | 🟢 Selalu Aktif |
+| 2 | 🧠 **Capability Evolver** | Self-improvement otomatis — menganalisis 200 record eksekusi terakhir setiap 30 menit dan menghasilkan aturan routing model yang lebih optimal | 🟢 Selalu Aktif |
+| 3 | ✍️ **Humanizer (Anti AI Slop)** | Mendeteksi pola bahasa mesin (kata dramatis berlebihan, struktur terlalu rapi) dan mengubahnya menjadi gaya tulisan yang lebih natural dan kasual | 🟢 Selalu Aktif |
+| 4 | 🧭 **Byte Rover (Long-term Memory)** | Memori jangka panjang — secara otomatis merangkum sesi chat yang idle lalu menyimpannya ke Vector DB, sehingga AI tetap mengingat konteks proyek lama di sesi baru | 🟢 Selalu Aktif |
+| 5 | 🏛️ **Command Center** | Pusat koordinasi multi-agent — mengelola eksekusi paralel beberapa AI agent sekaligus dan menyiarkan status sinkronisasi secara real-time ke antarmuka | 🟢 Selalu Aktif |
+
+### 🛠️ On-Demand Skills (Diaktifkan AI Saat Dibutuhkan)
+
+Skill-skill ini dijalankan secara otonom oleh AI ketika tugas membutuhkannya.
+
+| # | Skill | Fungsi | Cara Pakai |
+|---|-------|--------|------------|
+| 6 | 🌐 **Browser Automation** | Membuka website, mengklik tombol, mengisi form, mengekstrak teks, hingga mengambil screenshot secara headless via Chromium | Perintahkan AI: *"Buka website X dan ambil datanya"* |
+| 7 | 📄 **QMD Distillation** | Distilasi context berbasis relevansi semantik untuk tugas multi-subtask yang kompleks | Aktif otomatis saat task complex |
+| 8 | 🟢 **GOG CLI — Google Ecosystem** | Kendali penuh ekosistem Google: baca & kirim Gmail, buat event Calendar, baca & tulis Google Sheets, cari file di Drive — semua melalui satu instruksi | Perintahkan AI: *"Cek email baru dari bos saya"* |
+
+---
+
+## 🟢 GOG CLI — Panduan Setup Google Ecosystem
+
+Skill ini membutuhkan otorisasi sekali klik via Google OAuth 2.0.
+
+1. Buka **Google Cloud Console** → buat project baru
+2. Aktifkan API: `Gmail`, `Calendar`, `Sheets`, `Drive` di menu Library
+3. Buat `OAuth 2.0 Client ID` (tipe: **Desktop App**) → Download JSON
+4. Buka menu **Integrations → Tab Google** di aplikasi
+5. Tempel isi `credentials.json` → klik **"Otorisasi dengan Google"**
+6. Login di popup → salin Authorization Code → selesai 🎉
+
+**Contoh perintah setelah terhubung:**
+```
+"Cek email baru dari bos saya"
+"Jadwalkan meeting besok jam 10 pagi"
+"Tambahkan data ini ke Google Sheets kolom A"
+"Carikan file laporan Q1 di Drive saya"
+```
+
+---
+
+## 🆕 Versi & Changelog
+
+### v3.0 (Terkini) — Autonomous Skills Suite
+- ✅ **Byte Rover** — Long-term memory engine berbasis ChromaDB RAG
+- ✅ **Command Center** — Koordinator multi-agent paralel dengan real-time UI
+- ✅ **Browser Automation** — Playwright headless Chromium untuk otomasi web
+- ✅ **GOG CLI** — Integrasi penuh Gmail, Calendar, Sheets, Drive via OAuth 2.0
+- ✅ **Dashboard Update** — Semua 8 skill kini terpantau di halaman Pemantauan AI
+
+### v2.5
+- ✅ **QMD — The Token Killer** — Distilasi context berbasis relevansi semantik
+- ✅ **Capability Evolver** — Sistem self-improvement otomatis berbasis data eksekusi
+- ✅ **Humanizer (Anti AI Slop)** — Pemoles bahasa output AI agar lebih natural
+- ✅ **Migrasi SQLite WAL** — Zero-config database dengan performa tinggi
+
+### v2.0
 - ✅ **Project Management System** — Auto-deteksi lokasi proyek untuk aplikasi
 - ✅ **Enhanced Session Reliability** — Timeout improvements dengan partial responses
 - ✅ **Fixed Model Management** — Mencegah deleted models muncul di monitoring
 - ✅ **Better Error Recovery** — Increased iterations dan timeout handling
-- ✅ **Smart File Organization** — Path relatif otomatis ke lokasi proyek
-- ✅ **Improved Code Styling** — Code block background sesuai tema aplikasi
 
 ---
 
@@ -88,18 +148,18 @@ bash install.sh
 
 Buka: **http://localhost:7860**
 
-> ⚠️ Saat instalasi, wizard akan meminta username dan password. **Jangan gunakan password lemah.** `SECRET_KEY` akan di-generate otomatis.
+> ⚠️ Saat instalasi, wizard akan meminta username dan password admin. **Jangan gunakan password lemah.** `SECRET_KEY` akan di-generate otomatis.
 
 ---
 
 ## 📋 System Requirements
 
 |           | Minimum        | Rekomendasi              |
-|-----------|----------------|--------------------------|
+|-----------|----------------|--------------------------| 
 | OS        | Ubuntu 20.04+  | Ubuntu 22.04 LTS         |
 | RAM       | 2 GB           | 8 GB+ (untuk vision models) |
 | CPU       | 2 cores        | 4+ cores                 |
-| Storage   | 5 GB           | 20 GB+ (untuk knowledge base) |
+| Storage   | 5 GB           | 20 GB+ (untuk knowledge base & memory) |
 | Python    | 3.10+          | 3.11                     |
 | Node.js   | 18+            | 20 LTS                   |
 
@@ -115,17 +175,34 @@ ai-super/
 │   │   ├── media.py          # Image upload & analysis
 │   │   ├── rag.py            # Knowledge base management
 │   │   ├── workflow.py       # Workflow automation
+│   │   ├── integrations.py   # OAuth & platform integrations
 │   │   └── tts.py            # Text-to-speech
-│   ├── core/                 # Core services
+│   ├── core/                 # Core services & skills
 │   │   ├── orchestrator.py   # AI orchestration engine
 │   │   ├── model_manager.py  # Multi-model management
 │   │   ├── request_preprocessor.py # Intent classification
-│   │   └── vision_gate.py    # Image analysis engine
+│   │   ├── vision_gate.py    # Image analysis engine
+│   │   ├── qmd.py            # ⚡ QMD — The Token Killer
+│   │   ├── capability_evolver.py # 🧠 Self-improvement engine
+│   │   ├── humanizer.py      # ✍️ Anti AI Slop filter
+│   │   ├── byte_rover.py     # 🧭 Long-term Memory engine
+│   │   └── command_center.py # 🏛️ Multi-agent coordinator
+│   ├── agents/               # Agent system
+│   │   ├── agent_registry.py # Agent capabilities & skills
+│   │   ├── executor.py       # Agent task executor
+│   │   └── tools/            # Tool registry
+│   │       ├── core_tools.py        # Shell, file, model tools
+│   │       ├── browser_automation.py # 🌐 Playwright browser tools
+│   │       └── google_tools.py      # 🟢 GOG CLI Google tools
+│   ├── rag/                  # RAG engine (ChromaDB)
 │   ├── db/                   # Database models & migrations
 │   └── integrations/         # External integrations
 ├── frontend/                 # React + Vite frontend
 │   └── src/
 │       ├── pages/            # Main application pages
+│       │   ├── Integrations.jsx  # Includes Google OAuth setup UI
+│       │   ├── Monitoring.jsx    # Skill status dashboard
+│       │   └── ...
 │       ├── components/       # Reusable UI components
 │       └── hooks/            # React hooks & API calls
 ├── scripts/                  # Utility scripts
@@ -165,6 +242,10 @@ OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_API_KEY=AIza...
 OLLAMA_HOST=http://localhost:11434  # Gratis, lokal
+SUMOPOD_API_KEY=...                 # Provider utama (recommended)
+
+# Opsional: Telegram Bot
+TELEGRAM_BOT_TOKEN=...
 ```
 
 Lihat `.env.example` untuk daftar lengkap semua variabel.
@@ -185,11 +266,34 @@ Lihat `.env.example` untuk daftar lengkap semua variabel.
 3. AI akan menggunakan knowledge base untuk jawaban yang lebih akurat
 4. Lihat sumber referensi pada setiap jawaban
 
-### 🔄 Workflow Automation
-1. Buat workflow baru di menu **Workflow**
-2. Set trigger (schedule, webhook, manual)
-3. Tambah actions (send message, API call, file operations)
-4. Jalankan atau schedule workflow
+### 🧭 Byte Rover (Long-term Memory)
+1. Tidak perlu setup! Bekerja otomatis setiap 1 jam
+2. Sesi chat yang tidak aktif >1 jam akan dirangkum secara otomatis
+3. Ringkasan tersimpan ke Vector DB (ChromaDB)
+4. Di sesi baru, AI otomatis "mengingat" proyek & konteks lama
+
+### 🌐 Browser Automation
+```
+"Tolong buka google.com dan cari berita AI terbaru"
+"Buka website kompetitor dan ambil daftar produk mereka"
+"Screenshot tampilan website X dan analisis UI-nya"
+```
+
+### 🟢 GOG CLI — Google Ecosystem
+Setup sekali di menu **Integrations → Tab Google**, lalu cukup perintahkan:
+```
+"Cek email baru hari ini"
+"Jadwalkan rapat review project besok jam 14:00"
+"Tulis hasil rapat ini ke Sheet laporan bulan Mei"
+"Carikan proposal yang saya simpan di Drive bulan lalu"
+```
+
+### 🏛️ Command Center
+Otomatis aktif saat AI perlu menjalankan beberapa tugas paralel:
+```
+"Sekaligus riset tentang FastAPI DAN buatkan artikel blog-nya"
+→ Command Center akan mendeploy Research Agent & Writer Agent secara bersamaan
+```
 
 ### 📁 Project Management System
 1. Saat minta AI buat aplikasi, sistem otomatis meminta lokasi proyek
@@ -241,10 +345,20 @@ bash scripts/cleanup.sh           # Cleanup temporary files
 - Format yang didukung: JPG, PNG, GIF, WebP
 - Cek logs: `tail -f data/logs/ai-orchestrator.log`
 
-**Vision analysis tidak berfungsi**
-- Pastikan model vision tersedia (GPT-4o, Gemini, dll)
-- Cek API keys di menu **Integrations**
-- Lihat status model di dashboard **Monitoring**
+**Browser Automation tidak berjalan**
+- Pastikan Playwright sudah terinstall: `playwright install chromium`
+- Cek apakah VPS mendukung headless browser
+- Pastikan Chromium binary tersedia
+
+**GOG CLI tidak bisa connect ke Google**
+- Pastikan OAuth 2.0 Client ID sudah dibuat dengan tipe Desktop App
+- Aktifkan semua API yang diperlukan di Google Cloud Console
+- Klik "Putuskan Koneksi" lalu otorisasi ulang jika token expired
+
+**Byte Rover tidak merangkum sesi**
+- Memory engine bekerja otomatis setiap 1 jam untuk sesi idle
+- Pastikan RAG Engine aktif (ChromaDB harus berjalan)
+- Cek logs untuk error terkait `byte_rover`
 
 **RAG tidak menggunakan knowledge base**
 - Pastikan dokumen sudah ter-index
@@ -268,6 +382,8 @@ Lihat **TROUBLESHOOTING.md** untuk panduan lengkap.
 - **Password Recovery** — via Email / Telegram OTP / Recovery Token
 - **Audit Logging** — Semua aktivitas tercatat untuk compliance
 - **Role-Based Access** — Multi-level permissions system
+- **Isolated Browser Context** — Browser Automation menggunakan isolated context per session
+- **OAuth Token Encryption** — Google credentials disimpan aman di server
 
 ---
 
@@ -297,5 +413,5 @@ Anda **tidak diizinkan** untuk menggunakan, menyalin, memodifikasi, mendistribus
 
 ---
 
-*AI ORCHESTRATOR v2.5 — Self-Hosted AI Platform with Vision & Multimodal Intelligence*  
-*Built with ❤️ using FastAPI, React, and cutting-edge AI models*
+*AI ORCHESTRATOR v3.0 — Autonomous Skills Suite dengan 8 Built-in Intelligence Skills*  
+*Built with ❤️ using FastAPI, React, Playwright, ChromaDB, and cutting-edge AI models*

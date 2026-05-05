@@ -66,3 +66,4 @@ pdfplumber>=0.11.0
 docx2txt>=0.8
 pathspec>=0.12.0
 tavily-python>=0.3.3
+playwright>=1.43.0
