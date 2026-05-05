@@ -10,19 +10,32 @@ is_sqlite = db_url.startswith("sqlite")
 
 connect_args = {"check_same_thread": False} if is_sqlite else {}
 
+# SQLite: tambah timeout agar tidak crash saat concurrent access
+if is_sqlite:
+    connect_args["timeout"] = 30
+
 engine = create_async_engine(
     db_url,
     echo=settings.DEBUG,
     future=True,
     connect_args=connect_args,
+    # Pool settings — penting untuk stabilitas
+    pool_pre_ping=True,           # cek koneksi sebelum pakai
+    pool_recycle=3600,            # recycle koneksi tiap 1 jam
 )
 
 if is_sqlite:
     @sa.event.listens_for(engine.sync_engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
+        # WAL mode — kunci untuk concurrent access di SQLite
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
+        # Optimasi performa tambahan
+        cursor.execute("PRAGMA cache_size=-64000")   # 64MB cache
+        cursor.execute("PRAGMA temp_store=MEMORY")   # temp table di RAM
+        cursor.execute("PRAGMA mmap_size=268435456") # 256MB memory-map
+        cursor.execute("PRAGMA busy_timeout=30000")  # 30 detik timeout
         cursor.close()
 
 AsyncSessionLocal = sessionmaker(

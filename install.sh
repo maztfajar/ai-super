@@ -59,35 +59,9 @@ echo -e "${CYAN}Tekan ENTER untuk menggunakan nilai [Default].${NC}\n"
 read -p "1. Nama Aplikasi [Default: AI ORCHESTRATOR]: " WZ_APP_NAME
 WZ_APP_NAME=${WZ_APP_NAME:-"AI ORCHESTRATOR"}
 
-echo -e "\n2. Konfigurasi Database"
-echo "   [1] SQLite    (Ringan, cocok untuk personal/development)"
-echo "   [2] PostgreSQL (Disarankan untuk production/server)"
-read -p "   Pilih tipe database [1/2, Default: 1]: " WZ_DB_TYPE
-WZ_DB_TYPE=${WZ_DB_TYPE:-1}
+log "Database: SQLite (WAL mode, zero config)"
 
-if [ "$WZ_DB_TYPE" = "2" ]; then
-    read -p "   Nama User DB [Default: ai_orchestrator_user]: " WZ_DB_USER
-    WZ_DB_USER=${WZ_DB_USER:-ai_orchestrator_user}
-    read -p "   Nama Database [Default: ai_orchestrator_db]: " WZ_DB_NAME
-    WZ_DB_NAME=${WZ_DB_NAME:-ai_orchestrator_db}
-
-    # Password DB wajib diisi, tidak boleh kosong
-    while true; do
-        read -s -p "   Password DB (wajib diisi, min 8 karakter): " WZ_DB_PASS
-        echo ""
-        if [ ${#WZ_DB_PASS} -ge 8 ]; then
-            break
-        else
-            warn "Password DB minimal 8 karakter. Coba lagi."
-        fi
-    done
-else
-    WZ_DB_USER="-"
-    WZ_DB_NAME="-"
-    WZ_DB_PASS="-"
-fi
-
-echo -e "\n3. Kredensial Login Aplikasi AI"
+echo -e "\n2. Kredensial Login Aplikasi AI"
 read -p "   Username Login [Default: admin]: " WZ_ADMIN_USER
 WZ_ADMIN_USER=${WZ_ADMIN_USER:-admin}
 
@@ -104,7 +78,7 @@ while true; do
     fi
 done
 
-echo -e "\n4. Integrasi & Model AI (Tekan ENTER untuk melewati)"
+echo -e "\n3. Integrasi & Model AI (Tekan ENTER untuk melewati)"
 read -p "   OpenAI API Key    : " WZ_OPENAI
 read -p "   Anthropic API Key : " WZ_ANTHROPIC
 read -p "   Telegram Bot Token: " WZ_TELEGRAM
@@ -144,14 +118,18 @@ sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$WZ_ADMIN_PASS\"|" "$APP_DIR/.env"
 [ -n "$WZ_TELEGRAM" ]  && sed -i "s|^TELEGRAM_BOT_TOKEN=.*|TELEGRAM_BOT_TOKEN=\"$WZ_TELEGRAM\"|" "$APP_DIR/.env"
 [ -n "$WZ_WHATSAPP" ]  && sed -i "s|^WHATSAPP_ACCESS_TOKEN=.*|WHATSAPP_ACCESS_TOKEN=\"$WZ_WHATSAPP\"|" "$APP_DIR/.env"
 
-if [ "$WZ_DB_TYPE" = "2" ]; then
-    DB_URL="postgresql+asyncpg://$WZ_DB_USER:$WZ_DB_PASS@localhost/$WZ_DB_NAME"
-    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=$DB_URL|" "$APP_DIR/.env"
-    log "Database: PostgreSQL ($WZ_DB_NAME)"
-else
-    sed -i "s|^DATABASE_URL=.*|DATABASE_URL=sqlite+aiosqlite:///./data/ai-orchestrator.db|" "$APP_DIR/.env"
-    log "Database: SQLite"
-fi
+# Database: langsung SQLite — zero config
+sed -i "s|^DATABASE_URL=.*|DATABASE_URL=sqlite+aiosqlite:///./data/ai-orchestrator.db|" "$APP_DIR/.env"
+log "Database: SQLite (WAL mode + 64MB cache)"
+
+# Buat folder data dengan permission yang benar
+mkdir -p "$APP_DIR/backend/data/chroma_db"
+mkdir -p "$APP_DIR/backend/data/uploads"
+mkdir -p "$APP_DIR/backend/data/logs"
+chmod 755 "$APP_DIR/backend/data"
+chmod 755 "$APP_DIR/backend/data/chroma_db"
+chmod 755 "$APP_DIR/backend/data/uploads"
+log "Folder data siap (chroma_db, uploads, logs)"
 
 log ".env berhasil dikonfigurasi"
 
@@ -161,7 +139,7 @@ step "Installing System Dependencies"
 if [ "$PKG" = "apt" ]; then
     sudo apt-get update -qq
 
-    # Paket dasar — selalu diinstall
+    # Paket dasar
     sudo apt-get install -y \
         curl wget git \
         python3 python3-pip python3-venv python3-full \
@@ -170,29 +148,14 @@ if [ "$PKG" = "apt" ]; then
         python3-dev gcc g++ make 2>/dev/null \
         || warn "Beberapa paket mungkin sudah terinstall"
 
-    # PostgreSQL — HANYA jika user memilih PostgreSQL
-    if [ "$WZ_DB_TYPE" = "2" ]; then
-        sudo apt-get install -y postgresql postgresql-contrib libpq-dev 2>/dev/null \
-            || warn "PostgreSQL mungkin sudah terinstall"
-        log "PostgreSQL diinstall"
-    else
-        log "SQLite dipilih — PostgreSQL tidak diinstall"
-    fi
-
 elif [ "$PKG" = "pacman" ]; then
     sudo pacman -Syu --noconfirm python python-pip redis \
         base-devel openssl libffi 2>/dev/null || true
-    if [ "$WZ_DB_TYPE" = "2" ]; then
-        sudo pacman -S --noconfirm postgresql 2>/dev/null || true
-    fi
 
 elif [ "$PKG" = "dnf" ]; then
     sudo dnf install -y python3 python3-pip redis \
         gcc gcc-c++ make openssl-devel libffi-devel python3-devel \
         curl wget git 2>/dev/null || true
-    if [ "$WZ_DB_TYPE" = "2" ]; then
-        sudo dnf install -y postgresql-server postgresql-devel 2>/dev/null || true
-    fi
 fi
 
 log "System dependencies installed"
@@ -237,40 +200,7 @@ sudo systemctl enable redis-server 2>/dev/null || sudo systemctl enable redis 2>
 sudo systemctl start redis-server 2>/dev/null || sudo systemctl start redis 2>/dev/null || true
 log "Redis started"
 
-# ── PostgreSQL (hanya jika dipilih) ──────────────────────────
-if [ "$WZ_DB_TYPE" = "2" ]; then
-    step "Setting Up PostgreSQL"
 
-    sudo systemctl enable postgresql 2>/dev/null || true
-    sudo systemctl start postgresql 2>/dev/null || true
-
-    # Tunggu PostgreSQL benar-benar siap menerima koneksi (maks 30 detik)
-    log "Menunggu PostgreSQL siap..."
-    PG_READY=0
-    for i in $(seq 1 15); do
-        if sudo -u postgres psql -c "SELECT 1;" > /dev/null 2>&1; then
-            PG_READY=1
-            break
-        fi
-        sleep 2
-    done
-
-    if [ "$PG_READY" -eq 0 ]; then
-        err "PostgreSQL tidak siap setelah 30 detik. Coba: sudo systemctl status postgresql"
-    fi
-
-    sudo -u postgres psql -c "CREATE USER $WZ_DB_USER WITH PASSWORD '$WZ_DB_PASS';" 2>/dev/null \
-        && log "User DB '$WZ_DB_USER' dibuat" \
-        || warn "User '$WZ_DB_USER' sudah ada, lanjut..."
-
-    sudo -u postgres psql -c "CREATE DATABASE $WZ_DB_NAME OWNER $WZ_DB_USER;" 2>/dev/null \
-        && log "Database '$WZ_DB_NAME' dibuat" \
-        || warn "Database '$WZ_DB_NAME' sudah ada, lanjut..."
-
-    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $WZ_DB_NAME TO $WZ_DB_USER;" 2>/dev/null || true
-
-    log "PostgreSQL ready (db: $WZ_DB_NAME, user: $WZ_DB_USER)"
-fi
 
 # ── Python Backend ────────────────────────────────────────────
 step "Setting Up Python Backend"
@@ -332,11 +262,6 @@ PACKAGES=(
     "pdfplumber>=0.11.0"
     "docx2txt>=0.8"
 )
-
-# Tambah asyncpg & psycopg2 hanya jika pakai PostgreSQL
-if [ "$WZ_DB_TYPE" = "2" ]; then
-    PACKAGES+=("asyncpg>=0.29.0" "psycopg2-binary>=2.9.9")
-fi
 
 TOTAL=${#PACKAGES[@]}
 COUNT=0

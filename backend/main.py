@@ -40,6 +40,7 @@ from api.media import router as media_router
 from api.tts import router as tts_router
 from api.capability import router as capability_router
 from api.compliance import router as compliance_router
+from api.evolver import router as evolver_router
 
 # Import new systems (untuk initialization di lifespan)
 from core.cost_tracking import cost_engine
@@ -186,6 +187,11 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(capability_map.sync_background_loop())
     log.info("Capability Map ready", models=len(capability_map._map))
 
+    # Capability Evolver — self-improvement daemon
+    from core.capability_evolver import capability_evolver
+    capability_evolver.start()
+    log.info("✅ Capability Evolver daemon started")
+
     if settings.TELEGRAM_BOT_TOKEN:
         from integrations.telegram_bot import start_polling, start_watchdog, stop_watchdog, stop_polling
         started = start_polling(settings.TELEGRAM_BOT_TOKEN)
@@ -206,6 +212,13 @@ async def lifespan(app: FastAPI):
 
     # Stop self-healing
     self_healing_engine.stop()
+
+    # Stop capability evolver
+    try:
+        from core.capability_evolver import capability_evolver
+        capability_evolver.stop()
+    except Exception:
+        pass
 
 
 app = FastAPI(
@@ -302,6 +315,7 @@ app.include_router(media_router,         prefix="/api/media",        tags=["Medi
 app.include_router(tts_router,           prefix="/api/media",        tags=["TTS"])
 app.include_router(capability_router,    prefix="/api/capability",   tags=["Capability"])
 app.include_router(compliance_router,    prefix="/api/compliance",   tags=["Compliance & Security"])
+app.include_router(evolver_router,       prefix="/api/evolver",      tags=["Evolver"])
 
 
 @app.get("/api/health")

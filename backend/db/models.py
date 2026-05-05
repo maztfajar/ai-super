@@ -230,3 +230,21 @@ class ProjectIndex(SQLModel, table=True):
     file_count: int = 0                             # total files indexed
     last_scanned_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class EvolutionRuleModel(SQLModel, table=True):
+    """Penyimpanan permanen untuk EvolutionRule yang dipelajari Capability Evolver."""
+    __tablename__ = "evolution_rules"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    rule_type: str = Field(index=True)              # model_preference | routing_override | dll
+    condition_json: str = "{}"                      # JSON: kondisi kapan rule berlaku
+    action_json: str = "{}"                         # JSON: aksi yang diambil
+    confidence: float = 0.5                         # 0.0-1.0
+    wins: int = 0                                   # berapa kali terbukti benar
+    losses: int = 0                                 # berapa kali terbukti salah
+    status: str = Field(default="proposed", index=True)  # proposed|active|deprecated
+    source: str = ""                                # evolver_v1, manual, dll
+    explanation: str = ""                           # penjelasan human-readable
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    last_used_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

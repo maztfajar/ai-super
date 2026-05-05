@@ -138,6 +138,30 @@ class AgentScorer:
             f"→ {score.total_score:.3f}"
         )
 
+        # 6. Evolution Score dari Capability Evolver (score modifier)
+        try:
+            from core.capability_evolver import capability_evolver
+            import asyncio
+
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Non-blocking: schedule coroutine, use cached result next time
+                evolution_modifier, applied_rules = 0.0, []
+            else:
+                evolution_modifier, applied_rules = asyncio.run(
+                    capability_evolver.get_rules_for_scoring(
+                        task_type=subtask.task_type,
+                        agent_type=agent_cap.agent_type,
+                        model_id=model_id,
+                    )
+                )
+
+            if evolution_modifier != 0.0:
+                score.total_score = max(0.0, min(1.0, score.total_score + evolution_modifier))
+                score.reasoning += f" evo={evolution_modifier:+.2f}({len(applied_rules)} rules)"
+        except Exception:
+            pass  # Evolver tidak boleh crash scoring
+
         # Simpan ke cache
         _SCORE_CACHE[cache_key] = (score, now)
         return score

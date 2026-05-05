@@ -606,6 +606,21 @@ class AgentExecutor:
         if not has_system:
             agent_msgs.insert(0, {"role": "system", "content": system_prompt})
 
+        # ── Inject prompt patches dari Capability Evolver ────────────────────
+        try:
+            from core.capability_evolver import capability_evolver
+            _task_type = "general"
+            for m in agent_msgs:
+                if m["role"] == "user":
+                    _task_type = m.get("content", "")[:20]
+                    break
+            patches = await capability_evolver.get_prompt_patches(_task_type)
+            if patches:
+                patch_text = "\n\n[LEARNED IMPROVEMENTS]\n" + "\n".join(patches)
+                agent_msgs[0]["content"] += patch_text
+        except Exception:
+            pass  # Patch gagal → lanjut tanpa patch
+
         # ── FASE 2: Temperature diturunkan untuk keakuratan ──────────────────
         # Override temperature ke nilai rendah untuk tool execution
         execution_temperature = min(temperature, 0.3)

@@ -537,6 +537,26 @@ class Orchestrator:
             except Exception as e:
                 log.debug("Procedural memory save skipped", error=str(e)[:80])
 
+        # ─── PHASE 8.6: CAPABILITY EVOLVER — record outcome ──────────
+        # Beri feedback ke evolver tentang apakah assignment model berhasil
+        try:
+            from core.evolution_store import evolution_store
+
+            for result in results:
+                rules = await evolution_store.get_rules_for_context(
+                    task_type=spec.primary_intent,
+                    agent_type=result.agent_type,
+                    model_id=result.model_used,
+                    min_confidence=0.0,
+                )
+                for rule in rules:
+                    await evolution_store.update_rule_outcome(
+                        rule_id=rule.id,
+                        success=result.success and result.confidence >= 0.6,
+                    )
+        except Exception as e:
+            log.debug("Evolver outcome recording skipped", error=str(e)[:60])
+
         # Update TaskExecution record
         await self._update_task_execution(
             task_exec_id, aggregated, total_time, results
