@@ -82,7 +82,19 @@ bash install.sh
 # Buka http://localhost:7860 di browser Anda
 ```
 
-### 🐳 Menjalankan dengan Docker
+### 🐳 Menjalankan dengan Docker Compose (Rekomendasi)
+
+Gunakan Docker Compose untuk manajemen container yang lebih mudah, lengkap dengan **Watchtower** untuk update otomatis:
+
+```bash
+# Jalankan aplikasi dan watchtower
+docker-compose up -d
+```
+
+Dengan konfigurasi ini, aplikasi Anda akan otomatis mengupdate dirinya sendiri setiap kali Anda melakukan push ke GitHub (cek setiap 5 menit).
+
+### 🛡️ Proteksi Kode Sumber
+Image Docker ini telah di-build dengan **Bytecode Compilation**. Semua file `.py` telah dihapus dan diganti dengan `.pyc` (Python Compiled). Ini memberikan lapisan keamanan tambahan agar logika bisnis Anda sulit untuk dilacak atau dimodifikasi oleh pengguna akhir.
 
 Anda juga bisa menjalankan AI Orchestrator menggunakan Docker tanpa perlu install dependencies secara manual:
 

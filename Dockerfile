@@ -17,15 +17,22 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright dependencies (for browser automation)
+# Install Playwright dependencies
 RUN pip install playwright && playwright install-deps chromium
 
-# Copy backend and install requirements
+# Copy backend requirements
 COPY backend/requirements.txt ./backend/
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # Copy backend code
 COPY backend/ ./backend/
+
+# --- PROTEKSI KODE SUMBER ---
+# Kompilasi semua file .py menjadi bytecode .pyc dan hapus file aslinya
+# Ini mempersulit pengguna untuk melacak atau memodifikasi logika bisnis Anda.
+RUN python -m compileall -b /app/backend && \
+    find /app/backend -name "*.py" -delete
+# ----------------------------
 
 # Copy frontend build from Stage 1
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
@@ -44,5 +51,5 @@ ENV PYTHONPATH=/app/backend
 ENV HOST=0.0.0.0
 ENV PORT=7860
 
-# Run the application
-CMD ["python", "backend/main.py"]
+# Run the application (Python akan otomatis menjalankan file .pyc)
+CMD ["python", "backend/main.pyc"]

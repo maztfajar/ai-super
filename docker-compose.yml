@@ -1,0 +1,25 @@
+services:
+  ai-orchestrator:
+    image: maztfajar/ai-super:latest
+    container_name: ai-orchestrator
+    restart: always
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    # Label ini penting untuk Watchtower agar hanya memantau container ini jika diinginkan
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup --label-enable
+    # --interval 300 artinya cek update setiap 5 menit (300 detik)
+    # --cleanup menghapus image lama setelah update
+    # --label-enable hanya mengupdate container dengan label watchtower.enable=true
