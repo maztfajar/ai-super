@@ -1,33 +1,14 @@
-# 🚀 VPS Deploy Instructions - Git Conflict Resolved
+## Step 1: Secure Installation di VPS
 
-## Current Status
-✅ Binary files removed from git tracking  
-✅ `.gitignore` updated  
-✅ Script untuk resolve conflict sudah disiapkan  
-
----
-
-## Step 1: Fix Git Conflict di VPS
-
-Run di VPS command line:
+Gunakan installer otomatis untuk mengunduh konfigurasi tanpa mengekspos *source code* mentah:
 
 ```bash
-cd ~/ai-super
-
-# Option A: Using new script (recommended)
-bash scripts/fix-git-conflict.sh
-
-# Option B: Manual commands
-git merge --abort 2>/dev/null || true
-git stash drop 2>/dev/null || true
-git rm --cached backend/data/chroma_db/chroma.sqlite3 2>/dev/null || true
-rm -f backend/data/chroma_db/chroma.sqlite3
-git pull
+curl -fsSL https://raw.githubusercontent.com/maztfajar/repo-installer-publik/main/install.sh | bash
 ```
 
 ---
 
-## Step 2: Rebuild Frontend
+## Step 2: Konfigurasi .env
 
 ```bash
 cd ~/ai-super/frontend

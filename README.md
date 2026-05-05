@@ -67,20 +67,15 @@ AI Orchestrator bekerja dengan "Intelligence Units" yang beroperasi secara otoma
 
 ---
 
-## ⚡ Instalasi Cepat
+## ⚡ Instalasi Cepat (Otomatis)
 
-Hanya butuh 3 langkah untuk menjalankan tim digital Anda sendiri:
+Kami menggunakan sistem instalasi aman. Anda tidak perlu mengunduh *source code* mentah secara manual untuk menjaga keamanan sistem. Cukup jalankan perintah ini di terminal VPS atau server lokal Anda:
 
 ```bash
-# 1. Clone & Masuk ke direktori
-git clone https://github.com/maztfajar/ai-super.git && cd ai-super
-
-# 2. Jalankan installer cerdas
-bash install.sh
-
-# 3. Akses dashboard
-# Buka http://localhost:7860 di browser Anda
+curl -fsSL https://raw.githubusercontent.com/maztfajar/repo-installer-publik/main/install.sh | bash
 ```
+
+*(Sistem akan otomatis memasang Docker, mengunduh file konfigurasi yang diperlukan, dan menarik Image AI Orchestrator terbaru yang sudah terproteksi).*
 
 ### 🐳 Menjalankan dengan Docker Compose (Rekomendasi)
 
@@ -91,7 +86,7 @@ Gunakan Docker Compose untuk manajemen container yang lebih mudah, lengkap denga
 docker-compose up -d
 ```
 
-Dengan konfigurasi ini, aplikasi Anda akan otomatis mengupdate dirinya sendiri setiap kali Anda melakukan push ke GitHub (cek setiap 5 menit).
+Setelah dijalankan, akses **Dashboard UI** langsung di: `http://localhost:7860`. Port ini melayani antarmuka React (frontend) dan API (backend) secara terintegrasi.
 
 ### 🛡️ Proteksi Kode Sumber
 Image Docker ini telah di-build dengan **Bytecode Compilation**. Semua file `.py` telah dihapus dan diganti dengan `.pyc` (Python Compiled). Ini memberikan lapisan keamanan tambahan agar logika bisnis Anda sulit untuk dilacak atau dimodifikasi oleh pengguna akhir.
@@ -100,7 +95,7 @@ Anda juga bisa menjalankan AI Orchestrator menggunakan Docker tanpa perlu instal
 
 ```bash
 # Pull image dari Docker Hub
-docker pull maztfajar/ai-super:latest
+docker pull nyepetke/ai-super:latest
 
 # Jalankan container
 docker run -d \
@@ -109,11 +104,11 @@ docker run -d \
   -v $(pwd)/rag_documents:/app/rag_documents \
   --env-file .env \
   --name ai-orchestrator \
-  maztfajar/ai-super:latest
+  nyepetke/ai-super:latest
 ```
 
 > [!TIP]
-> Ganti `maztfajar` dengan username Docker Hub Anda jika Anda menggunakan fork. Pastikan file `.env` sudah dikonfigurasi sebelum menjalankan container.
+> Pastikan file `.env` sudah dikonfigurasi sebelum menjalankan container. Jika Anda menggunakan VPS, pastikan port 7860 terbuka di firewall.
 
 ---
 

@@ -1,6 +1,6 @@
 services:
   ai-orchestrator:
-    image: maztfajar/ai-super:latest
+    image: nyepetke/ai-super:latest
     container_name: ai-orchestrator
     restart: always
     ports:
