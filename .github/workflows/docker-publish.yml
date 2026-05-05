@@ -12,7 +12,7 @@ env:
   # Use docker.io for Docker Hub if empty
   REGISTRY: docker.io
   # github.repository as <account>/<repo>
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ai-orchestrator
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ai-super
 
 
 jobs:
