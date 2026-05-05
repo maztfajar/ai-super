@@ -82,6 +82,26 @@ bash install.sh
 # Buka http://localhost:7860 di browser Anda
 ```
 
+### 🐳 Menjalankan dengan Docker
+
+Anda juga bisa menjalankan AI Orchestrator menggunakan Docker tanpa perlu install dependencies secara manual:
+
+```bash
+# Pull image dari Docker Hub
+docker pull your-username/ai-orchestrator:latest
+
+# Jalankan container
+docker run -d \
+  -p 7860:7860 \
+  -v $(pwd)/data:/app/data \
+  --env-file .env \
+  --name ai-orchestrator \
+  your-username/ai-orchestrator:latest
+```
+
+> [!TIP]
+> Ganti `your-username` dengan username Docker Hub Anda. Pastikan file `.env` sudah dikonfigurasi sebelum menjalankan container.
+
 ---
 
 ## 📋 Struktur Sistem
