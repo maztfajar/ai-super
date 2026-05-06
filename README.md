@@ -11,10 +11,10 @@
 
 ---
 
-## 🏛️ Orchestrator vs. OpenClaw
-Mengapa memilih AI Orchestrator? Berikut adalah perbandingan mendalam dengan platform populer lainnya:
+## 🏛️ AI Orchestrator vs. Aplikasi Lainnya
+Mengapa memilih AI Orchestrator? Berikut adalah perbandingan mendalam dengan platform populer lainnya seperti OpenClaw, OpenWebUI, dan OpenDevin:
 
-| Fitur | 🧠 AI Orchestrator | 🦞 OpenClaw |
+| Fitur Utama | 🧠 AI Orchestrator | 🦞 Aplikasi Sejenis (OpenClaw / OpenWebUI / OpenDevin) |
 | :--- | :--- | :--- |
 | **Fokus Utama** | Optimasi & Efisiensi Skala Enterprise | Modularitas & Komunitas (Local-first) |
 | **Memory Engine** | **Byte Rover** (Semantic RAG Context) | Plain Text / YAML based |
@@ -95,14 +95,43 @@ services:
   ai-orchestrator:
     image: nyepetke/ai-super:latest
     container_name: ai-orchestrator
+    restart: always
     ports:
       - "7860:7860"
     volumes:
       - ./data:/app/data
       - ./rag_documents:/app/rag_documents
+      - ./.env:/app/.env
     env_file:
       - .env
-    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/api/health"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - ai-orchestrator
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup --label-enable
 ```
 
 **2. Siapkan file `.env`**
