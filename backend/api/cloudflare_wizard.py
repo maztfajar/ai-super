@@ -125,10 +125,15 @@ async def wizard_status(user: User = Depends(get_current_user)):
     env = read_env()
     cf_path = shutil.which("cloudflared")
 
-    # Cek service aktif
+    # Cek service aktif via systemctl
     is_service_active = False
     _, out, _ = await _run_cmd(["systemctl", "is-active", "cloudflared"], timeout=5)
     is_service_active = out.strip() == "active"
+
+    # Jika tidak aktif via systemctl, cek apakah ada proses cloudflared berjalan
+    if not is_service_active:
+        _, ps_out, _ = await _run_cmd(["pgrep", "-x", "cloudflared"], timeout=3)
+        is_service_active = bool(ps_out.strip())
 
     # Cek sudo
     has_sudo = await _check_sudo()
@@ -136,30 +141,61 @@ async def wizard_status(user: User = Depends(get_current_user)):
     has_api_token    = bool(env.get("CLOUDFLARE_API_TOKEN", "").strip())
     has_tunnel_token = bool(env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip())
     has_tunnel_id    = bool(env.get("CLOUDFLARE_TUNNEL_ID", "").strip())
-    has_domain       = bool(env.get("TUNNEL_DOMAIN", "").strip())
+    tunnel_domain    = env.get("TUNNEL_DOMAIN", "").strip()
+
+    # Jika tunnel aktif tapi TUNNEL_DOMAIN belum diisi di .env,
+    # coba ambil domain dari log cloudflared (untuk pengguna yang install via terminal)
+    if is_service_active and not tunnel_domain:
+        _, log_out, _ = await _run_cmd(
+            ["journalctl", "-u", "cloudflared", "-n", "50", "--no-pager", "--output=cat"],
+            timeout=5
+        )
+        # Cari pola domain dari log cloudflared
+        import re as _re
+        # Pola: *.trycloudflare.com atau domain custom di log
+        patterns = [
+            r'https?://([a-zA-Z0-9\-\.]+\.trycloudflare\.com)',
+            r'registered tunnel connection.*?([a-zA-Z0-9\-]+\.trycloudflare\.com)',
+            r'https://([a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,})',
+        ]
+        for pat in patterns:
+            m = _re.search(pat, log_out)
+            if m:
+                tunnel_domain = m.group(1)
+                break
+
+    has_domain = bool(tunnel_domain)
 
     steps_completed = []
-    if has_api_token:     steps_completed.append("api_token")
-    if has_tunnel_token:  steps_completed.append("tunnel_created")
-    if has_domain:        steps_completed.append("domain_configured")
-    if cf_path:           steps_completed.append("cloudflared_installed")
-    if is_service_active: steps_completed.append("service_running")
+    if has_api_token:      steps_completed.append("api_token")
+    if has_tunnel_token:   steps_completed.append("tunnel_created")
+    if has_domain:         steps_completed.append("domain_configured")
+    if cf_path:            steps_completed.append("cloudflared_installed")
+    if is_service_active:  steps_completed.append("service_running")
+
+    # Setup dianggap selesai jika service aktif (terlepas dari API Token)
+    setup_complete = is_service_active
 
     return {
-        "has_api_token":    has_api_token,
-        "has_tunnel_token": has_tunnel_token,
-        "has_tunnel_id":    has_tunnel_id,
-        "has_domain":       has_domain,
-        "tunnel_domain":    env.get("TUNNEL_DOMAIN", ""),
-        "tunnel_id":        env.get("CLOUDFLARE_TUNNEL_ID", ""),
-        "account_id":       env.get("CLOUDFLARE_ACCOUNT_ID", ""),
+        "has_api_token":         has_api_token,
+        "has_tunnel_token":      has_tunnel_token,
+        "has_tunnel_id":         has_tunnel_id,
+        "has_domain":            has_domain,
+        "tunnel_domain":         tunnel_domain,
+        "tunnel_id":             env.get("CLOUDFLARE_TUNNEL_ID", ""),
+        "account_id":            env.get("CLOUDFLARE_ACCOUNT_ID", ""),
         "cloudflared_installed": cf_path is not None,
-        "cloudflared_path": cf_path or "",
-        "service_active":   is_service_active,
-        "has_sudo":         has_sudo,
-        "steps_completed":  steps_completed,
-        "setup_complete":   len(steps_completed) >= 4,
+        "cloudflared_path":      cf_path or "",
+        "service_active":        is_service_active,
+        "has_sudo":              has_sudo,
+        "steps_completed":       steps_completed,
+        "setup_complete":        setup_complete,
+        # Flag khusus: tunnel jalan via terminal (bukan via wizard)
+        "installed_via_terminal": is_service_active and not has_api_token,
     }
+
+
+
 
 
 # ── Step 1: Validasi API Token ────────────────────────────────

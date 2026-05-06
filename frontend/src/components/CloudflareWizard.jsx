@@ -709,12 +709,15 @@ export default function CloudflareWizard({ onClose }) {
   useEffect(() => {
     wApi.status().then(s => {
       setStatus(s)
-      if (s.service_active && s.has_domain) { setFinished(true); return }
+      // Jika service aktif (termasuk install via terminal), langsung tampilkan layar sukses
+      if (s.service_active) { setFinished(true); return }
+      // Lanjutkan wizard dari step yang sesuai
       if (s.has_domain && s.has_tunnel_token) { setStep(4); setAccountId(s.account_id); setTunnelId(s.tunnel_id); return }
       if (s.has_tunnel_token) { setStep(3); setAccountId(s.account_id); setTunnelId(s.tunnel_id); return }
       if (s.has_api_token) { setStep(2); return }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
+
 
   const STEPS = [
     { n: 1, label: 'API Token',  icon: Key    },
@@ -742,30 +745,61 @@ export default function CloudflareWizard({ onClose }) {
     <div className="space-y-4 py-2 text-center">
       <div className="text-5xl mb-2">🎉</div>
       <div className="text-sm font-bold text-ink">Cloudflare Tunnel Aktif!</div>
-      <div className="text-xs text-ink-3">AI ORCHESTRATOR dapat diakses dari internet</div>
-      {status?.tunnel_domain && (
+      <div className="text-xs text-ink-3">
+        {status?.installed_via_terminal
+          ? 'Tunnel terdeteksi berjalan (instalasi via terminal)'
+          : 'AI ORCHESTRATOR dapat diakses dari internet'}
+      </div>
+
+      {/* Badge status tunnel via terminal */}
+      {status?.installed_via_terminal && (
+        <div className="flex items-center justify-center gap-2 p-2.5 bg-accent/8 border border-accent/25 rounded-xl text-[10px] text-accent-2">
+          <Terminal size={12} />
+          Tunnel dikelola oleh sistem (bukan via wizard). Untuk manajemen penuh, gunakan "Setup via Wizard" di bawah.
+        </div>
+      )}
+
+      {/* Domain */}
+      {status?.tunnel_domain ? (
         <div className="flex items-center justify-center gap-2 p-3 bg-success/8 border border-success/25 rounded-xl">
           <Wifi size={14} className="text-success" />
           <code className="font-mono text-sm text-success">{status.tunnel_domain}</code>
           <CopyBtn text={`https://${status.tunnel_domain}`} />
           <a href={`https://${status.tunnel_domain}`} target="_blank" rel="noopener noreferrer" className="text-success"><ExternalLink size={13}/></a>
         </div>
+      ) : (
+        <div className="flex items-center justify-center gap-2 p-3 bg-success/8 border border-success/25 rounded-xl text-xs text-success">
+          <Wifi size={14} />
+          Tunnel aktif. Domain tidak terdeteksi otomatis — cek di Cloudflare Dashboard.
+        </div>
       )}
+
+      {/* Status grid */}
       <div className="grid grid-cols-2 gap-2 text-[10px] text-left">
-        {[['API Token', status?.has_api_token], ['Tunnel', status?.has_tunnel_token], ['Domain', status?.has_domain], ['Service', status?.service_active]].map(([l, ok]) => (
+        {[
+          ['cloudflared', status?.cloudflared_installed],
+          ['Service', status?.service_active],
+          ['API Token', status?.has_api_token],
+          ['Domain', status?.has_domain],
+        ].map(([l, ok]) => (
           <div key={l} className={clsx('flex items-center gap-1.5 p-2 rounded-lg border',
             ok ? 'bg-success/8 border-success/20 text-success' : 'bg-bg-4 border-border text-ink-3')}>
             {ok ? <CheckCircle2 size={11}/> : <XCircle size={11}/>}{l}
           </div>
         ))}
       </div>
-      <div className="flex gap-2 flex-wrap">
-        <Btn label="Setup Ulang" onClick={() => { setFinished(false); setStep(1) }} variant="default" />
+
+      <div className="flex gap-2 flex-wrap justify-center">
+        {status?.installed_via_terminal
+          ? <Btn label="Setup via Wizard (Opsional)" onClick={() => { setFinished(false); setStep(1) }} variant="default" icon={Key} />
+          : <Btn label="Setup Ulang" onClick={() => { setFinished(false); setStep(1) }} variant="default" />
+        }
         <Btn label="Reset Semua" onClick={() => setShowReset(true)} variant="danger" icon={Trash2} />
         {onClose && <Btn label="Tutup" onClick={() => { onClose(); window.location.reload() }} variant="primary" />}
       </div>
     </div>
   )
+
 
   return (
     <div className="space-y-4">
