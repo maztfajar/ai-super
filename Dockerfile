@@ -30,8 +30,7 @@ COPY backend/ ./backend/
 
 # --- PROTEKSI KODE SUMBER ---
 # Kompilasi semua file .py menjadi bytecode .pyc dan hapus file aslinya
-# Ini mempersulit pengguna untuk melacak atau memodifikasi logika bisnis Anda.
-RUN python -m compileall -b /app/backend && \
+RUN python3 -m compileall -b /app/backend || (echo "Compilation failed!" && exit 1) && \
     find /app/backend -name "*.py" -delete
 # ----------------------------
 
@@ -55,6 +54,7 @@ ENV PYTHONPATH=/app/backend
 ENV HOST=0.0.0.0
 ENV PORT=7860
 ENV PYTHONUNBUFFERED=1
+ENV LANG=C.UTF-8
 
 # Healthcheck to monitor API status
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
