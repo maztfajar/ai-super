@@ -24,10 +24,16 @@ async def ensure_admin_exists():
     from core.auth import hash_password  # gunakan bcrypt langsung (tanpa passlib)
     import uuid
 
-    # Ambil kredensial dari .env atau gunakan default
+    # Ambil kredensial dari .env
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
-    admin_email    = os.getenv("ADMIN_EMAIL", "admin@ai-orchestrator.local")
+    raw_admin_password = os.getenv("ADMIN_PASSWORD", "")
+    
+    is_default_password = False
+    if not raw_admin_password or raw_admin_password == "GANTI-INI-DENGAN-PASSWORD-KUAT":
+        admin_password = "admin123"
+        is_default_password = True
+    else:
+        admin_password = raw_admin_password
 
     db_url = settings.get_db_url
     is_sqlite = db_url.startswith("sqlite")
@@ -58,16 +64,15 @@ async def ensure_admin_exists():
         existing = result.scalar_one_or_none()
 
         if existing:
-            # Admin sudah ada — reset password supaya pasti bisa login
-            existing.hashed_password = hash_password(admin_password)
-            existing.is_active = True
-            existing.is_admin  = True
-            existing.role      = "admin"
-            db.add(existing)
-            await db.commit()
-            print(f"✅ User '{admin_username}' sudah ada — password direset")
+            # Pastikan role tetap admin
+            if not existing.is_admin:
+                existing.is_admin = True
+                existing.role = "admin"
+                db.add(existing)
+                await db.commit()
+            print(f"✅ User '{admin_username}' sudah ada di database.")
         else:
-            # Buat admin baru sesuai field di models.py
+            # Buat admin baru
             new_admin = User(
                 id=str(uuid.uuid4()),
                 username=admin_username,
@@ -88,10 +93,14 @@ async def ensure_admin_exists():
     print(f"{'='*52}")
     print(f"  URL      : http://localhost:7860")
     print(f"  Username : {admin_username}")
-    print(f"  Password : {admin_password}")
+    if is_default_password:
+        print(f"  Password : {admin_password}  <-- (DEFAULT, HARAP DIGANTI!)")
+    else:
+        print(f"  Password : (Sesuai dengan file .env)")
     print(f"{'='*52}")
-    print(f"  ⚠️  Ganti password setelah login pertama!\n")
-
+    if is_default_password:
+        print(f"  ⚠️  PERINGATAN: Anda menggunakan password default!")
+        print(f"  Ganti password segera di dashboard atau ubah file .env\n")
 
 if __name__ == "__main__":
     asyncio.run(ensure_admin_exists())
