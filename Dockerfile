@@ -30,18 +30,48 @@ COPY backend/ ./backend/
 
 # --- PROTEKSI KODE SUMBER ---
 # Kompilasi semua file .py menjadi bytecode .pyc dan hapus file aslinya
-RUN echo "=== Compiling Python files ==" && \
-    python3 -m compileall -b -f -q \
-        /app/backend/agents \
-        /app/backend/api \
-        /app/backend/core \
-        /app/backend/db \
-        /app/backend/integrations \
-        /app/backend/memory \
-        /app/backend/rag \
-        /app/backend/workflow \
-        /app/backend/main.py && \
-    echo "=== Compilation OK. Removing .py source files ===" && \
+RUN python3 - <<'PYEOF'
+import compileall, sys, os
+
+dirs = [
+    "/app/backend/agents",
+    "/app/backend/api",
+    "/app/backend/core",
+    "/app/backend/db",
+    "/app/backend/integrations",
+    "/app/backend/memory",
+    "/app/backend/rag",
+    "/app/backend/workflow",
+]
+files = ["/app/backend/main.py"]
+
+print("=== Compiling Python files ===")
+ok = True
+for d in dirs:
+    if os.path.isdir(d):
+        result = compileall.compile_dir(d, force=True, quiet=0, legacy=True)
+        if not result:
+            print(f"ERROR: Failed to compile directory: {d}", file=sys.stderr)
+            ok = False
+    else:
+        print(f"WARNING: Directory not found, skipping: {d}")
+
+for f in files:
+    if os.path.isfile(f):
+        result = compileall.compile_file(f, force=True, quiet=0, legacy=True)
+        if not result:
+            print(f"ERROR: Failed to compile file: {f}", file=sys.stderr)
+            ok = False
+    else:
+        print(f"WARNING: File not found, skipping: {f}")
+
+if not ok:
+    print("COMPILATION FAILED", file=sys.stderr)
+    sys.exit(1)
+
+print("=== Compilation OK ===")
+PYEOF
+RUN echo "=== Removing .py source files ===" && \
     find /app/backend -name "*.py" -not -path "*/scripts/*" -delete && \
     echo "=== Done ==="
 # ----------------------------
