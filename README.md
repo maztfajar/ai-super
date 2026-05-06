@@ -79,38 +79,55 @@ curl -fsSL https://raw.githubusercontent.com/maztfajar/repo-installer-publik/mai
 
 *(Sistem akan otomatis memasang Docker, mengunduh file konfigurasi yang diperlukan, dan menarik Image AI Orchestrator terbaru yang sudah terproteksi).*
 
-### 🐳 Menjalankan dengan Docker Compose (Rekomendasi)
+### 🐳 Instalasi Manual dengan Docker Compose (Rekomendasi)
 
-Gunakan Docker Compose untuk manajemen container yang lebih mudah, lengkap dengan **Watchtower** untuk update otomatis:
+Jika Anda tidak ingin menggunakan skrip otomatis di atas, Anda bisa mengaturnya secara manual menggunakan Docker Compose. Metode ini jauh lebih aman dari salah ketik dan sangat mudah untuk proses *update* ke depannya.
 
+**1. Buat file konfigurasi (`docker-compose.yml`)**
+Buat folder baru dan buat file konfigurasi:
 ```bash
-# Jalankan aplikasi dan watchtower
-docker-compose up -d
+mkdir ai-orchestrator && cd ai-orchestrator
+nano docker-compose.yml
+```
+Masukkan konfigurasi berikut ke dalam file tersebut:
+```yaml
+services:
+  ai-orchestrator:
+    image: nyepetke/ai-super:latest
+    container_name: ai-orchestrator
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./data:/app/data
+      - ./rag_documents:/app/rag_documents
+    env_file:
+      - .env
+    restart: unless-stopped
 ```
 
-Setelah dijalankan, akses **Dashboard UI** langsung di: `http://localhost:7860`. Port ini melayani antarmuka React (frontend) dan API (backend) secara terintegrasi.
-
-### 🛡️ Proteksi Kode Sumber
-Image Docker ini telah di-build dengan **Bytecode Compilation**. Semua file `.py` telah dihapus dan diganti dengan `.pyc` (Python Compiled). Ini memberikan lapisan keamanan tambahan agar logika bisnis Anda sulit untuk dilacak atau dimodifikasi oleh pengguna akhir.
-
-Anda juga bisa menjalankan AI Orchestrator menggunakan Docker tanpa perlu install dependencies secara manual:
-
+**2. Siapkan file `.env`**
 ```bash
-# Pull image dari Docker Hub
-docker pull nyepetke/ai-super:latest
-
-# Jalankan container
-docker run -d \
-  -p 7860:7860 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/rag_documents:/app/rag_documents \
-  --env-file .env \
-  --name ai-orchestrator \
-  nyepetke/ai-super:latest
+nano .env
 ```
+Isikan kredensial dasar Anda:
+```env
+ADMIN_USERNAME=admin
+# Ganti dengan password yang kuat, minimal 8 karakter!
+ADMIN_PASSWORD=password_rahasia_saya123
+```
+
+**3. Jalankan Aplikasi**
+```bash
+docker compose up -d
+```
+
+Setelah dijalankan, akses **Dashboard UI** langsung di: `http://<IP_VPS_ANDA>:7860`.
+Gunakan kredensial `admin` dan password yang telah Anda buat di `.env` tadi.
 
 > [!TIP]
-> Pastikan file `.env` sudah dikonfigurasi sebelum menjalankan container. Jika Anda menggunakan VPS, pastikan port 7860 terbuka di firewall.
+> **Cara Melakukan Update (Pembaruan Versi):**
+> Sangat mudah! Anda hanya perlu masuk ke folder `ai-orchestrator` lalu jalankan:
+> `docker compose pull` kemudian `docker compose up -d`. Sistem akan otomatis memperbarui tanpa menghilangkan data Anda.
 
 ---
 
