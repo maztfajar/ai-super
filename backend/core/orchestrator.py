@@ -164,6 +164,30 @@ class Orchestrator:
         except Exception as e:
             log.debug("Procedural memory recall skipped", error=str(e)[:80])
 
+        # ─── PHASE 1.6: SKILL LOOKUP — cek apakah ada skill permanen ──
+        # Skill = kristalisasi dari ProceduralMemory yang sudah terbukti N kali
+        skill_context = ""
+        try:
+            from core.skill_evolution import skill_evolution
+            matched_skill = await skill_evolution.find_matching_skill(
+                category=spec.primary_intent,
+                query=message[:300],
+            )
+            if matched_skill:
+                skill_context = skill_evolution.build_skill_context(matched_skill)
+                system_prompt = system_prompt + skill_context
+                yield OrchestratorEvent("status",
+                    f"⚡ Skill '{matched_skill['name']}' aktif "
+                    f"(v{matched_skill['version']}, "
+                    f"hemat ~{matched_skill['avg_tokens_saved']} token)"
+                )
+                yield OrchestratorEvent.proc("Worked",
+                    f"skill: {matched_skill['name']}",
+                    extra={"result": skill_evolution.build_skill_context(matched_skill)}
+                )
+        except Exception as e:
+            log.debug("Skill lookup skipped", error=str(e)[:80])
+
         # ─── PHASE 0: CAPABILITY-AWARE ROUTING ───────────────────
         # Fast-path for special intents before full orchestration
         primary = spec.primary_intent

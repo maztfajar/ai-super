@@ -248,3 +248,33 @@ class EvolutionRuleModel(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     last_used_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class LearnedSkill(SQLModel, table=True):
+    """
+    Skill yang dikristalisasi dari ProceduralMemory.
+    Terbentuk otomatis setelah pola yang sama berhasil N kali.
+    """
+    __tablename__ = "learned_skills"
+
+    id:                str      = Field(default_factory=gen_id, primary_key=True)
+    name:              str      = Field(index=True)        # nama skill yang digenerate AI
+    category:          str      = Field(index=True)        # coding | system | analysis | dll
+    description:       str      = ""                       # deskripsi singkat apa yang dilakukan skill ini
+    trigger_keywords:  str      = ""                       # kata kunci yang memicu skill ini
+    steps_json:        str      = "[]"                     # langkah eksekusi terstruktur
+    tools_json:        str      = "[]"                     # tools yang dipakai
+    template:          str      = ""                       # template prompt untuk eksekusi skill
+    version:           int      = 1                        # versi skill (naik setiap ada improvement)
+    usage_count:       int      = 0                        # berapa kali skill ini dipakai
+    success_count:     int      = 0                        # berapa kali berhasil
+    avg_confidence:    float    = 0.0
+    avg_tokens_saved:  int      = 0                        # estimasi token hemat vs tanpa skill
+    source_memory_id:  Optional[str] = None                # ProceduralMemory yang jadi sumber
+    is_active:         bool     = True
+    created_at:        datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+    updated_at:        datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )

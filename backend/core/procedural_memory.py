@@ -4,6 +4,7 @@ Memori Prosedural: "Buku Resep" yang menyimpan pola tugas sukses ke database.
 """
 import json
 import re
+import asyncio
 from typing import Optional
 from datetime import datetime, timezone
 import structlog
@@ -38,6 +39,15 @@ class ProceduralMemoryEngine:
                     db.add(existing)
                     await db.commit()
                     log.info("Procedural memory updated", category=category, count=existing.success_count)
+                    # ── Trigger kristalisasi jika memenuhi threshold ──────
+                    if existing.success_count >= 5:  # CRYSTALLIZE_THRESHOLD
+                        try:
+                            from core.skill_evolution import skill_evolution
+                            asyncio.create_task(
+                                skill_evolution.check_and_crystallize(existing.id)
+                            )
+                        except Exception:
+                            pass
                     return existing.id
                 else:
                     steps = [steps_description] if steps_description else [task_summary]

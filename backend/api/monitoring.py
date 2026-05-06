@@ -246,3 +246,42 @@ async def trigger_security_scan(
                    "Hasilnya akan dikirim ke Telegram."
     }
 
+
+# ── Learned Skills endpoints ──────────────────────────────────
+
+@router.get("/skills")
+async def list_skills(
+    user: User = Depends(get_current_user),
+):
+    """Daftar semua skill yang sudah dipelajari orchestra."""
+    from core.skill_evolution import skill_evolution
+    skills = await skill_evolution.list_all_skills()
+    total_tokens_saved = sum(s["total_tokens_saved"] for s in skills)
+    return {
+        "skills":             skills,
+        "total_skills":       len(skills),
+        "total_tokens_saved": total_tokens_saved,
+        "message": f"Orchestra telah belajar {len(skills)} skill "
+                   f"dan menghemat {total_tokens_saved:,} token"
+    }
+
+
+@router.delete("/skills/{skill_id}")
+async def deactivate_skill(
+    skill_id: str,
+    user: User = Depends(get_admin_user),
+):
+    """Nonaktifkan skill yang tidak relevan."""
+    from db.database import AsyncSessionLocal
+    from db.models import LearnedSkill
+    from fastapi import HTTPException
+
+    async with AsyncSessionLocal() as db:
+        skill = await db.get(LearnedSkill, skill_id)
+        if not skill:
+            raise HTTPException(404, "Skill tidak ditemukan")
+        skill.is_active = False
+        db.add(skill)
+        await db.commit()
+    return {"status": "deactivated", "skill": skill.name}
+
