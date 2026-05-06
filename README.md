@@ -122,12 +122,20 @@ docker compose up -d
 ```
 
 Setelah dijalankan, akses **Dashboard UI** langsung di: `http://<IP_VPS_ANDA>:7860`.
-Gunakan kredensial `admin` dan password yang telah Anda buat di `.env` tadi.
+
+> [!IMPORTANT]
+> **Kredensial Login Default:**
+> - **Username:** `admin`
+> - **Password:** `admin123` *(jika `ADMIN_PASSWORD` di `.env` belum diisi atau masih kosong)*
+>
+> Jika Anda sudah mengisi `ADMIN_PASSWORD` di file `.env`, gunakan password yang Anda buat sendiri tersebut.
+> **Segera ganti password setelah berhasil masuk pertama kali** melalui menu Settings di Dashboard!
 
 > [!TIP]
 > **Cara Melakukan Update (Pembaruan Versi):**
 > Sangat mudah! Anda hanya perlu masuk ke folder `ai-orchestrator` lalu jalankan:
 > `docker compose pull` kemudian `docker compose up -d`. Sistem akan otomatis memperbarui tanpa menghilangkan data Anda.
+
 
 ---
 
