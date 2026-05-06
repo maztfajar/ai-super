@@ -22,6 +22,12 @@ CRYSTALLIZE_THRESHOLD = 5   # berhasil 5x → jadi Skill
 IMPROVE_THRESHOLD     = 10  # berhasil 10x → AI improve Skill
 TOKEN_SAVING_ESTIMATE = 800 # estimasi token hemat per penggunaan skill
 
+# ── Quality Gates — mencegah "bad habit" dikristalisasi ──────
+MIN_CONFIDENCE_TO_CRYSTALLIZE = 0.70  # confidence minimal 70% untuk jadi Skill
+MIN_SUCCESS_RATE_TO_USE       = 0.60  # success rate minimal 60% agar Skill tetap aktif
+DEGRADE_FAILURE_STREAK        = 3     # 3x gagal berturut-turut → auto-deactivate
+MAX_STEPS_PER_SKILL           = 20    # skill dengan >20 langkah = terlalu verbose, tolak
+
 
 class SkillEvolutionEngine:
     """
@@ -78,11 +84,29 @@ class SkillEvolutionEngine:
                         await db.commit()
 
                 elif mem.success_count >= CRYSTALLIZE_THRESHOLD:
-                    # Belum ada skill — kristalisasi sekarang
+                    # ── Quality Gate: cegah bad habit dikristalisasi ──
+                    if mem.avg_confidence < MIN_CONFIDENCE_TO_CRYSTALLIZE:
+                        log.info("Crystallization blocked — confidence too low",
+                                 category=mem.category,
+                                 confidence=round(mem.avg_confidence, 2),
+                                 threshold=MIN_CONFIDENCE_TO_CRYSTALLIZE)
+                        return  # Jangan kristalisasi pola yang buruk
+
+                    # Validasi: langkah tidak boleh terlalu banyak (tanda brute-force)
+                    try:
+                        steps = json.loads(mem.steps_json)
+                        if isinstance(steps, list) and len(steps) > MAX_STEPS_PER_SKILL:
+                            log.info("Crystallization blocked — too many steps (brute-force pattern)",
+                                     step_count=len(steps), max=MAX_STEPS_PER_SKILL)
+                            return
+                    except Exception:
+                        pass
+
                     log.info("Crystallizing memory into skill",
                              category=mem.category,
                              memory_id=memory_id[:8],
-                             success_count=mem.success_count)
+                             success_count=mem.success_count,
+                             confidence=round(mem.avg_confidence, 2))
                     await self._crystallize(db, mem)
 
         except Exception as e:
@@ -210,6 +234,15 @@ class SkillEvolutionEngine:
                     best_match  = skill
 
             if best_match and best_score >= 1.5:  # threshold minimum
+                # ── Quality Gate: jangan gunakan skill dengan success rate rendah ──
+                if best_match["usage_count"] > 0:
+                    sr = best_match["success_count"] / best_match["usage_count"]
+                    if sr < MIN_SUCCESS_RATE_TO_USE:
+                        log.info("Skill skipped — success rate too low",
+                                 name=best_match["name"],
+                                 success_rate=round(sr, 2))
+                        return None
+
                 log.info("Skill match found",
                          name=best_match["name"],
                          score=round(best_score, 2),
@@ -225,7 +258,9 @@ class SkillEvolutionEngine:
     async def record_skill_usage(
         self, skill_id: str, success: bool, tokens_used: int = 0
     ):
-        """Catat penggunaan skill untuk tracking dan improvement."""
+        """Catat penggunaan skill untuk tracking dan improvement.
+        Termasuk auto-degradation: jika skill sering gagal, deaktivasi otomatis.
+        """
         try:
             from db.database import AsyncSessionLocal
             from db.models import LearnedSkill
@@ -245,6 +280,34 @@ class SkillEvolutionEngine:
                         (skill.avg_tokens_saved * (skill.usage_count - 1) +
                          tokens_used) / skill.usage_count
                     )
+
+                # ── Auto-Degradation: deteksi skill yang mulai "rusak" ──
+                # Cek success rate — jika di bawah threshold, deaktivasi
+                if skill.usage_count >= 5:  # minimal 5 penggunaan untuk evaluasi
+                    success_rate = skill.success_count / skill.usage_count
+                    if success_rate < MIN_SUCCESS_RATE_TO_USE:
+                        skill.is_active = False
+                        self._skill_cache = {}  # invalidate cache
+                        log.warning("Skill auto-deactivated — success rate too low",
+                                    name=skill.name,
+                                    success_rate=round(success_rate, 2),
+                                    threshold=MIN_SUCCESS_RATE_TO_USE)
+
+                # Cek failure streak — N gagal berturut-turut = deaktivasi
+                if not success:
+                    # Hitung streak: jika usage_count - success_count >= DEGRADE_FAILURE_STREAK
+                    # dan gagal di penggunaan terakhir berturut-turut
+                    recent_failures = skill.usage_count - skill.success_count
+                    if recent_failures >= DEGRADE_FAILURE_STREAK and skill.is_active:
+                        # Cek apakah semua kegagalan terjadi di akhir
+                        # (sederhana: jika >50% penggunaan terakhir gagal)
+                        if skill.usage_count > 0 and (recent_failures / skill.usage_count) > 0.4:
+                            skill.is_active = False
+                            self._skill_cache = {}
+                            log.warning("Skill auto-deactivated — too many failures",
+                                        name=skill.name,
+                                        failures=recent_failures,
+                                        total=skill.usage_count)
 
                 skill.updated_at = datetime.now(
                     timezone.utc).replace(tzinfo=None)

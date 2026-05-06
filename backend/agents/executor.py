@@ -635,8 +635,32 @@ class AgentExecutor:
         consecutive_errors = 0
         MAX_CONSECUTIVE_ERRORS = 2   # dikurangi dari 3 → 2
 
+        # ── FASE 3: Token Budget — mencegah infinite loop memakan token ──────
+        # Hard limit: jika total token (estimasi) melebihi budget, paksa berhenti
+        MAX_TOKEN_BUDGET = 50_000    # ~50k token max per sesi eksekusi
+        total_chars_produced = 0     # estimasi kasar: 4 chars ≈ 1 token
+
+        # ── FASE 4: Stall Detector — deteksi AI yang berputar tanpa kemajuan ──
+        # Jika AI menghasilkan output teks berulang (bukan tool call), itu tanda stall
+        last_outputs_hash: list = [] # hash output terakhir untuk deteksi repetisi
+        MAX_STALL_REPEATS = 3        # 3x output identik = stall
+
         for iteration in range(MAX_ITERATIONS):
             response_filter = ResponseFilter(emit_thinking=emit_thinking)
+
+            # ── Token budget check ───────────────────────────────────────────
+            estimated_tokens = total_chars_produced // 4
+            if estimated_tokens > MAX_TOKEN_BUDGET:
+                yield (
+                    f"\n\n⚠️ **Token budget terlampaui** ({estimated_tokens:,} token). "
+                    f"Eksekusi dihentikan untuk mencegah pemborosan. "
+                    f"Coba pecah tugas menjadi bagian yang lebih kecil.\n"
+                )
+                log.warning("Token budget exceeded",
+                            estimated_tokens=estimated_tokens,
+                            budget=MAX_TOKEN_BUDGET,
+                            iteration=iteration)
+                break
 
             # ── FASE 1: Circuit breaker lebih cepat ─────────────────────────
             if consecutive_errors >= MAX_CONSECUTIVE_ERRORS:
@@ -750,6 +774,29 @@ class AgentExecutor:
                     f"Reasoning ({word_count} kata)",
                     extra={"result": captured_thinking}
                 )
+
+            # ── Token counting — akumulasi untuk budget check ────────────────
+            total_chars_produced += len(buffer)
+
+            # ── Stall detection — deteksi output repetitif tanpa tool call ───
+            if buffer.strip() and "<tool>" not in buffer:
+                output_hash = hash(buffer.strip()[:500])
+                last_outputs_hash.append(output_hash)
+                if len(last_outputs_hash) > MAX_STALL_REPEATS + 1:
+                    last_outputs_hash.pop(0)
+
+                # Cek apakah N output terakhir identik (AI berputar-putar)
+                if (len(last_outputs_hash) >= MAX_STALL_REPEATS and
+                        len(set(last_outputs_hash[-MAX_STALL_REPEATS:])) == 1):
+                    yield (
+                        "\n\n⚠️ **Stall terdeteksi:** AI menghasilkan output yang sama "
+                        f"{MAX_STALL_REPEATS}x berturut-turut tanpa kemajuan. "
+                        "Eksekusi dihentikan. Coba formulasikan ulang permintaan Anda.\n"
+                    )
+                    log.warning("Stall detected — repetitive output",
+                                iteration=iteration,
+                                hash=output_hash)
+                    break
 
             has_tool = "<tool>" in buffer
             if not has_tool:
