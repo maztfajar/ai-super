@@ -109,6 +109,66 @@ Seterusnya       → Semakin pintar, semakin hemat, semakin cepat
 - `GET /api/monitoring/skills` — Lihat semua skill yang telah dipelajari
 - `DELETE /api/monitoring/skills/{id}` — Nonaktifkan skill yang tidak relevan
 
+### 🛡️ Safety Guards — Mencegah AI "Belajar Hal Buruk"
+
+Sistem Self-Evolving Skills dilengkapi **4 lapis proteksi** agar AI tidak mengkristalisasi pola yang salah (bad habit):
+
+```
+┌──────────────────────────────────────────────────────────┐
+│           QUALITY GATES (Saat Kristalisasi)               │
+├──────────────────────────────────────────────────────────┤
+│  ① Confidence Gate  → Hanya pola dengan confidence ≥ 70% │
+│                       yang boleh menjadi Skill.           │
+│                       Pola "berhasil tapi ragu" = ditolak │
+│                                                          │
+│  ② Brute-Force Gate → Pola dengan > 20 langkah ditolak.  │
+│                       Terlalu banyak langkah = tanda      │
+│                       trial-error, bukan pola efisien.    │
+├──────────────────────────────────────────────────────────┤
+│        AUTO-DEGRADATION (Saat Skill Digunakan)            │
+├──────────────────────────────────────────────────────────┤
+│  ③ Success Rate      → Jika success rate turun < 60%     │
+│     Monitor            setelah 5+ penggunaan → Skill     │
+│                        otomatis DINONAKTIFKAN.            │
+│                                                          │
+│  ④ Failure Streak    → 3x gagal berturut-turut →         │
+│     Breaker            Skill langsung DINONAKTIFKAN.      │
+│                        Mencegah skill rusak terus dipakai │
+└──────────────────────────────────────────────────────────┘
+```
+
+> **Hasilnya:** Hanya skill berkualitas tinggi yang bertahan. Skill yang mulai "rusak" akan otomatis dimatikan sebelum menyebabkan kerusakan berulang.
+
+### 🔒 Anti Infinite-Loop — 5 Lapis Pertahanan Token
+
+AI agent yang mengeksekusi kode memiliki risiko terjebak dalam loop tak terbatas. AI Orchestrator memiliki **5 lapis pertahanan** untuk mencegah pemborosan token:
+
+```
+Lapis 1 ─ MAX_ITERATIONS (15)
+│         Batas keras: maksimal 15 iterasi per sesi eksekusi.
+│
+Lapis 2 ─ TOKEN BUDGET (50.000)
+│         Hard limit token. Jika estimasi token > 50k → paksa berhenti.
+│         Mencegah AI memakan biaya tanpa batas.
+│
+Lapis 3 ─ LOOP BREAKER
+│         Tool call identik 3x berturut-turut → paksa ganti strategi.
+│         AI dipaksa evaluasi ulang, bukan mengulangi hal yang sama.
+│
+Lapis 4 ─ STALL DETECTOR
+│         Output teks identik 3x berturut-turut (tanpa tool call)
+│         → abort. Menangkap AI yang "berputar" dalam reasoning.
+│
+Lapis 5 ─ CIRCUIT BREAKER
+          2 error beruntun → berhenti total dengan pesan jelas.
+          Mencegah cascading failure.
+```
+
+> **Contoh kasus yang dicegah:**
+> - AI mencoba memperbaiki bug logika di kodenya sendiri → terjebak loop → **Lapis 3** mendeteksi tool call berulang → paksa ganti strategi
+> - AI berpikir berputar-putar tanpa mengambil aksi → **Lapis 4** mendeteksi output repetitif → abort
+> - Bug tak terduga menghasilkan error terus-menerus → **Lapis 5** memutus sirkuit setelah 2x error
+
 ---
 
 ## 🚀 Autonomous Skills Suite (The Digital Team)
