@@ -291,6 +291,19 @@ async def chat_send(
     db.add(user_msg)
     await db.commit()
 
+    import re as _re
+
+    def _strip_internal_tags(text: str) -> str:
+        """Bersihkan tag XML internal AI (<function_calls> dll) yang bocor ke response."""
+        if not text:
+            return text
+        text = _re.sub(r'<function_calls>[\s\S]*?</function_calls>', '', text)
+        text = _re.sub(r'<invoke[\s\S]*?</invoke>', '', text)
+        text = _re.sub(r'<parameter[\s\S]*?</parameter>', '', text)
+        text = _re.sub(r'<[a-z_]+\s+name="[^"]*"\s*/>', '', text)
+        text = _re.sub(r'\n{3,}', '\n\n', text)
+        return text.strip()
+
     async def generate():
         full_response = ""
         final_model = req.model or "orchestrator"
@@ -407,8 +420,12 @@ async def chat_send(
                     event = item
 
                     if event.type == "chunk":
-                        full_response += event.content
-                        yield event.to_sse()
+                        # Bersihkan tag XML internal yang mungkin bocor dari model
+                        clean_content = _strip_internal_tags(event.content)
+                        if clean_content:
+                            full_response += clean_content
+                            # Override content sebelum dikirim ke frontend
+                            yield f"data: {json.dumps({'type': 'chunk', 'content': clean_content})}\n\n"
 
                     elif event.type == "process":
                         # Structured process step — forward directly to frontend

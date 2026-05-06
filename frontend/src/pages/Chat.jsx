@@ -721,6 +721,25 @@ function stripSaveMarkers(content) {
   return content.replace(/%%SAVE_FILE%%[\s\S]*?%%END_SAVE%%/g, '').trim()
 }
 
+// ── Strip leaked internal AI tool-call XML tags ───────────────
+// Hapus tag <function_calls>, <invoke>, <parameter>, dll yang
+// kadang bocor ke output AI sebelum sempat diproses oleh executor.
+function stripInternalTags(content) {
+  if (!content) return content
+  return content
+    // Hapus seluruh blok <function_calls>...</function_calls>
+    .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, '')
+    // Hapus tag <invoke ...>...</invoke> yang tersisa
+    .replace(/<invoke[\s\S]*?<\/invoke>/g, '')
+    // Hapus tag <parameter ...>...</parameter> yang tersisa
+    .replace(/<parameter[\s\S]*?<\/parameter>/g, '')
+    // Hapus tag self-closing yang tersisa seperti <parameter name="x"/>
+    .replace(/<[a-z_]+\s+name="[^"]*"\s*\/>/g, '')
+    // Bersihkan baris kosong berlebih setelah penghapusan
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 // ── Parse %%ARTIFACT%% markers OR auto-detect large code blocks ─
 function parseArtifacts(content) {
   if (!content) return { artifacts: [], cleanContent: content }
@@ -933,6 +952,8 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
   // Helper: Split content into main text and thinking process
   const splitContent = (content) => {
     let processedContent = stripSaveMarkers(content || '')
+    // Bersihkan tag internal AI (<function_calls> dll) yang bocor
+    processedContent = stripInternalTags(processedContent)
     
     // Auto-unwrap Sumopod API JSON wrapper if present
     try {
