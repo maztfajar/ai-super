@@ -213,12 +213,22 @@ async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
         # Tunggu detect_models agar respons berisi data terbaru
         await model_manager._detect_models()
         models = await model_manager.get_status()
+
+        # Rebuild dynamic routing cache di background (diam-diam)
+        try:
+            from agents.model_classifier import rebuild_routing_cache
+            import asyncio
+            asyncio.create_task(rebuild_routing_cache(model_manager.available_models))
+        except Exception:
+            pass
+
         return {
             "status": "saved",
             "keys": saved,
             "models": models,
-            "message": f"{len(saved)} key disimpan dan {len(models)} model dimuat"
+            "message": f"{len(saved)} key disimpan, {len(models)} model dimuat & routing diperbarui"
         }
+
 
     # Auto-restart telegram polling
     if req.provider == "telegram" and "TELEGRAM_BOT_TOKEN" in saved:
@@ -241,13 +251,21 @@ async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
 async def reload_models(user: User = Depends(get_current_user)):
     """Reload config dari .env dan re-detect model tanpa restart server"""
     models = await _perform_model_reload()
+    # Rebuild routing cache setelah reload
+    try:
+        from agents.model_classifier import rebuild_routing_cache
+        import asyncio
+        asyncio.create_task(rebuild_routing_cache(model_manager.available_models))
+    except Exception:
+        pass
     log.info("Models reloaded via manual request", count=len(models))
     return {
         "status": "reloaded",
         "models": models,
         "count": len(models),
-        "message": f"{len(models)} model terdeteksi setelah reload",
+        "message": f"{len(models)} model terdeteksi, routing diperbarui",
     }
+
 
 
 # ── POST: full restart server ─────────────────────────────────

@@ -18,23 +18,38 @@ import time as _time
 
 log = structlog.get_logger()
 
+# Lazy import untuk menghindari circular
+def _get_classifier():
+    try:
+        from agents import model_classifier
+        return model_classifier
+    except ImportError:
+        return None
+
+
 # ── Capability map: model → tags (sinkron dengan .capability_map.json) ──────
 # Ini adalah "single source of truth" untuk routing tanpa import circular.
 MODEL_CAPABILITY_MAP: Dict[str, List[str]] = {
-    "sumopod/qwen3.6-flash":           ["coding", "speed", "text", "vision"],
-    "sumopod/deepseek-v4-pro":           ["coding", "reasoning", "text"],
-    "sumopod/gemini-2.5-flash-lite":   ["speed", "text", "vision"],
-    "sumopod/minimax/speech-2.8-hd":   ["audio", "speed", "tts"],
-    "sumopod/claude-haiku-4-5":        ["speed"],
+    # Gratis / sangat murah — prioritaskan untuk tugas ringan
+    "sumopod/gemini-2.5-flash-lite":   ["speed", "text", "vision", "writing"],
+    # Reasoning + coding kuat, harga terjangkau
+    "sumopod/qwen3.6-flash":           ["coding", "reasoning", "speed", "text", "vision", "writing"],
+    # Reasoning terdalam, untuk tugas kompleks
+    "sumopod/deepseek-v4-pro":         ["coding", "reasoning", "text", "analysis"],
+    # General purpose, vision bagus
     "sumopod/gpt-4o-mini":             ["analysis", "coding", "reasoning", "speed", "text", "vision", "writing"],
+    # Audio/TTS khusus
+    "sumopod/minimax/speech-2.8-hd":   ["audio", "tts"],
+    # Last resort — hanya fallback terakhir
+    "sumopod/claude-haiku-4-5":        ["text"],
 }
 
-# Urutan preferensi global jika agent tidak punya preferred_models tersendiri
+# Urutan preferensi global — claude-haiku pindah ke paling akhir
 _DEFAULT_FALLBACK_ORDER = [
-    "sumopod/deepseek-v4-pro",
-    "sumopod/qwen3.6-flash",
-    "sumopod/gpt-4o-mini",
     "sumopod/gemini-2.5-flash-lite",
+    "sumopod/qwen3.6-flash",
+    "sumopod/deepseek-v4-pro",
+    "sumopod/gpt-4o-mini",
     "sumopod/claude-haiku-4-5",
 ]
 
@@ -69,10 +84,10 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
                 "problem_solving", "critical_thinking"],
         preferred_models=[
             "sumopod/deepseek-v4-pro",
-            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
+            "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
+        fallback_models=["sumopod/gemini-2.5-flash-lite"],
         required_capabilities=["reasoning"],
         default_temperature=0.3,
         system_prompt_addon=(
@@ -92,7 +107,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "sumopod/qwen3.6-flash",
             "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
+        fallback_models=["sumopod/gemini-2.5-flash-lite"],
         required_capabilities=["coding"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
@@ -110,10 +125,10 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["search", "gather", "compare", "summarize", "fact_check", "data_collection", "browser_automation"],
         preferred_models=[
             "sumopod/gemini-2.5-flash-lite",
-            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
+            "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/claude-haiku-4-5", "sumopod/deepseek-v4-pro"],
+        fallback_models=["sumopod/deepseek-v4-pro"],
         required_capabilities=["text"],
         tools_allowed=["web_search", "browser_navigate", "browser_click", "browser_type", "browser_extract_text", "browser_screenshot"],
         default_temperature=0.5,
@@ -130,11 +145,14 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["writing", "editing", "translation", "documentation",
                 "content_creation", "copywriting", "email"],
         preferred_models=[
+            # gemini gratis & cepat untuk writing ringan
+            "sumopod/gemini-2.5-flash-lite",
+            # claude-haiku unggul untuk long-form copywriting & instruksi ketat
             "sumopod/claude-haiku-4-5",
-            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
+            "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/deepseek-v4-pro"],
+        fallback_models=["sumopod/deepseek-v4-pro"],
         required_capabilities=["writing"],
         default_temperature=0.7,
         system_prompt_addon=(
@@ -142,6 +160,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "Gunakan format yang tepat."
         ),
     ),
+
 
     "system": AgentCapability(
         agent_type="system",
@@ -154,7 +173,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "sumopod/qwen3.6-flash",
             "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite", "sumopod/claude-haiku-4-5"],
+        fallback_models=["sumopod/gemini-2.5-flash-lite"],
         required_capabilities=["coding"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
@@ -171,11 +190,14 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["brainstorming", "ideation", "design", "creativity",
                 "innovation", "storytelling"],
         preferred_models=[
+            # gemini untuk ide cepat
+            "sumopod/gemini-2.5-flash-lite",
+            # claude-haiku unggul untuk creative writing yang mengikuti instruksi style
             "sumopod/claude-haiku-4-5",
-            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
+            "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite"],
+        fallback_models=["sumopod/deepseek-v4-pro"],
         required_capabilities=["text"],
         default_temperature=0.9,
         system_prompt_addon=(
@@ -183,6 +205,7 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
             "Dorong pendekatan yang novel dan inovatif."
         ),
     ),
+
 
     "validation": AgentCapability(
         agent_type="validation",
@@ -192,10 +215,10 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
                 "code_review", "proofreading"],
         preferred_models=[
             "sumopod/deepseek-v4-pro",
-            "sumopod/gpt-4o-mini",
             "sumopod/qwen3.6-flash",
+            "sumopod/gpt-4o-mini",
         ],
-        fallback_models=["sumopod/claude-haiku-4-5"],
+        fallback_models=["sumopod/gemini-2.5-flash-lite"],
         required_capabilities=["reasoning"],
         default_temperature=0.1,
         system_prompt_addon=(
@@ -211,10 +234,9 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
         skills=["conversation", "faq", "general_knowledge"],
         preferred_models=[
             "sumopod/gemini-2.5-flash-lite",
-            "sumopod/claude-haiku-4-5",
-            "sumopod/gpt-4o-mini",
+            "sumopod/qwen3.6-flash",
         ],
-        fallback_models=["sumopod/qwen3.6-flash"],
+        fallback_models=["sumopod/gpt-4o-mini"],
         required_capabilities=["speed"],
         default_temperature=0.7,
         system_prompt_addon="",
@@ -426,11 +448,12 @@ class AgentRegistryManager:
         Pilih model terbaik untuk agent_type.
         Priority:
           1. User explicitly chose a model → gunakan langsung
-          2. preferred_models agent (exact key match, urutan pertama yang tersedia)
-          3. Capability-based search dari MODEL_CAPABILITY_MAP
-          4. Fallback model agent
-          5. Global fallback order
-          6. Model pertama yang tersedia
+          2. Dynamic routing cache (dari model_classifier) — dibangun dari model aktual di Integrasi
+          3. preferred_models agent (hardcoded fallback, urutan pertama yang tersedia)
+          4. Capability-based search dari MODEL_CAPABILITY_MAP
+          5. Fallback model agent
+          6. Global fallback order
+          7. Model pertama yang tersedia
         Setiap langkah dicek terhadap available_models.
         """
         mm = self.model_manager
@@ -445,14 +468,24 @@ class AgentRegistryManager:
         if not agent:
             return mm.get_default_model()
 
-        # 2. preferred_models (exact key match)
+        # 2. Dynamic routing cache (prioritas utama setelah user choice)
+        classifier = _get_classifier()
+        if classifier and classifier.is_cache_ready():
+            dynamic_models = classifier.get_preferred_models(agent_type)
+            for model_id in dynamic_models:
+                if model_id in available:
+                    log.debug("resolve_model: dynamic cache hit",
+                              agent=agent_type, model=model_id)
+                    return model_id
+
+        # 3. preferred_models hardcoded (fallback jika classifier belum siap)
         for model_id in agent.preferred_models:
             if model_id in available:
                 log.debug("resolve_model: preferred match",
                           agent=agent_type, model=model_id)
                 return model_id
 
-        # 3. Capability-based search
+        # 4. Capability-based search
         if agent.required_capabilities:
             cap_model = _find_model_by_capability(agent.required_capabilities, available)
             if cap_model:
@@ -461,25 +494,26 @@ class AgentRegistryManager:
                           caps=agent.required_capabilities)
                 return cap_model
 
-        # 4. Fallback models
+        # 5. Fallback models
         for model_id in agent.fallback_models:
             if model_id in available:
                 log.debug("resolve_model: fallback match",
                           agent=agent_type, model=model_id)
                 return model_id
 
-        # 5. Global fallback order
+        # 6. Global fallback order
         for model_id in _DEFAULT_FALLBACK_ORDER:
             if model_id in available:
                 log.debug("resolve_model: global fallback",
                           agent=agent_type, model=model_id)
                 return model_id
 
-        # 6. Absolutely anything available
+        # 7. Absolutely anything available
         fallback = mm.get_default_model()
         log.warning("resolve_model: using default fallback",
                     agent=agent_type, model=fallback)
         return fallback
+
 
     def get_agent_system_prompt(self, agent_type: str,
                                  base_prompt: str = "") -> str:

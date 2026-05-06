@@ -146,6 +146,14 @@ class ModelManager:
 
         log.info(f"Total models detected: {len(self.available_models)}", models=list(self.available_models.keys()))
 
+        # ── Rebuild dynamic routing cache (diam-diam di background) ─────────
+        try:
+            from agents.model_classifier import rebuild_routing_cache
+            import asyncio
+            asyncio.create_task(rebuild_routing_cache(self.available_models))
+        except Exception as e:
+            log.debug("model_classifier: rebuild skipped", reason=str(e)[:60])
+
     async def _check_ollama(self) -> dict:
         """Check Ollama and list installed models"""
         models = {}
