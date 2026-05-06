@@ -13,6 +13,8 @@ env:
   REGISTRY: docker.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ai-super
+  # Opt into Node.js 24 now to suppress Node.js 20 deprecation warning
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 
 jobs:
@@ -34,9 +36,9 @@ jobs:
       # https://github.com/sigstore/cosign-installer
       - name: Install cosign
         if: github.event_name != 'pull_request'
-        uses: sigstore/cosign-installer@v3.5.0
+        uses: sigstore/cosign-installer@v3.8.0
         with:
-          cosign-release: 'v2.2.4'
+          cosign-release: 'v2.4.1'
 
       # Set up BuildKit Docker container builder to be able to build
       # multi-platform images and export cache
@@ -74,7 +76,7 @@ jobs:
       # https://github.com/docker/build-push-action
       - name: Build and push Docker image
         id: build-and-push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
