@@ -53,7 +53,7 @@ AI Orchestrator bekerja dengan "Intelligence Units" yang beroperasi secara otoma
 ## ✨ Fitur Unggulan
 
 ### 🤖 AI Orchestration Engine
-- **Multi-Model Routing**: Otomatis memilih antara GPT-4, Claude 3.5, Gemini 1.5 Pro, atau Llama 3 berdasarkan kompleksitas tugas.
+- **Multi-Model Routing**: Mendukung berbagai vendor AI secara bersamaan — **OpenAI** (GPT series), **Anthropic** (Claude series), **Google** (Gemini series), **Ollama** (model lokal), **Sumopod**, dan penyedia custom OpenAI-compatible lainnya. Router otomatis memilih model terbaik berdasarkan kompleksitas tugas, biaya, dan ketersediaan.
 - **Multimodal Workflow**: Gabungkan teks, gambar, dan file dalam satu instruksi yang kompleks.
 
 ### 🗄️ Knowledge Base (RAG)
@@ -134,7 +134,7 @@ ai-super/
 | **RAM** | 2 GB | 8 GB+ (untuk Vision & RAG) |
 | **CPU** | 2 Cores | 4+ Cores |
 | **OS** | Ubuntu 20.04+ | Ubuntu 22.04 LTS |
-| **Python** | 3.10+ | 3.11 |
+| **Python** | 3.12+ | 3.12 |
 
 ---
 
