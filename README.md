@@ -39,6 +39,7 @@ AI Orchestrator bekerja dengan "Intelligence Units" yang beroperasi secara otoma
 - **✍️ Humanizer (Anti-Slop)**: Mengubah output AI yang kaku menjadi bahasa yang natural, hangat, dan manusiawi tanpa kehilangan akurasi data.
 - **🧭 Byte Rover**: Memori jangka panjang yang secara otonom merangkum sesi chat idle dan menyimpannya ke Vector DB untuk diingat di masa depan.
 - **🛡️ Self-Healing Core**: Mendeteksi kegagalan sistem atau error runtime dan melakukan perbaikan otomatis (restart service, pembersihan cache, dll).
+- **🔒 Security Scanner (CVE Scan)**: Memindai kerentanan (CVE) di semua dependency Python dan Node.js secara terjadwal (24 jam) atau manual. Auto-fix dengan upgrade otomatis dan laporan langsung ke Telegram — didukung oleh **pip-audit**, **npm audit**, dan **OSV.dev API**.
 
 ### 🛠️ On-Demand Execution Skills
 *Skills yang aktif seketika saat Anda memberikan perintah spesifik.*
@@ -64,6 +65,7 @@ AI Orchestrator bekerja dengan "Intelligence Units" yang beroperasi secara otoma
 - **Identity Protection**: Autentikasi dua faktor terintegrasi (Google Authenticator + Telegram).
 - **Session Isolation**: Setiap sesi memiliki context dan sandbox browser yang terisolasi.
 - **Audit Logs**: Rekaman lengkap setiap tindakan agent untuk keamanan dan kepatuhan.
+- **CVE Scanner & Auto-Fix**: Pemindaian kerentanan dependency otomatis (terjadwal 24 jam) dengan auto-fix dan laporan Telegram real-time.
 
 ---
 

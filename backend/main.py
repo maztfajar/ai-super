@@ -180,6 +180,11 @@ async def lifespan(app: FastAPI):
     await self_healing_engine.start()
     log.info("✅ Self-Healing Engine started")
 
+    # ── Security Scanner ─────────────────────────────────────────
+    from core.security_scanner import security_scanner
+    await security_scanner.start_scheduler()
+    log.info("✅ Security Scanner started (scan tiap 24 jam)")
+
     # Capability Map — discover model capabilities
     from core.capability_map import capability_map
     import asyncio
@@ -218,6 +223,13 @@ async def lifespan(app: FastAPI):
 
     # Stop self-healing
     self_healing_engine.stop()
+
+    # Stop security scanner
+    try:
+        from core.security_scanner import security_scanner
+        security_scanner.stop()
+    except Exception:
+        pass
 
     # Stop capability evolver
     try:

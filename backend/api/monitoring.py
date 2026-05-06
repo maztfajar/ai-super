@@ -206,3 +206,43 @@ async def rollback_snapshot(
     from core.snapshot import snapshot_manager
     res = snapshot_manager.rollback()
     return res
+
+
+# ── Security Scanner endpoints ────────────────────────────────
+from core.security_scanner import security_scanner
+import asyncio
+
+
+@router.get("/security/last-scan")
+async def get_last_security_scan(
+    user: User = Depends(get_current_user),
+):
+    """Hasil scan terakhir."""
+    return security_scanner.get_last_scan() or {
+        "message": "Belum ada scan yang dijalankan"
+    }
+
+
+@router.get("/security/history")
+async def get_security_history(
+    limit: int = 10,
+    user: User = Depends(get_current_user),
+):
+    """Riwayat semua scan."""
+    return {"history": security_scanner.get_history(limit)}
+
+
+@router.post("/security/scan-now")
+async def trigger_security_scan(
+    user: User = Depends(get_admin_user),
+):
+    """Trigger scan manual — hanya admin."""
+    asyncio.create_task(
+        security_scanner.run_scan(triggered_by=f"manual:{user.username}")
+    )
+    return {
+        "status": "started",
+        "message": "Security scan dimulai di background. "
+                   "Hasilnya akan dikirim ke Telegram."
+    }
+
