@@ -55,9 +55,36 @@ fi
 NEW_SECRET=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 64 | head -n 1)
 sed -i "s|^SECRET_KEY=.*|SECRET_KEY=\"$NEW_SECRET\"|" .env
 
-echo -e "${GREEN}[✓] Konfigurasi dasar siap.${NC}"
-echo -e "${YELLOW}[!] PENTING: Silakan edit file .env untuk memasukkan API Key Anda.${NC}"
-echo -e "    Gunakan: nano .env\n"
+echo -e "\n${CYAN}${BOLD}--- Konfigurasi .env ---${NC}"
+echo -e "${WHITE}Mari kita atur konfigurasi penting agar aplikasi siap digunakan.${NC}"
+
+# Admin Password
+read -p "Masukkan ADMIN_PASSWORD (kosongkan untuk generate otomatis): " admin_pwd </dev/tty
+if [ -z "$admin_pwd" ]; then
+    admin_pwd=$(LC_ALL=C tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 12 | head -n 1)
+    echo -e "${GREEN}Password admin otomatis: ${admin_pwd}${NC}"
+fi
+sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"$admin_pwd\"|" .env
+
+# API Keys
+read -p "Masukkan OPENAI_API_KEY (opsional, tekan Enter untuk lewati): " openai_key </dev/tty
+if [ -n "$openai_key" ]; then
+    sed -i "s|^OPENAI_API_KEY=.*|OPENAI_API_KEY=\"$openai_key\"|" .env
+fi
+
+read -p "Masukkan ANTHROPIC_API_KEY (opsional, tekan Enter untuk lewati): " anthropic_key </dev/tty
+if [ -n "$anthropic_key" ]; then
+    sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=\"$anthropic_key\"|" .env
+fi
+
+echo -e "\n${GREEN}[✓] Konfigurasi dasar telah disimpan ke .env${NC}"
+
+# Konfirmasi edit manual
+read -p "Apakah Anda ingin membuka file .env dengan nano untuk konfigurasi lainnya? (y/N): " edit_env </dev/tty
+if [[ "$edit_env" =~ ^[Yy]$ ]]; then
+    nano .env </dev/tty >/dev/tty
+fi
+
 
 # 6. Jalankan Container
 echo -e "${CYAN}[*] Menarik Image dan menjalankan container...${NC}"
