@@ -1,29 +1,113 @@
 # 🧠 AI ORCHESTRATOR v3.5
-### *The Next-Gen Autonomous Multi-Agent Engine*
+### *The Next-Gen Autonomous Multi-Agent Engine with Self-Evolving Skills*
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Engine-VISION__GATE-blue?style=for-the-badge" alt="Engine">
   <img src="https://img.shields.io/badge/Security-2FA--Enabled-red?style=for-the-badge" alt="Security">
+  <img src="https://img.shields.io/badge/Skills-Self--Evolving-blueviolet?style=for-the-badge" alt="Self-Evolving">
 </p>
 
-**AI ORCHESTRATOR** adalah platform orkestrasi AI mandiri (Self-Hosted) yang dirancang untuk mengubah tugas kompleks menjadi workflow otomatis yang mulus. Ditenagai oleh **VISION_GATE Engine**, sistem ini tidak hanya menjawab teks, tetapi "melihat", "berpikir", dan "bertindak" secara otonom menggunakan **10+ Core Autonomous Skills**.
+**AI ORCHESTRATOR** adalah platform orkestrasi AI mandiri (Self-Hosted) yang dirancang untuk mengubah tugas kompleks menjadi workflow otomatis yang mulus. Ditenagai oleh **VISION_GATE Engine**, sistem ini tidak hanya menjawab teks, tetapi "melihat", "berpikir", dan "bertindak" secara otonom menggunakan **10+ Core Autonomous Skills** — dan yang paling penting, ia **belajar dari pengalaman** untuk menjadi semakin pintar dan efisien setiap kali digunakan.
 
 ---
 
-## 🏛️ AI Orchestrator vs. Aplikasi Lainnya
-Mengapa memilih AI Orchestrator? Berikut adalah perbandingan mendalam dengan platform populer lainnya seperti OpenClaw, OpenWebUI, dan OpenDevin:
+## 🏛️ Perbandingan Mendalam dengan Platform Lain
 
-| Fitur Utama | 🧠 AI Orchestrator | 🦞 Aplikasi Sejenis (OpenClaw / OpenWebUI / OpenDevin) |
+Bagaimana AI Orchestrator dibandingkan dengan platform AI self-hosted populer lainnya? Berikut perbandingan berdasarkan **fakta fitur yang ada** di masing-masing platform:
+
+### 🧠 AI Orchestrator vs 🦞 OpenClaw
+
+| Aspek | 🧠 AI Orchestrator | 🦞 OpenClaw |
 | :--- | :--- | :--- |
-| **Fokus Utama** | Optimasi & Efisiensi Skala Enterprise | Modularitas & Komunitas (Local-first) |
-| **Memory Engine** | **Byte Rover** (Semantic RAG Context) | Plain Text / YAML based |
-| **Token Efficiency** | **QMD (Token Killer)** - Hemat hingga 80% | Standard context management |
-| **Self-Improvement** | **Capability Evolver** (Auto-learn routing) | Manual skill configuration |
-| **Vision Analysis** | **VISION_GATE** (Context-aware vision) | Standard OCR / Image captioning |
-| **Security** | 2FA (TOTP + Telegram) & Brute Force Protection | Standard API Key auth |
-| **UI/UX** | Integrated React Dashboard + Real-time Timeline | Web UI + Terminal focus |
-| **Execution** | Multi-agent parallel coordination | Sequential ReAct Loop |
+| **Arsitektur** | Monolith terintegrasi (FastAPI + React) — satu container, langsung jalan | Node.js gateway terpisah — perlu setup skill manual per-komponen |
+| **Self-Evolving Skills** | ✅ **Otomatis.** Pola tugas yang berhasil 5x dikristalisasi menjadi Skill permanen oleh AI. Semakin sering dipakai = semakin cepat & hemat | ❌ Tidak ada. Skills bersifat statis, ditambah manual via folder `/skills` |
+| **Token Efficiency** | ✅ **QMD (Token Killer)** — hemat hingga 80% token per request via distilasi konteks cerdas | ❌ Tidak ada mekanisme penghematan token bawaan |
+| **Memory Engine** | ✅ **Byte Rover** — memori semantik jangka panjang + **ProceduralMemory** (buku resep tugas sukses) | ❌ Memori plain text/YAML, tidak ada semantic recall |
+| **Self-Improvement** | ✅ **Capability Evolver** — otomatis analisis 200 eksekusi terakhir tiap 30 menit, evolusi routing model | ❌ Konfigurasi model statis, harus diatur manual |
+| **Vision Analysis** | ✅ **VISION_GATE** — analisis kontekstual gambar (bukan sekadar OCR) | ⚠️ Tergantung plugin pihak ketiga |
+| **Security** | ✅ 2FA (TOTP + Telegram), brute force protection, audit log, **CVE Scanner otomatis** | ⚠️ Hanya API Key. Risiko keamanan tinggi karena akses sistem penuh tanpa guardrail bawaan |
+| **Eksekusi** | Multi-agent **paralel** dengan DAG dependency & Command Center | Sequential ReAct loop (satu langkah per waktu) |
+| **Notifikasi** | ✅ Telegram real-time (skill baru, error, self-healing, CVE) | ❌ Tidak ada notifikasi bawaan |
+| **Auto-Update** | ✅ Watchtower — container update otomatis tanpa downtime | ❌ Manual update |
+| **Self-Healing** | ✅ Deteksi & perbaikan error otomatis (restart service, clear cache) | ❌ Tidak ada |
+| **Heartbeat Daemon** | ❌ Tidak ada (event-driven) | ✅ Agent berjalan di background secara persisten |
+| **Cross-Platform Chat** | ✅ Web + Telegram + WhatsApp | ✅ WhatsApp, Telegram, Slack, Discord, Signal |
+
+### 🧠 AI Orchestrator vs 🌐 Open WebUI
+
+| Aspek | 🧠 AI Orchestrator | 🌐 Open WebUI |
+| :--- | :--- | :--- |
+| **Fokus Utama** | **Orkestrasi & Eksekusi Otonom** — AI bisa *bertindak* (run code, browse web, kelola file) | **Chat Interface** — UI cantik untuk *ngobrol* dengan model lokal/remote |
+| **Self-Evolving Skills** | ✅ Skill dikristalisasi otomatis dari pengalaman | ❌ Tidak ada fitur pembelajaran mandiri |
+| **Tool Execution** | ✅ 10+ tools bawaan (browser, CLI, file ops, Google integration) | ⚠️ Terbatas pada Pipelines (perlu koding custom) |
+| **Token Efficiency** | ✅ QMD hemat 80% token | ❌ Tidak ada |
+| **RAG** | ✅ ChromaDB + auto-indexing | ✅ RAG bawaan (kuat) |
+| **Multi-Model** | ✅ OpenAI, Anthropic, Google, Ollama, Sumopod, custom | ✅ Ollama-centric + OpenAI-compatible |
+| **Security** | ✅ 2FA, CVE scanner, brute force protection | ⚠️ Basic auth, tidak ada 2FA bawaan |
+| **Lisensi** | Proprietary (viewing only) | Custom license (branding requirement untuk deployment besar) |
+| **Komunitas** | Ekosistem tertutup | ✅ Komunitas besar, development velocity tinggi |
+| **Ollama Integration** | ✅ Didukung | ✅ Sangat kuat (raison d'être) |
+
+### 🧠 AI Orchestrator vs 🤖 OpenDevin (All Hands)
+
+| Aspek | 🧠 AI Orchestrator | 🤖 OpenDevin |
+| :--- | :--- | :--- |
+| **Fokus Utama** | **Platform AI serba guna** — chat, coding, riset, otomasi sistem | **Coding agent saja** — fokus software engineering |
+| **Self-Evolving Skills** | ✅ Belajar dari eksekusi berulang → hemat token & waktu | ❌ Tidak ada. Setiap task dimulai dari nol |
+| **Multi-Purpose** | ✅ Chat casual, analisis data, riset web, system admin, coding | ❌ Hanya coding/software engineering |
+| **UI/UX** | ✅ React Dashboard terintegrasi + monitoring real-time | ⚠️ UI dasar, fokus terminal |
+| **Stabilitas** | ✅ Production-ready, self-healing, auto-recovery | ⚠️ Eksperimental, sering stuck dalam loop |
+| **Deployment** | ✅ Satu container Docker, plug & play | ⚠️ Setup kompleks, sandbox container terpisah |
+| **Performa AI** | ✅ Setara senior dev (multi-agent, paralel, quality validation) | ⚠️ Setara junior dev (sequential, perlu oversight) |
+| **Context Management** | ✅ QMD + ProceduralMemory + Skill Evolution = konteks efisien | ⚠️ Kesulitan pada task panjang/multi-hari |
+| **Browser Automation** | ✅ Playwright terintegrasi | ✅ Playwright terintegrasi |
+| **Sandbox** | Di dalam container Docker | ✅ Linux container terisolasi |
+
+### 🧠 AI Orchestrator vs Ringkasan Platform Lain
+
+| Aspek | 🧠 AI Orchestrator | LibreChat | LobeChat | AnythingLLM |
+| :--- | :--- | :--- | :--- | :--- |
+| **Self-Evolving Skills** | ✅ | ❌ | ❌ | ❌ |
+| **Token Efficiency** | ✅ QMD | ❌ | ❌ | ❌ |
+| **Tool Execution** | ✅ 10+ built-in | ⚠️ Code interpreter | ⚠️ MCP skills | ❌ |
+| **Multi-Model** | ✅ 6 provider | ✅ Banyak provider | ✅ Banyak provider | ✅ |
+| **RAG** | ✅ ChromaDB | ⚠️ Basic | ⚠️ Basic | ✅ Sangat kuat |
+| **2FA Security** | ✅ | ⚠️ OIDC/SSO | ❌ | ❌ |
+| **Self-Healing** | ✅ | ❌ | ❌ | ❌ |
+| **Telegram Bot** | ✅ | ❌ | ❌ | ❌ |
+
+> **Kesimpulan:** AI Orchestrator unggul di area **otonomi, efisiensi, dan kemampuan belajar mandiri**. Platform lain umumnya berfokus pada satu aspek saja (chat UI, coding, atau dokumen). AI Orchestrator menggabungkan semuanya dalam satu platform terintegrasi yang terus berevolusi.
+
+---
+
+## 🧬 Self-Evolving Skills — Fitur Revolusioner
+
+Fitur yang **tidak dimiliki platform manapun**: AI Orchestrator belajar dari pengalaman dan membentuk Skill permanen secara otomatis.
+
+### Cara Kerjanya:
+
+```
+Penggunaan ke-1  → ProceduralMemory simpan "resep" (langkah + tools)
+Penggunaan ke-2~4 → Recall resep, confidence naik, eksekusi lebih cepat
+Penggunaan ke-5  → 🧬 KRISTALISASI → AI generate nama & template Skill
+                   → Simpan ke LearnedSkill (permanen)
+                   → Notifikasi Telegram: "Skill baru terbentuk!"
+Penggunaan ke-6+ → ⚡ Skill langsung aktif, hemat ~800 token/request
+                   → AI tidak perlu reasoning dari nol
+Penggunaan ke-10 → 🔄 AI improve Skill ke versi 2, lebih efisien
+Seterusnya       → Semakin pintar, semakin hemat, semakin cepat
+```
+
+### Contoh Nyata:
+1. **Pertama kali** diminta "buat REST API dengan Express" → 15 langkah, trial-error → berhasil → resep disimpan
+2. **Kedua kali** permintaan serupa → recall resep → 10 langkah → lebih cepat
+3. **Kelima kali** → sistem kristalisasi pola → Skill `create_express_api` terbentuk
+4. **Selanjutnya** → Skill langsung aktif, eksekusi instan tanpa reasoning ulang
+
+### API Dashboard:
+- `GET /api/monitoring/skills` — Lihat semua skill yang telah dipelajari
+- `DELETE /api/monitoring/skills/{id}` — Nonaktifkan skill yang tidak relevan
 
 ---
 
@@ -36,6 +120,7 @@ AI Orchestrator bekerja dengan "Intelligence Units" yang beroperasi secara otoma
 
 - **⚡ QMD — The Token Killer**: Algoritma distilasi cerdas yang memangkas biaya API hingga 80% dengan mengirimkan hanya informasi paling relevan dari riwayat chat panjang.
 - **🧠 Capability Evolver**: Otak di balik sistem. Menganalisis 200 eksekusi terakhir setiap 30 menit untuk mengevolusikan aturan routing model secara otomatis.
+- **🧬 Skill Evolution Engine**: Mengkristalisasi pola tugas berulang menjadi Skill permanen. Semakin sering dipakai = semakin pintar & hemat token.
 - **✍️ Humanizer (Anti-Slop)**: Mengubah output AI yang kaku menjadi bahasa yang natural, hangat, dan manusiawi tanpa kehilangan akurasi data.
 - **🧭 Byte Rover**: Memori jangka panjang yang secara otonom merangkum sesi chat idle dan menyimpannya ke Vector DB untuk diingat di masa depan.
 - **🛡️ Self-Healing Core**: Mendeteksi kegagalan sistem atau error runtime dan melakukan perbaikan otomatis (restart service, pembersihan cache, dll).
@@ -56,6 +141,7 @@ AI Orchestrator bekerja dengan "Intelligence Units" yang beroperasi secara otoma
 ### 🤖 AI Orchestration Engine
 - **Multi-Model Routing**: Mendukung berbagai vendor AI secara bersamaan — **OpenAI** (GPT series), **Anthropic** (Claude series), **Google** (Gemini series), **Ollama** (model lokal), **Sumopod**, dan penyedia custom OpenAI-compatible lainnya. Router otomatis memilih model terbaik berdasarkan kompleksitas tugas, biaya, dan ketersediaan.
 - **Multimodal Workflow**: Gabungkan teks, gambar, dan file dalam satu instruksi yang kompleks.
+- **Parallel Execution**: DAG-based task decomposition dengan eksekusi multi-agent secara paralel.
 
 ### 🗄️ Knowledge Base (RAG)
 - **Semantic Search**: Menggunakan ChromaDB untuk pencarian dokumen yang cerdas.
@@ -67,30 +153,40 @@ AI Orchestrator bekerja dengan "Intelligence Units" yang beroperasi secara otoma
 - **Audit Logs**: Rekaman lengkap setiap tindakan agent untuk keamanan dan kepatuhan.
 - **CVE Scanner & Auto-Fix**: Pemindaian kerentanan dependency otomatis (terjadwal 24 jam) dengan auto-fix dan laporan Telegram real-time.
 
+### 📊 Monitoring & Observability
+- **Real-time Dashboard**: Pantau status agent, task execution, dan performa model secara langsung.
+- **Skill Evolution Tracker**: Lihat skill apa yang telah dipelajari orchestra dan berapa token yang dihemat.
+- **Self-Healing Events**: Log otomatis setiap perbaikan yang dilakukan sistem secara mandiri.
+
 ---
 
-## ⚡ Instalasi Cepat (Otomatis)
+## ⚡ Instalasi & Setup
 
-Kami menggunakan sistem instalasi aman. Anda tidak perlu mengunduh *source code* mentah secara manual untuk menjaga keamanan sistem. Cukup jalankan perintah ini di terminal VPS atau server lokal Anda:
+### Prasyarat
+- **Docker** dan **Docker Compose** terinstall di VPS/server Anda
+- Minimal **2 GB RAM** (rekomendasi 8 GB+ untuk Vision & RAG)
+- **Ubuntu 20.04+** (atau Linux distro lain yang mendukung Docker)
+
+### Metode 1: Instalasi Otomatis (Satu Perintah)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/maztfajar/repo-installer-publik/main/install.sh | bash
 ```
 
-*(Sistem akan otomatis memasang Docker, mengunduh file konfigurasi yang diperlukan, dan menarik Image AI Orchestrator terbaru yang sudah terproteksi).*
+*(Sistem akan otomatis memasang Docker, mengunduh file konfigurasi yang diperlukan, dan menarik Image AI Orchestrator terbaru.)*
 
-### 🐳 Instalasi Manual dengan Docker Compose (Rekomendasi)
+### Metode 2: Setup Manual dengan Docker Compose (Rekomendasi)
 
-Jika Anda tidak ingin menggunakan skrip otomatis di atas, Anda bisa mengaturnya secara manual menggunakan Docker Compose. Metode ini jauh lebih aman dari salah ketik dan sangat mudah untuk proses *update* ke depannya.
+#### Langkah 1 — Buat Direktori & File Konfigurasi
 
-**1. Buat file konfigurasi (`docker-compose.yml`)**
-Buat folder baru dan buat file konfigurasi:
 ```bash
 mkdir ai-orchestrator && cd ai-orchestrator
-nano docker-compose.yml
 ```
-Masukkan konfigurasi berikut ke dalam file tersebut:
-```yaml
+
+Buat file `docker-compose.yml` (copy-paste seluruh blok ini di terminal):
+
+```bash
+cat << 'EOF' > docker-compose.yml
 services:
   ai-orchestrator:
     image: nyepetke/ai-super:latest
@@ -132,39 +228,70 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 300 --cleanup --label-enable
+EOF
 ```
 
-**2. Siapkan file `.env`**
+#### Langkah 2 — Buat File `.env`
+
 ```bash
-nano .env
-```
-Isikan kredensial dasar Anda:
-```env
+cat << 'EOF' > .env
+# ── Kredensial Admin ────────────────────────────────────
 ADMIN_USERNAME=admin
-# Ganti dengan password yang kuat, minimal 8 karakter!
-ADMIN_PASSWORD=password_rahasia_saya123
+ADMIN_PASSWORD=ganti_dengan_password_kuat_anda
+
+# ── Keamanan ────────────────────────────────────────────
+# Generate: python3 -c "import secrets; print(secrets.token_hex(32))"
+SECRET_KEY=ganti_dengan_string_acak_32_karakter
+
+# ── Cloudflare Tunnel (opsional) ────────────────────────
+CLOUDFLARE_TUNNEL_TOKEN=
+
+# ── API Keys AI (isi via GUI setelah login) ─────────────
+# Anda TIDAK perlu mengisi API Key di sini.
+# Cukup login ke Dashboard → Settings → isi API Key di GUI.
+# Semua pengaturan akan tersimpan permanen.
+EOF
 ```
 
-**3. Jalankan Aplikasi**
+#### Langkah 3 — Jalankan
+
 ```bash
+docker compose pull
 docker compose up -d
 ```
 
-Setelah dijalankan, akses **Dashboard UI** langsung di: `http://<IP_VPS_ANDA>:7860`.
+#### Langkah 4 — Akses Dashboard
+
+Buka browser: `http://<IP_VPS_ANDA>:7860`
 
 > [!IMPORTANT]
-> **Kredensial Login Default:**
-> - **Username:** `admin`
-> - **Password:** `admin123` *(jika `ADMIN_PASSWORD` di `.env` belum diisi atau masih kosong)*
->
-> Jika Anda sudah mengisi `ADMIN_PASSWORD` di file `.env`, gunakan password yang Anda buat sendiri tersebut.
-> **Segera ganti password setelah berhasil masuk pertama kali** melalui menu Settings di Dashboard!
+> **Login dengan kredensial yang Anda atur di `.env`:**
+> - **Username:** `admin` (atau sesuai `ADMIN_USERNAME`)
+> - **Password:** sesuai `ADMIN_PASSWORD` di file `.env`
+
+#### Langkah 5 — Konfigurasi API Key (Satu Kali Saja)
+
+1. Login ke Dashboard
+2. Buka **Settings** → **Integrations**
+3. Masukkan API Key untuk provider AI yang Anda gunakan (OpenAI, Anthropic, Google, dll)
+4. Klik **Save**
 
 > [!TIP]
-> **Cara Melakukan Update (Pembaruan Versi):**
-> Sangat mudah! Anda hanya perlu masuk ke folder `ai-orchestrator` lalu jalankan:
-> `docker compose pull` kemudian `docker compose up -d`. Sistem akan otomatis memperbarui tanpa menghilangkan data Anda.
+> **Data Anda aman dan permanen!** Semua konfigurasi (API Key, riwayat chat, skill yang dipelajari) tersimpan di volume `./data` dan `./.env` di VPS Anda. Data **tidak akan hilang** saat update container atau restart server.
 
+---
+
+## 🔄 Update & Maintenance
+
+### Update Manual
+```bash
+cd ai-orchestrator
+docker compose pull
+docker compose up -d
+```
+
+### Update Otomatis (Sudah Aktif)
+**Watchtower** secara otomatis mengecek Docker registry setiap 5 menit. Jika ada image baru, container akan diperbarui tanpa downtime dan tanpa kehilangan data.
 
 ---
 
@@ -174,10 +301,10 @@ Setelah dijalankan, akses **Dashboard UI** langsung di: `http://<IP_VPS_ANDA>:78
 ai-super/
 ├── 🧠 backend/         # FastAPI Engine & Autonomous Skills
 │   ├── agents/         # Executor, Tool Registry, Scorer
-│   ├── core/           # QMD, Evolver, VisionGate, CommandCenter
+│   ├── core/           # QMD, Evolver, VisionGate, SkillEvolution, CommandCenter
 │   └── integrations/   # Telegram, Google, WhatsApp
 ├── 🎨 frontend/        # React Dashboard & Real-time Monitoring
-├── 🗃️ data/            # Persistence (SQLite WAL + ChromaDB)
+├── 🗃️ data/            # Persistence (SQLite WAL + ChromaDB + Skills)
 └── 📜 scripts/         # Automation & Maintenance scripts
 ```
 
@@ -189,8 +316,9 @@ ai-super/
 | :--- | :--- | :--- |
 | **RAM** | 2 GB | 8 GB+ (untuk Vision & RAG) |
 | **CPU** | 2 Cores | 4+ Cores |
+| **Storage** | 10 GB | 50 GB+ (untuk RAG documents) |
 | **OS** | Ubuntu 20.04+ | Ubuntu 22.04 LTS |
-| **Python** | 3.12+ | 3.12 |
+| **Docker** | 20.10+ | Latest stable |
 
 ---
 
