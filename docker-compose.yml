@@ -8,6 +8,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./rag_documents:/app/rag_documents
+      - ./.env:/app/.env
     env_file:
       - .env
     labels:
