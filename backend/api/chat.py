@@ -302,7 +302,7 @@ async def chat_send(
         text = _re.sub(r'<parameter[\s\S]*?</parameter>', '', text)
         text = _re.sub(r'<[a-z_]+\s+name="[^"]*"\s*/>', '', text)
         text = _re.sub(r'\n{3,}', '\n\n', text)
-        return text.strip()
+        return text
 
     async def generate():
         full_response = ""
