@@ -30,8 +30,20 @@ COPY backend/ ./backend/
 
 # --- PROTEKSI KODE SUMBER ---
 # Kompilasi semua file .py menjadi bytecode .pyc dan hapus file aslinya
-RUN python3 -m compileall -b /app/backend || (echo "Compilation failed!" && exit 1) && \
-    find /app/backend -name "*.py" -delete
+RUN echo "=== Compiling Python files ==" && \
+    python3 -m compileall -b -f -q \
+        /app/backend/agents \
+        /app/backend/api \
+        /app/backend/core \
+        /app/backend/db \
+        /app/backend/integrations \
+        /app/backend/memory \
+        /app/backend/rag \
+        /app/backend/workflow \
+        /app/backend/main.py && \
+    echo "=== Compilation OK. Removing .py source files ===" && \
+    find /app/backend -name "*.py" -not -path "*/scripts/*" -delete && \
+    echo "=== Done ==="
 # ----------------------------
 
 # Copy frontend build from Stage 1
@@ -55,6 +67,7 @@ ENV HOST=0.0.0.0
 ENV PORT=7860
 ENV PYTHONUNBUFFERED=1
 ENV LANG=C.UTF-8
+ENV PYTHONDONTWRITEBYTECODE=0
 
 # Healthcheck to monitor API status
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

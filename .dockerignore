@@ -4,14 +4,14 @@
 .env
 .vite
 backend/venv
-backend/__pycache__
+**/__pycache__
+**/*.pyc
+**/*.pyo
 frontend/node_modules
 frontend/dist
 data/
 rag_documents/
 *.log
-*.pyc
-*.pyo
 *.db
 *.db-journal
 *.db-wal
