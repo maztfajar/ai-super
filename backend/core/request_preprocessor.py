@@ -225,6 +225,13 @@ OFFICE_FILE_PATTERNS = [
     "buat spreadsheet", "buat dokumen",
 ]
 
+# Fast-path untuk file/path lokal
+LOCAL_PATH_PATTERNS = [
+    "/home/", "/var/", "/etc/", "/usr/", "/tmp/", "./", "../", "c:\\", "d:\\", "e:\\",
+    "cek project", "check project", "buka project", "open project",
+    "cek folder", "check folder", "buka folder", "open folder",
+]
+
 
 class RequestPreprocessor:
     """
@@ -305,6 +312,18 @@ class RequestPreprocessor:
             spec.is_simple = True
             spec.preprocessing_time_ms = int((time.time() - start) * 1000)
             log.info("Preprocessor: fast-path office/file", msg=message[:60])
+            return spec
+
+        # ── Fast-path: Local Paths & Projects ────────────────────────────────
+        if any(p in msg_lower for p in LOCAL_PATH_PATTERNS):
+            spec.primary_intent = "file_operation"
+            spec.intents = ["file_operation", "coding"]
+            spec.complexity_score = 0.6
+            spec.is_simple = False
+            spec.requires_multi_agent = True
+            spec.quality_priority = "balanced"
+            spec.preprocessing_time_ms = int((time.time() - start) * 1000)
+            log.info("Preprocessor: fast-path local project/path", msg=message[:60])
             return spec
 
         # ── Fast-path: Analisis sederhana ────────────────────────────────────

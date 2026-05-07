@@ -626,7 +626,10 @@ class Orchestrator:
 
         # For simple messages (like "hai", greetings), use direct model call for speed
         # For complex tasks or when auto_execute is needed, use agent executor
-        is_complex_intent = spec.primary_intent in ("system", "file_operation", "coding", "web_development")
+        is_complex_intent = (
+            spec.primary_intent in ("system", "file_operation", "coding", "web_development", "research")
+            or not spec.is_simple
+        )
         
         # Determine if we should use orchestrator (agent executor) or direct chat
         if auto_execute:
