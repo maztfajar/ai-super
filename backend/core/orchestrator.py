@@ -624,6 +624,10 @@ class Orchestrator:
                 spec.primary_intent, user_model_choice
             )
 
+        # Naikkan token limit untuk task yang butuh output panjang
+        if spec.primary_intent in ("coding", "web_development", "system"):
+            max_tokens = max(max_tokens, 8192)
+
         # For simple messages (like "hai", greetings), use direct model call for speed
         # For complex tasks or when auto_execute is needed, use agent executor
         is_complex_intent = (

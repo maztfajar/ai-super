@@ -243,6 +243,23 @@ Available tools (gunakan DALAM <thinking> saja):
 Tool format:
 <tool>{{"name": "tool_name", "args": {{"key": "value"}}}}</tool>
 Hentikan generate segera setelah <tool> block. Hasil ada di <observation>.
+
+**CONTINUATION MANDATE — WAJIB DIIKUTI:**
+JANGAN PERNAH mengirim response yang terpotong atau tidak selesai.
+Jika kamu sedang menulis kode dan mendekati batas token:
+1. SELESAIKAN fungsi/class yang sedang ditulis dulu
+2. Tutup semua tag HTML, kurung kurawal, dan blok kode (```)
+3. Tulis komentar: `// [LANJUTAN DI ITERASI BERIKUTNYA]`
+4. Kemudian lanjutkan secara otomatis di iterasi berikutnya
+
+DILARANG KERAS:
+- Menulis "Tentu, ini kelanjutannya..."
+- Menulis "Berikut lanjutan kode..."
+- Mengulang kode yang sudah ditulis sebelumnya
+- Berhenti di tengah fungsi/class/komponen
+
+Jika task belum selesai, LANJUTKAN OTOMATIS tanpa menunggu user.
+Gunakan tool write_file bertahap jika kode terlalu panjang.
 {project_context}
 """
     if len(_PROMPT_CACHE) >= _PROMPT_CACHE_MAX:
@@ -513,6 +530,50 @@ class AgentExecutor:
         if messages and messages[0]["role"] == "system":
             return messages[:1] + messages[1:4] + messages[-12:]
         return messages[:3] + messages[-12:]
+
+    def _is_truncated(self, text: str) -> bool:
+        """
+        Deteksi apakah response terpotong di tengah-tengah.
+        Digunakan untuk memicu auto-continuation jika model berhenti terlalu dini.
+        """
+        if not text or len(text) < 100:
+            return False
+
+        text = text.strip()
+
+        # Tanda-tanda terpotong di tengah kode: backtick ganjil
+        if text.count("```") % 2 != 0:
+            return True
+
+        # Tag HTML tidak ditutup
+        open_tags  = text.count("<div")  + text.count("<section") + \
+                     text.count("<script") + text.count("<style")
+        close_tags = text.count("</div") + text.count("</section") + \
+                     text.count("</script") + text.count("</style")
+        if open_tags > close_tags + 2:
+            return True
+
+        # Tanda-tanda terpotong di tengah kalimat/list
+        truncation_signals = [
+            # Kalimat tidak selesai
+            text.endswith(("...", "\u2026")),
+            # List item tidak selesai (angka di akhir)
+            bool(re.search(r'\n\d+\.\s*$', text)),
+            # Kode Python/JS tidak selesai
+            text.rstrip().endswith((":", "{", "(", ",")),
+            # Response diakhiri kata yang tidak natural
+            (
+                text.rstrip().split()[-1].lower() in (
+                    "the", "a", "an", "and", "or", "but", "to",
+                    "of", "in", "for", "yang", "dan", "atau",
+                    "dengan", "untuk", "ke", "di"
+                )
+                if text.strip()
+                else False
+            ),
+        ]
+
+        return any(truncation_signals)
 
     def _safe_parse_tool_json(self, text: str) -> Optional[dict]:
         text = text.strip()
@@ -1142,13 +1203,22 @@ class AgentExecutor:
                 is_unclosed_response = "<response>" in buffer and "</response>" not in buffer
                 is_unclosed_thought = ("<thinking>" in buffer and "</thinking>" not in buffer) or ("<think>" in buffer and "</think>" not in buffer)
                 odd_backticks = buffer.count("```") % 2 != 0
+                content_truncated = self._is_truncated(buffer)
 
                 # If model stopped generating midway (hit max_tokens), auto-continue seamlessly
-                if (is_unclosed_response or is_unclosed_thought or odd_backticks) and not stream_error and iteration < MAX_ITERATIONS - 1:
+                if (is_unclosed_response or is_unclosed_thought or odd_backticks or content_truncated) and not stream_error and iteration < MAX_ITERATIONS - 1:
                     agent_msgs.append({"role": "assistant", "content": buffer})
                     agent_msgs.append({
                         "role": "user",
-                        "content": "<observation>\nOutput Anda terputus sebelum selesai (kemungkinan karena batas token). Silakan lanjutkan tepat dari karakter terakhir tempat Anda terpotong. JANGAN menambahkan teks pengantar atau mengulang tag markdown jika Anda terputus di tengahnya.\n</observation>"
+                        "content": (
+                            "<observation>\n"
+                            "SYSTEM: Response terpotong. "
+                            "Lanjutkan LANGSUNG dari titik terakhir tanpa "
+                            "mengulang yang sudah ada. "
+                            "Jangan tulis 'Tentu' atau 'Lanjutan' — "
+                            "langsung tulis kontennya.\n"
+                            "</observation>"
+                        )
                     })
                     agent_msgs = self._prune_agent_messages(agent_msgs)
                     continue
