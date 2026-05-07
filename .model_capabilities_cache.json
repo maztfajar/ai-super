@@ -1,0 +1,41 @@
+{
+  "sumopod/qwen3.6-flash": [
+    "coding",
+    "text",
+    "vision",
+    "writing",
+    "reasoning",
+    "speed"
+  ],
+  "sumopod/deepseek-v4-pro": [
+    "coding",
+    "reasoning",
+    "analysis"
+  ],
+  "sumopod/gemini/gemini-2.5-flash-lite": [
+    "text",
+    "vision",
+    "free",
+    "reasoning",
+    "speed"
+  ],
+  "sumopod/minimax/speech-2.8-hd": [
+    "tts",
+    "speed",
+    "audio"
+  ],
+  "sumopod/claude-haiku-4-5": [
+    "writing",
+    "reasoning",
+    "creative",
+    "formatting",
+    "speed"
+  ],
+  "sumopod/gpt-5-nano": [
+    "coding",
+    "free",
+    "reasoning",
+    "speed",
+    "analysis"
+  ]
+}
