@@ -538,7 +538,7 @@ class ModelManager:
             elif "401" in err_str or "user not found" in err_str.lower() or "unauthorized" in err_str.lower() or "invalid_api_key" in err_str.lower():
                 yield f"\n❌ API Key / Autentikasi ({provider_name}) tidak valid (401). Silakan periksa kembali API Key di menu Integrasi."
             elif "service is not reachable" in err_str.lower() or "502" in err_str or "503" in err_str:
-                yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan sedang tidak dapat dijangkau (Server Down/502/503). Silakan coba lagi nanti atau ganti model."
+                raise RuntimeError(f"Service unreachable ({provider_name}): {err_str}")
             else:
                 clean_err = _re.sub(r"Error code: \d+ - ", "", err_str).strip()
                 if "{'error'" in clean_err or '{"error"' in clean_err:
@@ -549,6 +549,11 @@ class ModelManager:
                             clean_err = err_dict["error"]["message"]
                     except:
                         pass
+                
+                # Jika error mengandung kata kunci koneksi/timeout, raise agar executor bisa retry
+                if any(k in clean_err.lower() for k in ["connection", "timeout", "network", "reachable"]):
+                    raise RuntimeError(f"Connection error to {provider_name}: {clean_err}")
+                
                 yield f"\n❌ **Gagal menghubungi API ({provider_name}):** {clean_err}"
 
     # ── Ollama ────────────────────────────────────────────────
