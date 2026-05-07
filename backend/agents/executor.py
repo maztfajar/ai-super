@@ -815,6 +815,35 @@ class AgentExecutor:
                             pass
 
             if has_tool and "</tool>" not in buffer:
+                if not stream_error and iteration < MAX_ITERATIONS - 1:
+                    max_continuations = 3
+                    for _ in range(max_continuations):
+                        if "</tool>" in buffer:
+                            break
+                            
+                        yield process_emitter.to_sentinel("status", "Memperpanjang batas output file...")
+                        
+                        temp_msgs = list(agent_msgs)
+                        temp_msgs.append({"role": "assistant", "content": buffer})
+                        temp_msgs.append({
+                            "role": "user",
+                            "content": "<observation>\nOutput terputus karena batas token. Lanjutkan penulisan tepat dari karakter terakhir yang terpotong (misal: lanjutkan string JSON-nya). JANGAN mengulang dari awal. JANGAN tambahkan teks pengantar apapun.\n</observation>"
+                        })
+                        
+                        continuation_chunk = ""
+                        try:
+                            async for chunk in model_manager.chat_stream(base_model, self._prune_agent_messages(temp_msgs), execution_temperature, max_tokens):
+                                continuation_chunk += chunk
+                        except Exception as inner_err:
+                            log.warning("Inner stream error during continuation", error=str(inner_err))
+                            break
+                            
+                        if not continuation_chunk:
+                            break
+                            
+                        buffer += continuation_chunk
+
+            if has_tool and "</tool>" not in buffer:
                 buffer += "</tool>"
 
             if has_tool:

@@ -27,6 +27,7 @@ async def ensure_admin_exists():
     # Ambil kredensial dari .env
     admin_username = os.getenv("ADMIN_USERNAME", "admin")
     raw_admin_password = os.getenv("ADMIN_PASSWORD", "")
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com")
     
     is_default_password = False
     if not raw_admin_password or raw_admin_password == "GANTI-INI-DENGAN-PASSWORD-KUAT":
