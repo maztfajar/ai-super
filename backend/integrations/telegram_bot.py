@@ -993,16 +993,26 @@ async def _polling_loop(token: str):
 
 
 # ── Task runner ─────────────────────────────────────────────
-_bot_task = None
+_bot_thread: Optional[threading.Thread] = None
 
 import fcntl
 import os
 
 _lock_fd = None
 
+def _run_polling_thread(token: str):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(_polling_loop(token))
+    except Exception as e:
+        log.error("Telegram polling thread crashed", error=str(e))
+    finally:
+        loop.close()
+
 # ── Public API ────────────────────────────────────────────────
 def start_polling(token: str) -> bool:
-    global _bot_task, _bot_running, _lock_fd, _current_token
+    global _bot_thread, _bot_running, _lock_fd, _current_token
     if _bot_running:
         return False
 
@@ -1021,18 +1031,17 @@ def start_polling(token: str) -> bool:
         log.warning("Could not acquire lock for telegram polling", error=str(e))
 
     _bot_running = True
-    _bot_task = asyncio.create_task(_polling_loop(token), name="telegram-polling")
-    log.info("Telegram polling task started")
+    _bot_thread = threading.Thread(target=_run_polling_thread, args=(token,), daemon=True, name="telegram-polling")
+    _bot_thread.start()
+    log.info("Telegram polling thread started")
     return True
 
 
 def stop_polling():
-    global _bot_running, _bot_task, _lock_fd, _current_token
+    global _bot_running, _bot_thread, _lock_fd, _current_token
     _bot_running = False
     
-    if _bot_task and not _bot_task.done():
-        _bot_task.cancel()
-    _bot_task = None
+    _bot_thread = None
 
     if _lock_fd is not None:
         try:
@@ -1049,8 +1058,8 @@ def stop_polling():
 def is_running() -> bool:
     return (
         _bot_running
-        and _bot_task is not None
-        and not _bot_task.done()
+        and _bot_thread is not None
+        and _bot_thread.is_alive()
     )
 
 
