@@ -1110,6 +1110,20 @@ class AgentExecutor:
                 if remaining:
                     yield remaining
 
+                is_unclosed_response = "<response>" in buffer and "</response>" not in buffer
+                is_unclosed_thought = ("<thinking>" in buffer and "</thinking>" not in buffer) or ("<think>" in buffer and "</think>" not in buffer)
+                odd_backticks = buffer.count("```") % 2 != 0
+
+                # If model stopped generating midway (hit max_tokens), auto-continue seamlessly
+                if (is_unclosed_response or is_unclosed_thought or odd_backticks) and not stream_error and iteration < MAX_ITERATIONS - 1:
+                    agent_msgs.append({"role": "assistant", "content": buffer})
+                    agent_msgs.append({
+                        "role": "user",
+                        "content": "<observation>\nOutput Anda terputus sebelum selesai (kemungkinan karena batas token). Silakan lanjutkan tepat dari karakter terakhir tempat Anda terpotong. JANGAN menambahkan teks pengantar atau mengulang tag markdown jika Anda terputus di tengahnya.\n</observation>"
+                    })
+                    agent_msgs = self._prune_agent_messages(agent_msgs)
+                    continue
+
                 if not response_filter.ever_emitted_response:
                     fallback = re.sub(
                         r'<(?:thinking|think)>.*?</(?:thinking|think)>',
@@ -1120,16 +1134,7 @@ class AgentExecutor:
                         '', fallback
                     ).strip()
 
-                    # If model just stopped generating mid-thought without tool or response
-                    if fallback and not stream_error and step < max_steps - 1:
-                        yield "\n> ⚠️ Menunggu model menyelesaikan instruksi (auto-continue)...\n"
-                        agent_msgs.append({"role": "assistant", "content": buffer})
-                        agent_msgs.append({
-                            "role": "user",
-                            "content": "<observation>\nAnda berhenti menghasilkan teks sebelum memanggil <tool> atau memberikan <response>. Silakan lanjutkan dan pastikan menggunakan format yang benar (wajib gunakan <tool> atau <response>).\n</observation>"
-                        })
-                        agent_msgs = self._prune_agent_messages(agent_msgs)
-                        continue
+                    # Fallback correction logic
 
                     if fallback:
                         try:
