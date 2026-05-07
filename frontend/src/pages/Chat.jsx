@@ -128,190 +128,400 @@ const ACTION_META = {
 }
 const DEFAULT_META = { icon: Zap, color: 'text-ink-3', bg: 'bg-bg-5' }
 
-const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenArtifactCard, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen)
-  const [expandedIdx, setExpandedIdx] = useState(null)
-  const [staleSeconds, setStaleSeconds] = useState(0)
-  const staleCountRef = useRef(steps.length)
+// ── Status visual per langkah ─────────────────────────────────
+const _SS = {
+  done:    { dot: '#4ade80', bg: 'rgba(74,222,128,0.10)',    border: 'rgba(74,222,128,0.30)',  text: '#4ade80',  label: 'Selesai'  },
+  running: { dot: '#a78bfa', bg: 'rgba(167,139,250,0.10)',   border: 'rgba(167,139,250,0.35)', text: '#a78bfa',  label: 'Berjalan' },
+  error:   { dot: '#f87171', bg: 'rgba(248,113,113,0.10)',   border: 'rgba(248,113,113,0.30)', text: '#f87171',  label: 'Error'    },
+}
 
-  const toggleStep = useCallback((i, e) => {
+// ── Action → Tabler icon ──────────────────────────────────────
+const _ICONS = {
+  Thinking: 'brain', Thought: 'brain',
+  Planned: 'list-check', Worked: 'tool',
+  Explored: 'compass', Ran: 'terminal-2',
+  Edited: 'pencil', Modify: 'pencil',
+  Analyzed: 'chart-bar', Reading: 'book-open',
+  Writing: 'file-pencil', Written: 'file-check',
+  Listed: 'list', Searched: 'search',
+  Fetched: 'world', Created: 'file-plus',
+  Deleted: 'trash', Moved: 'arrow-right',
+  Copied: 'copy', Summarized: 'align-left',
+  Checked: 'circle-check', Found: 'hash',
+  Error: 'alert-circle', Done: 'circle-check',
+}
+
+// ── Elapsed time display ──────────────────────────────────────
+function _ElapsedBadge({ active }) {
+  const [sec, setSec] = React.useState(0)
+  const ref = React.useRef(null)
+  React.useEffect(() => {
+    if (!active) { setSec(0); return }
+    const start = Date.now()
+    ref.current = setInterval(() => setSec(Math.floor((Date.now() - start) / 1000)), 1000)
+    return () => clearInterval(ref.current)
+  }, [active])
+  if (!active && sec === 0) return null
+  const fmt = s => s < 60 ? `${s}s` : `${Math.floor(s/60)}m ${s%60}s`
+  return (
+    <span style={{
+      marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono, monospace)',
+      color: 'var(--color-text-tertiary, #555)', flexShrink: 0,
+    }}>
+      <i className="ti ti-clock" style={{ marginRight: 3, fontSize: 10 }} />
+      {fmt(sec)}
+    </span>
+  )
+}
+
+// ── Individual step ───────────────────────────────────────────
+function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtifactCard }) {
+  const [open, setOpen] = React.useState(isActive)
+
+  React.useEffect(() => {
+    if (isActive) setOpen(true)
+    if (!isActive && !step.code && !step.result) setOpen(false)
+  }, [isActive])
+
+  const status = step.action === 'Error' ? 'error' : isActive ? 'running' : 'done'
+  const s = _SS[status]
+  const icon = _ICONS[step.action] || 'bolt'
+  const spinning = status === 'running'
+
+  const getContent = () => {
+    if (isActive && step._textOffset != null && streamingText && !step._isLiveThinking) {
+      const live = streamingText.substring(step._textOffset)
+      if (live.trim()) return live
+    }
+    return step.liveContent || step.code || step.result
+      || `Action: ${step.action}\nDetail: ${step.detail || '—'}`
+  }
+
+  const handleCopy = (e) => {
     e.stopPropagation()
-    e.preventDefault()
-    setExpandedIdx(prev => prev === i ? null : i)
-  }, [])
+    navigator.clipboard?.writeText(getContent()).catch(() => {})
+  }
 
-  useEffect(() => {
+  return (
+    <div style={{ display: 'flex', gap: 10 }}>
+      {/* Icon + connector line */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: s.bg, border: `1.5px solid ${s.border}`,
+          display: 'flex', alignItems: 'center', justify-content: 'center',
+          transition: 'all 0.3s',
+        }}>
+          <i
+            className={`ti ti-${icon}`}
+            style={{
+              fontSize: 12, color: s.text,
+              animation: spinning ? '_sp-spin 1.2s linear infinite' : 'none',
+            }}
+          />
+        </div>
+        {!isLast && (
+          <div style={{ width: 1.5, flex: 1, minHeight: 8, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
+        )}
+      </div>
+
+      {/* Body */}
+      <div style={{ flex: 1, paddingBottom: isLast ? 2 : 6 }}>
+        {/* Header row — clickable */}
+        <div
+          onClick={() => setOpen(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '5px 8px', borderRadius: 8, cursor: 'pointer',
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          {/* Status badge */}
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            fontSize: 10, fontWeight: 700,
+            padding: '2px 8px', borderRadius: 99, flexShrink: 0,
+            background: s.bg, border: `1px solid ${s.border}`, color: s.text,
+            animation: spinning ? '_sp-pulse 1.5s ease-in-out infinite' : 'none',
+            letterSpacing: '0.3px',
+          }}>
+            <span style={{
+              width: 5, height: 5, borderRadius: '50%', background: s.dot,
+              animation: spinning ? '_sp-pulse 1.2s ease-in-out infinite' : 'none',
+            }} />
+            {s.label}
+          </span>
+
+          {/* Detail label */}
+          <span style={{
+            fontSize: 12.5, fontWeight: isActive ? 500 : 400,
+            color: isActive ? 'var(--color-text-primary, #ddd)' : 'var(--color-text-secondary, #aaa)',
+            flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {step.detail || step.action}
+          </span>
+
+          {/* Language pill */}
+          {step.language && (
+            <span style={{
+              fontSize: 9, fontFamily: 'var(--font-mono, monospace)', fontWeight: 700,
+              padding: '1px 6px', borderRadius: 4,
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+              color: 'var(--color-text-tertiary, #777)', flexShrink: 0,
+            }}>
+              {step.language}
+            </span>
+          )}
+
+          {/* Animated dots when active */}
+          {isActive && isStreaming && (
+            <span style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
+              {[0, 1, 2].map(i => (
+                <span key={i} style={{
+                  width: 4, height: 4, borderRadius: '50%', background: '#a78bfa',
+                  animation: `_sp-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
+                }} />
+              ))}
+            </span>
+          )}
+
+          {/* Chevron */}
+          <i
+            className="ti ti-chevron-down"
+            style={{
+              fontSize: 12, color: 'var(--color-text-tertiary, #555)', flexShrink: 0,
+              transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none',
+              opacity: open ? 1 : 0.5,
+            }}
+          />
+        </div>
+
+        {/* Expandable detail panel */}
+        <div style={{
+          overflow: 'hidden', maxHeight: open ? 400 : 0,
+          transition: 'max-height 0.28s ease',
+        }}>
+          <div style={{
+            margin: '5px 4px 6px 4px',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 8,
+            background: 'rgba(0,0,0,0.25)',
+            overflow: 'hidden',
+          }}>
+            {/* Detail header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '6px 12px',
+              background: 'rgba(255,255,255,0.03)',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}>
+              <span style={{ fontSize: 9, color: s.text, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <i className={`ti ti-${icon}`} style={{ fontSize: 10 }} />
+                {step.action}
+              </span>
+              <button
+                onClick={handleCopy}
+                style={{
+                  padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'transparent', cursor: 'pointer', fontSize: 10,
+                  color: 'var(--color-text-tertiary, #666)',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <i className="ti ti-copy" style={{ fontSize: 11 }} />
+              </button>
+            </div>
+
+            {/* Code/content area */}
+            <pre style={{
+              padding: '10px 14px', margin: 0,
+              fontSize: 11.5, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1.6,
+              color: 'var(--color-text-secondary, #bbb)',
+              overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              maxHeight: 280, overflowY: 'auto',
+            }}>
+              {getContent()}
+              {isActive && step._isLiveThinking && (
+                <span style={{
+                  display: 'inline-block', width: 6, height: 13,
+                  background: '#a78bfa', animation: '_sp-pulse 1s ease-in-out infinite',
+                  verticalAlign: 'middle', marginLeft: 2, borderRadius: 2,
+                }} />
+              )}
+            </pre>
+
+            {/* Open in Artifacts button for Written steps */}
+            {step.action === 'Written' && step.code && onOpenArtifactCard && (
+              <div style={{
+                padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.06)',
+                background: 'rgba(255,255,255,0.02)', textAlign: 'right',
+              }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    const ext = (step.language || step.detail?.split('.').pop() || 'txt').toLowerCase()
+                    onOpenArtifactCard(
+                      step.code + (step.truncated ? '\n\n// [konten dipotong]' : ''),
+                      ext, `✍️ ${step.detail?.split('/').pop()}`, false
+                    )
+                  }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '5px 12px', borderRadius: 7,
+                    background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)',
+                    color: '#a78bfa', fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  <i className="ti ti-external-link" style={{ fontSize: 11 }} />
+                  Buka di Artifacts
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main upgraded ProcessStepsPanel ──────────────────────────
+const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
+  steps, isStreaming, onStop, streamingText, onOpenArtifactCard, defaultOpen = true
+}) {
+  const [open, setOpen] = React.useState(defaultOpen)
+  const [staleSeconds, setStaleSeconds] = React.useState(0)
+  const staleCountRef = React.useRef(steps.length)
+
+  // Stale watcher (unchanged from original)
+  React.useEffect(() => {
     if (!isStreaming) { setStaleSeconds(0); return }
     if (steps.length !== staleCountRef.current) {
       staleCountRef.current = steps.length
       setStaleSeconds(0)
       return
     }
-    const timer = setInterval(() => setStaleSeconds(s => s + 1), 1000)
-    return () => clearInterval(timer)
+    const t = setInterval(() => setStaleSeconds(s => s + 1), 1000)
+    return () => clearInterval(t)
   }, [steps.length, isStreaming])
 
   if (!steps || steps.length === 0) return null
 
-  const getStepContent = (step, stepIdx) => {
-    const isLastStep = stepIdx === steps.length - 1
-    if (isLastStep && isStreaming && step._textOffset != null && streamingText && !step._isLiveThinking) {
-      const live = streamingText.substring(step._textOffset)
-      if (live.trim()) return { content: live, isLive: true }
-    }
-    const content = step.liveContent || step.code || step.result
-    if (content && content.trim()) {
-      return { content: content.trim(), isLive: !!step._isLiveThinking }
-    }
-    return null
-  }
-
   const latest = steps[steps.length - 1]
-  const toggleTitle = isStreaming 
-    ? `⚡ ${latest?.action} ${latest?.detail ? `· ${latest.detail}` : '...'}`
+  const doneCount = isStreaming ? steps.length - 1 : steps.length
+  const hasError = steps.some(s => s.action === 'Error')
+
+  const headerLabel = isStreaming
+    ? `⚡ ${latest?.action}${latest?.detail ? ` · ${latest.detail}` : '...'}`
     : `✓ Eksekusi selesai (${steps.length} langkah)`
 
   return (
-    <div className="mb-6 mt-1 animate-fade">
-      {/* Main Minimalist Toggle */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          setOpen(o => !o)
-        }}
-        className="flex items-center gap-2 text-[13px] text-ink-3 hover:text-ink transition-colors group mb-3 select-none"
-      >
-        <span className={clsx("transition-transform duration-200", open ? "rotate-180" : "")}>
-          <ChevronDown size={14} />
-        </span>
-        <span className="font-medium text-ink-2 group-hover:text-ink transition-colors">{toggleTitle}</span>
-        {isStreaming && <Loader2 size={12} className="animate-spin ml-1 text-accent-2" />}
-      </button>
+    <>
+      {/* Keyframe injection */}
+      <style>{`
+        @keyframes _sp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes _sp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+      `}</style>
 
-      {/* Expanded Timeline List */}
-      {open && (
-        <div className="ml-[7px] pl-5 border-l-[1.5px] border-border/70 relative">
-          {/* Subtle gradient to hide the top/bottom of the line slightly */}
-          <div className="absolute top-0 bottom-0 -left-[1.5px] w-[1.5px] bg-gradient-to-b from-bg via-transparent to-bg pointer-events-none" />
+      <div style={{ marginBottom: 20, marginTop: 4 }} className="animate-fade">
+        {/* ── Collapsible toggle header ── */}
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: open ? 12 : 0, cursor: 'pointer' }}
+          onClick={() => setOpen(o => !o)}
+        >
+          <i
+            className={`ti ti-chevron-down`}
+            style={{
+              fontSize: 14, color: 'var(--color-text-tertiary, #777)',
+              transition: 'transform 0.2s', transform: open ? 'none' : 'rotate(-90deg)',
+            }}
+          />
 
-          <div className="flex flex-col gap-4">
-            {steps.map((step, i) => {
-              const m = ACTION_META[step.action] || DEFAULT_META
-              const Icon = m.icon
-              const isLast = i === steps.length - 1
-              const isExpanded = expandedIdx === i
-              const contentData = getStepContent(step, i)
-              const displayContent = contentData?.content || `Action: ${step.action}\nDetail: ${step.detail || '—'}`
+          {/* Status icon */}
+          <i
+            className={`ti ti-${hasError ? 'alert-circle' : isStreaming ? 'loader-2' : 'circle-check'}`}
+            style={{
+              fontSize: 13,
+              color: hasError ? '#f87171' : isStreaming ? '#a78bfa' : '#4ade80',
+              animation: isStreaming ? '_sp-spin 1.2s linear infinite' : 'none',
+            }}
+          />
 
-              return (
-                <div key={i} className="relative group/step">
-                  {/* Timeline Node Dot */}
-                  <div className="absolute -left-[25px] top-1.5 w-2 h-2 rounded-full bg-bg border-2 border-border group-hover/step:border-accent-2 transition-colors z-10" />
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary, #ccc)', flex: 1 }}>
+            {headerLabel}
+          </span>
 
-                  {/* Step Header (Clickable) */}
-                  <div 
-                    className="flex items-start gap-3 cursor-pointer rounded-lg hover:bg-bg-3/50 transition-colors -ml-2 p-1.5 pr-3"
-                    onClick={(e) => toggleStep(i, e)}
-                  >
-                    <div className={clsx("mt-0.5 w-6 h-6 rounded flex items-center justify-center flex-shrink-0", m.bg, m.color)}>
-                      <Icon size={12} />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={clsx(
-                          "text-[13px] leading-snug break-words", 
-                          isLast && isStreaming ? "text-ink font-medium" : "text-ink-2"
-                        )}>
-                          {step.detail || step.action}
-                        </span>
-                        
-                        {step.language && (
-                          <span className="text-[10px] px-1.5 py-[1px] rounded bg-bg-4 text-ink-3 font-mono border border-border flex-shrink-0">
-                            {step.language}
-                          </span>
-                        )}
-                        
-                        {isLast && isStreaming && (
-                          <span className="flex gap-[2px] ml-1">
-                            {[0,1,2].map(idx => (
-                              <span key={idx} className="w-1 h-1 rounded-full bg-accent-2 animate-pulse" style={{ animationDelay: `${idx * 0.2}s` }} />
-                            ))}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+          {/* Step counter pill */}
+          <span style={{
+            fontSize: 10, padding: '2px 8px', borderRadius: 99,
+            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+            color: 'var(--color-text-tertiary, #777)',
+          }}>
+            {doneCount} / {steps.length}
+          </span>
 
-                    <span className={clsx(
-                      "flex-shrink-0 transition-transform duration-200 mt-1 opacity-0 group-hover/step:opacity-100",
-                      isExpanded ? "opacity-100 rotate-180" : ""
-                    )}>
-                      <ChevronDown size={14} className="text-ink-4" />
-                    </span>
-                  </div>
+          {/* Elapsed timer */}
+          <_ElapsedBadge active={isStreaming} />
 
-                  {/* Expanded Content Box */}
-                  {isExpanded && (
-                    <div className="mt-2 ml-7 mb-1 rounded-lg bg-bg-3 border border-border/60 overflow-hidden shadow-sm animate-fade">
-                      <div className="flex items-center justify-between px-3 py-1.5 bg-bg-4 border-b border-border/60">
-                         <span className="text-[10px] text-ink-3 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                           <Icon size={10} className={m.color} /> {step.action}
-                         </span>
-                         <button onClick={(e) => { e.stopPropagation(); copyToClipboard(displayContent); }} className="p-1 rounded hover:bg-bg-5 transition-colors" title="Copy">
-                           <Copy size={12} className="text-ink-3" />
-                         </button>
-                      </div>
-                      <pre className="p-3 text-[11px] font-mono leading-relaxed text-ink-2 overflow-x-auto whitespace-pre-wrap max-h-72 overflow-y-auto">
-                        {displayContent}
-                        {contentData?.isLive && (
-                          <span className="inline-block w-1.5 h-3 bg-accent-2 animate-pulse ml-0.5 align-middle" />
-                        )}
-                      </pre>
-                      {step.action === 'Written' && step.code && onOpenArtifactCard && (
-                        <div className="px-3 py-2 border-t border-border/60 bg-bg-4/50 text-right">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              const ext = (step.language || step.detail?.split('.').pop() || 'txt').toLowerCase()
-                              onOpenArtifactCard(step.code, ext, `✍️ ${step.detail?.split('/').pop()}`, false)
-                            }}
-                            className="inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 transition-all font-medium"
-                          >
-                            <ExternalLink size={10} /> Buka di Artifacts
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Stale / Stop Indicators */}
-          {(isStreaming && (staleSeconds >= 8 || onStop)) && (
-            <div className="mt-4 ml-3 flex items-center gap-3">
-              {staleSeconds >= 8 && (
-                <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-medium">
-                  <Loader2 size={12} className="animate-spin" />
-                  Menunggu pemrosesan tool... ({staleSeconds}s)
-                </div>
-              )}
-              {onStop && (
-                <button
-                  data-allow-propagation="true"
-                  onClick={(e) => { e.stopPropagation(); onStop() }}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-danger/10 hover:bg-danger/20 text-danger text-[10px] transition-all font-bold tracking-wide"
-                >
-                  <Square size={9} fill="currentColor" /> HENTIKAN
-                </button>
-              )}
-            </div>
+          {isStreaming && (
+            <i className="ti ti-loader-2" style={{ fontSize: 12, color: '#a78bfa', animation: '_sp-spin 1s linear infinite', marginLeft: 2 }} />
           )}
         </div>
-      )}
-    </div>
+
+        {/* ── Steps list ── */}
+        {open && (
+          <div style={{
+            marginLeft: 7, paddingLeft: 20,
+            borderLeft: '1.5px solid rgba(255,255,255,0.07)',
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {steps.map((step, i) => (
+                <_Step
+                  key={i}
+                  step={step}
+                  idx={i}
+                  isActive={i === steps.length - 1 && isStreaming}
+                  isLast={i === steps.length - 1}
+                  isStreaming={isStreaming}
+                  streamingText={streamingText}
+                  onOpenArtifactCard={onOpenArtifactCard}
+                />
+              ))}
+            </div>
+
+            {/* ── Stale / Stop indicators (unchanged from original) ── */}
+            {isStreaming && (staleSeconds >= 8 || onStop) && (
+              <div style={{ marginTop: 14, marginLeft: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                {staleSeconds >= 8 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#fbbf24', fontWeight: 500 }}>
+                    <i className="ti ti-loader-2" style={{ animation: '_sp-spin 1s linear infinite', fontSize: 12 }} />
+                    Menunggu pemrosesan tool... ({staleSeconds}s)
+                  </div>
+                )}
+                {onStop && (
+                  <button
+                    data-allow-propagation="true"
+                    onClick={(e) => { e.stopPropagation(); onStop() }}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '4px 10px', borderRadius: 7,
+                      background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.30)',
+                      color: '#f87171', fontSize: 10.5, fontWeight: 700,
+                      cursor: 'pointer', letterSpacing: '0.5px',
+                    }}
+                  >
+                    <i className="ti ti-square-filled" style={{ fontSize: 9 }} />
+                    HENTIKAN
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   )
 })
 
