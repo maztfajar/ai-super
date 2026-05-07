@@ -1042,7 +1042,10 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
     return { mainContent: mainContent.trim(), thinkingContent, hasThinking: true }
   }
 
-  const { mainContent, thinkingContent, hasThinking } = splitContent(msg.content || '')
+  const { mainContent, thinkingContent: parsedThinking, hasThinking: parsedHasThinking } = splitContent(msg.content || '')
+
+  const thinkingContent = msg.thinking_process || parsedThinking
+  const hasThinking = !!msg.thinking_process || parsedHasThinking
 
   // ── Parse artifacts from mainContent (explicit markers + auto-detect large code blocks)
   const { artifacts: parsedArtifacts, cleanContent: artifactCleanContent } = !isUser
