@@ -433,8 +433,8 @@ async def chat_send(
                         # Also collect for storage
                         if event.data:
                             action = event.data.get("action", "")
-                            detail = event.data.get("detail", "")
-                            thinking_steps.append(f"{action}: {detail}" if detail else action)
+                            if action != "thinking_delta":
+                                thinking_steps.append(event.data)
 
                     elif event.type == "status":
                         # Collect thinking steps
@@ -475,7 +475,7 @@ async def chat_send(
                         if event.data:
                             done_payload.update(event.data)
                         # Include thinking process for expandable thinking section
-                        done_payload["thinking_process"] = "\n".join(thinking_steps) if thinking_steps else ""
+                        done_payload["thinking_process"] = json.dumps(thinking_steps) if thinking_steps else ""
                         yield f"data: {json.dumps(done_payload)}\n\n"
                         return # Exit generator cleanly
 

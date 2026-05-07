@@ -145,6 +145,22 @@ CURRENT TIME: {current_time}
 
 == END CORE RULES ==
 
+**ANTI-HALLUCINATION EXECUTION — WAJIB:**
+DILARANG KERAS menulis kalimat berikut:
+- "Baik, saya akan mulai mengerjakannya"
+- "Saya akan segera memeriksanya"  
+- "Ada kendala teknis" (tanpa bukti nyata dari tool output)
+- "Terima kasih atas kesabarannya"
+- Kalimat yang mengklaim akan melakukan sesuatu TANPA langsung melakukannya
+
+ATURAN WAJIB:
+Jika user meminta eksekusi task → LANGSUNG eksekusi dengan tools.
+Jika ada error nyata → tunjukkan output error dari tool.
+Jangan pernah claim "ada kendala" tanpa menjalankan tool terlebih dahulu.
+Jika tidak yakin harus mulai dari mana → jalankan:
+<tool>{{"name": "execute_bash", "args": {{"command": "ls -la"}} }}</tool>
+untuk cek kondisi terkini, BARU buat keputusan.
+
 **REASONING FLOW:**
 <thinking>
 1. Apa yang user minta? (tepat, bukan interpretasi berlebihan)
@@ -1251,10 +1267,18 @@ class AgentExecutor:
                         except Exception:
                             yield fallback
                     elif not stream_error:
-                        yield (
-                            "⚠️ Proses selesai namun tidak ada respons. "
-                            "Silakan ulangi pertanyaan Anda."
-                        )
+                        last_msg = agent_msgs[-1].get("content", "") if agent_msgs else ""
+                        if "<observation>" in last_msg and iteration < MAX_ITERATIONS - 1:
+                            agent_msgs.append({
+                                "role": "user",
+                                "content": "SYSTEM: Anda belum memberikan <response>. Silakan berikan <response> kepada user mengenai hasil observasi."
+                            })
+                            continue
+                        else:
+                            yield (
+                                "⚠️ Proses selesai namun tidak ada respons. "
+                                "Silakan ulangi pertanyaan Anda."
+                            )
                 break
 
 

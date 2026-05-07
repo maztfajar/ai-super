@@ -249,6 +249,44 @@ class Orchestrator:
                 log.warning("Web search failed in orchestrator", error=str(e)[:80])
                 yield OrchestratorEvent("status", "  ⚠️ Web search gagal, lanjut tanpa data terkini")
 
+        # ── CONTINUATION INTENT DETECTION ────────────────────────────
+        # Deteksi jika user meminta lanjutkan task sebelumnya
+        _CONTINUATION_PATTERNS = [
+            r'\b(lanjut|lanjutkan|teruskan|continue|next|eksekusi|kerjakan|mulai|start)\b',
+            r'\b(sudah|oke|ok|ya|yes|silakan|silahkan|langsung)\b.*\b(kerjakan|lakukan|buat|eksekusi)\b',
+            r'^(ya|ok|oke|yep|yup|lanjut|go|mulai)[\s!.]*$',
+        ]
+
+        import re as _re
+        is_continuation = any(
+            _re.search(p, message.lower())
+            for p in _CONTINUATION_PATTERNS
+        )
+
+        # Jika continuation intent + ada history → paksa ke orchestrator
+        if is_continuation and history:
+            # Ambil context dari pesan sebelumnya
+            last_assistant = next(
+                (h["content"] for h in reversed(history)
+                 if h["role"] == "assistant"),
+                ""
+            )
+            
+            # Inject context ke message agar model tahu harus lakukan apa
+            if last_assistant and len(last_assistant) > 50:
+                message = (
+                    f"{message}\n\n"
+                    f"[CONTEXT: Lanjutkan dari response sebelumnya. "
+                    f"Task yang belum selesai: "
+                    f"{last_assistant[:300]}...]"
+                )
+                # Paksa sebagai task kompleks agar masuk agent executor
+                spec.is_simple = False
+                spec.primary_intent = _detect_intent_from_history(last_assistant)
+                spec.complexity_score = 0.8
+                
+                yield OrchestratorEvent("status", "🔄 Melanjutkan task sebelumnya...")
+
         # ─── FAST PATH: Simple messages ──────────────────────────
         if spec.is_simple:
             # Create a lightweight TaskExecution for monitoring
@@ -634,6 +672,21 @@ class Orchestrator:
             spec.primary_intent in ("system", "file_operation", "coding", "web_development", "research")
             or not spec.is_simple
         )
+
+        # Paksa kompleks jika history panjang (ada task yang sedang berlangsung)
+        if len(history) >= 4 and not is_complex_intent:
+            # Cek apakah history mengandung task teknis
+            history_text = " ".join(
+                h.get("content", "")[:100]
+                for h in history[-6:]
+            ).lower()
+            has_technical_context = any(w in history_text for w in [
+                "project", "file", "folder", "code", "buat", "create",
+                "aplikasi", "server", "database", "install", "direktori"
+            ])
+            if has_technical_context:
+                is_complex_intent = True
+                log.info("Forced complex intent due to technical history context")
         
         # Determine if we should use orchestrator (agent executor) or direct chat
         if auto_execute:
@@ -1321,5 +1374,21 @@ class Orchestrator:
         except Exception as e:
             log.warning("Failed to update task execution", error=str(e)[:100])
 
+
+def _detect_intent_from_history(text: str) -> str:
+    """Deteksi intent dari history untuk continuation."""
+    text_lower = text.lower()
+    if any(w in text_lower for w in
+           ["def ", "function", "class ", "import ", "npm", "pip",
+            "html", "css", "javascript", "python", "react"]):
+        return "coding"
+    if any(w in text_lower for w in
+           ["server", "port", "bash", "terminal", "systemctl",
+            "chmod", "sudo", "apt", "install"]):
+        return "system"
+    if any(w in text_lower for w in
+           ["analisis", "laporan", "data", "tabel", "grafik"]):
+        return "analysis"
+    return "coding"  # default ke coding untuk task kompleks
 
 orchestrator = Orchestrator()

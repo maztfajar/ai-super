@@ -128,8 +128,8 @@ const ACTION_META = {
 }
 const DEFAULT_META = { icon: Zap, color: 'text-ink-3', bg: 'bg-bg-5' }
 
-const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenArtifactCard }) {
-  const [open, setOpen] = useState(true)
+const ProcessStepsPanel = React.memo(function ProcessStepsPanel({ steps, isStreaming, onStop, streamingText, onOpenArtifactCard, defaultOpen = true }) {
+  const [open, setOpen] = useState(defaultOpen)
   const [expandedIdx, setExpandedIdx] = useState(null)
   const [staleSeconds, setStaleSeconds] = useState(0)
   const staleCountRef = useRef(steps.length)
@@ -1047,6 +1047,16 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
   const thinkingContent = msg.thinking_process || parsedThinking
   const hasThinking = !!msg.thinking_process || parsedHasThinking
 
+  let parsedProcessSteps = null
+  if (hasThinking && msg.thinking_process) {
+    try {
+      const parsed = JSON.parse(msg.thinking_process)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsedProcessSteps = parsed
+      }
+    } catch(e) {}
+  }
+
   // ── Parse artifacts from mainContent (explicit markers + auto-detect large code blocks)
   const { artifacts: parsedArtifacts, cleanContent: artifactCleanContent } = !isUser
     ? parseArtifacts(mainContent)
@@ -1156,8 +1166,17 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
                 <span className="inline-block w-1.5 h-4 bg-accent-2 animate-pulse2 ml-0.5 align-middle" />
               )}
               
-              {/* Collapsible Thinking Section */}
-              {hasThinking && (
+              {/* Collapsible Thinking Section / Process Steps */}
+              {parsedProcessSteps ? (
+                <div className="mt-3">
+                  <ProcessStepsPanel
+                    steps={parsedProcessSteps}
+                    isStreaming={isStreaming}
+                    onOpenArtifactCard={onOpenArtifactCard}
+                    defaultOpen={isStreaming}
+                  />
+                </div>
+              ) : hasThinking ? (
                 <div className="mt-3 border border-border-2 rounded-lg overflow-hidden">
                   <button
                     onClick={() => setShowThinking(!showThinking)}
@@ -1180,7 +1199,7 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
 
               {/* ── Inline Artifact Cards ── */}
               {parsedArtifacts.length > 0 && !isStreaming && parsedArtifacts.map(art => (
