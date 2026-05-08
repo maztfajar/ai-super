@@ -673,6 +673,16 @@ class Orchestrator:
             or not spec.is_simple
         )
 
+        # Paksa kompleks jika ada command-like keyword di pesan user
+        msg_lower = spec.original_message.lower()
+        has_command_keyword = any(w in msg_lower.split() for w in [
+            "curl", "ping", "ls", "df", "free", "systemctl", "ps", "cat", "grep", 
+            "npm", "node", "python", "pip", "install", "run", "start", "cek", "status", "periksa"
+        ])
+        if has_command_keyword:
+            is_complex_intent = True
+            log.info("Forced complex intent due to command keyword in message")
+
         # Paksa kompleks jika history panjang (ada task yang sedang berlangsung)
         if len(history) >= 4 and not is_complex_intent:
             # Cek apakah history mengandung task teknis
