@@ -209,7 +209,7 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
         <div style={{
           width: 28, height: 28, borderRadius: '50%',
           background: s.bg, border: `1.5px solid ${s.border}`,
-          display: 'flex', alignItems: 'center', justify-content: 'center',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
           transition: 'all 0.3s',
         }}>
           <i
