@@ -143,9 +143,35 @@ step "5. Update Python Dependencies"
 cd "$BACKEND_DIR"
 
 if [ -f "requirements.txt" ]; then
-    "$VENV_PIP" install -r requirements.txt --quiet \
-        && log "Dependencies Python berhasil diperbarui" \
-        || warn "Beberapa package gagal diupdate, server tetap akan dijalankan"
+    # ── Auto-fix: Longgarkan versi yang sering konflik ──────────
+    # Ini mencegah error "ResolutionImpossible" yang berulang
+    sed -i 's/^python-dotenv==.*/python-dotenv>=1.0.0/' requirements.txt 2>/dev/null || true
+    sed -i 's/^langchain-openai==.*/langchain-openai>=0.1.0/' requirements.txt 2>/dev/null || true
+    sed -i 's/^litellm==.*/litellm>=1.83.7/' requirements.txt 2>/dev/null || true
+
+    # Coba install normal dulu
+    if "$VENV_PIP" install -r requirements.txt --quiet 2>/dev/null; then
+        log "Dependencies Python berhasil diperbarui"
+    else
+        # Fallback: install satu per satu, skip yang gagal
+        warn "Install normal gagal, mencoba install satu per satu..."
+        FAIL_COUNT=0
+        while IFS= read -r line; do
+            # Skip komentar dan baris kosong
+            [[ "$line" =~ ^#.*$ || -z "${line// }" ]] && continue
+            pkg=$(echo "$line" | sed 's/#.*//' | xargs)
+            [ -z "$pkg" ] && continue
+            "$VENV_PIP" install "$pkg" --quiet 2>/dev/null || {
+                warn "  Gagal install: $pkg (skip)"
+                FAIL_COUNT=$((FAIL_COUNT + 1))
+            }
+        done < requirements.txt
+        if [ "$FAIL_COUNT" -eq 0 ]; then
+            log "Semua dependencies berhasil diinstall (mode fallback)"
+        else
+            warn "$FAIL_COUNT package gagal diinstall, server tetap akan dijalankan"
+        fi
+    fi
 else
     warn "requirements.txt tidak ditemukan, melewati update dependencies"
 fi

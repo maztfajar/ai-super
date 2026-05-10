@@ -726,15 +726,15 @@ class AgentExecutor:
         # Override temperature ke nilai rendah untuk tool execution
         execution_temperature = min(temperature, 0.3)
 
-        # ── FASE 1: MAX_ITERATIONS lebih ketat ──────────────────────────────
-        MAX_ITERATIONS = 15   # dikurangi dari 25 → 15
+        # ── FASE 1: MAX_ITERATIONS — cukup ruang untuk diagnosa + recovery ──────
+        MAX_ITERATIONS = 25   # ditingkatkan dari 15 → 25 agar AI punya ruang untuk recovery
 
         # ── FASE 2: Loop breaker — deteksi pengulangan tool ─────────────────
         last_tool_calls: list = []   # [tool_name, ...] 5 terakhir
         MAX_SAME_TOOL_REPEAT = 3     # batas pengulangan tool yang sama
 
         consecutive_errors = 0
-        MAX_CONSECUTIVE_ERRORS = 2   # dikurangi dari 3 → 2
+        MAX_CONSECUTIVE_ERRORS = 3   # ditingkatkan dari 2 → 3 agar ada ruang untuk recovery
 
         # ── FASE 3: Token Budget — mencegah infinite loop memakan token ──────
         # Hard limit: jika total token (estimasi) melebihi budget, paksa berhenti
@@ -997,13 +997,75 @@ class AgentExecutor:
                             f"{MAX_SAME_TOOL_REPEAT}x berturut-turut tanpa kemajuan. "
                             f"Menghentikan eksekusi dan mengevaluasi ulang...\n"
                         )
+
+                        # ── SMART RECOVERY: Kumpulkan konteks error untuk AI ─────
+                        # Ambil observation terakhir agar AI tahu APA yang gagal
+                        recent_observations = []
+                        for m in reversed(agent_msgs):
+                            if m["role"] == "user" and "<observation>" in m.get("content", ""):
+                                obs_text = m["content"]
+                                # Ambil isi observation saja
+                                if "<observation>" in obs_text and "</observation>" in obs_text:
+                                    obs_content = obs_text.split("<observation>")[1].split("</observation>")[0].strip()
+                                else:
+                                    obs_content = obs_text[:300]
+                                recent_observations.append(obs_content[:200])
+                                if len(recent_observations) >= 2:
+                                    break
+
+                        obs_summary = "\n".join(recent_observations) if recent_observations else "Tidak ada output error yang tercatat."
+
+                        # Berikan hint spesifik berdasarkan jenis tool yang loop
+                        recovery_hints = ""
+                        if cmd == "execute_bash":
+                            command_text = args.get("command", "")
+                            if "nohup" in command_text or "http.server" in command_text or "server" in command_text.lower():
+                                recovery_hints = (
+                                    "\n\nRECOVERY STEPS (WAJIB ikuti urutan ini):\n"
+                                    "1. Cek apakah server sudah berjalan: execute_bash dengan 'ps aux | grep python'\n"
+                                    "2. Cek apakah port sibuk: execute_bash dengan 'lsof -i :PORT_NUMBER' atau 'ss -tlnp | grep PORT'\n"
+                                    "3. Jika port sibuk, kill proses lama: execute_bash dengan 'kill $(lsof -t -i:PORT)'\n"
+                                    "4. Cek log error: execute_bash dengan 'tail -20 server.log' atau 'cat app.log'\n"
+                                    "5. Gunakan find_safe_port untuk cari port yang tersedia\n"
+                                    "6. Baru jalankan ulang server dengan port baru\n"
+                                )
+                            elif "npm" in command_text or "node" in command_text:
+                                recovery_hints = (
+                                    "\n\nRECOVERY STEPS (WAJIB ikuti urutan ini):\n"
+                                    "1. Cek error log: execute_bash dengan 'cat app.log' atau 'tail -30 ~/.npm/_logs/*.log'\n"
+                                    "2. Cek package.json: read_file untuk melihat scripts\n"
+                                    "3. Hapus node_modules dan install ulang: execute_bash 'rm -rf node_modules && npm install'\n"
+                                    "4. Gunakan find_safe_port untuk port baru jika port konflik\n"
+                                )
+                            else:
+                                recovery_hints = (
+                                    "\n\nRECOVERY STEPS:\n"
+                                    "1. Baca output error terakhir di atas — apa penyebab kegagalan?\n"
+                                    "2. Jangan ulangi command yang sama. Ubah parameter atau pendekatan.\n"
+                                    "3. Jika file/path tidak ada, buat dulu dengan mkdir -p atau write_file.\n"
+                                    "4. Jika permission denied, coba chmod atau sudo.\n"
+                                )
+                        elif cmd == "write_file":
+                            recovery_hints = (
+                                "\n\nRECOVERY STEPS:\n"
+                                "1. Pastikan direktori tujuan sudah ada (gunakan make_directory)\n"
+                                "2. Cek apakah file yang sama sudah ada (gunakan get_file_info)\n"
+                                "3. Jika path bermasalah, gunakan list_directory untuk verifikasi\n"
+                            )
+
                         agent_msgs.append({
                             "role": "user",
                             "content": (
-                                f"<observation>\nANTI-LOOP WARNING: Tool '{cmd}' dipanggil dengan argumen yang sama persis "
-                                f"{MAX_SAME_TOOL_REPEAT}x berturut-turut. "
-                                "Anda terjebak dalam loop. Ganti strategi sekarang. Jangan ulangi perintah yang gagal. "
-                                "Evaluasi hasil error sebelumnya dan temukan solusi atau command yang berbeda.\n</observation>"
+                                f"<observation>\n"
+                                f"⛔ ANTI-LOOP SYSTEM: Tool '{cmd}' dipanggil {MAX_SAME_TOOL_REPEAT}x dengan argumen IDENTIK.\n"
+                                f"Command yang loop: {args.get('command', str(args))[:200]}\n\n"
+                                f"OUTPUT TERAKHIR DARI TOOL:\n{obs_summary}\n"
+                                f"{recovery_hints}\n"
+                                f"ATURAN WAJIB:\n"
+                                f"- DILARANG mengulangi command yang sama.\n"
+                                f"- WAJIB diagnosa masalah dulu sebelum coba lagi.\n"
+                                f"- Jika sudah 2x gagal recover, berikan <response> ke user tentang apa masalahnya.\n"
+                                f"</observation>"
                             )
                         })
                         last_tool_calls.clear()
