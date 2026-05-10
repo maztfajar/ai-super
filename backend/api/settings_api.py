@@ -825,13 +825,35 @@ IMPORTANT:
         async for chunk in model_manager.chat_stream(
             model      = gen_model,
             messages   = messages,
-            max_tokens = 2000,
+            max_tokens = 8192,
             temperature= 0.7,
         ):
             if chunk:
                 full_response.append(chunk)
 
         generated = "".join(full_response).strip()
+
+        # ── Auto-Continuation jika terpotong ────────────────────────────────
+        # Jika belum mencapai bagian akhir, minta model melanjutkan
+        for _ in range(2):  # Maksimal 2 kali sambung
+            if generated and "## BATASAN" not in generated:
+                log.info("ai_core_generated_truncated", model=gen_model, reason="Missing ## BATASAN, auto-continuing")
+                cont_messages = messages + [
+                    {"role": "assistant", "content": generated},
+                    {"role": "user", "content": "Lanjutkan tepat dari bagian yang terpotong. Jangan mengulang kalimat sebelumnya. Langsung sambung kata atau karakter berikutnya."}
+                ]
+                async for chunk in model_manager.chat_stream(
+                    model      = gen_model,
+                    messages   = cont_messages,
+                    max_tokens = 8192,
+                    temperature= 0.7,
+                ):
+                    if chunk:
+                        generated += chunk
+            else:
+                break
+
+        generated = generated.strip()
 
         if not generated:
             raise ValueError(f"LLM returned empty response. Model used: {gen_model}")
