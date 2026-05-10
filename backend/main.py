@@ -102,6 +102,7 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             "/api/chat/send" in request.url.path
             or "/execute_pending" in request.url.path
             or "/images" in request.url.path
+            or "/ai-core/generate" in request.url.path
         )
         if is_streaming:
             # Biarkan streaming berjalan tanpa wrapper timeout (ada guard internal)
