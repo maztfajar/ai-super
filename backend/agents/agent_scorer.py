@@ -18,7 +18,7 @@ import structlog
 
 from core.model_manager import model_manager
 from core.metrics import metrics_engine
-from agents.agent_registry import agent_registry, AgentCapability, MODEL_CAPABILITY_MAP
+from agents.agent_registry import agent_registry, AgentCapability
 from core.dag_builder import SubTask
 
 log = structlog.get_logger()
@@ -64,21 +64,11 @@ _SCORE_CACHE: Dict[tuple, Tuple[AgentScore, float]] = {}
 _SCORE_CACHE_TTL = 60.0
 
 
-# ── Quality priority config (AI Core v2) ──────────────────────────────────
-# Model yang dianggap "cepat/murah" (boost jika priority = speed)
-# Sesuai AI Core: [THE RUNNER] gemini-2.5-flash + [THINKER] qwen3.6-plus
-_SPEED_MODELS = [
-    "sumopod/gemini/gemini-2.5-flash",  # [THE RUNNER]
-    "sumopod/qwen3.6-plus",              # [THE THINKER]
-    "sumopod/gpt-5-mini",                # [EMERGENCY]
-]
-# Model yang dianggap "premium/kuat" (boost jika priority = quality)
-# Sesuai AI Core: [BRAIN] deepseek-v4-pro + [THINKER] qwen3.6-plus
-_QUALITY_MODELS = [
-    "sumopod/deepseek-v4-pro",           # [BRAIN] + [ARCHITECT]
-    "sumopod/qwen3.6-plus",              # [THE THINKER]
-    "sumopod/claude-haiku-4-5",          # [THE WRITER] + [THE CREATIVE]
-]
+# Quality priority — gunakan capability tags, bukan hardcoded nama model
+# "speed" → prioritaskan model dengan tag "speed"
+# "quality" → prioritaskan model dengan tag "reasoning" atau "analysis"
+_SPEED_CAPS    = {"speed"}
+_QUALITY_CAPS  = {"reasoning", "analysis"}
 
 # Agent type → capability tags yang dibutuhkan (sinkron dengan agent_registry)
 _AGENT_TO_CAPS: Dict[str, set] = {
@@ -194,22 +184,19 @@ class AgentScorer:
             default = model_manager.get_default_model()
             return default, agent_type, AgentScore(model_id=default, agent_type=agent_type)
 
-        # ── Quality priority boosts ─────────────────────────────────────────
-        if quality_priority == "speed":
+        # ── Quality priority boosts — berdasarkan capability tags ──────────────
+        if quality_priority in ("speed", "quality"):
+            target_caps = _SPEED_CAPS if quality_priority == "speed" else _QUALITY_CAPS
             for c in candidates:
-                if c.model_id in _SPEED_MODELS:
-                    c.total_score = min(1.0, c.total_score * 1.3)
-        elif quality_priority == "quality":
-            for c in candidates:
-                if c.model_id in _QUALITY_MODELS:
+                model_caps = self._get_model_caps(c.model_id)
+                if model_caps & target_caps:
                     c.total_score = min(1.0, c.total_score * 1.3)
 
         # ── Hard block: model yang tidak bisa handle task type ini ──────────
         required_caps = _AGENT_TO_CAPS.get(agent_type, set())
         if agent_type in ("image_gen", "audio_gen", "vision"):
-            # Kalau tidak punya cap yang dibutuhkan → score = 0
             for c in candidates:
-                model_caps = set(MODEL_CAPABILITY_MAP.get(c.model_id, []))
+                model_caps = self._get_model_caps(c.model_id)
                 if required_caps and not (required_caps & model_caps):
                     c.total_score = 0.0
 
@@ -261,15 +248,8 @@ class AgentScorer:
         Seberapa baik model ini cocok dengan requirements?
         PERBAIKAN: exact match dulu → baru partial match.
         """
+        # position_score tidak dipakai lagi karena preferred_models kosong
         position_score = 0.0
-        for idx, preferred in enumerate(agent_cap.preferred_models):
-            # Exact match (full key)
-            if model_id == preferred:
-                position_score = 1.0 - (idx * 0.12)
-                break
-            # Partial match (backward compat untuk model yang tidak pakai prefix)
-            if preferred in model_id or model_id in preferred:
-                position_score = max(position_score, 0.7 - (idx * 0.1))
 
         # Skill overlap
         if subtask.required_skills:
@@ -279,23 +259,24 @@ class AgentScorer:
         else:
             overlap = 0.5
 
-        return min(1.0, position_score * 0.6 + overlap * 0.4)
+        # Capability overlap
+        required = _AGENT_TO_CAPS.get(agent_cap.agent_type, {"text"})
+        model_caps = self._get_model_caps(model_id)
+        cap_overlap = len(required & model_caps) / len(required) if required and model_caps else 0.4
+
+        return min(1.0, cap_overlap * 0.6 + overlap * 0.4)
 
     def _compute_specialization(self, model_id: str, agent_cap: AgentCapability) -> float:
-        """Seberapa ter-spesialisasi agent ini untuk task ini?"""
+        """Seberapa ter-spesialisasi model ini untuk agent type ini?"""
         if agent_cap.agent_type == "general":
             return 0.3
-        if agent_cap.preferred_models:
-            # Exact match dengan model pertama (paling direkomendasikan)
-            if model_id == agent_cap.preferred_models[0]:
-                return 1.0
-            # Ada di top-3 preferred
-            if model_id in agent_cap.preferred_models[:3]:
-                return 0.75
-            # Partial match
-            if any(p in model_id or model_id in p for p in agent_cap.preferred_models[:3]):
-                return 0.6
-        return 0.4
+        # Scoring berdasarkan capability match
+        required = _AGENT_TO_CAPS.get(agent_cap.agent_type, set())
+        model_caps = self._get_model_caps(model_id)
+        if not model_caps or not required:
+            return 0.4
+        overlap = len(required & model_caps) / len(required)
+        return min(1.0, 0.4 + overlap * 0.6)
 
     def _compute_availability(self, model_id: str, agent_cap: AgentCapability) -> float:
         """Availability berdasarkan active executions."""
@@ -307,26 +288,34 @@ class AgentScorer:
             return 1.0
         return 1.0 - (active / max_c) * 0.8
 
+    def _get_model_caps(self, model_id: str) -> set:
+        """Ambil capability tags model dari capability_map engine (fallback ke keyword matching)."""
+        try:
+            from core.capability_map import capability_map
+            caps = capability_map.get_capabilities(model_id)
+            if caps:
+                return set(caps)
+        except Exception:
+            pass
+        try:
+            from agents.model_classifier import get_model_tags
+            caps = get_model_tags(model_id)
+            if caps:
+                return set(caps)
+        except Exception:
+            pass
+        return set()
+
     def _compute_capability_map_score(
         self,
         model_id: str,
         agent_cap: AgentCapability,
     ) -> float:
         """
-        Score berdasarkan capability tags.
-        PERBAIKAN: pakai MODEL_CAPABILITY_MAP dari agent_registry (tidak ada circular import).
-        Fallback ke core.capability_map jika tersedia.
+        Score berdasarkan capability tags dari model yang tersedia.
+        Tidak pakai hardcoded map — menggunakan CapabilityMapEngine secara dinamis.
         """
-        # Coba pakai MODEL_CAPABILITY_MAP (selalu tersedia, tidak circular)
-        model_caps = set(MODEL_CAPABILITY_MAP.get(model_id, []))
-
-        # Jika tidak ada di local map, coba capability_map engine
-        if not model_caps:
-            try:
-                from core.capability_map import capability_map
-                model_caps = set(capability_map.get_capabilities(model_id) or [])
-            except Exception:
-                return 0.5  # netral
+        model_caps = self._get_model_caps(model_id)
 
         if not model_caps:
             return 0.5  # model tidak dikenal → netral

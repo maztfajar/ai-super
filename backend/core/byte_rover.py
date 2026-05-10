@@ -88,13 +88,13 @@ class ByteRover:
                 f"Percakapan:\n{full_text[:15000]}" # Batasi konteks agar tidak OOM
             )
 
-            # Cari model yang cepat
+            # Cari model yang cepat/ringan untuk summarization (capability "speed" atau "text")
             model = model_manager.get_default_model()
-            # Cari model ringan sesuai AI Core v2 — [THE RUNNER] atau [THINKER]
-            for m in ["sumopod/gemini/gemini-2.5-flash", "sumopod/qwen3.6-plus", "sumopod/gpt-5-mini"]:
-                if m in model_manager.available_models:
-                    model = m
-                    break
+            try:
+                from agents.agent_registry import agent_registry as _ar
+                model = _ar.resolve_model_for_agent("general")
+            except Exception:
+                pass
 
             summary = ""
             async for chunk in model_manager.chat_stream(

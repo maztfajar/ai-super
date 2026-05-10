@@ -685,19 +685,15 @@ class RequestPreprocessor:
         }, ts)
 
     def _get_fast_model(self) -> str:
-        """Pilih model untuk klasifikasi — cukup pintar tapi tetap cepat.
-        Sesuai AI Core v2: [THE RUNNER] gemini-2.5-flash → [THINKER] qwen3.6-plus → [EMERGENCY] gpt-5-mini
-        """
-        priorities = [
-            "sumopod/gemini/gemini-2.5-flash",  # [THE RUNNER] — classifier utama
-            "sumopod/qwen3.6-plus",              # [THINKER] — fallback classifier
-            "sumopod/gpt-5-mini",                # [EMERGENCY] — last resort
-            "sumopod/claude-haiku-4-5",          # [WRITER] — text understanding
-        ]
-        available = model_manager.available_models
-        for p in priorities:
-            if p in available:
-                return p
+        """Pilih model ringan untuk klasifikasi — dinamis dari Integrasi/env."""
+        # Prioritas: AI_ROLE_GENERAL dari env → agent_registry auto-routing → default
+        try:
+            from agents.agent_registry import agent_registry as _ar
+            model = _ar.resolve_model_for_agent("general")
+            if model and model in model_manager.available_models:
+                return model
+        except Exception:
+            pass
         return model_manager.get_default_model()
 
 

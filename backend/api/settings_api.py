@@ -152,9 +152,12 @@ async def get_settings(user: User = Depends(get_current_user)):
         "ai_core": {
             "system_prompt": _get_ai_core_prompt(env),
             "role_mappings": {
-                "coding": env.get("AI_ROLE_CODING", ""),
-                "reasoning": env.get("AI_ROLE_REASONING", ""),
-                "chat": env.get("AI_ROLE_CHAT", ""),
+                role: env.get(f"AI_ROLE_{role.upper()}", "")
+                for role in [
+                    "general", "coding", "reasoning", "writing", "research",
+                    "system", "creative", "validation", "vision", "multimodal",
+                    "audio_gen", "image_gen",
+                ]
             }
         },
         "tunnel_status": _get_tunnel_status_dict(),
@@ -602,25 +605,49 @@ async def save_ai_core_settings(req: AiCoreSettingsRequest, user: User = Depends
 
 
 # ── AI Role Mappings ──────────────────────────────────────────
+_ALL_AGENT_ROLES = [
+    "general", "coding", "reasoning", "writing", "research",
+    "system", "creative", "validation", "vision", "multimodal",
+    "audio_gen", "image_gen",
+]
+
 class AiRoleSettingsRequest(BaseModel):
-    coding: Optional[str] = None
-    reasoning: Optional[str] = None
-    chat: Optional[str] = None
+    general:    Optional[str] = None
+    coding:     Optional[str] = None
+    reasoning:  Optional[str] = None
+    writing:    Optional[str] = None
+    research:   Optional[str] = None
+    system:     Optional[str] = None
+    creative:   Optional[str] = None
+    validation: Optional[str] = None
+    vision:     Optional[str] = None
+    multimodal: Optional[str] = None
+    audio_gen:  Optional[str] = None
+    image_gen:  Optional[str] = None
+    # Backward-compat alias
+    chat:       Optional[str] = None
 
 @router.post("/ai-roles")
 async def save_ai_role_settings(req: AiRoleSettingsRequest, user: User = Depends(get_current_user)):
     if not user.is_admin:
         raise HTTPException(403, "Admin only")
-    
+
     data = {}
-    if req.coding is not None:    data["AI_ROLE_CODING"] = req.coding
-    if req.reasoning is not None: data["AI_ROLE_REASONING"] = req.reasoning
-    if req.chat is not None:      data["AI_ROLE_CHAT"] = req.chat
-    
+    for role in _ALL_AGENT_ROLES:
+        val = getattr(req, role, None)
+        if val is not None:
+            data[f"AI_ROLE_{role.upper()}"] = val
+    # Backward-compat: chat → general
+    if req.chat is not None:
+        data["AI_ROLE_GENERAL"] = req.chat
+
     write_env_batch(data)
-    from core.config import settings
-    settings.reload()
-    
+    try:
+        from core.config import settings
+        settings.reload()
+    except Exception:
+        pass
+
     return {"status": "saved", "message": "Pemetaan Role AI berhasil diperbarui"}
 
 

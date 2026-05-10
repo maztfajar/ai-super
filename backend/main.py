@@ -203,6 +203,12 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(byte_rover.background_loop())
     log.info("✅ Byte Rover (Long-term Memory) daemon started")
 
+    # Agent Registry — Performance-based routing (auto-learning)
+    from agents.agent_registry import refresh_perf_cache, perf_cache_background_loop
+    asyncio.create_task(refresh_perf_cache())           # initial load (non-blocking)
+    asyncio.create_task(perf_cache_background_loop())   # refresh every 5 minutes
+    log.info("✅ Agent Registry perf_cache daemon started")
+
     if settings.TELEGRAM_BOT_TOKEN:
         from integrations.telegram_bot import start_polling, start_watchdog, stop_watchdog, stop_polling
         started = start_polling(settings.TELEGRAM_BOT_TOKEN)

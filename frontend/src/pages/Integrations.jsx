@@ -698,14 +698,31 @@ function WebhookSection() {
 
 
 // ── AiRoleMappingSection ──────────────────────────────────────
+const AI_ROLE_DEFINITIONS = [
+  { key: 'general',    emoji: '💬', label: 'Chat Umum',        desc: 'Percakapan, FAQ, pertanyaan ringan' },
+  { key: 'coding',     emoji: '💻', label: 'Coding',           desc: 'Programming, debugging, code review' },
+  { key: 'reasoning',  emoji: '🧠', label: 'Reasoning',        desc: 'Logika kompleks, analisis, matematika' },
+  { key: 'writing',    emoji: '✍️', label: 'Penulisan',        desc: 'Konten, dokumentasi, terjemahan' },
+  { key: 'research',   emoji: '🔍', label: 'Riset',            desc: 'Pencarian info, fact-checking, web' },
+  { key: 'system',     emoji: '🖥️', label: 'Sistem/DevOps',   desc: 'VPS, terminal, server, networking' },
+  { key: 'creative',   emoji: '🎨', label: 'Kreatif',          desc: 'Brainstorming, ide, storytelling' },
+  { key: 'validation', emoji: '✅', label: 'Validasi/QA',      desc: 'Verifikasi, testing, fact-check' },
+  { key: 'vision',     emoji: '👁️', label: 'Vision',          desc: 'Analisis gambar, OCR, deteksi objek' },
+  { key: 'multimodal', emoji: '🌐', label: 'Multimodal',       desc: 'Teks + gambar + audio sekaligus' },
+  { key: 'audio_gen',  emoji: '🔊', label: 'Audio / TTS',      desc: 'Text-to-speech, suara' },
+  { key: 'image_gen',  emoji: '🖼️', label: 'Image Generation', desc: 'Buat gambar dari teks' },
+]
+
+const EMPTY_ROLES = Object.fromEntries(AI_ROLE_DEFINITIONS.map(r => [r.key, '']))
+
 function AiRoleMappingSection({ settings, onSave, saving }) {
   const models = useModelsStore(s => s.models)
-  const [roles, setRoles] = useState({ coding: '', reasoning: '', chat: '' })
+  const [roles, setRoles] = useState(EMPTY_ROLES)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
     if (settings?.ai_core?.role_mappings) {
-      setRoles(settings.ai_core.role_mappings)
+      setRoles(prev => ({ ...EMPTY_ROLES, ...settings.ai_core.role_mappings }))
     }
   }, [settings])
 
@@ -718,31 +735,7 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
     }
   }
 
-  const RoleSelect = ({ label, value, onChange, icon: Icon }) => (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3">
-          <Icon size={12} />
-        </div>
-        <select 
-          value={value} 
-          onChange={e => onChange(e.target.value)}
-          className="w-full bg-bg-2 border border-border-2 rounded-lg pl-9 pr-3 py-2 text-xs text-ink outline-none focus:border-accent appearance-none cursor-pointer"
-        >
-          <option value="">-- Gunakan Default (Cerdas) --</option>
-          {models.map(m => (
-            <option key={m.id} value={m.id}>
-              {m.display || m.id} ({m.provider})
-            </option>
-          ))}
-        </select>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
-          <ChevronDown size={12} />
-        </div>
-      </div>
-    </div>
-  )
+  const configuredCount = Object.values(roles).filter(v => v).length
 
   return (
     <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden mt-0">
@@ -751,8 +744,15 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
           <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-accent-2 flex-shrink-0"><Zap size={16}/></div>
           <div>
             <div className="text-sm font-semibold text-ink">AI Roles Mapping</div>
-            <div className="text-[10px] text-ink-3">Petakan tugas spesifik ke model pilihan Anda</div>
+            <div className="text-[10px] text-ink-3">
+              Petakan setiap jenis tugas ke model spesifik — atau biarkan kosong untuk auto-routing cerdas
+            </div>
           </div>
+          {configuredCount > 0 && (
+            <span className="ml-1 text-[10px] bg-accent/15 text-accent-2 px-1.5 py-0.5 rounded-full flex-shrink-0">
+              {configuredCount}/{AI_ROLE_DEFINITIONS.length} dikonfigurasi
+            </span>
+          )}
         </div>
         {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
       </button>
@@ -760,30 +760,52 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
       <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
           <div className="p-4 space-y-4 border-t border-border">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <RoleSelect 
-                label="Coding Specialist" 
-                icon={Code} 
-                value={roles.coding} 
-                onChange={v => setRoles(r => ({...r, coding: v}))} 
-              />
-              <RoleSelect 
-                label="Reasoning / Logic" 
-                icon={Zap} 
-                value={roles.reasoning} 
-                onChange={v => setRoles(r => ({...r, reasoning: v}))} 
-              />
-              <RoleSelect 
-                label="Simple Chat / Fast" 
-                icon={Globe} 
-                value={roles.chat} 
-                onChange={v => setRoles(r => ({...r, chat: v}))} 
-              />
+
+            {/* Info banner */}
+            <div className="p-3 bg-accent/8 border border-accent/20 rounded-xl text-[10px] text-ink-2 leading-relaxed">
+              <span className="font-semibold text-ink block mb-1">🤖 Auto-Routing Cerdas</span>
+              Jika slot dikosongkan, AI Orchestrator otomatis memilih model terbaik berdasarkan kemampuan dan performa historis.
+              Semakin sering dipakai, semakin cerdas pilihannya.
             </div>
-            
+
+            {/* Role grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {AI_ROLE_DEFINITIONS.map(role => (
+                <div key={role.key} className="bg-bg-4 rounded-xl border border-border p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{role.emoji}</span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold text-ink">{role.label}</div>
+                      <div className="text-[9px] text-ink-3 truncate">{role.desc}</div>
+                    </div>
+                    {roles[role.key] && (
+                      <span className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-success"/>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={roles[role.key] || ''}
+                      onChange={e => setRoles(r => ({ ...r, [role.key]: e.target.value }))}
+                      className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-1.5 text-[11px] text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-7"
+                    >
+                      <option value="">🤖 Auto (pilih terbaik)</option>
+                      {models.map(m => (
+                        <option key={m.id} value={m.id}>
+                          {m.display || m.id} ({m.provider})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
+                      <ChevronDown size={11}/>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <p className="text-[10px] text-ink-3 max-w-xs italic">
-                * Jika dikosongkan, sistem akan otomatis memilih model tercepat/terbaik berdasarkan kemampuannya.
+              <p className="text-[10px] text-ink-3 italic">
+                * Auto-routing belajar dari performa historis dan menyesuaikan diri secara otomatis.
               </p>
               <Btn label="Simpan Pemetaan" onClick={handleSave} loading={saving} variant="primary" icon={Save}/>
             </div>
