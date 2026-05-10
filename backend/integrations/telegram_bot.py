@@ -490,8 +490,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                     log.error("Orchestrator processing error", error=str(e), chat_id=chat_id)
                     full_response = f"⚠️ Terjadi kesalahan saat memproses: {str(e)[:100]}"
             
-            # Set timeout to 300 seconds (5 minutes) for complex tasks like app development
-            await asyncio.wait_for(process_with_timeout(), timeout=300.0)
+            # Set timeout to 3600 seconds (1 hour) for complex tasks like app development
+            await asyncio.wait_for(process_with_timeout(), timeout=3600.0)
             
             log.info("Telegram processing complete", chat_id=chat_id, total_chunks=chunk_count, response_length=len(full_response), has_content=bool(full_response.strip()))
             

@@ -770,7 +770,7 @@ class Orchestrator:
             if is_orchestrator:
                 from agents.executor import agent_executor
                 # Watchdog pattern: jika tidak ada chunk selama IDLE_TIMEOUT detik, hentikan
-                IDLE_TIMEOUT = 300.0  # 5 menit idle = timeout untuk task kompleks
+                IDLE_TIMEOUT = 3600.0  # 60 menit idle = timeout untuk task kompleks
                 timed_out = False
 
                 async def _producer(q: asyncio.Queue):

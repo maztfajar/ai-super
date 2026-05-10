@@ -156,10 +156,12 @@ DILARANG KERAS menulis kalimat/alasan berikut:
 - Kalimat yang mengklaim akan melakukan sesuatu TANPA langsung melakukannya
 
 ATURAN WAJIB:
-Jika user meminta eksekusi task → LANGSUNG eksekusi dengan tools.
-JANGAN PERNAH menolak menjalankan perintah bash seperti `curl`, `npm`, atau `python`. Anda PUNYA alatnya (`execute_bash`).
-Jika ada error nyata → tunjukkan output error dari tool.
-Jangan pernah claim "ada kendala" tanpa menjalankan tool terlebih dahulu.
+- JANGAN PERNAH berhenti di tengah-tengah tugas. Selesaikan SEMUA instruksi pengguna hingga tuntas!
+- Jika membuat kode atau file panjang, JANGAN diringkas (misal "sisa kode sama seperti sebelumnya"). Tulislah secara UTUH 100%.
+- Jika user meminta eksekusi task → LANGSUNG eksekusi dengan tools.
+- JANGAN PERNAH menolak menjalankan perintah bash seperti `curl`, `npm`, atau `python`. Anda PUNYA alatnya (`execute_bash`).
+- Jika ada error nyata → tunjukkan output error dari tool.
+- Jangan pernah claim "ada kendala" tanpa menjalankan tool terlebih dahulu.
 Jika tidak yakin harus mulai dari mana → jalankan:
 <tool>{{"name": "execute_bash", "args": {{"command": "ls -la"}} }}</tool>
 untuk cek kondisi terkini, BARU buat keputusan.
@@ -542,6 +544,20 @@ class AgentExecutor:
                     r'<(?:thinking|think)>.*?</(?:thinking|think)>',
                     '', msg["content"], flags=re.DOTALL
                 ).strip()
+                
+                # Truncate large write_file tool contents to save context tokens
+                def _truncate_tool(match):
+                    content = match.group(0)
+                    if "write_file" in content and len(content) > 800:
+                        try:
+                            path_match = re.search(r'"path"\s*:\s*"([^"]+)"', content)
+                            path = path_match.group(1) if path_match else "file"
+                            return f'<tool>{{"name": "write_file", "args": {{"path": "{path}", "content": "...[CONTENT TRUNCATED FOR MEMORY]..."}}}}</tool>'
+                        except:
+                            return content[:200] + "...[TRUNCATED]...</tool>"
+                    return content
+                
+                msg["content"] = re.sub(r'<tool>.*?</tool>', _truncate_tool, msg["content"], flags=re.DOTALL)
 
         if len(messages) <= max_messages:
             return messages
@@ -896,7 +912,7 @@ class AgentExecutor:
 
             if has_tool and "</tool>" not in buffer:
                 if not stream_error and iteration < MAX_ITERATIONS - 1:
-                    max_continuations = 3
+                    max_continuations = 5
                     for _ in range(max_continuations):
                         if "</tool>" in buffer:
                             break
@@ -907,7 +923,18 @@ class AgentExecutor:
                         temp_msgs.append({"role": "assistant", "content": buffer})
                         temp_msgs.append({
                             "role": "user",
-                            "content": "<observation>\nOutput terputus karena batas token. Lanjutkan penulisan tepat dari karakter terakhir yang terpotong (misal: lanjutkan string JSON-nya). JANGAN mengulang dari awal. JANGAN tambahkan teks pengantar apapun.\n</observation>"
+                            "content": (
+                                "<observation>\n"
+                                "SYSTEM: Output terputus di tengah jalan karena batas token.\n"
+                                "Lanjutkan output Anda TEPAT dari karakter terakhir yang terpotong.\n"
+                                "PENTING:\n"
+                                "- JANGAN mengulang struktur JSON dari awal!\n"
+                                "- JANGAN ulangi nama properti (seperti \"content\":).\n"
+                                "- JANGAN gunakan blok kode markdown (```).\n"
+                                "- JANGAN ucapkan \"Tentu\" atau kata pengantar apapun.\n"
+                                "LANGSUNG keluarkan sisa karakter berikutnya yang belum tertulis!\n"
+                                "</observation>"
+                            )
                         })
                         
                         continuation_chunk = ""
@@ -921,7 +948,20 @@ class AgentExecutor:
                         if not continuation_chunk:
                             break
                             
-                        buffer += continuation_chunk
+                        # Clean up the continuation chunk to prevent JSON corruption
+                        c_clean = continuation_chunk.lstrip()
+                        # Strip common conversational fillers at the start
+                        if c_clean.lower().startswith("tentu") or c_clean.lower().startswith("baik") or c_clean.lower().startswith("berikut"):
+                            if "\n" in c_clean:
+                                c_clean = c_clean.split("\n", 1)[1].lstrip()
+                        # Strip markdown blocks if the AI stubbornly adds them
+                        if c_clean.startswith("```"):
+                            if "\n" in c_clean:
+                                c_clean = c_clean.split("\n", 1)[1]
+                            else:
+                                c_clean = ""
+                                
+                        buffer += c_clean
 
             if has_tool and "</tool>" not in buffer:
                 buffer += "</tool>"
