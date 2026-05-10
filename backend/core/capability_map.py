@@ -21,41 +21,21 @@ log = structlog.get_logger()
 CAPABILITY_MAP_FILE = Path(__file__).parent.parent.parent / "data" / "capability_map.json"
 
 # ── Static capability hints berdasarkan pengetahuan model ─────────────────────
-# Digunakan sebagai fallback jika interview LLM gagal, dan sebagai seed awal.
 STATIC_CAPABILITY_HINTS: Dict[str, Set[str]] = {
-    # Sumopod models
-    "mimo-v2-omni":              {"text", "vision", "audio", "reasoning", "analysis"},
-    "mimo-v2-pro":               {"text", "reasoning", "coding", "analysis", "writing"},
-    "minimax/speech-2.8-hd":     {"audio", "tts"},
-    "MiniMax-M2.7-highspeed":    {"text", "writing", "speed"},
-    "big-pickle":                {"text", "coding", "analysis"},
-    # OpenAI
-    "gpt-4o":                    {"text", "vision", "coding", "reasoning", "analysis", "writing"},
-    "gpt-5-nano":                 {"text", "coding", "reasoning", "speed"},
-    "gpt-image-1":               {"image_gen"},
-    "dall-e-3":                  {"image_gen"},
-    # Anthropic
-    "claude-3-5-sonnet":         {"text", "coding", "reasoning", "analysis", "writing"},
-    "claude-3-opus":             {"text", "coding", "reasoning", "analysis"},
-    "claude-3-haiku":            {"text", "speed", "writing"},
-    # Google
-    "gemini-1.5-pro":            {"text", "vision", "reasoning", "analysis"},
-    "gemini-1.5-flash":          {"text", "speed", "vision"},
-    "gemini-2.0-flash":          {"text", "speed", "vision"},
-    "gemini-2.5-pro":            {"text", "vision", "reasoning", "analysis"},
-    "gemini-2.5-flash-lite":     {"text", "vision", "speed"},
-    # Seed (Sumopod)
-    "seed-2-0-pro":              {"text", "reasoning", "coding", "analysis"},
-    # Ollama / local
-    "llama3":                    {"text", "coding", "reasoning"},
-    "llama3.1":                  {"text", "coding", "reasoning"},
-    "llama3.2":                  {"text", "reasoning", "speed"},
-    "mistral":                   {"text", "coding", "reasoning"},
-    "deepseek":                  {"text", "coding", "reasoning"},
-    "qwen":                      {"text", "vision", "coding"},
-    "llava":                     {"vision", "text"},
-    "phi":                       {"text", "coding", "speed"},
-    "gemma":                     {"text", "reasoning", "speed"},
+    # Sumopod / Custom
+    "sumopod/gemini/gemini-2.5-flash":   {"text", "vision", "speed", "writing"},
+    "sumopod/qwen3.6-plus":              {"coding", "reasoning", "speed", "text", "vision", "writing"},
+    "sumopod/deepseek-v4-pro":           {"coding", "reasoning", "text", "analysis"},
+    "sumopod/claude-haiku-4-5":          {"text", "writing"},
+    "sumopod/minimax/speech-2.8-hd":     {"audio", "tts"},
+    "sumopod/gpt-5-mini":                {"analysis", "coding", "reasoning", "speed", "text", "vision", "writing"},
+    # Base variations
+    "gemini-2.5-flash":                  {"text", "vision", "speed", "writing"},
+    "qwen3.6-plus":                      {"coding", "reasoning", "speed", "text", "vision", "writing"},
+    "deepseek-v4-pro":                   {"coding", "reasoning", "text", "analysis"},
+    "claude-haiku-4-5":                  {"text", "writing"},
+    "speech-2.8-hd":                     {"audio", "tts"},
+    "gpt-5-mini":                        {"analysis", "coding", "reasoning", "speed", "text", "vision", "writing"},
 }
 
 # Interview prompt — model harus jawab dalam JSON

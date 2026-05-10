@@ -47,5 +47,16 @@
     "reasoning",
     "speed",
     "text"
+  ],
+  "sumopod/qwen3.6-plus": [
+    "coding",
+    "text",
+    "vision"
+  ],
+  "sumopod/gemini/gemini-2.5-flash": [
+    "speed"
+  ],
+  "sumopod/gpt-5-mini": [
+    "speed"
   ]
 }

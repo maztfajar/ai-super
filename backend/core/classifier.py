@@ -60,8 +60,9 @@ class TaskClassifier:
             return {"category": "GENERAL", "is_complex": False, "reasoning": "fallback due to error"}
 
     def _get_fast_model(self) -> str:
-        # Prioritize really fast models for classification to reduce wait times
-        priorities = ["gpt-5-nano", "gemini-2.5-flash-lite", "claude-haiku-4-5", "qwen3.6-flash"]
+        # AI Core v2: [THE RUNNER] gemini-2.5-flash untuk klasifikasi cepat
+        # Fallback: [THINKER] qwen3.6-plus → [EMERGENCY] gpt-5-mini
+        priorities = ["gemini/gemini-2.5-flash", "qwen3.6-plus", "gpt-5-mini", "claude-haiku-4-5"]
         
         for p in priorities:
             for k in model_manager.available_models.keys():

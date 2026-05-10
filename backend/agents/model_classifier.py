@@ -24,70 +24,13 @@ CACHE_FILE = Path(__file__).parent.parent.parent / ".model_capabilities_cache.js
 # ── Keyword → capability tags ─────────────────────────────────────────────────
 # Urutan dict penting: kunci spesifik (haiku, sonnet) lebih dahulu dari umum (claude)
 MODEL_ROLE_HINTS: Dict[str, List[str]] = {
-    # ── Anthropic ───────────────────────────────────
-    "haiku":       ["writing", "creative", "formatting", "speed"],
-    "sonnet":      ["reasoning", "coding", "writing", "analysis"],
-    "opus":        ["reasoning", "analysis", "coding"],
-    "claude":      ["writing", "reasoning", "creative"],
-
-    # ── Google ──────────────────────────────────────
-    "gemini-2.5-flash-lite": ["speed", "vision", "text", "free"],
+    # ── AI Core Models ──────────────────────────────
+    "claude-haiku-4-5":      ["writing", "creative", "formatting", "speed"],
     "gemini-2.5-flash":      ["speed", "vision", "reasoning", "text"],
-    "gemini-1.5-flash":      ["speed", "vision", "text", "free"],
-    "gemini-1.5-pro":        ["reasoning", "vision", "analysis"],
-    "gemini-2.0":            ["speed", "vision", "reasoning"],
-    "gemini":                ["speed", "vision", "text"],
-
-    # ── OpenAI ──────────────────────────────────────
-    "gpt-4o-mini":  ["speed", "reasoning", "vision", "coding"],
-    "gpt-4o":       ["reasoning", "coding", "vision", "analysis"],
-    "gpt-4":        ["reasoning", "coding", "analysis"],
-    "gpt-3.5":      ["speed", "text"],
-    "gpt-5":        ["reasoning", "coding", "analysis"],
-    "o1":           ["reasoning", "analysis"],
-    "o3":           ["reasoning", "analysis"],
-
-    # ── DeepSeek ────────────────────────────────────
-    "deepseek-v4-pro": ["reasoning", "coding", "analysis"],
-    "deepseek-v3":     ["reasoning", "coding"],
-    "deepseek-v2":     ["reasoning", "coding"],
-    "deepseek-coder":  ["coding"],
-    "deepseek":        ["reasoning", "coding"],
-
-    # ── Qwen (Alibaba) ──────────────────────────────
-    "qwen3.6-flash":  ["coding", "reasoning", "speed", "vision", "writing"],
-    "qwen2.5-coder":  ["coding"],
-    "qwen2.5":        ["reasoning", "coding", "vision"],
-    "qwen":           ["coding", "reasoning", "text"],
-
-    # ── Meta Llama ──────────────────────────────────
-    "llama-3.3": ["reasoning", "coding", "text"],
-    "llama-3.2": ["vision", "reasoning"],
-    "llama-3.1": ["reasoning", "coding"],
-    "llama-3":   ["reasoning", "coding"],
-    "llama":     ["reasoning", "text"],
-
-    # ── Mistral ─────────────────────────────────────
-    "mistral-large":  ["reasoning", "coding", "writing"],
-    "mistral-small":  ["speed", "text"],
-    "codestral":      ["coding"],
-    "mistral":        ["reasoning", "coding"],
-    "mixtral":        ["reasoning", "coding"],
-
-    # ── xAI Grok ────────────────────────────────────
-    "grok-3":  ["reasoning", "coding", "analysis"],
-    "grok-2":  ["reasoning", "text"],
-    "grok":    ["reasoning", "text"],
-
-    # ── Cohere ──────────────────────────────────────
-    "command-r-plus": ["reasoning", "coding", "writing"],
-    "command-r":      ["writing", "text"],
-    "command":        ["writing", "text"],
-
-    # ── Audio / TTS ─────────────────────────────────
-    "speech":    ["audio", "tts"],
-    "whisper":   ["audio"],
-    "tts":       ["audio", "tts"],
+    "gpt-5-mini":            ["speed", "reasoning", "vision", "coding"],
+    "deepseek-v4-pro":       ["reasoning", "coding", "analysis"],
+    "qwen3.6-plus":          ["coding", "reasoning", "speed", "vision", "writing"],
+    "speech-2.8-hd":         ["audio", "tts"],
 
     # ── Generic speed/size keywords ─────────────────
     "flash":   ["speed", "text"],

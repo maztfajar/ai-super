@@ -685,15 +685,14 @@ class RequestPreprocessor:
         }, ts)
 
     def _get_fast_model(self) -> str:
-        """Pilih model untuk klasifikasi — cukup pintar tapi tetap cepat."""
-        # Prioritas: model yang cukup pintar untuk penalaran intent
-        # Jangan pakai nano/lite karena tidak bisa reasoning action_type
+        """Pilih model untuk klasifikasi — cukup pintar tapi tetap cepat.
+        Sesuai AI Core v2: [THE RUNNER] gemini-2.5-flash → [THINKER] qwen3.6-plus → [EMERGENCY] gpt-5-mini
+        """
         priorities = [
-            "sumopod/gemini-2.5-flash",
-            "sumopod/claude-haiku-4-5",
-            "sumopod/gpt-5-nano",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gemini-2.5-flash-lite",
+            "sumopod/gemini/gemini-2.5-flash",  # [THE RUNNER] — classifier utama
+            "sumopod/qwen3.6-plus",              # [THINKER] — fallback classifier
+            "sumopod/gpt-5-mini",                # [EMERGENCY] — last resort
+            "sumopod/claude-haiku-4-5",          # [WRITER] — text understanding
         ]
         available = model_manager.available_models
         for p in priorities:

@@ -23,7 +23,7 @@ export function LiveModelPerformanceChart({ activeSessions = [] }) {
           const sessionsData = await api.activeSessions?.()
           sessionsData?.active_sessions?.forEach((session) => {
             const model = session.model_used || 'Unknown'
-            // Extract model name from full path (e.g., "gpt-4" from "openai/gpt-4")
+            // Extract model name from full path (e.g., "gpt-5-mini" from "openai/gpt-5-mini")
             const modelKey = model.includes('/') ? model.split('/').pop() : model
             const displayModel = modelKey.substring(0, 12)
             

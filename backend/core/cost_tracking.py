@@ -11,28 +11,28 @@ import structlog
 log = structlog.get_logger()
 
 
-# Pricing per 1K tokens (approximate, update based on actual rates)
+# Pricing per 1K tokens — sesuai AI Core v2 pricing reference
+# Sumber: AI ORCHESTRATOR CORE ENGINE v2.0 — Section PRICING REFERENCE v2
 TOKEN_PRICING = {
-    "gpt-4o": {"input": 0.015, "output": 0.06},
-    "gpt-5-nano": {"input": 0.0003, "output": 0.0012},
-    "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-    "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
-    
-    "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
-    "claude-3-opus-20240229": {"input": 0.015, "output": 0.075},
-    "claude-3-sonnet-20240229": {"input": 0.003, "output": 0.015},
-    "claude-3-haiku-20240307": {"input": 0.00025, "output": 0.00125},
-    
-    "gemini-1.5-pro": {"input": 0.00075, "output": 0.003},
-    "gemini-1.5-flash": {"input": 0.0000375, "output": 0.00015},
-    "gemini-2.0-flash": {"input": 0.00005, "output": 0.0002},
-    
-    "seed-2-0-pro": {"input": 0.001, "output": 0.002},
-    
-    # Ollama / local models (free)
-    "llama3": {"input": 0.0, "output": 0.0},
-    "llama3.1": {"input": 0.0, "output": 0.0},
-    "mistral": {"input": 0.0, "output": 0.0},
+    # [THE RUNNER] + [VISION_GATE] — gemini/gemini-2.5-flash
+    "gemini/gemini-2.5-flash":       {"input": 0.00030, "output": 0.0025},
+    "gemini-2.5-flash":              {"input": 0.00030, "output": 0.0025},  # alias
+
+    # [THE THINKER] + [THE WRITER] primary — qwen3.6-plus
+    "qwen3.6-plus":                  {"input": 0.00025, "output": 0.00150},
+
+    # [BRAIN] + [ARCHITECT] — deepseek-v4-pro
+    # *Promo 75% off s/d 31 Mei 2026. Normal: $1.74/$3.48 per 1M token
+    "deepseek-v4-pro":               {"input": 0.00043, "output": 0.00087},
+
+    # [THE WRITER] + [THE CREATIVE] fallback — claude-haiku-4-5
+    "claude-haiku-4-5":              {"input": 0.00070, "output": 0.0035},
+
+    # [THE EAR] — minimax/speech-2.8-hd (per-menit, bukan token)
+    "minimax/speech-2.8-hd":         {"input": 0.0, "output": 0.0},   # billed per-minute
+
+    # [EMERGENCY] last resort — gpt-5-mini
+    "gpt-5-mini":                    {"input": 0.00025, "output": 0.0020},
 }
 
 

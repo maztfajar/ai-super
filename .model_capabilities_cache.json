@@ -37,5 +37,23 @@
     "analysis",
     "free",
     "reasoning"
+  ],
+  "sumopod/qwen3.6-plus": [
+    "text",
+    "writing",
+    "reasoning",
+    "coding"
+  ],
+  "sumopod/gemini/gemini-2.5-flash": [
+    "text",
+    "speed",
+    "reasoning",
+    "vision"
+  ],
+  "sumopod/gpt-5-mini": [
+    "analysis",
+    "speed",
+    "reasoning",
+    "coding"
   ]
 }

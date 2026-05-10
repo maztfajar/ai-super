@@ -79,7 +79,7 @@ class ByteRover:
 
             full_text = "\n\n".join(conversation)
             
-            # Buat ringkasan menggunakan model ringan (gpt-4o-mini atau qwen3.6-flash)
+            # Buat ringkasan menggunakan model ringan (gpt-5-mini atau qwen3.6-plus)
             prompt = (
                 "Buatlah ringkasan eksekutif dan terstruktur dari percakapan berikut. "
                 "Fokus pada fakta penting, keputusan yang diambil, teknologi yang digunakan, "
@@ -90,7 +90,8 @@ class ByteRover:
 
             # Cari model yang cepat
             model = model_manager.get_default_model()
-            for m in ["sumopod/qwen3.6-flash", "sumopod/gpt-4o-mini", "sumopod/gemini-2.5-flash-lite"]:
+            # Cari model ringan sesuai AI Core v2 — [THE RUNNER] atau [THINKER]
+            for m in ["sumopod/gemini/gemini-2.5-flash", "sumopod/qwen3.6-plus", "sumopod/gpt-5-mini"]:
                 if m in model_manager.available_models:
                     model = m
                     break

@@ -167,7 +167,7 @@ class AgentPerformance(SQLModel, table=True):
     __tablename__ = "agent_performance"
     id: str = Field(default_factory=gen_id, primary_key=True)
     agent_type: str = Field(index=True)      # reasoning, coding, research, writing, etc
-    model_used: str = Field(index=True)       # actual model ID (e.g. gpt-4o, claude-3-5-sonnet)
+    model_used: str = Field(index=True)       # actual model ID (e.g. gpt-5-mini, qwen3.6-plus)
     task_type: str = ""                       # category of task handled
     task_id: Optional[str] = None             # link to TaskExecution
     success: bool = True

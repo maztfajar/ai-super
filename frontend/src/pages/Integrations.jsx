@@ -1153,7 +1153,7 @@ export default function Integrations() {
               <div className="mt-3 space-y-2.5">
                 <MaskedField masked={status?.anthropic?.key_masked} label="API Key" value={anthropicKey} onChange={setAnthropicKey} onSave={() => save('anthropic', { ANTHROPIC_API_KEY: anthropicKey, ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} saving={saving.anthropic}/>
                 <div className="flex gap-2 items-end">
-                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={anthropicModels} onChange={setAnthropicModels} placeholder="contoh: claude-3-5-sonnet-20241022" mono/></div>
+                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={anthropicModels} onChange={setAnthropicModels} placeholder="contoh: claude-haiku-4-5" mono/></div>
                   {status?.anthropic?.configured && <Btn label="Simpan" onClick={() => save('anthropic', { ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} loading={saving.anthropic} variant="default" icon={Save}/>}
                 </div>
               </div>
@@ -1162,7 +1162,7 @@ export default function Integrations() {
               <div className="mt-3 space-y-2.5">
                 <MaskedField masked={status?.google?.key_masked} label="API Key" value={googleKey} onChange={setGoogleKey} onSave={() => save('google', { GOOGLE_API_KEY: googleKey, GOOGLE_AVAILABLE_MODELS: googleModels })} saving={saving.google}/>
                 <div className="flex gap-2 items-end">
-                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={googleModels} onChange={setGoogleModels} placeholder="contoh: gemini-2.0-flash, gemini-1.5-pro" mono/></div>
+                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={googleModels} onChange={setGoogleModels} placeholder="contoh: gemini-2.5-flash" mono/></div>
                   {status?.google?.configured && <Btn label="Simpan" onClick={() => save('google', { GOOGLE_AVAILABLE_MODELS: googleModels })} loading={saving.google} variant="default" icon={Save}/>}
                 </div>
               </div>

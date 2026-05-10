@@ -97,24 +97,25 @@ class VotingEngine:
             return f"**[Multi-AI Analysis Fallback]**\n\n{valid_responses[0]['response']}"
 
     def _select_voting_models(self) -> List[str]:
-        # Gather all connected models
+        # Kumpulkan semua model yang terhubung
         available = list(model_manager.available_models.keys())
         if not available:
             return []
             
-        # Prioritize smart/complex models for voting
-        targets = ["deepseek-v4-pro", "qwen3.6-flash", "claude-haiku-4-5", "gemini-2.5-flash-lite", "seed-2-0-pro", "llama3.1"]
+        # Prioritaskan model AI Core v2 yang paling capable untuk voting
+        # Urutan: [BRAIN] deepseek-v4-pro → [THINKER] qwen3.6-plus → [EMERGENCY] gpt-5-mini
+        targets = ["deepseek-v4-pro", "qwen3.6-plus", "gemini/gemini-2.5-flash", "claude-haiku-4-5", "gpt-5-mini"]
         selected = []
         
         for t in targets:
             for a in available:
                 if t in a and a not in selected:
                     selected.append(a)
-                    # Limit to max 3 parallel requests to prevent timeouts
+                    # Batasi max 3 parallel request agar tidak timeout
                     if len(selected) >= 3:
                         return selected
                         
-        # Fill rest with whatever is active
+        # Isi sisa dengan model yang tersedia
         for a in available:
             if a not in selected:
                 selected.append(a)
@@ -124,13 +125,14 @@ class VotingEngine:
         return selected
 
     def _select_judge_model(self) -> str:
-        # GPT-4o or Sonnet make best judges
-        best_judges = ["deepseek-v4-pro", "qwen3.6-flash", "gemini-2.5-flash-lite"]
+        # AI Core v2: [BRAIN] deepseek-v4-pro adalah judge terbaik
+        # Fallback ke [THINKER] qwen3.6-plus lalu [RUNNER] gemini-2.5-flash
+        best_judges = ["deepseek-v4-pro", "qwen3.6-plus", "gemini/gemini-2.5-flash"]
         for j in best_judges:
             for k in model_manager.available_models.keys():
                 if j in k:
                     return k
-        # Fallback to whatever
+        # Fallback ke model default
         return model_manager.get_default_model()
 
 voting_engine = VotingEngine()

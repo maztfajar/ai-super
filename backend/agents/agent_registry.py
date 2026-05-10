@@ -27,30 +27,31 @@ def _get_classifier():
         return None
 
 
-# ── Capability map: model → tags (sinkron dengan .capability_map.json) ──────
-# Ini adalah "single source of truth" untuk routing tanpa import circular.
+# ── Capability map: model → tags — sinkron dengan AI Core v2 ──────────────
+# Single source of truth untuk routing tanpa import circular.
+# Nama model HARUS persis sama dengan yang terdaftar di menu Integrasi.
 MODEL_CAPABILITY_MAP: Dict[str, List[str]] = {
-    # Gratis / sangat murah — prioritaskan untuk tugas ringan
-    "sumopod/gemini-2.5-flash-lite":   ["speed", "text", "vision", "writing"],
-    # Reasoning + coding kuat, harga terjangkau
-    "sumopod/qwen3.6-flash":           ["coding", "reasoning", "speed", "text", "vision", "writing"],
-    # Reasoning terdalam, untuk tugas kompleks
-    "sumopod/deepseek-v4-pro":         ["coding", "reasoning", "text", "analysis"],
-    # General purpose, vision bagus
-    "sumopod/gpt-4o-mini":             ["analysis", "coding", "reasoning", "speed", "text", "vision", "writing"],
-    # Audio/TTS khusus
-    "sumopod/minimax/speech-2.8-hd":   ["audio", "tts"],
-    # Last resort — hanya fallback terakhir
-    "sumopod/claude-haiku-4-5":        ["text"],
+    # [THE RUNNER] + [VISION_GATE] — cepat, multimodal, chat ringan
+    "sumopod/gemini/gemini-2.5-flash":  ["speed", "text", "vision", "writing"],
+    # [THE THINKER] + [THE WRITER] primary — coding & writing efisien
+    "sumopod/qwen3.6-plus":             ["coding", "reasoning", "speed", "text", "vision", "writing"],
+    # [BRAIN] + [ARCHITECT] — reasoning & UI kompleks
+    "sumopod/deepseek-v4-pro":          ["coding", "reasoning", "text", "analysis"],
+    # [THE WRITER] + [THE CREATIVE] fallback — long-form & kreatif
+    "sumopod/claude-haiku-4-5":         ["text", "writing"],
+    # [THE EAR] — Audio/TTS presisi
+    "sumopod/minimax/speech-2.8-hd":    ["audio", "tts"],
+    # [EMERGENCY] — last resort universal
+    "sumopod/gpt-5-mini":               ["analysis", "coding", "reasoning", "speed", "text", "vision", "writing"],
 }
 
-# Urutan preferensi global — claude-haiku pindah ke paling akhir
+# Urutan preferensi global (AI Core v2 fallback chain)
 _DEFAULT_FALLBACK_ORDER = [
-    "sumopod/gemini-2.5-flash-lite",
-    "sumopod/qwen3.6-flash",
+    "sumopod/gemini/gemini-2.5-flash",
+    "sumopod/qwen3.6-plus",
     "sumopod/deepseek-v4-pro",
-    "sumopod/gpt-4o-mini",
     "sumopod/claude-haiku-4-5",
+    "sumopod/gpt-5-mini",
 ]
 
 
@@ -78,16 +79,16 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "reasoning": AgentCapability(
         agent_type="reasoning",
-        display_name="🧠 Reasoning Agent",
+        display_name="🧠 Reasoning Agent [BRAIN]",
         description="Logika kompleks, matematika, analisis mendalam, perencanaan strategis",
         skills=["logic", "math", "analysis", "planning", "strategy", "reasoning",
                 "problem_solving", "critical_thinking"],
         preferred_models=[
-            "sumopod/deepseek-v4-pro",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
+            "sumopod/deepseek-v4-pro",   # [BRAIN] primary
+            "sumopod/qwen3.6-plus",       # [THINKER] fallback
+            "sumopod/gpt-5-mini",         # [EMERGENCY] last resort
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite"],
+        fallback_models=["sumopod/gemini/gemini-2.5-flash"],
         required_capabilities=["reasoning"],
         default_temperature=0.3,
         system_prompt_addon=(
@@ -98,16 +99,16 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "coding": AgentCapability(
         agent_type="coding",
-        display_name="💻 Coding Agent",
+        display_name="💻 Coding Agent [ARCHITECT]",
         description="Pengembangan software, debugging, code review, refactoring",
         skills=["python", "javascript", "typescript", "sql", "bash", "api",
                 "debug", "refactor", "code_review", "testing", "web_development"],
         preferred_models=[
-            "sumopod/deepseek-v4-pro",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
+            "sumopod/deepseek-v4-pro",   # [ARCHITECT] primary
+            "sumopod/qwen3.6-plus",       # [THINKER] fallback
+            "sumopod/gpt-5-mini",         # [EMERGENCY] last resort
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite"],
+        fallback_models=["sumopod/gemini/gemini-2.5-flash"],
         required_capabilities=["coding"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
@@ -120,13 +121,13 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "research": AgentCapability(
         agent_type="research",
-        display_name="🔍 Research Agent",
+        display_name="🔍 Research Agent [THE RUNNER]",
         description="Pengumpulan informasi, pencarian web, fact-checking, perbandingan data",
         skills=["search", "gather", "compare", "summarize", "fact_check", "data_collection", "browser_automation"],
         preferred_models=[
-            "sumopod/gemini-2.5-flash-lite",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
+            "sumopod/gemini/gemini-2.5-flash",  # [THE RUNNER] primary
+            "sumopod/qwen3.6-plus",              # [THINKER] fallback
+            "sumopod/gpt-5-mini",                # [EMERGENCY] last resort
         ],
         fallback_models=["sumopod/deepseek-v4-pro"],
         required_capabilities=["text"],
@@ -140,19 +141,16 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "writing": AgentCapability(
         agent_type="writing",
-        display_name="✍️ Writing Agent",
+        display_name="✍️ Writing Agent [THE WRITER]",
         description="Pembuatan konten, dokumentasi, terjemahan, penyuntingan",
         skills=["writing", "editing", "translation", "documentation",
                 "content_creation", "copywriting", "email"],
         preferred_models=[
-            # gemini gratis & cepat untuk writing ringan
-            "sumopod/gemini-2.5-flash-lite",
-            # claude-haiku unggul untuk long-form copywriting & instruksi ketat
-            "sumopod/claude-haiku-4-5",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
+            "sumopod/qwen3.6-plus",              # [THE WRITER] primary
+            "sumopod/claude-haiku-4-5",          # [THE WRITER] fallback — long-form & style ketat
+            "sumopod/gpt-5-mini",                # [EMERGENCY] last resort
         ],
-        fallback_models=["sumopod/deepseek-v4-pro"],
+        fallback_models=["sumopod/gemini/gemini-2.5-flash"],
         required_capabilities=["writing"],
         default_temperature=0.7,
         system_prompt_addon=(
@@ -164,16 +162,16 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "system": AgentCapability(
         agent_type="system",
-        display_name="🖥️ System Agent",
+        display_name="🖥️ System Agent [BRAIN]",
         description="Manajemen VPS, admin server, perintah terminal, networking, DevOps",
         skills=["bash", "linux", "docker", "nginx", "systemd", "networking",
                 "monitoring", "deployment", "ssh", "cron"],
         preferred_models=[
-            "sumopod/deepseek-v4-pro",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
+            "sumopod/deepseek-v4-pro",   # [BRAIN] primary — reasoning berat
+            "sumopod/qwen3.6-plus",       # [THINKER] fallback
+            "sumopod/gpt-5-mini",         # [EMERGENCY] last resort
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite"],
+        fallback_models=["sumopod/gemini/gemini-2.5-flash"],
         required_capabilities=["coding"],
         tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
         default_temperature=0.2,
@@ -185,19 +183,16 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "creative": AgentCapability(
         agent_type="creative",
-        display_name="🎨 Creative Agent",
+        display_name="🎨 Creative Agent [THE CREATIVE]",
         description="Brainstorming, generasi ide, design thinking, inovasi",
         skills=["brainstorming", "ideation", "design", "creativity",
                 "innovation", "storytelling"],
         preferred_models=[
-            # gemini untuk ide cepat
-            "sumopod/gemini-2.5-flash-lite",
-            # claude-haiku unggul untuk creative writing yang mengikuti instruksi style
-            "sumopod/claude-haiku-4-5",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
+            "sumopod/qwen3.6-plus",              # [THE CREATIVE] primary
+            "sumopod/claude-haiku-4-5",          # [THE CREATIVE] fallback — style guide ketat
+            "sumopod/gpt-5-mini",                # [EMERGENCY] last resort
         ],
-        fallback_models=["sumopod/deepseek-v4-pro"],
+        fallback_models=["sumopod/gemini/gemini-2.5-flash"],
         required_capabilities=["text"],
         default_temperature=0.9,
         system_prompt_addon=(
@@ -209,16 +204,16 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "validation": AgentCapability(
         agent_type="validation",
-        display_name="✅ Validation Agent",
+        display_name="✅ Validation Agent [BRAIN]",
         description="Quality assurance, pengujian, verifikasi, fact-checking",
         skills=["testing", "verification", "qa", "fact_checking",
                 "code_review", "proofreading"],
         preferred_models=[
-            "sumopod/deepseek-v4-pro",
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
+            "sumopod/deepseek-v4-pro",   # [BRAIN] primary
+            "sumopod/qwen3.6-plus",       # [THINKER] fallback
+            "sumopod/gpt-5-mini",         # [EMERGENCY] last resort
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite"],
+        fallback_models=["sumopod/gemini/gemini-2.5-flash"],
         required_capabilities=["reasoning"],
         default_temperature=0.1,
         system_prompt_addon=(
@@ -229,14 +224,14 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "general": AgentCapability(
         agent_type="general",
-        display_name="💬 General Agent",
+        display_name="💬 General Agent [THE RUNNER]",
         description="Percakapan umum, FAQ, pertanyaan sederhana, salam",
         skills=["conversation", "faq", "general_knowledge"],
         preferred_models=[
-            "sumopod/gemini-2.5-flash-lite",
-            "sumopod/qwen3.6-flash",
+            "sumopod/gemini/gemini-2.5-flash",  # [THE RUNNER] primary
+            "sumopod/qwen3.6-plus",              # [THINKER] fallback
         ],
-        fallback_models=["sumopod/gpt-4o-mini"],
+        fallback_models=["sumopod/gpt-5-mini"],
         required_capabilities=["speed"],
         default_temperature=0.7,
         system_prompt_addon="",
@@ -244,14 +239,14 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "image_gen": AgentCapability(
         agent_type="image_gen",
-        display_name="🖼️ Image Generation Agent",
+        display_name="🖼️ Image Generation Agent [VISION_GATE]",
         description="Membuat gambar dari deskripsi teks menggunakan model vision",
         skills=["image_gen", "vision", "creative", "design"],
         preferred_models=[
-            "sumopod/gpt-4o-mini",
-            "sumopod/qwen3.6-flash",
+            "sumopod/gemini/gemini-2.5-flash",  # [VISION_GATE] primary
+            "sumopod/qwen3.6-plus",              # [THINKER] fallback
         ],
-        fallback_models=["sumopod/gemini-2.5-flash-lite"],
+        fallback_models=["sumopod/gpt-5-mini"],
         required_capabilities=["vision"],
         default_temperature=0.7,
         default_max_tokens=1024,
@@ -264,14 +259,13 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "audio_gen": AgentCapability(
         agent_type="audio_gen",
-        display_name="🔊 Audio/TTS Agent",
+        display_name="🔊 Audio/TTS Agent [THE EAR]",
         description="Konversi teks ke suara atau membuat audio menggunakan speech models",
         skills=["tts", "audio", "speech", "voice"],
-        # FIXED: sebelumnya "minimax/speech-2.8-hd" — sekarang pakai full key
         preferred_models=[
-            "sumopod/minimax/speech-2.8-hd",
+            "sumopod/minimax/speech-2.8-hd",  # [THE EAR] primary — Audio HD presisi
         ],
-        fallback_models=["sumopod/gpt-4o-mini"],
+        fallback_models=["sumopod/gpt-5-mini"],  # [EMERGENCY] — tidak ada fallback audio sesungguhnya
         required_capabilities=["tts"],
         default_temperature=0.5,
         default_max_tokens=512,
@@ -283,13 +277,13 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "multimodal": AgentCapability(
         agent_type="multimodal",
-        display_name="🌐 Multimodal Agent",
+        display_name="🌐 Multimodal Agent [VISION_GATE]",
         description="Menangani teks, gambar, dan audio secara bersamaan",
         skills=["vision", "audio", "text", "analysis", "reasoning"],
         preferred_models=[
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
-            "sumopod/gemini-2.5-flash-lite",
+            "sumopod/gemini/gemini-2.5-flash",  # [VISION_GATE] primary — multimodal terbaik
+            "sumopod/qwen3.6-plus",              # [THINKER] fallback
+            "sumopod/gpt-5-mini",                # [EMERGENCY] last resort
         ],
         fallback_models=["sumopod/deepseek-v4-pro"],
         required_capabilities=["vision"],
@@ -301,13 +295,13 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
 
     "vision": AgentCapability(
         agent_type="vision",
-        display_name="👁️ Vision Agent",
+        display_name="👁️ Vision Agent [VISION_GATE]",
         description="Analisis gambar, OCR, deteksi objek, deskripsi visual",
         skills=["vision", "image_analysis", "ocr", "object_detection"],
         preferred_models=[
-            "sumopod/qwen3.6-flash",
-            "sumopod/gpt-4o-mini",
-            "sumopod/gemini-2.5-flash-lite",
+            "sumopod/gemini/gemini-2.5-flash",  # [VISION_GATE] primary — OCR & vision terbaik
+            "sumopod/qwen3.6-plus",              # [THINKER] fallback
+            "sumopod/gpt-5-mini",                # [EMERGENCY] last resort
         ],
         fallback_models=["sumopod/deepseek-v4-pro"],
         required_capabilities=["vision"],

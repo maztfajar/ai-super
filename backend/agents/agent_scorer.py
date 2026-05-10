@@ -64,18 +64,20 @@ _SCORE_CACHE: Dict[tuple, Tuple[AgentScore, float]] = {}
 _SCORE_CACHE_TTL = 60.0
 
 
-# ── Quality priority config ─────────────────────────────────────────────────
+# ── Quality priority config (AI Core v2) ──────────────────────────────────
 # Model yang dianggap "cepat/murah" (boost jika priority = speed)
+# Sesuai AI Core: [THE RUNNER] gemini-2.5-flash + [THINKER] qwen3.6-plus
 _SPEED_MODELS = [
-    "sumopod/gemini-2.5-flash-lite",
-    "sumopod/claude-haiku-4-5",
-    "sumopod/gpt-4o-mini",
+    "sumopod/gemini/gemini-2.5-flash",  # [THE RUNNER]
+    "sumopod/qwen3.6-plus",              # [THE THINKER]
+    "sumopod/gpt-5-mini",                # [EMERGENCY]
 ]
 # Model yang dianggap "premium/kuat" (boost jika priority = quality)
+# Sesuai AI Core: [BRAIN] deepseek-v4-pro + [THINKER] qwen3.6-plus
 _QUALITY_MODELS = [
-    "sumopod/deepseek-v4-pro",
-    "sumopod/gpt-4o-mini",
-    "sumopod/qwen3.6-flash",
+    "sumopod/deepseek-v4-pro",           # [BRAIN] + [ARCHITECT]
+    "sumopod/qwen3.6-plus",              # [THE THINKER]
+    "sumopod/claude-haiku-4-5",          # [THE WRITER] + [THE CREATIVE]
 ]
 
 # Agent type → capability tags yang dibutuhkan (sinkron dengan agent_registry)

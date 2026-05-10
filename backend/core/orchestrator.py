@@ -1304,7 +1304,8 @@ class Orchestrator:
         """Attempt to refine a low-quality result using a different (better) model."""
         try:
             # Pilih model yang berbeda dari yang sudah dipakai, preferensi model yang lebih kuat
-            quality_keywords = ["deepseek-v4-pro", "qwen3.6-flash", "gemini-2.5-flash-lite"]
+            # Sesuai AI Core v2: [BRAIN] deepseek-v4-pro → [THINKER] qwen3.6-plus → [RUNNER] gemini-2.5-flash
+            quality_keywords = ["deepseek-v4-pro", "qwen3.6-plus", "gemini/gemini-2.5-flash"]
             refine_model = None
             for keyword in quality_keywords:
                 for k in model_manager.available_models:

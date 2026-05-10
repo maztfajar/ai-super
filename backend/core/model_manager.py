@@ -61,8 +61,7 @@ class ModelManager:
                         self.available_models[m.strip()] = {"provider": "openai", "display": f"{m.strip()}", "status": "online"}
             else:
                 self.available_models.update({
-                    "gpt-4o":      {"provider": "openai", "display": "GPT-4o",     "status": "online"},
-                    "gpt-5-nano": {"provider": "openai", "display": "GPT-5 Nano", "status": "online"},
+                    "gpt-5-mini": {"provider": "openai", "display": "GPT-5 Mini", "status": "online"},
                 })
             log.info("OpenAI models registered")
 
@@ -74,8 +73,7 @@ class ModelManager:
                         self.available_models[m.strip()] = {"provider": "anthropic", "display": f"{m.strip()}", "status": "online"}
             else:
                 self.available_models.update({
-                    "claude-3-5-sonnet-20241022": {"provider": "anthropic", "display": "Claude 3.5 Sonnet", "status": "online"},
-                    "claude-3-haiku-20240307":    {"provider": "anthropic", "display": "Claude 3 Haiku",    "status": "online"},
+                    "claude-haiku-4-5": {"provider": "anthropic", "display": "Claude Haiku 4.5", "status": "online"},
                 })
             log.info("Anthropic models registered")
 
@@ -87,8 +85,7 @@ class ModelManager:
                         self.available_models[m.strip()] = {"provider": "google", "display": f"{m.strip()}", "status": "online"}
             else:
                 self.available_models.update({
-                    "gemini-1.5-pro":   {"provider": "google", "display": "Gemini 1.5 Pro",   "status": "online"},
-                    "gemini-1.5-flash": {"provider": "google", "display": "Gemini 1.5 Flash", "status": "online"},
+                    "gemini-2.5-flash": {"provider": "google", "display": "Gemini 2.5 Flash", "status": "online"},
                 })
             log.info("Google models registered")
 
@@ -591,7 +588,7 @@ class ModelManager:
     ) -> str:
         """
         Kirim gambar (base64) + teks ke vision-capable model.
-        Auto-fallback: OpenAI gpt-4o → Sumopod (OpenAI-compatible) → Google Gemini.
+        Auto-fallback: OpenAI gpt-5-mini → Sumopod (OpenAI-compatible) → Google Gemini.
         """
         history = history or []
         model_to_use = model
@@ -600,8 +597,7 @@ class ModelManager:
         if not model_to_use:
             vision_candidates = [
                 m for m in self.available_models
-                if any(v in m for v in ["deepseek-v3", "qwen", "gemini", "pixtral",
-                                         "llava", "vision", "claude-3"])
+                if any(v in m for v in ["gemini-2.5-flash", "qwen3.6-plus", "vision"])
             ]
             if vision_candidates:
                 model_to_use = vision_candidates[0]
@@ -677,7 +673,7 @@ class ModelManager:
             log.error("chat_with_image error", model=model_to_use, error=str(e))
             return f"❌ Gagal memproses gambar via {model_to_use}: {e}"
 
-        return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini-2.5-flash-lite, qwen3.6-flash) di menu Integrasi."
+        return "❌ Tidak ada model vision yang tersedia. Tambahkan model yang mendukung gambar (gemini/gemini-2.5-flash, qwen3.6-plus) di menu Integrasi."
 
     # ── Image Generation: teks → gambar ───────────────────────
     async def generate_image(
