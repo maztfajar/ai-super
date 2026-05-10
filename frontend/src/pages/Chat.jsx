@@ -1755,6 +1755,7 @@ export default function Chat() {
   const closeProjectLocationPopup = useCallback(() => {
     setProjectLocationPopup({ open: false, sessionId: null })
   }, [])
+  const [pendingResend, setPendingResend] = useState(null)
   // Multimodal state
   const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
   const [showMobileAttachMenu, setShowMobileAttachMenu] = useState(false)
@@ -2126,30 +2127,7 @@ export default function Chat() {
       toast.dismiss("extract-file")
     }
 
-    // Check if user wants to create an application/project
-    const isAppCreation = /buat|create|bikin|develop|make|build/i.test(text) && 
-                           (/aplik|apliaksi|application|web|website|project|proyek|sistem|system|app/i.test(text) ||
-                            /react|vue|angular|node|python|php|javascript|typescript/i.test(text))
-
     const sessionId = currentSession?.id || `new-${Date.now()}`
-    if (isAppCreation) {
-      let hasLocation = false
-      if (currentSession?.id) {
-        try {
-          const projectLocation = await api.getProjectLocation(currentSession.id)
-          if (projectLocation && projectLocation.project_path) {
-            hasLocation = true
-          }
-        } catch (error) {
-          console.log('Project location not set or session not found')
-        }
-      }
-      
-      if (!hasLocation) {
-        openProjectLocationPopup(currentSession.id)
-        return // Return early. The text stays in the input so the user can just press Enter again.
-      }
-    }
 
     setInput('')
     setActualModel(null)
@@ -2170,10 +2148,13 @@ export default function Chat() {
     addMessage(tempUserMsg)
 
     setPendingImage(null)  // clear preview
+    executeChatStream(combinedText, imageToSend, sessionId)
+  }
+
+  const executeChatStream = (combinedText, imageToSend, sessionId) => {
     setStreaming(true)
     useChatStore.getState().setStatusText('')
     clearProcessSteps()  // Reset process steps for new task
-    // Reset watchdog (dihapus)
 
     // Helper: add structured process step from onProcess SSE event.
     // If event has code payload (Written action), also auto-opens artifact panel.
@@ -2357,7 +2338,13 @@ export default function Chat() {
           }
         },
         (status) => useChatStore.getState().setStatusText(status),
-        (procData) => handleAddProcessStep(procData)
+        (procData) => handleAddProcessStep(procData),
+        (reqProjData) => {
+          clearStreaming()
+          useChatStore.getState().setStatusText('')
+          setPendingResend({ text: combinedText, image: imageToSend })
+          openProjectLocationPopup(sessionId)
+        }
       )
       useChatStore.getState().setAbortRequest(abortFn)
     } else {
@@ -2436,6 +2423,12 @@ export default function Chat() {
         (planData) => {
           setPendingPlan(planData)
           useChatStore.getState().setStatusText('⏸️ Menunggu persetujuan rencana...')
+        },
+        (reqProjData) => {
+          clearStreaming()
+          useChatStore.getState().setStatusText('')
+          setPendingResend({ text: combinedText, image: imageToSend })
+          openProjectLocationPopup(sessionId)
         }
       )
       useChatStore.getState().setAbortRequest(abortFn)
@@ -3213,10 +3206,17 @@ export default function Chat() {
         <ProjectLocationPopup
           isOpen={projectLocationPopup.open}
           sessionId={projectLocationPopup.sessionId}
-          onClose={closeProjectLocationPopup}
+          onClose={() => {
+            closeProjectLocationPopup()
+            setPendingResend(null) // clear if canceled
+          }}
           onLocationSet={(projectPath) => {
             // Store project path in session and notify user
             toast.success(`📁 Lokasi proyek disimpan: ${projectPath}`)
+            if (pendingResend) {
+              executeChatStream(pendingResend.text, pendingResend.image, projectLocationPopup.sessionId)
+              setPendingResend(null)
+            }
           }}
         />
       )}

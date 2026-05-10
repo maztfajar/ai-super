@@ -466,6 +466,15 @@ async def chat_send(
                         yield f"data: {json.dumps(payload)}\n\n"
                         return  # Stop generator
 
+                    elif event.type == "require_project_location":
+                        # Orchestrator needs project path for this intent
+                        payload = {
+                            "type": "require_project_location",
+                            "session_id": session.id,
+                        }
+                        yield f"data: {json.dumps(payload)}\n\n"
+                        return  # Stop generator and wait for user to provide path
+
                     elif event.type == "done":
                         # Save AI response to DB
                         await save_to_db_if_needed()

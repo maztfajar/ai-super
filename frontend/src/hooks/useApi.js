@@ -272,7 +272,7 @@ export const api = {
   deleteAllMedia: () => req('DELETE', '/media/delete-all'),
 
   // ── Streaming chat multimodal (gambar/suara + teks) ────────
-  chatStreamMultimodal: function(payload, imageData, onChunk, onDone, onSession, onStatus, onProcess) {
+  chatStreamMultimodal: function(payload, imageData, onChunk, onDone, onSession, onStatus, onProcess, onRequireProject) {
     /**
      * payload: { session_id, message, model, use_rag }
      * imageData: { base64, mime_type } | null
@@ -284,11 +284,11 @@ export const api = {
       enriched.image_b64  = imageData.base64
       enriched.image_mime = imageData.mime_type
     }
-    return api.chatStream(enriched, onChunk, onDone, onSession, undefined, onStatus, onProcess)
+    return api.chatStream(enriched, onChunk, onDone, onSession, undefined, onStatus, onProcess, undefined, onRequireProject)
   },
 
   // ── Streaming chat via SSE ────────────────────────────────
-  chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess, onPlan) {
+  chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess, onPlan, onRequireProject) {
     const token      = getToken()
     const controller = new AbortController()
     let doneReceived = false
@@ -331,6 +331,7 @@ export const api = {
               else if (data.type === 'pending_confirmation') { doneReceived = true; onPending && onPending(data) }
               else if (data.type === 'pending_plan')  { onPlan && onPlan(data) }
               else if (data.type === 'status')  onStatus && onStatus(data.content)
+              else if (data.type === 'require_project_location') { doneReceived = true; onRequireProject && onRequireProject(data) }
               else if (data.type === 'error')   { onChunk && onChunk(data.content || '⚠️ Error'); }
               else if (data.type === 'process') {
                 // Structured process step — forward to onProcess if provided, else onStatus

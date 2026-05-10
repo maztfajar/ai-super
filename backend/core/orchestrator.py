@@ -198,6 +198,10 @@ class Orchestrator:
                 is_simple=spec.is_simple,
                 complexity=spec.complexity_score)
 
+        if primary in ("coding", "web_development", "file_operation") and not project_path:
+            yield OrchestratorEvent("require_project_location", "")
+            return
+
         if primary == "image_generation":
             async for event in self._handle_image_gen(spec, system_prompt, history):
                 yield event
