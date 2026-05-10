@@ -834,7 +834,7 @@ IMPORTANT:
         generated = "".join(full_response).strip()
 
         if not generated:
-            raise ValueError("LLM returned empty response")
+            raise ValueError(f"LLM returned empty response. Model used: {gen_model}")
 
         log.info("ai_core_generated",
                  model=gen_model, roles=len(roles_snapshot),
