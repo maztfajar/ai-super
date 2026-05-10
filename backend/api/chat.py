@@ -314,7 +314,7 @@ async def chat_send(
         # Helper function to save response to DB
         async def save_to_db_if_needed():
             nonlocal _saved_to_db
-            if _saved_to_db or not full_response.strip():
+            if _saved_to_db or (not full_response.strip() and not thinking_steps):
                 return
             try:
                 from db.database import AsyncSessionLocal
@@ -323,14 +323,22 @@ async def chat_send(
                     # Implement retry logic for WAL locks
                     for attempt in range(3):
                         try:
+                            # Safely encode thinking steps
+                            thinking_json = None
+                            if thinking_steps:
+                                try:
+                                    thinking_json = json.dumps(thinking_steps, ensure_ascii=False)
+                                except Exception:
+                                    thinking_json = str(thinking_steps)
+
                             ai_msg = Message(
                                 session_id=session.id,
                                 user_id=user.id,
                                 role="assistant",
-                                content=full_response,
+                                content=full_response.strip() or "*(Eksekusi Selesai)*",
                                 model=final_model,
                                 rag_sources=json.dumps(rag_sources) if rag_sources else None,
-                                thinking_process="\n".join(thinking_steps) if thinking_steps else None,
+                                thinking_process=thinking_json,
                             )
                             save_db.add(ai_msg)
 
@@ -346,6 +354,7 @@ async def chat_send(
                             break
                         except Exception as dberr:
                             if attempt == 2:
+                                log.error("DB Save failed completely", error=str(dberr))
                                 raise dberr
                             await asyncio.sleep(0.5)
             except Exception as e:
