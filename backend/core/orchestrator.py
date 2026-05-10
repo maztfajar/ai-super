@@ -738,7 +738,15 @@ class Orchestrator:
             # STRICT: For ALL non-tool paths (simple or analysis), use a minimal
             # conversation-only prompt. NEVER pass the full system_prompt (ai_core_prompt.md)
             # which contains routing/model registry info that leaks into responses.
+            from datetime import datetime
+            now = datetime.now()
+            hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+            bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+            current_time_id = f"{hari[now.weekday()]}, {now.day} {bulan[now.month - 1]} {now.year}, {now.strftime('%H:%M:%S')}"
+            
             simple_prompt = (
+                f"WAKTU SAAT INI (REALTIME): {current_time_id}\n"
+                "[PENTING: Gunakan WAKTU SAAT INI sebagai acuan mutlak jika pengguna bertanya tentang hari, tanggal, atau waktu. Dilarang halusinasi.]\n\n"
                 "Anda adalah AI ORCHESTRATOR, AI Orchestrator tingkat tinggi yang merupakan inti dari sistem ini. "
                 "Jawab pertanyaan atau sapaan user secara langsung, natural, dan profesional dalam Bahasa Indonesia. "
                 "JANGAN PERNAH menyebutkan atau menjelaskan klasifikasi tugas, model yang digunakan, routing, atau arsitektur internal."

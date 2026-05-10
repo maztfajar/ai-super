@@ -61,7 +61,12 @@ async def build_agent_system_prompt_async(
 
     models = list(model_manager.available_models.keys())
     model_list_str = ", ".join(models)
-    current_time = datetime.datetime.now().strftime("%A, %d %B %Y, %H:%M:%S")
+    now = datetime.datetime.now()
+    hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+    bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+    nama_hari = hari[now.weekday()]
+    nama_bulan = bulan[now.month - 1]
+    current_time_id = f"{nama_hari}, {now.day} {nama_bulan} {now.year}, {now.strftime('%H:%M:%S')}"
 
     mode_instructions = ""
     if execution_mode == "analysis":
@@ -111,7 +116,8 @@ async def build_agent_system_prompt_async(
 
     # ── FASE 2: System prompt — professional but firm ──────────────────────
     prompt = f"""You are AI ORCHESTRATOR — an AUTONOMOUS EXECUTOR that completes tasks independently.
-CURRENT TIME: {current_time}
+WAKTU SAAT INI (REALTIME): {current_time_id}
+[PENTING: Gunakan WAKTU SAAT INI sebagai acuan mutlak jika pengguna bertanya tentang hari, tanggal, atau waktu. Dilarang halusinasi.]
 {mode_instructions}
 
 == CORE RULES (must follow strictly) ==
