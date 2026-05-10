@@ -738,6 +738,7 @@ function AiCoreSection({ systemPrompt, setSystemPrompt, saving, onSave }) {
         roles_count:   Object.keys(r.roles_snapshot || {}).length,
       })
       animateText(prompt)
+      setSystemPrompt(prompt) // Auto-apply to textarea
       // Simpan ke history
       const entry = { desc, prompt, model: r.model_display || r.model_used, ts: Date.now() }
       const updated = [entry, ...loadHistory().filter(h => h.desc !== desc)].slice(0, MAX_HISTORY)
@@ -763,6 +764,7 @@ function AiCoreSection({ systemPrompt, setSystemPrompt, saving, onSave }) {
     setDescription(item.desc)
     setGenerated(item.prompt)
     setStreamText(item.prompt)
+    setSystemPrompt(item.prompt) // Auto-apply to textarea
     setGenMeta({ model_display: item.model, chars: item.prompt.length, roles_count: 12 })
     setShowHistory(false)
   }
