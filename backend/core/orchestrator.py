@@ -141,9 +141,10 @@ class Orchestrator:
                 primary_intent="general",
             )
 
-        yield OrchestratorEvent.proc("Analyzed", f"intent: {spec.primary_intent}", extra={
+        yield OrchestratorEvent.proc("Analyzed", f"intent: {spec.primary_intent} ({spec.action_type})", extra={
             "result": (
                 f"Intent: {spec.primary_intent}\n"
+                f"Action: {spec.action_type}\n"
                 f"Kompleksitas: {spec.complexity_score:.2f}\n"
                 f"Is Simple: {spec.is_simple}\n"
                 f"Intents: {', '.join(spec.intents) if spec.intents else '-'}"
@@ -194,11 +195,12 @@ class Orchestrator:
 
         log.info("Orchestrator routing decision",
                 primary_intent=primary,
+                action_type=spec.action_type,
                 intents=spec.intents,
                 is_simple=spec.is_simple,
                 complexity=spec.complexity_score)
 
-        if primary in ("coding", "web_development", "file_operation") and not project_path:
+        if primary in ("coding", "web_development", "file_operation") and spec.action_type == "execute" and not project_path:
             yield OrchestratorEvent("require_project_location", "")
             return
 
@@ -677,18 +679,28 @@ class Orchestrator:
             or not spec.is_simple
         )
 
+        # ── ACTION TYPE OVERRIDE ─────────────────────────────────────
+        # Jika preprocessor menentukan action_type == "explain", paksa direct chat
+        # meskipun intent-nya terlihat kompleks (misal: "jelaskan cara buat website")
+        if spec.action_type == "explain":
+            is_complex_intent = False
+            log.info("Forced simple/direct-chat due to action_type=explain",
+                     primary_intent=spec.primary_intent)
+
         # Paksa kompleks jika ada command-like keyword di pesan user
+        # (hanya jika action_type bukan explain)
         msg_lower = spec.original_message.lower()
-        has_command_keyword = any(w in msg_lower.split() for w in [
-            "curl", "ping", "ls", "df", "free", "systemctl", "ps", "cat", "grep", 
-            "npm", "node", "python", "pip", "install", "run", "start", "cek", "status", "periksa"
-        ])
-        if has_command_keyword:
-            is_complex_intent = True
-            log.info("Forced complex intent due to command keyword in message")
+        if spec.action_type != "explain":
+            has_command_keyword = any(w in msg_lower.split() for w in [
+                "curl", "ping", "ls", "df", "free", "systemctl", "ps", "cat", "grep", 
+                "npm", "node", "python", "pip", "install", "run", "start", "cek", "status", "periksa"
+            ])
+            if has_command_keyword:
+                is_complex_intent = True
+                log.info("Forced complex intent due to command keyword in message")
 
         # Paksa kompleks jika history panjang (ada task yang sedang berlangsung)
-        if len(history) >= 4 and not is_complex_intent:
+        if spec.action_type != "explain" and len(history) >= 4 and not is_complex_intent:
             # Cek apakah history mengandung task teknis
             history_text = " ".join(
                 h.get("content", "")[:100]
@@ -712,10 +724,11 @@ class Orchestrator:
             is_orchestrator = is_complex_intent
         
         log.debug("_handle_simple routing", is_orchestrator=is_orchestrator, 
-                  primary_intent=spec.primary_intent, auto_execute=auto_execute)
+                  primary_intent=spec.primary_intent, action_type=spec.action_type,
+                  auto_execute=auto_execute)
 
         # Check if VPS safety protocol needed for complex operations
-        if spec.primary_intent in ("system", "file_operation"):
+        if spec.primary_intent in ("system", "file_operation") and spec.action_type == "execute":
             # Always auto-execute system commands via agent executor (with tool access)
             # The old pending_confirmation flow caused messages to stop silently
             yield OrchestratorEvent("status", "⚙️ Mengeksekusi perintah sistem via Agent...")

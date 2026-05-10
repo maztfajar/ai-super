@@ -33,6 +33,7 @@ class TaskSpecification:
     original_message: str = ""
     intents: List[str] = field(default_factory=list)
     primary_intent: str = "general"
+    action_type: str = "execute"  # "execute" = perlu tool/aksi, "explain" = cukup jawab
     complexity_score: float = 0.0
     is_simple: bool = True
     requires_multi_agent: bool = False
@@ -57,10 +58,24 @@ class TaskSpecification:
 PREPROCESSOR_PROMPT = """Kamu adalah AI Orchestrator Request Preprocessor.
 Analisis permintaan user secara komprehensif dan ekstrak informasi terstruktur.
 
+== ATURAN PALING PENTING ==
+Bedakan antara BERTANYA tentang sesuatu vs MEMERINTAHKAN untuk melakukan sesuatu:
+- "Gimana cara buat website?" → action_type: "explain" (hanya bertanya)
+- "Buatkan website portfolio" → action_type: "execute" (perintah aksi)
+- "Apa itu React?" → action_type: "explain"
+- "Install React di project saya" → action_type: "execute"
+- "Jelaskan cara kerja Docker" → action_type: "explain"
+- "Cek disk space server" → action_type: "execute"
+- "Apa perbedaan MySQL dan PostgreSQL?" → action_type: "explain"
+- "Buatkan database MySQL untuk toko online" → action_type: "execute"
+- "Bagaimana cara deploy ke VPS?" → action_type: "explain"
+- "Deploy aplikasi ini ke server" → action_type: "execute"
+
 Output HANYA valid JSON dalam format PERSIS ini:
 {
     "intents": ["coding", "analysis"],
     "primary_intent": "coding",
+    "action_type": "execute",
     "complexity_score": 0.7,
     "requires_multi_agent": false,
     "quality_priority": "balanced",
@@ -77,7 +92,7 @@ Output HANYA valid JSON dalam format PERSIS ini:
 }
 
 Kategori intent (boleh MULTIPLE):
-- coding: menulis, debug, refactor kode
+- coding: menulis, debug, refactor kode (user minta DIBUATKAN kode)
 - analysis: analisis data, penalaran, matematika, logika
 - research: pengumpulan info, pencarian web, perbandingan
 - writing: pembuatan konten, dokumentasi, terjemahan
@@ -88,11 +103,15 @@ Kategori intent (boleh MULTIPLE):
 - image_generation: user ingin MEMBUAT atau MENGHASILKAN gambar/foto/ilustrasi
 - audio_generation: user ingin MEMBUAT audio, TTS, atau output suara
 - real_time_search: user bertanya tentang berita, harga terkini, data live, "hari ini", "terbaru"
-- general: obrolan biasa, salam, pertanyaan sederhana
+- general: obrolan biasa, salam, pertanyaan sederhana, PENJELASAN konsep
+
+action_type:
+- "execute": User memerintahkan AI untuk MELAKUKAN sesuatu (buat file, jalankan perintah, install, deploy, cek server, dll)
+- "explain": User hanya BERTANYA, minta penjelasan, atau diskusi tanpa perlu aksi nyata
 
 Panduan kompleksitas:
 - 0.0-0.2: trivial (salam, pertanyaan ya/tidak)
-- 0.2-0.4: sederhana (pencarian fakta, terjemahan pendek)
+- 0.2-0.4: sederhana (pencarian fakta, terjemahan pendek, penjelasan konsep)
 - 0.4-0.6: sedang (tugas penulisan, coding tunggal)
 - 0.6-0.8: kompleks (coding multi-langkah, analisis mendalam)
 - 0.8-1.0: sangat kompleks (proyek penuh, multi-domain)
@@ -105,6 +124,26 @@ requires_multi_agent = true HANYA JIKA:
 requires_web_search = true JIKA:
 - User bertanya tentang kejadian terkini, berita terbaru, harga live, atau data real-time
 - Pertanyaan mengandung: "hari ini", "terkini", "terbaru", "sekarang", "harga", "berita", "today", "latest", "current"
+
+== CONTOH KLASIFIKASI (few-shot) ==
+
+User: "Gimana cara buat aplikasi web?"
+→ {"primary_intent": "general", "action_type": "explain", "complexity_score": 0.3}
+
+User: "Buatkan aplikasi todo list pakai React"
+→ {"primary_intent": "coding", "action_type": "execute", "complexity_score": 0.8}
+
+User: "Apa itu Docker?"
+→ {"primary_intent": "general", "action_type": "explain", "complexity_score": 0.2}
+
+User: "Cek project saya di /home/user/Pictures/KAPANEWON"
+→ {"primary_intent": "file_operation", "action_type": "execute", "complexity_score": 0.5}
+
+User: "Jelaskan perbedaan Python dan JavaScript"
+→ {"primary_intent": "general", "action_type": "explain", "complexity_score": 0.3}
+
+User: "Buatkan laporan data karyawan dalam format HTML"
+→ {"primary_intent": "coding", "action_type": "execute", "complexity_score": 0.7}
 """
 
 
@@ -232,6 +271,17 @@ LOCAL_PATH_PATTERNS = [
     "cek folder", "check folder", "buka folder", "open folder",
 ]
 
+# Kata-kata ambigu yang HARUS melewati LLM classifier meskipun cocok fast-path
+# Ini mencegah fast-path salah klasifikasi perintah yang sebenarnya hanya pertanyaan
+AMBIGUOUS_TRIGGERS = [
+    "gimana", "bagaimana", "kenapa", "mengapa", "apa itu", "apa sih",
+    "jelaskan", "explain", "cara", "how to", "what is", "apakah",
+    "perbedaan", "difference", "kapan", "siapa", "dimana",
+    "apa perbedaan", "apa kelebihan", "apa kekurangan",
+    "kenapa harus", "mengapa perlu", "bisa tidak", "boleh tidak",
+    "rekomendasi", "saran", "suggest", "recommend",
+]
+
 
 class RequestPreprocessor:
     """
@@ -277,10 +327,15 @@ class RequestPreprocessor:
 
         msg_lower = message.lower().strip()
 
+        # ── Ambiguity guard: jika pesan mengandung kata tanya/penjelasan,
+        # JANGAN gunakan fast-path, biarkan LLM classifier yang memutuskan
+        is_ambiguous = any(t in msg_lower for t in AMBIGUOUS_TRIGGERS)
+
         # ── Fast-path: Sistem ────────────────────────────────────────────────
-        if any(p in msg_lower for p in FAST_SYSTEM_PATTERNS):
+        if not is_ambiguous and any(p in msg_lower for p in FAST_SYSTEM_PATTERNS):
             spec.primary_intent = "system"
             spec.intents = ["system"]
+            spec.action_type = "execute"
             spec.complexity_score = 0.4
             spec.is_simple = True
             spec.quality_priority = "balanced"
@@ -289,13 +344,14 @@ class RequestPreprocessor:
             return spec
 
         # ── Fast-path: Coding ────────────────────────────────────────────────
-        if any(p in msg_lower for p in FAST_CODING_PATTERNS):
+        if not is_ambiguous and any(p in msg_lower for p in FAST_CODING_PATTERNS):
             is_complex_app = any(p in msg_lower for p in [
                 "aplikasi", "app", "website", "program", "game", "sistem",
                 "kalkulator", "todo", "full code", "bot", "api"
             ])
             spec.primary_intent = "coding"
             spec.intents = ["coding"]
+            spec.action_type = "execute"
             spec.complexity_score = 0.8 if is_complex_app else 0.5
             spec.is_simple = not is_complex_app
             spec.requires_multi_agent = is_complex_app
@@ -305,9 +361,10 @@ class RequestPreprocessor:
             return spec
 
         # ── Fast-path: Office/File ───────────────────────────────────────────
-        if any(p in msg_lower for p in OFFICE_FILE_PATTERNS):
+        if not is_ambiguous and any(p in msg_lower for p in OFFICE_FILE_PATTERNS):
             spec.primary_intent = "file_operation"
             spec.intents = ["file_operation", "writing"]
+            spec.action_type = "execute"
             spec.complexity_score = 0.5
             spec.is_simple = True
             spec.preprocessing_time_ms = int((time.time() - start) * 1000)
@@ -315,9 +372,10 @@ class RequestPreprocessor:
             return spec
 
         # ── Fast-path: Local Paths & Projects ────────────────────────────────
-        if any(p in msg_lower for p in LOCAL_PATH_PATTERNS):
+        if not is_ambiguous and any(p in msg_lower for p in LOCAL_PATH_PATTERNS):
             spec.primary_intent = "file_operation"
             spec.intents = ["file_operation", "coding"]
+            spec.action_type = "execute"
             spec.complexity_score = 0.6
             spec.is_simple = False
             spec.requires_multi_agent = True
@@ -326,14 +384,15 @@ class RequestPreprocessor:
             log.info("Preprocessor: fast-path local project/path", msg=message[:60])
             return spec
 
-        # ── Fast-path: Analisis sederhana ────────────────────────────────────
+        # ── Fast-path: Analisis sederhana (selalu explain) ────────────────────
         if (any(p in msg_lower for p in FAST_ANALYSIS_PATTERNS) and len(message) < 250):
-            spec.primary_intent = "analysis"
-            spec.intents = ["analysis"]
+            spec.primary_intent = "general"
+            spec.intents = ["general"]
+            spec.action_type = "explain"
             spec.complexity_score = 0.3
             spec.is_simple = True
             spec.preprocessing_time_ms = int((time.time() - start) * 1000)
-            log.info("Preprocessor: fast-path analysis", msg=message[:60])
+            log.info("Preprocessor: fast-path analysis/explain", msg=message[:60])
             return spec
 
         # ── Trivial check ────────────────────────────────────────────────────
@@ -367,9 +426,9 @@ class RequestPreprocessor:
         # ── LLM Classification ───────────────────────────────────────────────
         try:
             import asyncio as _asyncio
-            # PERBAIKAN: timeout diturunkan 6s → 4s untuk lebih responsif
+            # Timeout 6s — beri LLM cukup waktu berpikir untuk klasifikasi akurat
             classification = await _asyncio.wait_for(
-                self._classify_with_llm(message, history), timeout=4.0
+                self._classify_with_llm(message, history), timeout=6.0
             )
             spec.intents = classification.get("intents", ["general"])
             spec.primary_intent = classification.get("primary_intent", "general")
@@ -379,6 +438,7 @@ class RequestPreprocessor:
             spec.urgency = classification.get("urgency", "normal")
             spec.entities = classification.get("entities", {})
             spec.success_criteria = classification.get("success_criteria", [])
+            spec.action_type = classification.get("action_type", "execute")
             spec.raw_classification = classification
 
             if classification.get("requires_web_search", False):
@@ -625,13 +685,15 @@ class RequestPreprocessor:
         }, ts)
 
     def _get_fast_model(self) -> str:
-        """Pilih model tercepat untuk klasifikasi."""
-        # Prioritas: model speed/flash untuk klasifikasi
+        """Pilih model untuk klasifikasi — cukup pintar tapi tetap cepat."""
+        # Prioritas: model yang cukup pintar untuk penalaran intent
+        # Jangan pakai nano/lite karena tidak bisa reasoning action_type
         priorities = [
-            "sumopod/gemini-2.5-flash-lite",
+            "sumopod/gemini-2.5-flash",
             "sumopod/claude-haiku-4-5",
             "sumopod/gpt-5-nano",
             "sumopod/qwen3.6-flash",
+            "sumopod/gemini-2.5-flash-lite",
         ]
         available = model_manager.available_models
         for p in priorities:
