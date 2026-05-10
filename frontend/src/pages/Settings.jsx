@@ -33,6 +33,7 @@ const sApi = {
   deleteDomain:  (id) => api.delete(`/settings/domains/${id}`),
   activateDomain:(id) => api.post(`/settings/domains/${id}/activate`),
   saveAiCore:    (d) => api.post('/settings/ai-core', d),
+  generateAiCore:(d) => api.post('/settings/ai-core/generate', d),
 }
 
 // ── UI primitives ─────────────────────────────────────────────
@@ -679,6 +680,285 @@ function TunnelTabbed({ settings }) {
 }
 
 
+// ── AiCoreSection ─────────────────────────────────────────────
+const HISTORY_KEY = 'ai-core-gen-history'
+const MAX_HISTORY  = 5
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]') } catch { return [] }
+}
+function saveHistory(items) {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, MAX_HISTORY))) } catch {}
+}
+
+function AiCoreSection({ systemPrompt, setSystemPrompt, saving, onSave }) {
+  const [genOpen,      setGenOpen]      = useState(false)
+  const [description,  setDescription]  = useState('')
+  const [generating,   setGenerating]   = useState(false)
+  const [generated,    setGenerated]    = useState('')       // hasil preview
+  const [genMeta,      setGenMeta]      = useState(null)     // { model_display, chars, roles_count }
+  const [history,      setHistory]      = useState(loadHistory)
+  const [showHistory,  setShowHistory]  = useState(false)
+  const [streamText,   setStreamText]   = useState('')       // animasi streaming simulasi
+  const streamRef  = useRef(null)
+  const previewRef = useRef(null)
+
+  // Simulasi streaming: tampilkan karakter satu per satu dari hasil
+  const animateText = (fullText) => {
+    setStreamText('')
+    let i = 0
+    const CHUNK = 8   // karakter per frame
+    streamRef.current = setInterval(() => {
+      i += CHUNK
+      setStreamText(fullText.slice(0, i))
+      if (i >= fullText.length) {
+        clearInterval(streamRef.current)
+        setStreamText(fullText)
+        // Scroll preview ke atas setelah selesai
+        setTimeout(() => previewRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), 100)
+      }
+    }, 16)  // ~60fps
+  }
+
+  const handleGenerate = async (descOverride) => {
+    const desc = (descOverride ?? description).trim()
+    if (!desc) { toast.error('Isi deskripsi terlebih dahulu'); return }
+    clearInterval(streamRef.current)
+    setGenerating(true)
+    setGenerated('')
+    setStreamText('')
+    setGenMeta(null)
+    try {
+      const r = await sApi.generateAiCore({ description: desc, language: 'id' })
+      const prompt = r.generated_prompt || ''
+      setGenerated(prompt)
+      setGenMeta({
+        model_display: r.model_display || r.model_used,
+        chars:         r.chars || prompt.length,
+        roles_count:   Object.keys(r.roles_snapshot || {}).length,
+      })
+      animateText(prompt)
+      // Simpan ke history
+      const entry = { desc, prompt, model: r.model_display || r.model_used, ts: Date.now() }
+      const updated = [entry, ...loadHistory().filter(h => h.desc !== desc)].slice(0, MAX_HISTORY)
+      setHistory(updated)
+      saveHistory(updated)
+      toast.success('✨ AI Core berhasil di-generate!')
+    } catch(e) {
+      toast.error(e.message || 'Gagal generate AI Core')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleApply = () => {
+    setSystemPrompt(generated)
+    setGenerated('')
+    setStreamText('')
+    setGenOpen(false)
+    toast.success('AI Core diterapkan — klik "Simpan" untuk menyimpan')
+  }
+
+  const handlePickHistory = (item) => {
+    setDescription(item.desc)
+    setGenerated(item.prompt)
+    setStreamText(item.prompt)
+    setGenMeta({ model_display: item.model, chars: item.prompt.length, roles_count: 12 })
+    setShowHistory(false)
+  }
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── Generate Panel ─────────────────────────────────────── */}
+      <div className="bg-gradient-to-br from-accent/5 to-accent-2/5 border border-accent/20 rounded-xl overflow-hidden">
+        {/* Header toggle */}
+        <button
+          onClick={() => setGenOpen(!genOpen)}
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition-colors text-left"
+        >
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/30">
+            <Wand2 size={14} className="text-white"/>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-ink flex items-center gap-2">
+              ✨ Generate AI Core Otomatis
+              <span className="text-[9px] bg-accent/15 text-accent-2 px-1.5 py-0.5 rounded-full font-medium">AI-powered</span>
+            </div>
+            <div className="text-[10px] text-ink-3">
+              Deskripsikan AI yang Anda inginkan — sistem akan generate AI Core lengkap dari AI Roles Mapping aktif
+            </div>
+          </div>
+          {genOpen ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+        </button>
+
+        {/* Body */}
+        <div className={clsx('grid transition-all duration-300 ease-in-out', genOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0')}>
+          <div className="overflow-hidden">
+            <div className="px-4 pb-4 space-y-3 border-t border-accent/15">
+
+              {/* Description input */}
+              <div className="pt-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <Label>Deskripsi AI yang Anda inginkan</Label>
+                  {history.length > 0 && (
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="flex items-center gap-1 text-[10px] text-ink-3 hover:text-ink-2 transition-colors"
+                      >
+                        🕐 Riwayat ({history.length})
+                        <ChevronDown size={10}/>
+                      </button>
+                      {showHistory && (
+                        <div className="absolute right-0 top-full mt-1 w-72 bg-bg-3 border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+                          <div className="px-3 py-2 border-b border-border text-[10px] font-semibold text-ink-3 uppercase tracking-wider">
+                            Riwayat Generate
+                          </div>
+                          {history.map((h, i) => (
+                            <button key={i} onClick={() => handlePickHistory(h)}
+                              className="w-full text-left px-3 py-2.5 hover:bg-bg-4 transition-colors border-b border-border/50 last:border-0">
+                              <div className="text-[11px] text-ink font-medium truncate">{h.desc}</div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[9px] text-ink-3">{h.model}</span>
+                                <span className="text-[9px] text-ink-3">·</span>
+                                <span className="text-[9px] text-ink-3">{new Date(h.ts).toLocaleDateString('id-ID')}</span>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <textarea
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder={'Contoh:\n"ARIA adalah AI asisten untuk customer service. Ramah, bilingual Indonesia & Inggris,\nresponsif dan langsung ke inti masalah. Fokus di e-commerce dan teknis produk."'}
+                  rows={3}
+                  className="w-full bg-bg-2 border border-border-2 rounded-xl px-3 py-2.5 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Generate button */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleGenerate()}
+                  disabled={generating || !description.trim()}
+                  className={clsx(
+                    'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all',
+                    generating || !description.trim()
+                      ? 'bg-bg-4 text-ink-3 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-accent to-accent-2 hover:opacity-90 text-white shadow-lg shadow-accent/30 hover:shadow-accent/50'
+                  )}
+                >
+                  {generating
+                    ? <><RefreshCw size={14} className="animate-spin"/>Generating...</>
+                    : <><Wand2 size={14}/>Generate AI Core</>
+                  }
+                </button>
+                {generated && !generating && (
+                  <button
+                    onClick={() => handleGenerate()}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs border border-border text-ink-2 hover:bg-bg-4 transition-colors"
+                  >
+                    <RotateCcw size={12}/>Regenerate
+                  </button>
+                )}
+              </div>
+
+              {/* Preview area */}
+              {(streamText || generating) && (
+                <div className="space-y-2">
+                  {/* Meta strip */}
+                  {genMeta && (
+                    <div className="flex items-center gap-3 text-[10px] text-ink-3 px-1">
+                      <span className="flex items-center gap-1">
+                        <Cpu size={10} className="text-accent-2"/>
+                        {genMeta.model_display}
+                      </span>
+                      <span>·</span>
+                      <span>{genMeta.chars} karakter</span>
+                      <span>·</span>
+                      <span>{genMeta.roles_count} roles</span>
+                      {!generating && <span className="text-success ml-auto">✓ Selesai</span>}
+                      {generating && <span className="text-accent-2 ml-auto flex items-center gap-1"><RefreshCw size={9} className="animate-spin"/>Generating...</span>}
+                    </div>
+                  )}
+
+                  {/* Generated text preview */}
+                  <div
+                    ref={previewRef}
+                    className="relative bg-bg-2 border border-accent/30 rounded-xl overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-bg-3">
+                      <span className="text-[10px] font-semibold text-ink-2 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-success animate-pulse"/>
+                        Preview AI Core
+                      </span>
+                      {!generating && (
+                        <button
+                          onClick={() => {
+                            try { navigator.clipboard.writeText(generated); toast.success('Disalin!') } catch {}
+                          }}
+                          className="text-[10px] text-ink-3 hover:text-ink flex items-center gap-1"
+                        >
+                          <Copy size={10}/>Salin
+                        </button>
+                      )}
+                    </div>
+                    <pre className="p-4 text-[11px] text-ink-2 leading-relaxed whitespace-pre-wrap font-mono max-h-72 overflow-y-auto">
+                      {streamText}
+                      {generating && <span className="inline-block w-1.5 h-3.5 bg-accent-2 animate-pulse ml-0.5 align-middle"/>}
+                    </pre>
+                  </div>
+
+                  {/* Action buttons */}
+                  {!generating && generated && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={handleApply}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-success/10 hover:bg-success/20 border border-success/30 text-success text-xs font-semibold transition-all"
+                      >
+                        <Check size={13}/>Terapkan ke AI Core
+                      </button>
+                      <span className="text-[10px] text-ink-3 italic">
+                        * Review dulu, lalu klik "Simpan" untuk menyimpan secara permanen
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Manual textarea ────────────────────────────────────── */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <Label>Global System Prompt (Core Engine)</Label>
+          <div className="text-[10px] text-ink-3 italic">Mendukung format Markdown</div>
+        </div>
+        <textarea
+          value={systemPrompt}
+          onChange={e => setSystemPrompt(e.target.value)}
+          placeholder="Masukkan System Prompt Global di sini, atau gunakan Generate Otomatis di atas..."
+          className="w-full h-72 bg-bg-2 border border-border-2 rounded-xl px-4 py-3 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono leading-relaxed transition-colors"
+        />
+      </div>
+      <div className="flex items-center justify-between p-3 bg-accent/5 border border-accent/20 rounded-xl">
+        <div className="flex items-center gap-2 text-[10px] text-ink-2">
+          <Info size={12} className="text-accent"/>
+          <span>Prompt ini menjadi instruksi utama bagi seluruh orchestrator AI.</span>
+        </div>
+        <Btn label="Simpan AI Core" onClick={onSave} loading={saving} variant="primary" icon={Save}/>
+      </div>
+    </div>
+  )
+}
+
+
 // ── Main ──────────────────────────────────────────────────────
 export default function SettingsPage() {
   const { t, i18n } = useTranslation()
@@ -785,25 +1065,12 @@ export default function SettingsPage() {
         </Section>
 
         <Section title="AI Core (Global System Prompt)" icon="🧠" className="xl:col-span-2" defaultOpen={false}>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Global System Prompt (Core Engine)</Label>
-              <div className="text-[10px] text-ink-3 italic">Mendukung format Markdown</div>
-            </div>
-            <textarea 
-              value={systemPrompt} 
-              onChange={e=>setSystemPrompt(e.target.value)}
-              placeholder="Masukkan System Prompt Global di sini..."
-              className="w-full h-80 bg-bg-2 border border-border-2 rounded-xl px-4 py-3 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono leading-relaxed"
-            />
-            <div className="flex items-center justify-between p-3 bg-accent/5 border border-accent/20 rounded-xl">
-              <div className="flex items-center gap-2 text-[10px] text-ink-2">
-                <Info size={12} className="text-accent"/>
-                <span>Prompt ini akan menjadi instruksi utama bagi seluruh orchestrator AI.</span>
-              </div>
-              <Btn label="Simpan Prompt" onClick={saveAiCore} loading={saving.aiCore} variant="primary" icon={Save}/>
-            </div>
-          </div>
+          <AiCoreSection
+            systemPrompt={systemPrompt}
+            setSystemPrompt={setSystemPrompt}
+            saving={saving.aiCore}
+            onSave={saveAiCore}
+          />
         </Section>
 
         <Section title="Manajemen Domain" icon="🌐" className="xl:col-span-2" defaultOpen={false}

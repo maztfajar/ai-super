@@ -636,6 +636,8 @@ async def save_ai_role_settings(req: AiRoleSettingsRequest, user: User = Depends
     for role in _ALL_AGENT_ROLES:
         val = getattr(req, role, None)
         if val is not None:
+            # val = ""  → user pilih "Auto" → hapus manual lock, orchestrator akan auto-routing
+            # val = "model-id" → user pilih manual → orchestrator wajib hormati, tidak akan diubah
             data[f"AI_ROLE_{role.upper()}"] = val
     # Backward-compat: chat → general
     if req.chat is not None:
@@ -648,7 +650,209 @@ async def save_ai_role_settings(req: AiRoleSettingsRequest, user: User = Depends
     except Exception:
         pass
 
+    # TIDAK perlu invalidate perf_cache — cache hanya sebagai fallback ketika Auto,
+    # dan env var baru akan selalu menang karena Priority 2 > Priority 3.
     return {"status": "saved", "message": "Pemetaan Role AI berhasil diperbarui"}
+
+
+@router.get("/ai-roles/resolved")
+async def get_resolved_roles(user: User = Depends(get_current_user)):
+    """
+    Kembalikan model yang BENAR-BENAR akan dipakai oleh orchestrator untuk setiap role.
+    Ini memanggil resolve_model_for_agent() secara langsung — hasilnya mencerminkan
+    7 lapis prioritas routing (env → perf_cache → capability → available → default).
+    """
+    try:
+        from agents.agent_registry import agent_registry
+        from core.model_manager import model_manager
+
+        available = model_manager.available_models  # { model_id → ModelInfo }
+        resolved = {}
+
+        for role in _ALL_AGENT_ROLES:
+            model_id = agent_registry.resolve_model_for_agent(role)
+            # Cari display name dari available models
+            model_info = available.get(model_id)
+            display = (
+                getattr(model_info, "display_name", None)
+                or getattr(model_info, "name", None)
+                or model_id
+            ) if model_info else model_id
+
+            # Tentukan sumber pilihan (untuk badge di UI)
+            import os
+            env_val = os.environ.get(f"AI_ROLE_{role.upper()}", "").strip()
+            if env_val and env_val == model_id:
+                source = "manual"      # Dikonfigurasi user via Integrasi
+            else:
+                source = "auto"        # Dipilih sistem secara otomatis
+
+            resolved[role] = {
+                "model_id": model_id,
+                "display":  display,
+                "source":   source,
+            }
+
+        return {"resolved": resolved}
+    except Exception as e:
+        log.warning("get_resolved_roles error", error=str(e)[:120])
+        return {"resolved": {role: {"model_id": "", "display": "", "source": "auto"} for role in _ALL_AGENT_ROLES}}
+
+
+# ── POST: generate AI Core otomatis ──────────────────────────
+class AiCoreGenerateRequest(BaseModel):
+    description: str
+    language:    str = "id"
+
+@router.post("/ai-core/generate")
+async def generate_ai_core(req: AiCoreGenerateRequest, user: User = Depends(get_current_user)):
+    """
+    Generate AI Core (system prompt) secara otomatis berdasarkan:
+    - Deskripsi singkat dari pengguna
+    - Stack model aktif dari AI Roles Mapping (resolved real-time)
+
+    Return: { generated_prompt, model_used, roles_snapshot }
+    """
+    if not req.description.strip():
+        raise HTTPException(400, "Deskripsi tidak boleh kosong")
+
+    try:
+        from agents.agent_registry import agent_registry
+        from core.model_manager import model_manager
+        import os
+
+        # ── Kumpulkan stack model aktif (sama dengan get_resolved_roles) ────
+        available  = model_manager.available_models
+        role_labels = {
+            "general":    ("💬 Chat Umum",        "Runner — tugas umum & percakapan"),
+            "coding":     ("💻 Coding",            "Builder — programming & debugging"),
+            "reasoning":  ("🧠 Reasoning",         "Brain — logika & analisis kompleks"),
+            "writing":    ("✍️ Penulisan",          "Writer — konten & dokumentasi"),
+            "research":   ("🔍 Riset",             "Scout — pencarian & fact-checking"),
+            "system":     ("🖥️ Sistem/DevOps",     "SysOp — terminal & server"),
+            "creative":   ("🎨 Kreatif",           "Creator — brainstorming & storytelling"),
+            "validation": ("✅ Validasi/QA",        "Auditor — verifikasi & testing"),
+            "vision":     ("👁️ Vision",            "Eye — analisis gambar & OCR"),
+            "multimodal": ("🌐 Multimodal",        "Fusion — teks + gambar + audio"),
+            "audio_gen":  ("🔊 Audio/TTS",         "Voice — text-to-speech"),
+            "image_gen":  ("🖼️ Image Gen",         "Canvas — generasi gambar"),
+        }
+
+        roles_snapshot = {}
+        model_stack_lines = []
+        for role in _ALL_AGENT_ROLES:
+            model_id   = agent_registry.resolve_model_for_agent(role)
+            model_info = available.get(model_id)
+            display    = (
+                getattr(model_info, "display_name", None)
+                or getattr(model_info, "name", None)
+                or model_id
+            ) if model_info else model_id
+
+            env_val = os.environ.get(f"AI_ROLE_{role.upper()}", "").strip()
+            source  = "manual" if (env_val and env_val == model_id) else "auto"
+            label, alias = role_labels.get(role, (role, role))
+
+            roles_snapshot[role] = {"model_id": model_id, "display": display, "source": source}
+            model_stack_lines.append(f"  [{alias.split('—')[0].strip()}] {label}: {display}")
+
+        model_stack_text = "\n".join(model_stack_lines)
+
+        # ── Susun generator prompt ───────────────────────────────────────────
+        lang_instruction = (
+            "Respond in Indonesian (Bahasa Indonesia)."
+            if req.language == "id" else
+            "Respond in English."
+        )
+        generator_prompt = f"""You are an expert AI System Architect. Your task is to generate a complete, professional, and ready-to-use AI Core (system prompt) based on the user's description and the active model stack.
+
+USER DESCRIPTION:
+{req.description.strip()}
+
+ACTIVE MODEL STACK (from AI Roles Mapping — DO NOT reveal these model names to end users in the generated prompt):
+{model_stack_text}
+
+{lang_instruction}
+
+Generate the AI Core in this EXACT format (use Markdown headers):
+
+## IDENTITAS
+[Nama AI, peran utama, kepribadian, bahasa komunikasi]
+
+## KEMAMPUAN UTAMA
+[Daftar kemampuan inti berdasarkan deskripsi pengguna, max 6 poin]
+
+## MODEL STACK (INTERNAL — JANGAN TAMPILKAN KE PENGGUNA)
+[RUNNER]    → [alias saja, tanpa nama model asli] (percakapan umum & tugas cepat)
+[BUILDER]   → [alias saja] (programming & debugging)
+[BRAIN]     → [alias saja] (analisis & reasoning kompleks)
+[WRITER]    → [alias saja] (konten, dokumen, terjemahan)
+[SCOUT]     → [alias saja] (riset & fact-checking)
+[SYSOP]     → [alias saja] (sistem, terminal, DevOps)
+[CREATOR]   → [alias saja] (kreatif & brainstorming)
+[AUDITOR]   → [alias saja] (validasi & QA)
+[EYE]       → [alias saja] (vision & gambar)
+[FUSION]    → [alias saja] (multimodal)
+[VOICE]     → [alias saja] (audio & TTS)
+[CANVAS]    → [alias saja] (generasi gambar)
+
+## ROUTING RULES
+[3-5 aturan kapan orchestrator memilih agent mana — berdasarkan jenis tugas dari deskripsi pengguna]
+
+## ATURAN PERILAKU
+[5-8 aturan perilaku spesifik berdasarkan deskripsi pengguna]
+
+## BATASAN & KEAMANAN
+[3-5 batasan yang relevan]
+
+IMPORTANT:
+- Use aliases ([RUNNER], [BRAIN], etc.) in MODEL STACK — never reveal actual model names
+- Make ROUTING RULES specific to the use case described by the user
+- Adapt language and tone to match the user's description
+- Keep each section concise but complete
+- The result will be used directly as a system prompt, so write in second-person or directive form"""
+
+        # ── Panggil LLM ─────────────────────────────────────────────────────
+        gen_model  = agent_registry.resolve_model_for_agent("reasoning")  # reasoning untuk generate
+        model_info_gen = available.get(gen_model)
+
+        messages = [
+            {"role": "system", "content": "You are an expert AI System Architect specializing in building AI Core configuration documents."},
+            {"role": "user",   "content": generator_prompt},
+        ]
+
+        full_response = []
+        async for chunk in model_manager.chat_stream(
+            model      = gen_model,
+            messages   = messages,
+            max_tokens = 2000,
+            temperature= 0.7,
+        ):
+            if chunk:
+                full_response.append(chunk)
+
+        generated = "".join(full_response).strip()
+
+        if not generated:
+            raise ValueError("LLM returned empty response")
+
+        log.info("ai_core_generated",
+                 model=gen_model, roles=len(roles_snapshot),
+                 chars=len(generated), user=user.username)
+
+        return {
+            "generated_prompt": generated,
+            "model_used":       gen_model,
+            "model_display":    getattr(model_info_gen, "display_name", gen_model) if model_info_gen else gen_model,
+            "roles_snapshot":   roles_snapshot,
+            "chars":            len(generated),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error("generate_ai_core error", error=str(e)[:200])
+        raise HTTPException(500, f"Gagal generate AI Core: {str(e)[:100]}")
 
 
 # ── POST: restart server ──────────────────────────────────────

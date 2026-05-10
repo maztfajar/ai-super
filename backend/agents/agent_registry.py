@@ -60,7 +60,16 @@ def _get_perf_model(agent_type: str) -> Optional[str]:
 
 async def refresh_perf_cache():
     """
-    Rebuild performance-based routing cache dari AgentPerformance.
+    Rebuild performance-based routing cache dari AgentPerformance table.
+
+    ─────────────────────────────────────────────────────────────
+    PENTING — Fungsi ini HANYA menulis ke _perf_cache (dict di memory).
+    TIDAK PERNAH menulis ke env vars, TIDAK PERNAH mengubah pilihan
+    manual user (AI_ROLE_<TYPE>).
+    _perf_cache hanya dikonsultasi SETELAH Priority 2 (manual user
+    config) dilewati — artinya hanya aktif jika user memilih "Auto".
+    ─────────────────────────────────────────────────────────────
+
     Fail-safe: jika DB error atau tidak ada data, cache lama tetap dipakai.
     Dipanggil saat startup dan setiap _PERF_CACHE_TTL detik.
     """
@@ -448,38 +457,59 @@ class AgentRegistryManager:
         """
         Pilih model terbaik untuk agent_type secara dinamis.
 
+        ══════════════════════════════════════════════════════════════
+        ATURAN TAK BISA DILANGGAR — MANUAL SETTING PROTECTION:
+          • Fungsi ini HANYA MEMBACA konfigurasi — TIDAK PERNAH menulis
+            ke env vars, tidak pernah mengubah pilihan user.
+          • AI_ROLE_<TYPE> yang tersimpan di env = pilihan MANUAL user
+            via menu Integrasi → AI Roles Mapping. Selama tidak kosong,
+            orchestrator WAJIB menggunakannya tanpa pengecualian.
+          • Auto-learning (Priority 3+) hanya aktif jika user memilih
+            "Auto" (env var kosong / tidak di-set = blank string).
+          • refresh_perf_cache() hanya menulis ke _perf_cache (memory),
+            TIDAK pernah menyentuh env vars.
+        ══════════════════════════════════════════════════════════════
+
         Priority (dari tertinggi ke terendah):
-          1. User explicitly chose a model (user_preferred)
-          2. AI_ROLE_<AGENT_TYPE> env var — dari menu Integrasi → AI Roles Mapping
-          3. Performance-based cache (dari AgentPerformance table, diperbarui tiap 5 menit)
-          4. Dynamic routing cache dari model_classifier (capability keyword matching)
-          5. Capability-based search dari available models (menggunakan required_capabilities)
-          6. Model pertama yang tersedia (any available model)
-          7. Default model fallback terakhir
+          1. user_preferred   — override manual dari sesi chat (satu request)
+          2. AI_ROLE_<TYPE>   — pilihan MANUAL user via Integrasi (permanent, dihormati)
+          3. Performance cache — auto-learning dari AgentPerformance (hanya jika Auto)
+          4. model_classifier  — keyword capability matching (hanya jika Auto)
+          5. Capability search — required_capabilities dari available models (hanya jika Auto)
+          6. First available   — model pertama relevan yang tersedia (hanya jika Auto)
+          7. Default fallback  — absolute last resort (hanya jika Auto)
         """
         mm = self.model_manager
         available = set(mm.available_models.keys())
 
-        # 1. User explicitly chose a model
+        # ── Priority 1: Override sesi (user pilih model di chat) ────────────
         if user_preferred and user_preferred in available:
             log.debug("resolve_model: user_preferred", model=user_preferred, agent=agent_type)
             return user_preferred
 
         agent = self.registry.get(agent_type)
 
-        # 2. AI Roles Mapping dari env (menu Integrasi)
+        # ── Priority 2: PILIHAN MANUAL USER — dihormati sepenuhnya ──────────
+        # Env var AI_ROLE_<TYPE> diisi saat user klik "Simpan Pemetaan" di UI.
+        # Orchestrator TIDAK PERNAH mengubah nilai ini.
+        # Jika kosong → user memilih "Auto" → lanjut ke Priority 3+.
         role_model = _read_role_mapping(agent_type)
         if role_model and role_model in available:
-            log.debug("resolve_model: role_mapping env", model=role_model, agent=agent_type)
+            log.debug("resolve_model: manual role honored",
+                      model=role_model, agent=agent_type,
+                      note="user manual config — will not be overridden by auto-routing")
             return role_model
 
-        # 3. Performance-based cache (auto-learning dari riwayat eksekusi)
+        # ── Priority 3–7: AUTO-ROUTING (aktif HANYA jika user pilih Auto) ───
+        # Semua blok di bawah ini hanya dijalankan jika env AI_ROLE_<TYPE> kosong.
+
+        # Priority 3: Performance cache — auto-learning dari AgentPerformance table
         perf_model = _get_perf_model(agent_type)
         if perf_model and perf_model in available:
             log.debug("resolve_model: perf_cache hit", model=perf_model, agent=agent_type)
             return perf_model
 
-        # 4. Dynamic routing cache dari model_classifier
+        # Priority 4: Dynamic routing cache dari model_classifier
         classifier = _get_classifier()
         if classifier and classifier.is_cache_ready():
             for model_id in classifier.get_preferred_models(agent_type):
@@ -487,7 +517,7 @@ class AgentRegistryManager:
                     log.debug("resolve_model: classifier cache", model=model_id, agent=agent_type)
                     return model_id
 
-        # 5. Capability-based search dari available models
+        # Priority 5: Capability-based search dari available models
         if agent and agent.required_capabilities:
             cap_model = _find_model_by_capability(agent.required_capabilities, available)
             if cap_model:
@@ -495,9 +525,8 @@ class AgentRegistryManager:
                           model=cap_model, agent=agent_type, caps=agent.required_capabilities)
                 return cap_model
 
-        # 6. Model pertama yang tersedia (exclude audio-only models untuk non-audio tasks)
+        # Priority 6: Model pertama yang tersedia (exclude audio-only untuk non-audio agents)
         if available:
-            # Hindari model TTS/audio untuk agent non-audio
             non_audio_agents = {"reasoning", "coding", "writing", "research",
                                  "system", "creative", "validation", "general",
                                  "vision", "multimodal", "image_gen"}
@@ -509,7 +538,7 @@ class AgentRegistryManager:
             else:
                 return next(iter(available))
 
-        # 7. Absolute fallback
+        # Priority 7: Absolute fallback
         fallback = mm.get_default_model()
         log.warning("resolve_model: default fallback", model=fallback, agent=agent_type)
         return fallback

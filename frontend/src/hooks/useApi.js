@@ -219,6 +219,8 @@ export const api = {
   // ── Settings ──────────────────────────────────────────────
   getSettings: () => req('GET', '/settings/'),
   saveAiRoles: (d) => req('POST', '/settings/ai-roles', d),
+  getResolvedRoles: () => req('GET', '/settings/ai-roles/resolved'),
+  generateAiCore:   (d) => req('POST', '/settings/ai-core/generate', d),
 
   // ── Health ────────────────────────────────────────────────
   health: () => req('GET', '/health'),

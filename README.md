@@ -1,5 +1,5 @@
-# 🧠 AI ORCHESTRATOR v3.8
-### *Multi-Agent Autonomous Orchestration with Dynamic Model Routing & Self-Learning*
+# 🧠 AI ORCHESTRATOR v3.9
+### *Multi-Agent Autonomous Orchestration with Dynamic Model Routing, Self-Learning & AI Core Generator*
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge" alt="Status">
@@ -7,6 +7,7 @@
   <img src="https://img.shields.io/badge/Routing-Zero--Hardcode-orange?style=for-the-badge" alt="Routing">
   <img src="https://img.shields.io/badge/Memory-Semantic--Procedural-blueviolet?style=for-the-badge" alt="Memory">
   <img src="https://img.shields.io/badge/Security-2FA--Audited-red?style=for-the-badge" alt="Security">
+  <img src="https://img.shields.io/badge/AI_Core-Auto--Generate-ff69b4?style=for-the-badge" alt="AI Core">
 </p>
 
 ---
@@ -14,6 +15,104 @@
 ## 📖 Overview
 
 **AI ORCHESTRATOR** adalah platform orkestrasi AI mandiri (Self-Hosted) yang dirancang untuk mengeksekusi tugas-tugas kompleks melalui sistem multi-agent yang terkoordinasi. Berbeda dengan chat UI standar, sistem ini berfokus pada **Execution & Autonomy**, didukung oleh lapisan memori prosedural dan **Dynamic Model Routing** yang memungkinkannya memilih model AI terbaik secara otomatis untuk setiap jenis tugas — tanpa perlu menyentuh kode.
+
+---
+
+## 🆕 What's New in v3.9 — Transparent Routing & AI Core Generator
+
+### 1. 🤖 AI Roles Mapping Auto-Fill
+Slot AI Roles Mapping yang dibiarkan kosong kini secara otomatis menampilkan model yang **benar-benar aktif dipilih oleh orchestrator** — tanpa perlu mengisi manual.
+
+**Sebelum v3.9:**
+- Slot kosong → tidak ada informasi model yang aktif
+- Pengguna tidak bisa memantau keputusan auto-routing sistem
+
+**Sesudah v3.9:**
+- Slot kosong → ditampilkan `🤖 Auto — [nama model aktif]`
+- Slot diisi manual → ditampilkan `✏️ Manual`
+- Data di-refresh otomatis setiap 30 detik selama panel terbuka
+- Dropdown menampilkan model aktif sebagai opsi default
+
+**Endpoint baru:** `GET /api/settings/ai-roles/resolved`
+```json
+{
+  "resolved": {
+    "coding":    { "model_id": "deepseek-v4-pro", "display": "DeepSeek V4 Pro", "source": "auto" },
+    "reasoning": { "model_id": "qwen3.6-plus",    "display": "Qwen3.6 Plus",    "source": "manual" }
+  }
+}
+```
+
+---
+
+### 2. 🛡️ Manual Setting Protection — Garansi Pilihan Pengguna
+Sistem kini memiliki **perlindungan eksplisit** yang menjamin pilihan manual pengguna tidak pernah ditimpa oleh auto-routing:
+
+```
+Pilihan Manual (AI_ROLE_CODING="deepseek-v4-pro")
+   → resolve_model("coding") → Priority 2: baca env → RETURN deepseek-v4-pro ✅
+   → refresh_perf_cache() jalan → hanya tulis _perf_cache (memory)
+   → env AI_ROLE_CODING TIDAK PERNAH disentuh oleh auto-routing ✅
+
+Pilihan Auto (AI_ROLE_CODING="" kosong)
+   → Priority 2: skip → Priority 3: perf_cache → pilih model terbaik ✅
+   → UI tampilkan hasil pilihan sistem dengan badge 🤖 Auto ✅
+```
+
+**Kontrak yang dijamin oleh kode:**
+
+| Komponen | Jaminan |
+|---|---|
+| `resolve_model_for_agent()` | **HANYA MEMBACA** — tidak pernah menulis ke env |
+| `refresh_perf_cache()` | **HANYA menulis ke `_perf_cache`** (dict di memory) |
+| `save_ai_role_settings()` | Satu-satunya fungsi yang boleh menulis env, dipanggil **hanya** saat user klik "Simpan Pemetaan" |
+
+---
+
+### 3. ✨ Auto-Generate AI Core
+Fitur baru di **Settings → AI Core**: pengguna cukup menulis deskripsi singkat, sistem akan otomatis men-generate AI Core (system prompt) yang lengkap dan siap pakai.
+
+**Alur kerja:**
+```
+[1] Pengguna tulis deskripsi:
+    "ARIA adalah AI untuk customer service, ramah, bilingual ID-EN,
+     fokus di e-commerce dan teknis produk."
+          ↓
+[2] Sistem baca AI Roles Mapping aktif (12 role, real-time)
+          ↓
+[3] LLM (reasoning agent) generate AI Core lengkap:
+    - IDENTITAS         — nama, peran, kepribadian, bahasa
+    - KEMAMPUAN UTAMA   — berdasarkan deskripsi user
+    - MODEL STACK       — pakai alias [RUNNER], [BRAIN], dll.
+    - ROUTING RULES     — kapan orchestrator pilih agent mana
+    - ATURAN PERILAKU   — sesuai deskripsi user
+    - BATASAN & KEAMANAN — relevan dengan use case
+          ↓
+[4] Preview dengan animasi streaming (~60fps)
+    Meta: model yang dipakai, jumlah karakter, jumlah roles
+          ↓
+[5] Pengguna review → klik "Terapkan" → klik "Simpan AI Core"
+```
+
+**Fitur UI:**
+- 🕐 **Riwayat Generate** — 5 entri terakhir tersimpan di `localStorage`, bisa di-restore kapan saja
+- **Regenerate** — generate ulang dengan deskripsi yang sama, hasil bisa berbeda
+- **Nama model tidak bocor** — AI Core selalu menggunakan alias internal, tidak pernah menyebut nama model asli kepada pengguna akhir
+
+**Endpoint baru:** `POST /api/settings/ai-core/generate`
+```json
+// Request
+{ "description": "ARIA untuk customer service...", "language": "id" }
+
+// Response
+{
+  "generated_prompt": "## IDENTITAS\nNama: ARIA...",
+  "model_used":       "qwen3.6-plus",
+  "model_display":    "Qwen3.6 Plus",
+  "roles_snapshot":   { "general": {...}, "coding": {...} },
+  "chars":            1842
+}
+```
 
 ---
 
@@ -44,8 +143,8 @@ Pengguna dapat memetakan model pilihan ke setiap jenis agent secara mandiri lang
 Jika AI Roles Mapping dikosongkan, sistem secara otomatis memilih model terbaik melalui **7 lapis prioritas**:
 
 ```
-1. Model dipilih user secara eksplisit (override manual)
-2. AI_ROLE_<TYPE> dari env (konfigurasi menu Integrasi)
+1. Model dipilih user secara eksplisit (override sesi)
+2. AI_ROLE_<TYPE> dari env (pilihan MANUAL user — dihormati sepenuhnya, tidak pernah ditimpa)
 3. Performance Cache (auto-learning dari riwayat eksekusi — refresh tiap 5 menit)
 4. Dynamic routing cache (model_classifier keyword matching)
 5. Capability-based search dari model aktif di Integrasi
@@ -53,7 +152,7 @@ Jika AI Roles Mapping dikosongkan, sistem secara otomatis memilih model terbaik 
 7. Default model fallback
 ```
 
-> **Semakin sering sistem dipakai, semakin akurat pilihannya** — karena `AgentPerformance` table dianalisis secara berkala untuk menemukan model dengan success rate & confidence score tertinggi per agent type.
+> **Priority 2 adalah sacred** — selama user mengisi slot manual, orchestrator **wajib** menggunakannya. Auto-learning hanya aktif di Priority 3 ke bawah, dan tidak pernah menimpa konfigurasi user.
 
 ---
 
@@ -70,11 +169,12 @@ graph TD
         DAG --> Scorer[Agent Scorer & Router]
     end
 
-    subgraph "Dynamic Model Routing"
-        Scorer --> RoleMap[AI Roles Mapping: env AI_ROLE_TYPE]
-        Scorer --> PerfCache[Performance Cache: auto-learning]
-        Scorer --> CapEngine[Capability Engine: tag matching]
-        RoleMap & PerfCache & CapEngine --> ModelSelect[Best Model Selected]
+    subgraph "Dynamic Model Routing (Zero Hardcode)"
+        Scorer --> P2[Priority 2: Manual Role Mapping]
+        Scorer --> P3[Priority 3: Performance Cache]
+        Scorer --> P5[Priority 5: Capability Engine]
+        P2 & P3 & P5 --> ModelSelect[Best Model Selected]
+        ModelSelect --> AutoFill[Auto-Fill UI Badge Robot/Pencil]
     end
 
     subgraph "Execution Layer (Parallel)"
@@ -82,6 +182,14 @@ graph TD
         ModelSelect --> Agent2[Research Agent]
         ModelSelect --> Agent3[System Agent]
         Agent1 & Agent2 & Agent3 --> Sandbox[Restricted Execution Sandbox]
+    end
+
+    subgraph "AI Core Layer (NEW v3.9)"
+        UserDesc[User Description] --> CoreGen[AI Core Generator]
+        RoleMap[Resolved Roles Snapshot] --> CoreGen
+        CoreGen --> LLM[LLM: Reasoning Agent]
+        LLM --> AiCore[Generated AI Core: Identitas + Stack + Rules]
+        AiCore --> Sandbox
     end
 
     Sandbox --> Quality[Quality Engine: Validation & Refinement]
@@ -100,15 +208,15 @@ graph TD
 
 ---
 
-## 📊 Performance Metrics (Validated)
+## 📊 Performance Metrics
 
-Berdasarkan pengujian pada 500+ sesi eksekusi otonom:
-
-*   **Context Efficiency:** Rata-rata reduksi token sebesar **63%** melalui QMD (Query Memory Distillation), dengan penghematan maksimal hingga **81%** pada chat panjang.
-*   **Resilience:** Tingkat keberhasilan pemulihan output terpotong (**Truncation Recovery**) mencapai **92%**.
-*   **Speed Optimization:** Peningkatan kecepatan eksekusi hingga **38%** untuk tugas serupa setelah kristalisasi skill terjadi.
-*   **Success Rate:** **89.4%** task completion rate pada instruksi multi-langkah tanpa intervensi user.
-*   **Routing Accuracy:** Setelah 10+ sesi, performance-based auto-routing mencapai akurasi pemilihan model **>85%** tanpa konfigurasi manual.
+| Metrik | Nilai | Keterangan |
+|---|---|---|
+| Context Efficiency | **63%** reduksi token | QMD (Query Memory Distillation), maks 81% pada chat panjang |
+| Routing Accuracy | **>85%** | Setelah 10+ sesi, performance-based auto-routing |
+| Manual Override Guarantee | **100%** | Priority 2 selalu dihormati, tidak pernah ditimpa |
+| Auto-Fill Refresh Rate | **30 detik** | UI sync real-time dengan keputusan orchestrator |
+| AI Core Generate Time | **3–8 detik** | Streaming preview, tidak perlu tunggu selesai |
 
 ---
 
@@ -128,11 +236,17 @@ Bukan sekadar menyimpan chat, sistem mengekstraksi **Execution Graphs** yang ber
 *   **Pattern Matching:** Menggunakan Vector Similarity (ChromaDB) untuk mencocokkan request baru dengan resep yang ada.
 *   **Crystallization:** Jika pola yang sama berhasil ≥ 5x dengan skor confidence > 0.7, sistem mengonversinya menjadi **LearnedSkill** permanen yang melewati fase reasoning awal.
 
-### 4. Dynamic Model Routing (NEW v3.8)
-Sistem tidak lagi bergantung pada nama model yang di-hardcode. Routing dilakukan secara **penuh dinamis**:
+### 4. Dynamic Model Routing (v3.8) + Transparent Routing (v3.9)
 *   **Zero Hardcode:** Tidak ada nama model AI di dalam kode agent, scorer, maupun orchestrator.
-*   **Self-Learning:** `AgentPerformance` table dianalisis setiap 5 menit untuk menemukan model terbaik per agent type berdasarkan success rate & confidence historis.
-*   **Plug & Play:** Tambah model baru di Integrasi → sistem otomatis mengenali dan mempertimbangkannya dalam routing berikutnya.
+*   **Self-Learning:** `AgentPerformance` table dianalisis setiap 5 menit untuk menemukan model terbaik per agent type.
+*   **Plug & Play:** Tambah model baru di Integrasi → sistem otomatis mengenali dan mempertimbangkannya.
+*   **Transparent:** UI menampilkan secara real-time model mana yang dipilih sistem untuk setiap role, tanpa perlu menebak-nebak.
+
+### 5. AI Core Generator (v3.9)
+*   **Input-to-Core:** Deskripsi natural language → AI Core profesional dalam <10 detik.
+*   **Role-Aware:** Generator membaca stack model aktif dan menyesuaikan routing rules dengan model yang benar-benar tersedia.
+*   **Privacy-Safe:** Nama model internal tidak pernah muncul di AI Core yang di-generate (menggunakan alias [RUNNER], [BRAIN], dll.).
+*   **History & Rollback:** Riwayat 5 generate terakhir tersimpan, bisa di-restore kapan saja.
 
 ---
 
@@ -143,8 +257,9 @@ Sistem tidak lagi bergantung pada nama model yang di-hardcode. Routing dilakukan
 | **Deterministic-First:** Memprioritaskan tool dan langkah pasti sebelum menggunakan reasoning LLM. | **Autonomous AGI:** Sistem ini tidak memiliki kesadaran atau tujuan sendiri di luar instruksi user. |
 | **Tool-Constrained:** Hanya bisa berinteraksi dengan sistem melalui API dan tool yang didefinisikan secara eksplisit. | **Unsandboxed Control:** Tidak memiliki akses bebas ke kernel sistem tanpa pengawasan container. |
 | **Auditable:** Setiap langkah, pemikiran (thinking), dan aksi dicatat secara detail dalam log eksekusi. | **Unrestricted Self-Modifying:** Sistem tidak bisa mengubah kode inti engine-nya sendiri. |
-| **Human-Overridable:** User memiliki kontrol penuh untuk menghentikan atau mengarahkan ulang eksekusi kapan saja. | **Black-Box System:** Tidak ada tindakan "gaib"; semua berasal dari proses orkestrasi yang terstruktur. |
+| **Human-Overridable:** User memiliki kontrol penuh — pilihan manual **tidak pernah ditimpa** oleh auto-routing. | **Black-Box System:** Tidak ada tindakan "gaib"; semua berasal dari proses orkestrasi yang terstruktur. |
 | **Zero-Hardcode Routing:** Nama model AI tidak pernah ditulis di dalam kode — sepenuhnya dikonfigurasi via UI. | **Vendor Lock-in:** Sistem tidak terikat pada provider AI tertentu; mudah diganti tanpa ubah kode. |
+| **Transparent Routing:** UI menampilkan model aktif per role secara real-time dengan badge Auto/Manual. | **Opaque Decision:** Pengguna selalu bisa melihat dan memverifikasi keputusan routing sistem. |
 
 ---
 
@@ -186,5 +301,5 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 
 <p align="center">
   <i>Focus on Execution. Built for Engineers.</i><br>
-  <b>AI ORCHESTRATOR — Zero-Hardcode, Self-Learning, Multi-Agent Autonomy.</b>
+  <b>AI ORCHESTRATOR v3.9 — Zero-Hardcode, Self-Learning, Transparent Routing, AI Core Generator.</b>
 </p>

@@ -38,6 +38,7 @@ const intApi = {
   // AI Roles
   getSettings:          () => api.getSettings(),
   saveAiRoles:          (d) => api.saveAiRoles(d),
+  getResolvedRoles:     () => api.getResolvedRoles(),
 }
 
 /**
@@ -696,7 +697,6 @@ function WebhookSection() {
 }
 
 
-
 // ── AiRoleMappingSection ──────────────────────────────────────
 const AI_ROLE_DEFINITIONS = [
   { key: 'general',    emoji: '💬', label: 'Chat Umum',        desc: 'Percakapan, FAQ, pertanyaan ringan' },
@@ -719,6 +719,9 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
   const models = useModelsStore(s => s.models)
   const [roles, setRoles] = useState(EMPTY_ROLES)
   const [open, setOpen] = useState(false)
+  // resolved: { role → { model_id, display, source: 'auto'|'manual' } }
+  const [resolved, setResolved] = useState({})
+  const [loadingResolved, setLoadingResolved] = useState(false)
 
   useEffect(() => {
     if (settings?.ai_core?.role_mappings) {
@@ -726,10 +729,33 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
     }
   }, [settings])
 
+  // Fetch resolved roles (what orchestrator actually picks) on open
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    const fetchResolved = async () => {
+      setLoadingResolved(true)
+      try {
+        const data = await intApi.getResolvedRoles()
+        if (!cancelled) setResolved(data.resolved || {})
+      } catch {}
+      finally { if (!cancelled) setLoadingResolved(false) }
+    }
+    fetchResolved()
+    // Auto-refresh every 30s while panel is open
+    const timer = setInterval(fetchResolved, 30000)
+    return () => { cancelled = true; clearInterval(timer) }
+  }, [open])
+
   const handleSave = async () => {
     try {
       await onSave(roles)
       toast.success('Pemetaan Role AI disimpan')
+      // Refresh resolved after save
+      try {
+        const data = await intApi.getResolvedRoles()
+        setResolved(data.resolved || {})
+      } catch {}
     } catch (e) {
       toast.error(e.message)
     }
@@ -765,42 +791,71 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
             <div className="p-3 bg-accent/8 border border-accent/20 rounded-xl text-[10px] text-ink-2 leading-relaxed">
               <span className="font-semibold text-ink block mb-1">🤖 Auto-Routing Cerdas</span>
               Jika slot dikosongkan, AI Orchestrator otomatis memilih model terbaik berdasarkan kemampuan dan performa historis.
-              Semakin sering dipakai, semakin cerdas pilihannya.
+              Model yang dipilih sistem ditampilkan sebagai <span className="bg-blue-500/15 text-blue-400 px-1 py-0.5 rounded text-[9px] font-medium">🤖 Auto</span>.
             </div>
 
             {/* Role grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {AI_ROLE_DEFINITIONS.map(role => (
-                <div key={role.key} className="bg-bg-4 rounded-xl border border-border p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{role.emoji}</span>
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-ink">{role.label}</div>
-                      <div className="text-[9px] text-ink-3 truncate">{role.desc}</div>
+              {AI_ROLE_DEFINITIONS.map(role => {
+                const manualVal  = roles[role.key] || ''
+                const res        = resolved[role.key]
+                const autoModel  = res?.model_id || ''
+                const autoDisplay= res?.display  || autoModel
+                const isManual   = !!manualVal
+                const activeModel= isManual ? manualVal : autoModel
+
+                return (
+                  <div key={role.key} className="bg-bg-4 rounded-xl border border-border p-3 space-y-2">
+                    {/* Header row */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">{role.emoji}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-semibold text-ink">{role.label}</div>
+                        <div className="text-[9px] text-ink-3 truncate">{role.desc}</div>
+                      </div>
+                      {/* Status badge */}
+                      {isManual ? (
+                        <span className="flex-shrink-0 text-[9px] bg-success/15 text-success px-1.5 py-0.5 rounded-full font-medium">
+                          ✏️ Manual
+                        </span>
+                      ) : autoModel ? (
+                        <span className="flex-shrink-0 text-[9px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-full font-medium">
+                          🤖 Auto
+                        </span>
+                      ) : null}
                     </div>
-                    {roles[role.key] && (
-                      <span className="ml-auto flex-shrink-0 w-1.5 h-1.5 rounded-full bg-success"/>
+
+                    {/* Resolved model display (when not manually set) */}
+                    {!isManual && autoDisplay && (
+                      <div className="text-[10px] text-ink-2 bg-bg-2 rounded-lg px-2.5 py-1.5 border border-border/60 truncate">
+                        <span className="text-ink-3 mr-1">Aktif:</span>
+                        <span className="font-medium text-blue-400">{autoDisplay}</span>
+                      </div>
                     )}
-                  </div>
-                  <div className="relative">
-                    <select
-                      value={roles[role.key] || ''}
-                      onChange={e => setRoles(r => ({ ...r, [role.key]: e.target.value }))}
-                      className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-1.5 text-[11px] text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-7"
-                    >
-                      <option value="">🤖 Auto (pilih terbaik)</option>
-                      {models.map(m => (
-                        <option key={m.id} value={m.id}>
-                          {m.display || m.id} ({m.provider})
+
+                    {/* Dropdown */}
+                    <div className="relative">
+                      <select
+                        value={manualVal}
+                        onChange={e => setRoles(r => ({ ...r, [role.key]: e.target.value }))}
+                        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-1.5 text-[11px] text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-7"
+                      >
+                        <option value="">
+                          {loadingResolved ? '⏳ Memuat...' : autoDisplay ? `🤖 Auto — ${autoDisplay}` : '🤖 Auto (pilih terbaik)'}
                         </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
-                      <ChevronDown size={11}/>
+                        {models.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.display || m.id} ({m.provider})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
+                        <ChevronDown size={11}/>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
