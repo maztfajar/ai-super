@@ -298,6 +298,14 @@ class MemoryManager:
                 "sebelum membuat file apapun."
             )
 
+        # Tambahkan real-time timestamp untuk mencegah halusinasi waktu
+        from datetime import datetime
+        now = datetime.now()
+        hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+        bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
+        current_time_id = f"{hari[now.weekday()]}, {now.day} {bulan[now.month - 1]} {now.year}, {now.strftime('%H:%M:%S')}"
+        base += f"\n\n[WAKTU SAAT INI: {current_time_id}. INI ADALAH WAKTU YANG SEBENARNYA SAAT INI. JIKA USER BERTANYA TENTANG WAKTU ATAU TANGGAL, ANDA HARUS MERUJUK PADA WAKTU INI TANPA HALUSINASI.]\n"
+
         return base
 
     # ── Save ke Redis + perpanjang TTL ────────────────────────────────────────

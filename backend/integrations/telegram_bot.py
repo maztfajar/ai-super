@@ -278,7 +278,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         if text == "/status":
             await _send_typing(token, chat_id)
             await _send(token, chat_id, "⚙️ <b>Mengecek status server...</b>")
-            import asyncio, subprocess
+            import subprocess
             try:
                 def _run_checks():
                     results = {}
