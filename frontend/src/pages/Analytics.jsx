@@ -28,13 +28,13 @@ function Gauge({ value, max = 100, size = 90, label, sub, unit = '%' }) {
             style={{ transition: 'stroke-dasharray 0.6s ease, stroke 0.3s' }}/>
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-sm font-bold font-mono" style={{ color }}>
+          <span className="text-lg font-bold font-mono" style={{ color }}>
             {unit === '%' ? Math.round(value) : value}{unit}
           </span>
         </div>
       </div>
-      <div className="text-[11px] font-semibold text-ink-2 mt-1">{label}</div>
-      {sub && <div className="text-[9px] text-ink-3 text-center mt-0.5">{sub}</div>}
+      <div className="text-xs font-bold text-ink-3 uppercase tracking-widest mt-2">{label}</div>
+      {sub && <div className="text-[11px] text-ink-3 text-center mt-1.5 font-semibold uppercase tracking-tight opacity-70">{sub}</div>}
     </div>
   )
 }
@@ -54,13 +54,13 @@ function Bar({ pct, color = 'bg-accent', thin }) {
 // ── Stat card ─────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, colorClass, sub }) {
   return (
-    <div className="bg-bg-3 border border-border rounded-xl p-3.5">
-      <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center mb-2', colorClass + '/15')}>
-        <Icon size={14} className={colorClass.replace('bg-', 'text-')}/>
+    <div className="bg-bg-3 border border-border-2 rounded-xl p-5 shadow-sm">
+      <div className={clsx('w-9 h-9 rounded-lg flex items-center justify-center mb-3', colorClass + '/15')}>
+        <Icon size={16} className={colorClass.replace('bg-', 'text-')}/>
       </div>
-      <div className="text-xl font-bold font-mono text-ink">{value}</div>
-      <div className="text-[10px] text-ink-3 mt-0.5">{label}</div>
-      {sub && <div className="text-[10px] text-ink-2 mt-0.5">{sub}</div>}
+      <div className="text-2xl font-bold font-mono text-ink tracking-tight">{value}</div>
+      <div className="text-xs font-bold text-ink-3 uppercase tracking-wider mt-1.5">{label}</div>
+      {sub && <div className="text-[11px] text-ink-2 mt-2 font-semibold uppercase tracking-tight opacity-70">{sub}</div>}
     </div>
   )
 }
@@ -75,14 +75,14 @@ function MiniBarChart({ data, valueKey, color }) {
         const day = (d.day || '').slice(5)
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
-            <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-bg-2 border border-border
-              rounded px-1.5 py-0.5 text-[9px] text-ink whitespace-nowrap opacity-0
-              group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-bg-2 border-2 border-border
+              rounded-lg px-2.5 py-1 text-xs text-ink whitespace-nowrap opacity-0
+              group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-bold shadow-lg">
               {day}: {(d[valueKey] || 0).toLocaleString()}
             </div>
             <div className="w-full rounded-t transition-all duration-500"
               style={{ height: `${h}%`, background: color, opacity: 0.75 }}/>
-            <div className="text-[8px] text-ink-3">{day?.slice(3)}</div>
+            <div className="text-[11px] text-ink-3 font-bold uppercase tracking-tighter mt-1">{day?.slice(3)}</div>
           </div>
         )
       })}
@@ -95,18 +95,18 @@ function CpuCores({ cores = [] }) {
   if (!cores.length) return null
   return (
     <div>
-      <div className="text-[9px] text-ink-3 mb-1.5 uppercase tracking-wider">Per Core</div>
-      <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.min(cores.length, 8)}, 1fr)` }}>
+      <div className="text-xs text-ink-3 mb-2 uppercase tracking-widest font-bold opacity-60">Per Core</div>
+      <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${Math.min(cores.length, 8)}, 1fr)` }}>
         {cores.map((pct, i) => (
           <div key={i} className="text-center">
-            <div className={clsx('h-8 rounded flex items-end justify-center pb-0.5 relative overflow-hidden',
-              'bg-bg-5')}>
-              <div className={clsx('absolute bottom-0 w-full rounded transition-all duration-500',
+            <div className={clsx('h-10 rounded-lg flex items-end justify-center pb-1 relative overflow-hidden',
+              'bg-bg-5 border border-border/20')}>
+              <div className={clsx('absolute bottom-0 w-full rounded-lg transition-all duration-500',
                 pct > 85 ? 'bg-danger/60' : pct > 65 ? 'bg-warn/60' : 'bg-accent/50')}
                 style={{ height: `${Math.max(pct, 2)}%` }}/>
-              <span className="relative text-[8px] font-mono text-ink-2 z-10">{Math.round(pct)}</span>
+              <span className="relative text-[11px] font-mono text-ink-2 z-10 font-bold">{Math.round(pct)}</span>
             </div>
-            <div className="text-[7px] text-ink-3 mt-0.5">C{i}</div>
+            <div className="text-[10px] text-ink-3 mt-1 font-bold uppercase tracking-tighter">C{i}</div>
           </div>
         ))}
       </div>
@@ -127,35 +127,35 @@ function ResetModal({ onClose, onConfirm }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.65)' }}>
-      <div className="bg-bg-3 border border-danger/30 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
-        <div className="bg-danger/8 border-b border-danger/20 px-4 py-3 flex items-center gap-2.5">
-          <ShieldAlert size={18} className="text-danger"/>
+      <div className="bg-bg-3 border-2 border-danger/30 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+        <div className="bg-danger/10 border-b-2 border-danger/20 px-5 py-4 flex items-center gap-3">
+          <ShieldAlert size={22} className="text-danger"/>
           <div>
-            <div className="text-sm font-bold text-danger">Reset Data Analytics</div>
-            <div className="text-[10px] text-danger/70">Semua riwayat chat & statistik akan dihapus permanen</div>
+            <div className="text-lg font-bold text-danger uppercase tracking-tight">Reset Data Analytics</div>
+            <div className="text-xs text-danger/80 font-semibold uppercase tracking-widest mt-0.5">Semua riwayat chat & statistik akan dihapus permanen</div>
           </div>
         </div>
-        <div className="p-4 space-y-3">
-          <div className="bg-bg-4 rounded-xl p-3 text-[10px] text-ink-3 space-y-1.5">
+        <div className="p-5 space-y-4">
+          <div className="bg-bg-4 border border-border/30 rounded-xl p-4 text-sm text-ink-3 space-y-2 font-semibold">
             {['Semua pesan chat', 'Semua sesi percakapan', 'Log penggunaan API & model', 'Statistik token & biaya'].map((item, i) => (
-              <div key={i} className="flex items-center gap-2"><XCircle size={10} className="text-danger"/>{item}</div>
+              <div key={i} className="flex items-center gap-3"><XCircle size={14} className="text-danger"/>{item}</div>
             ))}
           </div>
           <div>
-            <div className="text-[10px] text-ink-3 mb-1.5">
-              Ketik <code className="font-mono bg-bg-4 px-1 rounded text-danger">reset</code> untuk konfirmasi:
+            <div className="text-xs text-ink-3 mb-2 font-bold uppercase tracking-widest opacity-70">
+              Ketik <code className="font-mono bg-bg-4 px-1.5 py-0.5 rounded text-danger font-bold">reset</code> untuk konfirmasi:
             </div>
             <input value={text} onChange={e => setText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && ok && go()}
               placeholder="ketik: reset"
-              className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs font-mono text-ink outline-none focus:border-danger placeholder-ink-3"/>
+              className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-mono text-ink outline-none focus:border-danger placeholder-ink-3 shadow-inner"/>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3 pt-2">
             <button onClick={onClose}
-              className="flex-1 px-3 py-2 text-xs rounded-lg bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 font-medium">Batal</button>
+              className="flex-1 px-4 py-3 text-sm rounded-xl bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 font-bold uppercase tracking-tight transition-all">Batal</button>
             <button onClick={go} disabled={!ok || load}
-              className="flex-1 px-3 py-2 text-xs rounded-lg bg-danger hover:bg-danger/80 text-white font-medium disabled:opacity-40 flex items-center justify-center gap-1.5">
-              {load ? <><RefreshCw size={11} className="animate-spin"/>Mereset...</> : <><Trash2 size={11}/>Reset Sekarang</>}
+              className="flex-1 px-4 py-3 text-sm rounded-xl bg-danger hover:bg-danger/80 text-white font-bold uppercase tracking-tight disabled:opacity-40 flex items-center justify-center gap-2 transition-all shadow-lg shadow-danger/20 active:scale-95">
+              {load ? <><RefreshCw size={14} className="animate-spin"/>Mereset...</> : <><Trash2 size={14}/>Reset Sekarang</>}
             </button>
           </div>
         </div>
@@ -168,11 +168,11 @@ function ResetModal({ onClose, onConfirm }) {
 function CmdLine({ cmd }) {
   const [copied, setCopied] = useState(false)
   return (
-    <div className="flex items-center gap-2 bg-bg-2 border border-border rounded-lg px-3 py-2 group">
-      <code className="flex-1 font-mono text-[11px] text-accent-2 break-all">{cmd}</code>
+    <div className="flex items-center gap-3 bg-bg-2 border-2 border-border rounded-xl px-4 py-3 group shadow-inner">
+      <code className="flex-1 font-mono text-sm text-accent-2 break-all font-bold">{cmd}</code>
       <button onClick={() => { copyToClipboard(cmd); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-        className="flex-shrink-0 text-ink-3 hover:text-ink transition-colors">
-        {copied ? <Check size={13} className="text-success"/> : <Copy size={13}/>}
+        className="flex-shrink-0 text-ink-3 hover:text-ink transition-all p-1.5 rounded-lg hover:bg-bg-4">
+        {copied ? <Check size={16} className="text-success"/> : <Copy size={16}/>}
       </button>
     </div>
   )
@@ -191,29 +191,29 @@ function PsutilInstallGuide({ onRetry }) {
     apt:    'sudo apt install -y python3-psutil',
   }
   return (
-    <div className="bg-warn/5 border border-warn/25 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2.5 p-3.5 border-b border-warn/15">
-        <span className="text-xl">⚠️</span>
+    <div className="bg-warn/10 border-2 border-warn/30 rounded-2xl overflow-hidden shadow-md">
+      <div className="flex items-center gap-3.5 p-5 border-b-2 border-warn/15 bg-warn/5">
+        <span className="text-2xl">⚠️</span>
         <div>
-          <div className="text-sm font-semibold text-warn">Modul psutil belum terinstall</div>
-          <div className="text-[10px] text-warn/70">Install untuk aktifkan monitoring CPU, RAM, dan Disk</div>
+          <div className="text-lg font-bold text-warn uppercase tracking-tight">Modul psutil belum terinstall</div>
+          <div className="text-xs text-warn/80 font-bold uppercase tracking-widest mt-1">Install untuk aktifkan monitoring CPU, RAM, dan Disk</div>
         </div>
       </div>
       <div className="p-3.5 space-y-3">
         {/* Tab selector */}
-        <div className="flex gap-1 bg-bg-4 rounded-lg p-1">
+        <div className="flex gap-2 bg-bg-4 border-2 border-border/20 rounded-xl p-1.5 shadow-inner">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={clsx('flex-1 py-1.5 text-[11px] font-medium rounded-md transition-all',
-                tab === t.id ? 'bg-bg-2 text-ink shadow' : 'text-ink-3 hover:text-ink')}>
+              className={clsx('flex-1 py-2 text-sm font-bold uppercase tracking-tight rounded-lg transition-all',
+                tab === t.id ? 'bg-bg-2 text-accent-2 shadow-lg border border-border/50' : 'text-ink-3 hover:text-ink hover:bg-bg-5')}>
               {t.label}
             </button>
           ))}
         </div>
 
         {/* Command */}
-        <div className="space-y-1.5">
-          <div className="text-[10px] text-ink-3">
+        <div className="space-y-2">
+          <div className="text-xs text-ink-3 font-bold uppercase tracking-widest opacity-70">
             {tab === 'venv'   && 'Install ke virtualenv AI ORCHESTRATOR (paling aman):'}
             {tab === 'system' && 'Jika virtualenv tidak ditemukan atau pakai Python sistem:'}
             {tab === 'apt'    && 'Sudah install via apt tapi masih error? Aktifkan akses ke sistem:'}
@@ -222,24 +222,24 @@ function PsutilInstallGuide({ onRetry }) {
         </div>
 
         {tab === 'apt' && (
-          <div className="text-[10px] text-ink-3 bg-bg-4 rounded-lg p-2.5 space-y-1.5">
+          <div className="text-xs text-ink-3 bg-bg-4 rounded-lg p-2.5 space-y-1.5 font-medium">
             <div>✅ Sudah install via apt tapi masih error? Virtualenv tidak bisa akses paket sistem.</div>
             <div>Aktifkan akses paket sistem ke virtualenv:</div>
-            <code className="block font-mono text-accent-2 bg-bg-2 px-2 py-1 rounded">cd ~/Downloads/ai-orchestrator/backend && source venv/bin/activate && pip install psutil --break-system-packages</code>
+            <code className="block font-mono text-accent-2 bg-bg-2 px-2 py-1 rounded font-semibold">cd ~/Downloads/ai-orchestrator/backend && source venv/bin/activate && pip install psutil --break-system-packages</code>
             <div className="pt-1">Atau jalankan langsung tanpa venv:</div>
-            <code className="block font-mono text-accent-2 bg-bg-2 px-2 py-1 rounded">pip3 install psutil --break-system-packages</code>
+            <code className="block font-mono text-accent-2 bg-bg-2 px-2 py-1 rounded font-semibold">pip3 install psutil --break-system-packages</code>
           </div>
         )}
         {tab === 'venv' && (
-          <div className="text-[10px] text-ink-3 bg-bg-4 rounded-lg p-2.5">
+          <div className="text-xs text-ink-3 bg-bg-4 rounded-lg p-2.5 font-medium">
             💡 Setelah install, tekan tombol "Coba lagi" — tidak perlu restart server.
           </div>
         )}
 
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-3 pt-2">
           <button onClick={onRetry}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn font-medium transition-colors">
-            <RefreshCw size={11}/>Coba lagi setelah install
+            className="flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl bg-warn/10 hover:bg-warn/20 border-2 border-warn/30 text-warn font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
+            <RefreshCw size={14}/>Coba lagi setelah install
           </button>
         </div>
       </div>
@@ -445,25 +445,25 @@ export default function Analytics() {
   const maxReq    = Math.max(...usage.map(u => u.count), 1)
 
   return (
-    <div className="p-4 md:p-6 max-w-full space-y-4">
+    <div className="p-4 md:pt-4 max-w-full space-y-4">
 
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-lg font-bold text-ink">Analytics</h1>
-          <p className="text-xs text-ink-3">
+          <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter">Analytics</h1>
+          <p className="text-base text-ink-3 font-semibold uppercase tracking-tight opacity-80">
             Monitoring penggunaan & performa sistem
-            {lastRef && <span className="ml-2 opacity-50">· {lastRef.toLocaleTimeString()}</span>}
+            {lastRef && <span className="ml-3 opacity-50">· {lastRef.toLocaleTimeString()}</span>}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button onClick={fetchAll} disabled={loading}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink disabled:opacity-50">
-            <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
+            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink disabled:opacity-50 font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/>Refresh
           </button>
           <button onClick={() => setShowReset(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger font-medium">
-            <Trash2 size={11}/>Reset
+            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-danger/10 hover:bg-danger/20 border-2 border-danger/30 text-danger font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
+            <Trash2 size={16}/>Reset
           </button>
         </div>
       </div>
@@ -489,17 +489,17 @@ export default function Analytics() {
       </div>
 
       {/* ── System Resources ── */}
-      <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Activity size={14} className="text-accent-2"/>
-            <span className="text-sm font-semibold text-ink">Sumber Daya Sistem</span>
-            <span className="text-[9px] text-ink-3 bg-bg-4 px-2 py-0.5 rounded-full">Realtime · 3 detik</span>
+      <div className="bg-bg-3 border border-border-2 rounded-2xl overflow-hidden shadow-lg">
+        <div className="flex items-center justify-between px-5 py-4 border-b-2 border-border bg-bg-2/30">
+          <div className="flex items-center gap-3">
+            <Activity size={20} className="text-accent-2"/>
+            <span className="text-lg font-bold text-ink uppercase tracking-tight">Sumber Daya Sistem</span>
+            <span className="text-xs text-ink-3 bg-bg-4 px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-border/30 shadow-inner ml-2">Realtime · 3 detik</span>
           </div>
           {system && (
             <button onClick={() => setShowCores(!showCores)}
-              className="text-[10px] text-ink-3 hover:text-ink flex items-center gap-1">
-              {showCores ? <ChevronUp size={11}/> : <ChevronDown size={11}/>}
+              className="text-xs text-ink-3 hover:text-accent-2 flex items-center gap-2 font-bold uppercase tracking-widest transition-all p-2 rounded-lg hover:bg-bg-4">
+              {showCores ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
               Per Core
             </button>
           )}
@@ -532,47 +532,47 @@ export default function Analytics() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                <div className="bg-bg-4 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Cpu size={12} className="text-accent-2"/>
-                    <span className="text-[11px] font-semibold text-ink">CPU</span>
-                    <span className="ml-auto text-[10px] font-mono text-accent-2 font-bold">{system.cpu.percent}%</span>
+                <div className="bg-bg-4 border border-border/20 rounded-2xl p-4 space-y-3 shadow-inner">
+                  <div className="flex items-center gap-3 mb-1">
+                    <Cpu size={18} className="text-accent-2"/>
+                    <span className="text-base font-bold text-ink uppercase tracking-tight">CPU</span>
+                    <span className="ml-auto text-sm font-mono text-accent-2 font-bold">{system.cpu.percent}%</span>
                   </div>
                   <Bar pct={system.cpu.percent} color="bg-accent"/>
-                  <div className="grid grid-cols-2 gap-1 text-[10px] text-ink-3">
-                    <span>Logical: <b className="text-ink">{system.cpu.count}</b></span>
-                    <span>Physical: <b className="text-ink">{system.cpu.count_phys||'—'}</b></span>
-                    <span>Frekuensi: <b className="text-ink">{system.cpu.freq_mhz||0} MHz</b></span>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-ink-3 font-semibold uppercase tracking-tight">
+                    <span>Logical: <b className="text-ink font-bold">{system.cpu.count}</b></span>
+                    <span>Physical: <b className="text-ink font-bold">{system.cpu.count_phys||'—'}</b></span>
+                    <span>Frekuensi: <b className="text-ink font-bold">{system.cpu.freq_mhz||0} MHz</b></span>
                   </div>
                   {showCores && <CpuCores cores={system.cpu.per_core || []}/>}
                 </div>
 
-                <div className="bg-bg-4 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <MemoryStick size={12} className="text-success"/>
-                    <span className="text-[11px] font-semibold text-ink">Memori RAM</span>
-                    <span className="ml-auto text-[10px] font-mono text-success font-bold">{system.memory.percent}%</span>
+                <div className="bg-bg-4 border border-border/20 rounded-2xl p-4 space-y-3 shadow-inner">
+                  <div className="flex items-center gap-3 mb-1">
+                    <MemoryStick size={18} className="text-success"/>
+                    <span className="text-base font-bold text-ink uppercase tracking-tight">Memori RAM</span>
+                    <span className="ml-auto text-sm font-mono text-success font-bold">{system.memory.percent}%</span>
                   </div>
                   <Bar pct={system.memory.percent} color="bg-success"/>
-                  <div className="grid grid-cols-2 gap-1 text-[10px] text-ink-3">
-                    <span>Digunakan: <b className="text-ink">{system.memory.used_mb} MB</b></span>
-                    <span>Tersedia: <b className="text-ink">{system.memory.free_mb} MB</b></span>
-                    <span>Total: <b className="text-ink">{system.memory.total_mb} MB</b></span>
-                    {system.memory.cached_mb > 0 && <span>Cache: <b className="text-ink">{system.memory.cached_mb} MB</b></span>}
+                  <div className="grid grid-cols-2 gap-2 text-xs text-ink-3 font-semibold uppercase tracking-tight">
+                    <span>Digunakan: <b className="text-ink font-bold">{system.memory.used_mb} MB</b></span>
+                    <span>Tersedia: <b className="text-ink font-bold">{system.memory.free_mb} MB</b></span>
+                    <span>Total: <b className="text-ink font-bold">{system.memory.total_mb} MB</b></span>
+                    {system.memory.cached_mb > 0 && <span>Cache: <b className="text-ink font-bold">{system.memory.cached_mb} MB</b></span>}
                   </div>
                 </div>
 
-                <div className="bg-bg-4 rounded-xl p-3 space-y-2">
-                  <div className="flex items-center gap-2 mb-1">
-                    <HardDrive size={12} className="text-warn"/>
-                    <span className="text-[11px] font-semibold text-ink">Penyimpanan</span>
-                    <span className="ml-auto text-[10px] font-mono text-warn font-bold">{system.disk.percent}%</span>
+                <div className="bg-bg-4 border border-border/20 rounded-2xl p-4 space-y-3 shadow-inner">
+                  <div className="flex items-center gap-3 mb-1">
+                    <HardDrive size={18} className="text-warn"/>
+                    <span className="text-base font-bold text-ink uppercase tracking-tight">Penyimpanan</span>
+                    <span className="ml-auto text-sm font-mono text-warn font-bold">{system.disk.percent}%</span>
                   </div>
                   <Bar pct={system.disk.percent} color="bg-warn"/>
-                  <div className="grid grid-cols-2 gap-1 text-[10px] text-ink-3">
-                    <span>Digunakan: <b className="text-ink">{system.disk.used_gb} GB</b></span>
-                    <span>Tersedia: <b className="text-ink">{system.disk.free_gb} GB</b></span>
-                    <span>Total: <b className="text-ink">{system.disk.total_gb} GB</b></span>
+                  <div className="grid grid-cols-2 gap-2 text-xs text-ink-3 font-semibold uppercase tracking-tight">
+                    <span>Digunakan: <b className="text-ink font-bold">{system.disk.used_gb} GB</b></span>
+                    <span>Tersedia: <b className="text-ink font-bold">{system.disk.free_gb} GB</b></span>
+                    <span>Total: <b className="text-ink font-bold">{system.disk.total_gb} GB</b></span>
                   </div>
                 </div>
               </div>
@@ -582,26 +582,26 @@ export default function Analytics() {
       </div>
 
       {/* Media Management */}
-      <div className="bg-bg-3 border border-border rounded-xl p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+      <div className="bg-bg-3 border border-border-2 rounded-2xl p-6 shadow-lg">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <FolderOpen size={14} className="text-accent"/>
-              <span className="text-sm font-semibold text-ink">Manajemen Media</span>
+            <div className="flex items-center gap-3 mb-1">
+              <FolderOpen size={20} className="text-accent"/>
+              <span className="text-lg font-bold text-ink uppercase tracking-tight">Manajemen Media</span>
             </div>
-            <div className="text-[11px] text-ink-3">
+            <div className="text-xs text-ink-3 font-bold uppercase tracking-widest opacity-60">
               {mediaFiles.length} file · Total {formatBytes(mediaFiles.reduce((sum, file) => sum + (file.size_bytes || 0), 0))}
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={fetchMedia} disabled={mediaLoading} className="text-xs text-accent hover:underline disabled:opacity-50">
-              {mediaLoading ? 'Memuat...' : 'Refresh'}
+          <div className="flex gap-3">
+            <button onClick={fetchMedia} disabled={mediaLoading} className="text-sm text-accent hover:text-accent-2 disabled:opacity-50 font-bold uppercase tracking-tight transition-all">
+              {mediaLoading ? 'Memuat...' : 'Refresh List'}
             </button>
             {mediaFiles.length > 0 && (
               <button 
                 onClick={deleteAllMediaFiles} 
                 disabled={mediaLoading}
-                className="text-xs px-2 py-1 rounded bg-danger/10 hover:bg-danger/20 text-danger font-medium disabled:opacity-50"
+                className="text-xs px-4 py-2 rounded-xl bg-danger/10 hover:bg-danger/20 text-danger font-bold uppercase tracking-widest disabled:opacity-50 transition-all border border-danger/20 shadow-sm"
               >
                 Hapus Semua
               </button>
@@ -611,19 +611,19 @@ export default function Analytics() {
         {mediaFiles.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {mediaFiles.map((file) => (
-              <div key={file.filename} className="flex items-center justify-between p-2 bg-bg-4 rounded border border-border/50">
+              <div key={file.filename} className="flex items-center justify-between p-4 bg-bg-4 rounded-2xl border-2 border-border/50 hover:border-accent/30 hover:bg-bg-5 transition-all shadow-sm group">
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium text-ink truncate">{file.filename}</div>
-                  <div className="text-[10px] text-ink-3">
-                    {(file.size_bytes / 1024).toFixed(1)} KB • {new Date(file.modified * 1000).toLocaleDateString('id-ID')}
+                  <div className="text-base font-semibold text-ink truncate">{file.filename}</div>
+                  <div className="text-xs text-ink-3 font-bold uppercase tracking-tight opacity-70 mt-0.5">
+                    {(file.size_bytes / 1024).toFixed(1)} KB • {new Date(file.modified * 1000).toLocaleDateString('id-ID', { dateStyle: 'medium' })}
                   </div>
                 </div>
                 <button
                   onClick={() => deleteMediaFile(file.filename)}
-                  className="ml-2 p-1 text-danger hover:bg-danger/10 rounded"
+                  className="ml-3 p-2 text-danger hover:bg-danger/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
                   title="Hapus file"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={18} />
                 </button>
               </div>
             ))}
@@ -637,22 +637,22 @@ export default function Analytics() {
       </div>
 
       {storage && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {storage.components.map(comp => (
-            <div key={comp.id} className="bg-bg-4 border border-border rounded-xl p-3 space-y-2">
+            <div key={comp.id} className="bg-bg-4 border border-border-2 rounded-2xl p-5 space-y-3 shadow-md hover:border-accent/30 transition-all group">
               <div className="flex items-center justify-between">
-                <span className="text-lg">{comp.icon}</span>
-                <span className="text-xs font-mono font-bold text-ink">{comp.size}</span>
+                <span className="text-2xl group-hover:scale-110 transition-transform">{comp.icon}</span>
+                <span className="text-base font-mono font-bold text-ink bg-bg-2 px-2 py-1 rounded-lg border border-border/50 shadow-inner">{comp.size}</span>
               </div>
-              <div className="text-xs font-semibold text-ink">{comp.name}</div>
-              <div className="text-[10px] text-ink-3">{comp.desc}</div>
+              <div className="text-base font-bold text-ink uppercase tracking-tight">{comp.name}</div>
+              <div className="text-xs text-ink-3 font-semibold uppercase tracking-tight opacity-70 leading-relaxed">{comp.desc}</div>
               {comp.can_clean && (
                 <button 
                   onClick={() => handleCleanStorage(comp.id)}
                   disabled={cleaning[comp.id]}
-                  className="mt-2 text-[10px] text-accent hover:underline disabled:opacity-50"
+                  className="mt-3 text-xs text-accent hover:text-accent-2 disabled:opacity-50 font-bold uppercase tracking-widest transition-all p-2 rounded-lg hover:bg-bg-3 border border-border/30 w-full text-center"
                 >
-                  {cleaning[comp.id] ? 'Sedang membersihkan...' : 'Bersihkan'}
+                  {cleaning[comp.id] ? 'Sedang membersihkan...' : 'Bersihkan Storage'}
                 </button>
               )}
             </div>
@@ -662,61 +662,61 @@ export default function Analytics() {
 
       {/* ── Healing & Snapshots ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Self-Healing Log */}
-        <div className="bg-bg-3 border border-border rounded-xl overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-border bg-bg-2/30 space-y-3">
-            <div className="flex items-center gap-2">
-              <ShieldAlert size={14} className="text-success"/>
-              <span className="text-sm font-semibold text-ink">Self-Healing Engine</span>
+        {/* Self-Healing Engine */}
+        <div className="bg-bg-3 border border-border-2 rounded-2xl overflow-hidden flex flex-col shadow-lg">
+          <div className="px-5 py-4 border-b-2 border-border bg-bg-2/30 space-y-4">
+            <div className="flex items-center gap-3">
+              <ShieldAlert size={20} className="text-success"/>
+              <span className="text-base font-bold text-ink uppercase tracking-tight">Self-Healing Engine</span>
               {healingStatus && (
-                <span className={clsx("ml-auto text-[10px] px-2 py-0.5 rounded-full font-bold", 
-                  healingStatus.running ? "bg-success/10 text-success border border-success/20" : "bg-danger/10 text-danger border border-danger/20"
+                <span className={clsx("ml-auto text-xs px-3 py-1 rounded-full font-bold tracking-widest border shadow-sm", 
+                  healingStatus.running ? "bg-success/10 text-success border-success/30" : "bg-danger/10 text-danger border-danger/30"
                 )}>
                   {healingStatus.running ? "ACTIVE" : "STOPPED"}
                 </span>
               )}
             </div>
             
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               <button 
                 onClick={handleTriggerHealing}
                 disabled={triggerLoading}
-                className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded bg-accent/10 hover:bg-accent/20 text-accent font-bold border border-accent/20 disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 text-xs px-3 py-2.5 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase tracking-widest border border-accent/30 disabled:opacity-50 transition-all shadow-sm active:scale-95"
               >
-                <Activity size={11} className={triggerLoading ? "animate-spin" : ""}/>
-                {triggerLoading ? 'Checking...' : 'Trigger Check'}
+                <Activity size={14} className={triggerLoading ? "animate-spin" : ""}/>
+                {triggerLoading ? 'Checking...' : 'Check Status'}
               </button>
               
               <button 
                 onClick={handleTestTelegram}
                 disabled={telegramLoading}
-                className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold border border-blue-500/20 disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 text-xs px-3 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 font-bold uppercase tracking-widest border border-blue-500/30 disabled:opacity-50 transition-all shadow-sm active:scale-95"
               >
-                <Monitor size={11} className={telegramLoading ? "animate-spin" : ""}/>
-                {telegramLoading ? 'Sending...' : 'Test Telegram'}
+                <Monitor size={14} className={telegramLoading ? "animate-spin" : ""}/>
+                {telegramLoading ? 'Sending...' : 'Test Bot'}
               </button>
             </div>
 
             {telegramMsg && (
-              <div className={clsx("text-[10px] p-2 rounded", telegramMsg.ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger")}>
+              <div className={clsx("text-xs p-2 rounded font-medium", telegramMsg.ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger")}>
                 {telegramMsg.text}
               </div>
             )}
           </div>
           
-          <div className="p-2 max-h-72 overflow-y-auto space-y-1 flex-1">
+          <div className="p-3 max-h-96 overflow-y-auto space-y-2 flex-1 scrollbar-thin">
             {healingEvents.length > 0 ? (
               healingEvents.map((ev, i) => (
-                <div key={i} className="p-2 rounded bg-bg-4 border border-border/40 hover:bg-bg-5 transition-colors">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-bold text-accent-2">{ev.issue_type?.toUpperCase()}</span>
-                    <span className="text-[9px] text-ink-3">{new Date(ev.timestamp * 1000).toLocaleString()}</span>
+                <div key={i} className="p-4 rounded-2xl bg-bg-4 border-2 border-border/40 hover:border-success/30 transition-all shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-accent-2 uppercase tracking-widest">{ev.issue_type?.toUpperCase()}</span>
+                    <span className="text-[11px] text-ink-3 font-semibold uppercase tracking-tight opacity-60">{new Date(ev.timestamp * 1000).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
                   </div>
-                  <div className="text-[11px] text-ink-2 mb-1">{ev.description}</div>
-                  <div className="flex items-center gap-1 text-[9px]">
-                    <CheckCircle2 size={10} className={ev.success ? "text-success" : "text-danger"}/>
-                    <span className="text-ink-3">Action:</span>
-                    <span className={clsx("font-medium", ev.success ? "text-success" : "text-danger")}>{ev.action_taken}</span>
+                  <div className="text-sm text-ink-2 mb-2 font-semibold leading-relaxed">{ev.description}</div>
+                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest">
+                    <CheckCircle2 size={14} className={ev.success ? "text-success" : "text-danger"}/>
+                    <span className="text-ink-3 opacity-60">Action:</span>
+                    <span className={clsx("font-bold", ev.success ? "text-success" : "text-danger")}>{ev.action_taken}</span>
                   </div>
                 </div>
               ))
@@ -726,28 +726,28 @@ export default function Analytics() {
           </div>
         </div>
 
-        {/* AI Snapshots */}
-        <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-bg-2/30">
-            <RotateCcw size={14} className="text-accent"/>
-            <span className="text-sm font-semibold text-ink">AI Snapshots (Git)</span>
+        {/* AI Snapshots (Git) */}
+        <div className="bg-bg-3 border border-border-2 rounded-2xl overflow-hidden flex flex-col shadow-lg">
+          <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-border bg-bg-2/30">
+            <RotateCcw size={20} className="text-accent"/>
+            <span className="text-base font-bold text-ink uppercase tracking-tight">AI Snapshots (Git)</span>
             <button 
               onClick={handleRollback}
               disabled={rollbackLoading || snapshots.length === 0}
-              className="ml-auto text-[10px] px-2 py-0.5 rounded bg-accent/10 hover:bg-accent/20 text-accent font-bold border border-accent/20 disabled:opacity-40"
+              className="ml-auto text-xs px-3 py-2 rounded-xl bg-accent/10 hover:bg-accent/20 text-accent font-bold uppercase tracking-widest border border-accent/30 disabled:opacity-40 transition-all shadow-sm active:scale-95"
             >
-              {rollbackLoading ? 'Rolling back...' : 'Rollback Terakhir'}
+              {rollbackLoading ? 'Rolling back...' : 'Rollback'}
             </button>
           </div>
-          <div className="p-2 max-h-72 overflow-y-auto space-y-1">
+          <div className="p-3 max-h-96 overflow-y-auto space-y-2 flex-1 scrollbar-thin">
             {snapshots.length > 0 ? (
               snapshots.map((s, i) => (
-                <div key={i} className="p-2 rounded bg-bg-4 border border-border/40 hover:bg-bg-5 transition-colors group">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[10px] font-mono text-ink-3">{s.hash?.slice(0, 7)}</span>
-                    <span className="text-[9px] text-ink-3">{s.time}</span>
+                <div key={i} className="p-4 rounded-2xl bg-bg-4 border-2 border-border/40 hover:border-accent/30 transition-all group shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-mono text-accent-2 font-bold border border-accent/20 px-1.5 py-0.5 rounded-lg bg-bg-2 shadow-inner">{s.hash?.slice(0, 7)}</span>
+                    <span className="text-[11px] text-ink-3 font-semibold uppercase tracking-tight opacity-60">{s.time}</span>
                   </div>
-                  <div className="text-[11px] text-ink font-medium truncate" title={s.message}>{s.message}</div>
+                  <div className="text-sm text-ink font-bold leading-relaxed truncate" title={s.message}>{s.message}</div>
                 </div>
               ))
             ) : (

@@ -86,19 +86,24 @@ export default function App() {
     <Suspense fallback={
       <div style={{
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         height: '100vh',
-        background: '#0a0b0f',
-        color: '#64c8ff',
-        fontFamily: 'monospace'
+        background: 'var(--bg, #0a0b0f)',
+        color: 'var(--accent-2, #64c8ff)',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        gap: '1rem'
       }}>
-        ⏳ Memuat aplikasi...
+        <div style={{ fontSize: '2.5rem', animation: 'pulse 2s infinite' }}>🤖</div>
+        <div style={{ fontSize: '1.125rem', fontWeight: '800', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+          ⏳ Memuat AI Orchestrator...
+        </div>
       </div>
     }>
       <BrowserRouter>
         <Toaster position="top-right" toastOptions={{
-          style: { background: '#16181f', color: '#d4d8f0', border: '1px solid rgba(100,120,255,0.2)' },
+          style: { background: 'var(--bg-3)', color: 'var(--ink)', border: '1px solid var(--border-2)' },
         }}/>
         <Routes>
           <Route path="/login" element={<Login/>}/>

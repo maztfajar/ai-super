@@ -51,48 +51,48 @@ function CodeBlock({ language, code, onOpenArtifact }) {
   }
 
   return (
-    <div className="code-block-wrapper relative my-2 rounded-xl overflow-hidden border border-border-2 bg-bg-3">
+    <div className="code-block-wrapper relative my-4 rounded-2xl overflow-hidden border-2 border-border-2 bg-bg-3 shadow-lg">
       {/* Header bar */}
       <div 
-        className="flex items-center justify-between px-3 py-1.5 border-b border-border-2 bg-bg-4 cursor-pointer hover:bg-bg-5 transition-colors"
+        className="flex items-center justify-between px-4 py-2 border-b-2 border-border-2 bg-bg-4 cursor-pointer hover:bg-bg-5 transition-all"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-2">
-          {isExpanded ? <ChevronDown size={14} className="text-ink-3" /> : <ChevronRight size={14} className="text-ink-3" />}
-          <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', langColor)}>
+        <div className="flex items-center gap-3">
+          {isExpanded ? <ChevronDown size={18} className="text-ink-3" /> : <ChevronRight size={18} className="text-ink-3" />}
+          <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded border-2 shadow-sm', langColor)}>
             {language || 'code'}
           </span>
           {!isExpanded && (
-            <span className="text-[10px] text-ink-3">({lines} baris)</span>
+            <span className="text-[10px] text-ink-3 font-bold uppercase tracking-widest opacity-60">({lines} baris)</span>
           )}
         </div>
-        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
           {isLong && onOpenArtifact && (
             <button
               onClick={() => onOpenArtifact(code, language || 'txt')}
-              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all border border-transparent hover:border-accent/20"
+              className="flex items-center gap-2 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border-2 border-transparent hover:border-accent/20 bg-bg-3 shadow-sm"
               style={{ color: 'var(--accent-2)' }}
               title="Buka di Artifacts Panel"
             >
-              <ExternalLink size={9} />
+              <ExternalLink size={12} />
               <span>Artifacts</span>
             </button>
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] transition-all border border-transparent hover:border-border-2"
-            style={{ color: copied ? 'var(--success)' : '#6e7681' }}
+            className="flex items-center gap-2 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border-2 border-transparent hover:border-border-2 bg-bg-3 shadow-sm"
+            style={{ color: copied ? 'var(--success)' : 'var(--ink-3)' }}
             title="Copy kode"
           >
-            {copied ? <Check size={9} /> : <Copy size={9} />}
+            {copied ? <Check size={12} /> : <Copy size={12} />}
             <span>{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
       </div>
       {/* Code content — automatically adapts to light/dark themes via CSS vars */}
       {isExpanded && (
-        <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none">
-          <code className="text-inherit bg-transparent p-0">{code}</code>
+        <pre className="p-5 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none shadow-inner">
+          <code className="text-inherit bg-transparent p-0 font-semibold">{code}</code>
         </pre>
       )}
     </div>
@@ -207,21 +207,21 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
       {/* Icon + connector line */}
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
         <div style={{
-          width: 28, height: 28, borderRadius: '50%',
-          background: s.bg, border: `1.5px solid ${s.border}`,
+          width: 32, height: 32, borderRadius: '10px',
+          background: s.bg, border: `2px solid ${s.border}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.3s',
+          transition: 'all 0.3s', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
         }}>
           <i
             className={`ti ti-${icon}`}
             style={{
-              fontSize: 12, color: s.text,
+              fontSize: 16, color: s.text,
               animation: spinning ? '_sp-spin 1.2s linear infinite' : 'none',
             }}
           />
         </div>
         {!isLast && (
-          <div style={{ width: 1.5, flex: 1, minHeight: 8, background: 'rgba(255,255,255,0.07)', margin: '3px 0' }} />
+          <div style={{ width: 2, flex: 1, minHeight: 12, background: 'var(--border)', margin: '4px 0', opacity: 0.5 }} />
         )}
       </div>
 
@@ -231,34 +231,37 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
         <div
           onClick={() => setOpen(o => !o)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-            padding: '5px 8px', borderRadius: 8, cursor: 'pointer',
-            transition: 'background 0.15s',
+            display: 'flex', alignItems: 'center', gap: 10,
+            padding: '8px 12px', borderRadius: 12, cursor: 'pointer',
+            transition: 'all 0.2s', border: '1px solid transparent',
           }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-5)'; e.currentTarget.style.borderColor = 'var(--border-2)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
         >
           {/* Status badge */}
           <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            fontSize: 10, fontWeight: 700,
-            padding: '2px 8px', borderRadius: 99, flexShrink: 0,
-            background: s.bg, border: `1px solid ${s.border}`, color: s.text,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            fontSize: 10, fontWeight: 900,
+            padding: '3px 10px', borderRadius: 99, flexShrink: 0,
+            background: s.bg, border: `2px solid ${s.border}`, color: s.text,
             animation: spinning ? '_sp-pulse 1.5s ease-in-out infinite' : 'none',
-            letterSpacing: '0.3px',
+            letterSpacing: '1px', textTransform: 'uppercase',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
           }}>
             <span style={{
-              width: 5, height: 5, borderRadius: '50%', background: s.dot,
+              width: 6, height: 6, borderRadius: '50%', background: s.dot,
               animation: spinning ? '_sp-pulse 1.2s ease-in-out infinite' : 'none',
+              boxShadow: `0 0 8px ${s.dot}`,
             }} />
             {s.label}
           </span>
 
           {/* Detail label */}
           <span style={{
-            fontSize: 12.5, fontWeight: isActive ? 500 : 400,
+            fontSize: 13, fontWeight: 900,
             color: isActive ? 'var(--color-text-primary, #ddd)' : 'var(--color-text-secondary, #aaa)',
             flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            textTransform: 'uppercase', letterSpacing: '0.5px', opacity: isActive ? 1 : 0.7,
           }}>
             {step.detail || step.action}
           </span>
@@ -266,10 +269,10 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
           {/* Language pill */}
           {step.language && (
             <span style={{
-              fontSize: 9, fontFamily: 'var(--font-mono, monospace)', fontWeight: 700,
-              padding: '1px 6px', borderRadius: 4,
-              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-              color: 'var(--color-text-tertiary, #777)', flexShrink: 0,
+              fontSize: 9, fontFamily: 'var(--font-mono, monospace)', fontWeight: 900,
+              padding: '2px 8px', borderRadius: 6,
+              background: 'var(--bg-4)', border: '2px solid var(--border-2)',
+              color: 'var(--ink-3)', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.5px',
             }}>
               {step.language}
             </span>
@@ -291,8 +294,8 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
           <i
             className="ti ti-chevron-down"
             style={{
-              fontSize: 12, color: 'var(--color-text-tertiary, #555)', flexShrink: 0,
-              transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none',
+              fontSize: 16, color: 'var(--color-text-tertiary, #555)', flexShrink: 0,
+              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)', transform: open ? 'rotate(180deg)' : 'none',
               opacity: open ? 1 : 0.5,
             }}
           />
@@ -300,55 +303,58 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
 
         {/* Expandable detail panel */}
         <div style={{
-          overflow: 'hidden', maxHeight: open ? 400 : 0,
-          transition: 'max-height 0.28s ease',
+          overflow: 'hidden', maxHeight: open ? 600 : 0,
+          transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
           <div style={{
-            margin: '5px 4px 6px 4px',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 8,
-            background: 'rgba(0,0,0,0.25)',
+            margin: '8px 4px 10px 4px',
+            border: '2px solid var(--border)',
+            borderRadius: 16,
+            background: 'var(--bg-3)',
             overflow: 'hidden',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}>
             {/* Detail header */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '6px 12px',
-              background: 'rgba(255,255,255,0.03)',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              padding: '8px 16px',
+              background: 'var(--bg-4)',
+              borderBottom: '2px solid var(--border)',
             }}>
-              <span style={{ fontSize: 9, color: s.text, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <i className={`ti ti-${icon}`} style={{ fontSize: 10 }} />
+              <span style={{ fontSize: 10, color: s.text, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className={`ti ti-${icon}`} style={{ fontSize: 12 }} />
                 {step.action}
               </span>
               <button
                 onClick={handleCopy}
                 style={{
-                  padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.1)',
-                  background: 'transparent', cursor: 'pointer', fontSize: 10,
-                  color: 'var(--color-text-tertiary, #666)',
+                  padding: '4px 10px', borderRadius: 8, border: '2px solid var(--border-2)',
+                  background: 'var(--bg-3)', cursor: 'pointer', fontSize: 10, fontWeight: 900,
+                  color: 'var(--ink-3)', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.5px',
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-5)'; e.currentTarget.style.borderColor = 'var(--accent-2)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.borderColor = 'var(--border-2)' }}
               >
-                <i className="ti ti-copy" style={{ fontSize: 11 }} />
+                <i className="ti ti-copy" style={{ fontSize: 12, marginRight: 4 }} />
+                Copy
               </button>
             </div>
 
             {/* Code/content area */}
             <pre style={{
-              padding: '10px 14px', margin: 0,
-              fontSize: 11.5, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1.6,
-              color: 'var(--color-text-secondary, #bbb)',
+              padding: '16px 20px', margin: 0,
+              fontSize: 12, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1.7,
+              color: 'var(--color-text-secondary, #bbb)', fontWeight: 700,
               overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              maxHeight: 280, overflowY: 'auto',
+              maxHeight: 350, overflowY: 'auto', background: 'rgba(0,0,0,0.1)',
             }}>
               {getContent()}
               {isActive && step._isLiveThinking && (
                 <span style={{
-                  display: 'inline-block', width: 6, height: 13,
+                  display: 'inline-block', width: 8, height: 16,
                   background: '#a78bfa', animation: '_sp-pulse 1s ease-in-out infinite',
-                  verticalAlign: 'middle', marginLeft: 2, borderRadius: 2,
+                  verticalAlign: 'middle', marginLeft: 4, borderRadius: 2,
+                  boxShadow: '0 0 8px rgba(167,139,250,0.5)',
                 }} />
               )}
             </pre>
@@ -356,8 +362,8 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
             {/* Open in Artifacts button for Written steps */}
             {step.action === 'Written' && step.code && onOpenArtifactCard && (
               <div style={{
-                padding: '6px 12px', borderTop: '1px solid rgba(255,255,255,0.06)',
-                background: 'rgba(255,255,255,0.02)', textAlign: 'right',
+                padding: '8px 16px', borderTop: '2px solid var(--border)',
+                background: 'var(--bg-4)', textAlign: 'right',
               }}>
                 <button
                   onClick={(e) => {
@@ -369,13 +375,17 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
                     )
                   }}
                   style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '5px 12px', borderRadius: 7,
-                    background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.35)',
-                    color: '#a78bfa', fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '6px 16px', borderRadius: 10,
+                    background: 'rgba(139,92,246,0.2)', border: '2px solid rgba(139,92,246,0.4)',
+                    color: '#a78bfa', fontSize: 11, fontWeight: 900, cursor: 'pointer',
+                    textTransform: 'uppercase', letterSpacing: '1px', transition: 'all 0.2s',
+                    boxShadow: '0 4px 8px rgba(139,92,246,0.2)',
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.3)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.2)'; e.currentTarget.style.transform = 'translateY(0)' }}
                 >
-                  <i className="ti ti-external-link" style={{ fontSize: 11 }} />
+                  <i className="ti ti-external-link" style={{ fontSize: 13 }} />
                   Buka di Artifacts
                 </button>
               </div>
@@ -428,14 +438,14 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
       <div style={{ marginBottom: 20, marginTop: 4 }} className="animate-fade">
         {/* ── Collapsible toggle header ── */}
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: open ? 12 : 0, cursor: 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: open ? 16 : 0, cursor: 'pointer' }}
           onClick={() => setOpen(o => !o)}
         >
           <i
             className={`ti ti-chevron-down`}
             style={{
-              fontSize: 14, color: 'var(--color-text-tertiary, #777)',
-              transition: 'transform 0.2s', transform: open ? 'none' : 'rotate(-90deg)',
+              fontSize: 18, color: 'var(--color-text-tertiary, #777)',
+              transition: 'transform 0.3s', transform: open ? 'none' : 'rotate(-90deg)',
             }}
           />
 
@@ -443,40 +453,34 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
           <i
             className={`ti ti-${hasError ? 'alert-circle' : isStreaming ? 'loader-2' : 'circle-check'}`}
             style={{
-              fontSize: 13,
+              fontSize: 16,
               color: hasError ? '#f87171' : isStreaming ? '#a78bfa' : '#4ade80',
               animation: isStreaming ? '_sp-spin 1.2s linear infinite' : 'none',
+              filter: isStreaming ? 'drop-shadow(0 0 8px rgba(167,139,250,0.5))' : 'none',
             }}
           />
 
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text-secondary, #ccc)', flex: 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--color-text-secondary, #ccc)', flex: 1, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {headerLabel}
           </span>
 
           {/* Step counter pill */}
-          <span style={{
-            fontSize: 10, padding: '2px 8px', borderRadius: 99,
-            background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-            color: 'var(--color-text-tertiary, #777)',
-          }}>
-            {doneCount} / {steps.length}
+          <span className="text-[10px] px-3 py-1 rounded-full bg-bg-3 border-2 border-border text-ink-3 font-bold uppercase tracking-widest shadow-sm">
+            {doneCount} / {steps.length} langkah
           </span>
 
           {/* Elapsed timer */}
           <_ElapsedBadge active={isStreaming} />
 
           {isStreaming && (
-            <i className="ti ti-loader-2" style={{ fontSize: 12, color: '#a78bfa', animation: '_sp-spin 1s linear infinite', marginLeft: 2 }} />
+            <i className="ti ti-loader-2" style={{ fontSize: 16, color: '#a78bfa', animation: '_sp-spin 1s linear infinite', marginLeft: 4 }} />
           )}
         </div>
 
         {/* ── Steps list ── */}
         {open && (
-          <div style={{
-            marginLeft: 7, paddingLeft: 20,
-            borderLeft: '1.5px solid rgba(255,255,255,0.07)',
-          }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div className="ml-2 pl-6 border-l-2 border-border/50">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {steps.map((step, i) => (
                 <_Step
                   key={i}
@@ -493,10 +497,10 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
 
             {/* ── Stale / Stop indicators (unchanged from original) ── */}
             {isStreaming && (staleSeconds >= 8 || onStop) && (
-              <div style={{ marginTop: 14, marginLeft: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ marginTop: 20, marginLeft: 10, display: 'flex', alignItems: 'center', gap: 16 }}>
                 {staleSeconds >= 8 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#fbbf24', fontWeight: 500 }}>
-                    <i className="ti ti-loader-2" style={{ animation: '_sp-spin 1s linear infinite', fontSize: 12 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#fbbf24', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <i className="ti ti-loader-2" style={{ animation: '_sp-spin 1s linear infinite', fontSize: 14 }} />
                     Menunggu pemrosesan tool... ({staleSeconds}s)
                   </div>
                 )}
@@ -505,15 +509,18 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
                     data-allow-propagation="true"
                     onClick={(e) => { e.stopPropagation(); onStop() }}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 5,
-                      padding: '4px 10px', borderRadius: 7,
-                      background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.30)',
-                      color: '#f87171', fontSize: 10.5, fontWeight: 700,
-                      cursor: 'pointer', letterSpacing: '0.5px',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '6px 16px', borderRadius: 10,
+                      background: 'rgba(248,113,113,0.15)', border: '2px solid rgba(248,113,113,0.40)',
+                      color: '#f87171', fontSize: 11, fontWeight: 900,
+                      cursor: 'pointer', letterSpacing: '1px', textTransform: 'uppercase',
+                      transition: 'all 0.2s', boxShadow: '0 4px 8px rgba(248,113,113,0.2)',
                     }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.25)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.15)'; e.currentTarget.style.transform = 'translateY(0)' }}
                   >
-                    <i className="ti ti-square-filled" style={{ fontSize: 9 }} />
-                    HENTIKAN
+                    <i className="ti ti-square-filled" style={{ fontSize: 10 }} />
+                    HENTIKAN EKSEKUSI
                   </button>
                 )}
               </div>
@@ -564,104 +571,104 @@ function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
   const lines     = isAppPreview ? 0 : localCode.split('\n').length
 
   return (
-    <div className="flex flex-col border-l border-border bg-bg-2 animate-slide-in-right" style={{ width: '48%', flexShrink: 0 }}>
+    <div className="flex flex-col border-l-2 border-border bg-bg-2 animate-slide-in-right shadow-2xl" style={{ width: '48%', flexShrink: 0 }}>
       {/* Header */}
-      <div className="h-12 border-b border-border flex items-center px-3 gap-2 flex-shrink-0 bg-bg-3">
+      <div className="h-14 border-b-2 border-border flex items-center px-4 gap-3 flex-shrink-0 bg-bg-3">
         {isAppPreview
-          ? <span className="text-base flex-shrink-0">🚀</span>
-          : <FileCode2 size={14} className="text-accent-2 flex-shrink-0" />}
-        <span className="text-xs font-medium text-ink truncate flex-1">{title || filename}</span>
+          ? <span className="text-xl flex-shrink-0">🚀</span>
+          : <FileCode2 size={20} className="text-accent-2 flex-shrink-0" />}
+        <span className="text-sm font-bold text-ink truncate flex-1 uppercase tracking-tight">{title || filename}</span>
 
         {/* Running indicator for app previews */}
         {isAppPreview && (
-          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/15 border border-success/25 text-success text-[10px] font-semibold flex-shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+          <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-success/15 border-2 border-success/30 text-success text-[10px] font-bold uppercase tracking-widest flex-shrink-0 shadow-sm">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse shadow-lg" />
             Running
           </span>
         )}
 
         {!isAppPreview && (
           <>
-            <span className={clsx('text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border flex-shrink-0', langColor)}>
+            <span className={clsx('text-[10px] font-mono font-bold px-2 py-0.5 rounded border-2 flex-shrink-0 uppercase tracking-widest shadow-sm', langColor)}>
               {language || 'txt'}
             </span>
-            <span className="text-[10px] text-ink-3 flex-shrink-0">{lines} baris</span>
+            <span className="text-[10px] text-ink-3 font-bold uppercase tracking-widest flex-shrink-0 opacity-60">{lines} baris</span>
           </>
         )}
 
-        <div className="flex items-center gap-0.5 flex-shrink-0">
+        <div className="flex items-center gap-1 flex-shrink-0">
           {/* Reload — for app previews */}
           {isAppPreview && (
             <button
               onClick={() => setIframeKey(k => k + 1)}
-              className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+              className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
               title="Reload aplikasi"
             >
-              <RefreshCw size={13} className="text-ink-3" />
+              <RefreshCw size={18} />
             </button>
           )}
           {/* Open in new tab — for app previews */}
           {isAppPreview && (
             <button
               onClick={() => window.open(localCode, '_blank')}
-              className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+              className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
               title="Buka di tab baru"
             >
-              <ExternalLink size={13} className="text-ink-3" />
+              <ExternalLink size={18} />
             </button>
           )}
           <button
             onClick={handleCopy}
-            className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+            className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
             title={isAppPreview ? 'Copy URL' : 'Copy semua'}
           >
-            {copied ? <Check size={13} className="text-success" /> : <Copy size={13} className="text-ink-3" />}
+            {copied ? <Check size={18} className="text-success" /> : <Copy size={18} />}
           </button>
           {!isAppPreview && (
             <button
               onClick={handleDownload}
-              className="p-1.5 rounded-lg hover:bg-bg-4 transition-colors"
+              className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
               title={`Download ${filename}`}
             >
-              <Download size={13} className="text-ink-3" />
+              <Download size={18} />
             </button>
           )}
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-danger/10 hover:text-danger transition-colors"
+            className="p-2 rounded-xl hover:bg-danger/10 hover:text-danger transition-all text-ink-3 shadow-sm border border-transparent hover:border-danger/30"
             title="Tutup panel"
           >
-            <X size={13} className="text-ink-3" />
+            <X size={18} />
           </button>
         </div>
       </div>
 
       {/* URL bar for app previews */}
       {isAppPreview && (
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border bg-bg-3 flex-shrink-0">
-          <span className="text-[10px] text-ink-3 flex-shrink-0">URL:</span>
-          <span className="flex-1 text-[11px] font-mono text-accent-2 truncate">{localCode}</span>
+        <div className="flex items-center gap-3 px-4 py-2 border-b-2 border-border bg-bg-3 flex-shrink-0 shadow-inner">
+          <span className="text-[10px] text-ink-3 flex-shrink-0 font-bold uppercase tracking-widest opacity-60">URL:</span>
+          <span className="flex-1 text-[11px] font-mono text-accent-2 truncate font-bold">{localCode}</span>
           <button
             onClick={() => window.open(localCode, '_blank')}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 text-[10px] font-medium transition-all flex-shrink-0"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border-2 border-accent/20 text-accent-2 text-[10px] font-bold uppercase tracking-widest transition-all flex-shrink-0 shadow-sm active:scale-95"
           >
-            <ExternalLink size={9} /> Buka
+            <ExternalLink size={12} /> Buka
           </button>
         </div>
       )}
 
       {/* Tabs — for HTML/SVG code artifacts */}
       {isHtml && !isAppPreview && (
-        <div className="flex border-b border-border flex-shrink-0">
+        <div className="flex border-b-2 border-border flex-shrink-0 bg-bg-3 p-1">
           {['preview', 'code'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={clsx(
-                'flex-1 py-2 text-xs font-medium capitalize transition-colors',
+                'flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-all rounded-xl',
                 activeTab === tab
-                  ? 'text-accent-2 border-b-2 border-accent-2 bg-accent/5'
-                  : 'text-ink-3 hover:text-ink hover:bg-bg-3'
+                  ? 'text-accent-2 bg-accent/10 shadow-inner'
+                  : 'text-ink-3 hover:text-ink hover:bg-bg-4'
               )}
             >
               {tab === 'preview' ? '👁 Preview' : '{ } Code'}
@@ -682,11 +689,11 @@ function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
           onError={() => setAppOnline(false)}
         />
       ) : (
-        <div className="flex-1 overflow-auto flex flex-col">
+        <div className="flex-1 overflow-auto flex flex-col bg-bg-4">
           <textarea
             value={localCode}
             onChange={(e) => setLocalCode(e.target.value)}
-            className="flex-1 w-full p-4 font-mono text-[12.5px] leading-relaxed text-ink-2 bg-transparent border-none resize-none focus:outline-none focus:ring-0"
+            className="flex-1 w-full p-6 font-mono text-[13px] leading-relaxed text-ink-2 bg-transparent border-none resize-none focus:outline-none focus:ring-0 font-semibold shadow-inner"
             spellCheck="false"
             style={{ minHeight: '100%' }}
           />
@@ -774,37 +781,37 @@ function SaveFileDialog({ filename, content, onClose }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-bg-2 border border-border rounded-2xl w-[500px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl animate-slide-in-up">
+      <div className="bg-bg-2 border-2 border-border rounded-3xl w-[500px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl animate-slide-in-up overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Download size={18} className="text-accent-2" />
-            <span className="text-sm font-semibold text-ink">Simpan File</span>
+        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-border bg-bg-3">
+          <div className="flex items-center gap-3">
+            <Download size={22} className="text-accent-2" />
+            <span className="text-lg font-bold text-ink uppercase tracking-tight">Simpan File</span>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-bg-4 transition-colors">
-            <X size={16} className="text-ink-3" />
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-danger/10 hover:text-danger transition-all text-ink-3 shadow-sm border border-transparent hover:border-danger/30">
+            <X size={20} />
           </button>
         </div>
 
         {/* Filename */}
-        <div className="px-5 py-3 border-b border-border/50">
-          <label className="text-[11px] text-ink-3 uppercase tracking-wider font-medium mb-1.5 block">Nama File</label>
+        <div className="px-6 py-4 border-b-2 border-border/50 bg-bg-4 shadow-inner">
+          <label className="text-[10px] text-ink-3 uppercase tracking-widest font-bold mb-2 block opacity-60">Nama File</label>
           <input
             value={customFilename}
             onChange={e => setCustomFilename(e.target.value)}
-            className="w-full px-3 py-2 bg-bg-3 border border-border rounded-lg text-sm text-ink font-mono focus:outline-none focus:border-accent"
+            className="w-full px-4 py-3 bg-bg-2 border-2 border-border rounded-xl text-sm text-ink font-mono font-bold focus:outline-none focus:border-accent transition-all shadow-sm"
           />
         </div>
 
         {/* Directory Browser */}
-        <div className="px-5 py-3 flex-1 overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-[11px] text-ink-3 uppercase tracking-wider font-medium block">Direktori Tujuan</label>
+        <div className="px-6 py-4 flex-1 overflow-hidden flex flex-col bg-bg-2">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[10px] text-ink-3 uppercase tracking-widest font-bold block opacity-60">Direktori Tujuan</label>
             <button
               onClick={() => setShowNewFolder(!showNewFolder)}
-              className="text-[10px] flex items-center gap-1 font-medium text-accent-2 hover:text-accent-2/80 transition-colors"
+              className="text-[10px] flex items-center gap-2 font-bold text-accent-2 hover:text-accent-2/80 transition-all uppercase tracking-widest"
             >
-              <Plus size={12} /> Buat Folder
+              <Plus size={14} /> Buat Folder
             </button>
           </div>
           
@@ -1090,21 +1097,21 @@ function ArtifactCard({ artifact, onOpen }) {
 
   return (
     <div
-      className="artifact-card my-3 cursor-pointer animate-slide-in-up hover:animate-artifact-glow"
+      className="mt-4 border-[0.5px] border-border rounded-2xl overflow-hidden bg-bg-2 hover:border-accent/50 transition-all cursor-pointer shadow-sm group animate-slide-in-up"
       onClick={() => onOpen(artifact)}
     >
       {/* Header */}
-      <div className="artifact-card-header">
-        <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0', meta.bg)}>
-          <ArtIcon size={14} className={meta.color} />
+      <div className="flex items-center gap-3 px-4 py-3 bg-bg-3/50 border-b-[0.5px] border-border">
+        <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0', meta.bg)}>
+          <ArtIcon size={16} className={meta.color} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-xs font-semibold text-ink truncate">{artifact.title}</div>
+          <div className="text-[13px] font-semibold text-ink truncate">{artifact.title}</div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className={clsx('text-[9px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', meta.bg, meta.color, meta.border)}>
+            <span className={clsx('text-[10px] font-mono font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded border-[0.5px]', meta.bg, meta.color, meta.border)}>
               {artifact.language || 'txt'}
             </span>
-            <span className="text-[10px] text-ink-3">{lines.length} baris</span>
+            <span className="text-[10px] text-ink-3">{lines.length} lines</span>
             {isPreviewable && (
               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">
                 ✦ Live Preview
@@ -1339,10 +1346,10 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
 
       <div className={clsx('max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] flex flex-col', isUser ? 'items-end' : 'items-start')}>
         <div className={clsx(
-          'px-3.5 py-2.5 rounded-xl text-sm relative',
+          'px-4 py-3 rounded-2xl text-[15px] leading-relaxed relative border-[0.5px]',
           isUser
-            ? 'bg-accent text-white rounded-tr-sm'
-            : 'bg-bg-4 border border-border text-ink rounded-tl-sm'
+            ? 'bg-accent text-white border-accent shadow-sm'
+            : 'bg-bg-2 border-border text-ink shadow-sm'
         )}>
           {/* Tampilkan gambar jika ada */}
           {isUser && msg._image_preview && (
@@ -1614,7 +1621,7 @@ function DragOverlay({ isVisible }) {
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm border-2 border-dashed border-accent m-4 rounded-2xl animate-fade">
       <div className="flex flex-col items-center p-6 bg-bg-3 border border-accent/20 rounded-xl shadow-2xl">
         <div className="text-4xl mb-2 animate-bounce">📂</div>
-        <p className="text-sm font-bold text-ink">Lepaskan file di sini</p>
+        <p className="text-sm font-semibold text-ink">Lepaskan file di sini</p>
         <p className="text-xs text-ink-3 mt-1 text-center">
           PDF, DOCX, XLSX, CSV, TXT, Gambar
         </p>
@@ -1868,6 +1875,23 @@ export default function Chat() {
     }).catch(() => {})
   }, [sessionsLoaded])
 
+  // Sinkronisasi data ketika URL berubah (misal diklik dari sidebar)
+  useEffect(() => {
+    if (!sessionsLoaded) return
+    if (!urlSessionId) {
+      if (currentSession?.id) {
+        setCurrentSession(null)
+        clearMessages()
+      }
+      return
+    }
+    // Jika URL berubah dan tidak sama dengan session yang sedang aktif
+    if (currentSession?.id !== urlSessionId) {
+      const found = sessions.find(s => s.id === urlSessionId) || { id: urlSessionId }
+      loadSession(found)
+    }
+  }, [urlSessionId, sessionsLoaded, currentSession?.id, sessions])
+
   async function loadSession(session) {
     // Guard: jangan ganggu saat streaming aktif
     if (useChatStore.getState().streaming) return
@@ -2068,7 +2092,21 @@ export default function Chat() {
     const text = input.trim()
     let imageToSend = pendingImage
     if (!text && !imageToSend && attachedFiles.length === 0) return
-    if (!currentSession) { await newSession(); return }
+    
+    let activeSession = currentSession
+    if (!activeSession) { 
+      try {
+        activeSession = await api.createSession('New Chat')
+        const updated = await api.listSessions()
+        setSessions(updated)
+        setCurrentSession(activeSession)
+        setMessages([])
+        navigate(`/chat/${activeSession.id}`, { replace: true })
+      } catch { 
+        toast.error('Gagal membuat sesi baru')
+        return
+      }
+    }
 
     // If agent is currently streaming, interrupt it first then send new message
     // This allows the user to answer agent questions mid-stream
@@ -2127,7 +2165,7 @@ export default function Chat() {
       toast.dismiss("extract-file")
     }
 
-    const sessionId = currentSession?.id || `new-${Date.now()}`
+    const sessionId = activeSession.id
 
     setInput('')
     setActualModel(null)
@@ -2598,59 +2636,10 @@ export default function Chat() {
   return (
     <div className="flex w-full h-full relative">
       
-      {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div 
-          className="absolute inset-0 bg-black/50 z-40 md:hidden animate-fade"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sessions sidebar */}
-      <div className={clsx(
-        "w-52 md:w-52 flex-shrink-0 border-r border-border bg-bg-2 flex-col transition-all duration-300 z-50 h-full",
-        sidebarOpen ? "flex absolute shadow-2xl" : "hidden md:flex relative"
-      )}>
-        <div className="p-3 border-b border-border flex items-center justify-between">
-          <button
-            onClick={() => { newSession(); setSidebarOpen(false); }}
-            disabled={isCurrentSessionEmpty}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            title={isCurrentSessionEmpty ? 'Sesi ini masih kosong, mulai chat dulu!' : 'Buat sesi chat baru'}
-          >
-            <Plus size={13} /> New Chat
-          </button>
-          
-          <button 
-            className="ml-2 md:hidden p-1.5 rounded-lg text-ink-3 hover:bg-bg-4"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-2">
-          {filteredSessions.length === 0 && (
-            <p className="text-xs text-ink-3 text-center py-6">
-              Belum ada sesi.<br />Buat chat pertama!
-            </p>
-          )}
-          {filteredSessions.map((s) => (
-            <SessionItem
-              key={s.id}
-              session={s}
-              active={currentSession?.id === s.id}
-              onClick={() => { loadSession(s); navigate(`/chat/${s.id}`); setSidebarOpen(false); }}
-              onDelete={deleteSession}
-            />
-          ))}
-        </div>
-      </div>
-
       {/* Chat area */}
       <div 
         className={clsx(
-          'flex flex-col min-w-0 transition-all duration-300 relative',
+          'flex flex-col min-w-0 transition-all duration-300 relative bg-bg',
           artifact.open ? 'w-1/2 flex-1' : 'w-full flex-1'
         )}
         {...dragHandlers}
@@ -2658,14 +2647,7 @@ export default function Chat() {
         <DragOverlay isVisible={isDragOver} />
 
         {/* Topbar */}
-        <div className="h-12 border-b border-border flex items-center px-4 gap-3 flex-shrink-0 bg-bg-2">
-          {/* Hamburger Menu for Mobile */}
-          <button 
-            className="md:hidden p-1.5 -ml-1.5 rounded-lg text-ink-3 hover:text-ink hover:bg-bg-4 transition-colors"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu size={18} />
-          </button>
+        <div className="h-12 border-b-[0.5px] border-border flex items-center px-6 gap-3 flex-shrink-0 bg-bg">
           
           <span className="text-sm font-medium text-ink truncate flex-1">
             {currentSession?.title || 'Pilih atau buat sesi chat'}
@@ -2688,7 +2670,7 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto px-8 py-8 md:px-10 md:py-10 space-y-6">
           {!currentSession && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               {/* Animated brain icon */}
@@ -2702,7 +2684,7 @@ export default function Chat() {
               </div>
 
               {/* Dynamic greeting using appName from global state */}
-              <h2 className="text-xl font-bold text-ink mb-2">
+              <h2 className="text-xl font-semibold text-ink mb-2">
                 Halo! Saya <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">{appName}</span>
               </h2>
               <p className="text-sm text-ink-3 mb-8 max-w-md leading-relaxed">
@@ -2721,8 +2703,8 @@ export default function Chat() {
                       <Icon size={18} className="text-white" />
                     </div>
                     <div>
-                      <div className="text-xs font-semibold text-ink group-hover:text-accent-2 transition-colors">{label}</div>
-                      <div className="text-[10px] text-ink-3 mt-0.5">{desc}</div>
+                      <div className="text-sm font-semibold text-ink group-hover:text-accent-2 transition-colors">{label}</div>
+                      <div className="text-[11px] text-ink-3 mt-0.5">{desc}</div>
                     </div>
                   </button>
                 ))}
@@ -2827,7 +2809,7 @@ export default function Chat() {
                   </span>
                 )}
                 {activeCapability && (
-                  <span className="text-[10px] font-bold text-accent-2 tracking-widest uppercase bg-accent-2/10 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-semibold text-accent-2 tracking-widest uppercase bg-accent-2/10 px-2 py-0.5 rounded-full">
                     {activeCapability}
                   </span>
                 )}
@@ -2844,13 +2826,13 @@ export default function Chat() {
                  </div>
                  <div className="flex-1 min-w-0 bg-bg-2 border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-md">
                    <div className="flex items-center justify-between mb-2">
-                     <span className="text-sm font-bold text-ink">Google Drive Upload Ready</span>
+                     <span className="text-sm font-semibold text-ink">Google Drive Upload Ready</span>
                    </div>
                    <div className="text-xs text-ink-2 mb-3">
                      <p>Pilih metadata berikut untuk di-upload:</p>
                    </div>
                    <div className="bg-bg-3 p-2.5 rounded border border-border-2 font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap max-h-32">
-                     {drivePromptTitle && <div className="font-bold border-b border-border-2 pb-1 mb-1">{drivePromptTitle}</div>}
+                     {drivePromptTitle && <div className="font-semibold border-b border-border-2 pb-1 mb-1">{drivePromptTitle}</div>}
                      {drivePromptContent}
                    </div>
                    <div className="flex gap-3">
@@ -2891,7 +2873,7 @@ export default function Chat() {
                 </div>
                 <div className="flex-1 min-w-0 bg-bg-2 border border-amber-500/30 rounded-2xl rounded-tl-sm px-5 py-4 shadow-lg">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-bold text-ink">Rencana Eksekusi</span>
+                    <span className="text-sm font-semibold text-ink">Rencana Eksekusi</span>
                     <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">
                       {pendingPlan.subtask_count} sub-task
                     </span>
@@ -2940,7 +2922,7 @@ export default function Chat() {
 
         {/* Input area */}
         {currentSession && (
-          <div className="p-3 border-t border-border bg-bg-2 flex-shrink-0">
+          <div className="p-4 border-t-[0.5px] border-border bg-bg flex-shrink-0">
 
             {/* Streaming status bar */}
             {streaming && (
@@ -3150,7 +3132,7 @@ export default function Chat() {
                       : 'Ketik pesan, perintah, atau analisa data...'
                   }
                   rows={1}
-                  className="w-full bg-bg-4 border border-border-2 rounded-2xl md:rounded-xl px-4 md:px-3.5 py-3 md:py-2.5 text-base md:text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none"
+                  className="w-full bg-bg-2 border-[0.5px] border-border rounded-2xl md:rounded-2xl px-4 md:px-4 py-3 md:py-3 text-[15px] md:text-[15px] text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none shadow-sm"
                 />
               </div>
 

@@ -57,72 +57,72 @@ function syncModelsToOrchestrator(models) {
 
 // ── Primitives ────────────────────────────────────────────────
 function Label({ children }) {
-  return <label className="block text-[10px] text-ink-3 mb-1 uppercase tracking-wider font-medium">{children}</label>
+  return <label className="block text-xs text-ink-3 mb-2 uppercase tracking-widest font-bold opacity-60">{children}</label>
 }
 
 function SecretInput({ label, value, onChange, placeholder, hint, disabled }) {
   const [show, setShow] = useState(false)
   return (
-    <div>
+    <div className="space-y-1.5">
       {label && <Label>{label}</Label>}
       <div className="relative">
         <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder} disabled={disabled}
           autoComplete="new-password"
-          className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent pr-9 font-mono disabled:opacity-50"/>
+          className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent pr-11 font-mono disabled:opacity-50 shadow-inner transition-all"/>
         <button type="button" onClick={() => setShow(!show)}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
-          {show ? <EyeOff size={13}/> : <Eye size={13}/>}
+          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-all">
+          {show ? <EyeOff size={16}/> : <Eye size={16}/>}
         </button>
       </div>
-      {hint && <p className="text-[10px] text-ink-3 mt-1">{hint}</p>}
+      {hint && <p className="text-[11px] text-ink-3 mt-1.5 font-semibold uppercase tracking-tight opacity-70">{hint}</p>}
     </div>
   )
 }
 
 function TextInput({ label, value, onChange, placeholder, hint, mono, disabled }) {
   return (
-    <div>
+    <div className="space-y-1.5">
       {label && <Label>{label}</Label>}
       <input type="text" value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled}
-        className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50', mono && 'font-mono')}/>
-      {hint && <p className="text-[10px] text-ink-3 mt-1">{hint}</p>}
+        className={clsx('w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 shadow-inner transition-all', mono && 'font-mono')}/>
+      {hint && <p className="text-[11px] text-ink-3 mt-1.5 font-semibold uppercase tracking-tight opacity-70">{hint}</p>}
     </div>
   )
 }
 
 function Textarea({ label, value, onChange, placeholder, hint, rows = 3 }) {
   return (
-    <div>
+    <div className="space-y-1.5">
       {label && <Label>{label}</Label>}
       <textarea value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} rows={rows}
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none"/>
-      {hint && <p className="text-[10px] text-ink-3 mt-1">{hint}</p>}
+        className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none shadow-inner transition-all"/>
+      {hint && <p className="text-[11px] text-ink-3 mt-1.5 font-semibold uppercase tracking-tight opacity-70">{hint}</p>}
     </div>
   )
 }
 
 function StatusBadge({ ok }) {
   return ok
-    ? <span className="flex items-center gap-1 text-[10px] font-medium text-success bg-success/10 border border-success/20 px-2 py-0.5 rounded-full"><CheckCircle2 size={10}/>Aktif</span>
-    : <span className="flex items-center gap-1 text-[10px] font-medium text-ink-3 bg-bg-4 border border-border px-2 py-0.5 rounded-full"><XCircle size={10}/>Belum Setup</span>
+    ? <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-success bg-success/10 border border-success/30 px-3 py-1 rounded-full shadow-sm"><CheckCircle2 size={12}/>Aktif</span>
+    : <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-ink-3 bg-bg-4 border border-border px-3 py-1 rounded-full opacity-60"><XCircle size={12}/>Belum Setup</span>
 }
 
 function Btn({ label, onClick, loading, variant = 'default', icon: Icon, small, disabled, full }) {
   return (
     <button onClick={onClick} disabled={loading || disabled}
-      className={clsx('flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all disabled:opacity-50',
+      className={clsx('flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95 shadow-md',
         full ? 'w-full' : '',
-        small ? 'px-2.5 py-1.5 text-[10px]' : 'px-3 py-2 text-xs',
-        variant === 'primary' && 'bg-accent hover:bg-accent/80 text-white',
-        variant === 'success' && 'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
-        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger',
-        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn',
-        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink',
+        small ? 'px-3 py-2 text-[10px]' : 'px-5 py-3 text-sm',
+        variant === 'primary' && 'bg-accent hover:bg-accent/80 text-white shadow-accent/20',
+        variant === 'success' && 'bg-success/10 hover:bg-success/20 border-2 border-success/30 text-success',
+        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border-2 border-danger/30 text-danger',
+        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border-2 border-warn/30 text-warn',
+        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink',
       )}>
-      {loading ? <RefreshCw size={small ? 10 : 12} className="animate-spin"/> : Icon && <Icon size={small ? 10 : 12}/>}
+      {loading ? <RefreshCw size={small ? 12 : 16} className="animate-spin"/> : Icon && <Icon size={small ? 12 : 16}/>}
       {label}
     </button>
   )
@@ -132,8 +132,8 @@ function CopyBtn({ text }) {
   const [ok, setOk] = useState(false)
   return (
     <button onClick={() => { copyToClipboard(text); setOk(true); setTimeout(() => setOk(false), 2000) }}
-      className="p-1 rounded hover:bg-bg-5 text-ink-3 hover:text-ink transition-colors flex-shrink-0">
-      {ok ? <Check size={11} className="text-success"/> : <Copy size={11}/>}
+      className="p-2 rounded-lg hover:bg-bg-5 text-ink-3 hover:text-ink transition-all flex-shrink-0">
+      {ok ? <Check size={14} className="text-success"/> : <Copy size={14}/>}
     </button>
   )
 }
@@ -142,20 +142,20 @@ function CopyBtn({ text }) {
 function Card({ icon, title, subtitle, configured, children }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden transition-all duration-200">
-      <button className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-bg-4 transition-colors"
+    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden transition-all duration-300">
+      <button className="w-full flex items-center gap-4 px-5 py-4 hover:bg-bg-4 transition-all"
         onClick={() => setOpen(!open)}>
-        <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-lg flex-shrink-0">{icon}</div>
+        <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">{icon}</div>
         <div className="flex-1 min-w-0 text-left">
-          <div className="text-sm font-semibold text-ink">{title}</div>
-          <div className="text-[10px] text-ink-3">{subtitle}</div>
+          <div className="text-lg font-bold text-ink uppercase tracking-tight">{title}</div>
+          <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">{subtitle}</div>
         </div>
         <StatusBadge ok={configured}/>
-        {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+        {open ? <ChevronUp size={18} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={18} className="text-ink-3 flex-shrink-0"/>}
       </button>
-      <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+      <div className={clsx("grid transition-all duration-500 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
-          <div className="px-4 pb-4 pt-1 border-t border-border">{children}</div>
+          <div className="px-6 pb-6 pt-2 border-t-2 border-border/40">{children}</div>
         </div>
       </div>
     </div>
@@ -168,14 +168,14 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
 
   if (masked && !editing) {
     return (
-      <div className="mt-3">
+      <div className="mt-4">
         <Label>{label}</Label>
-        <div className="flex items-center gap-2 p-2.5 bg-bg-4 rounded-xl border border-border">
+        <div className="flex items-center gap-3 p-3 bg-bg-4 rounded-xl border-2 border-border shadow-inner">
           <div className="flex-1 min-w-0">
-            <div className="font-mono text-xs text-accent-2 truncate">{masked}</div>
+            <div className="font-mono text-sm text-accent-2 truncate font-bold tracking-widest">{masked}</div>
           </div>
           <button onClick={() => setEditing(true)}
-            className="text-[10px] text-ink-3 hover:text-accent-2 border border-border hover:border-accent/40 px-2.5 py-1 rounded-lg transition-colors flex-shrink-0">
+            className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border-2 border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
             Ganti
           </button>
         </div>
@@ -184,11 +184,11 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
   }
 
   return (
-    <div className="mt-3 space-y-2.5">
+    <div className="mt-4 space-y-4">
       {masked && editing && (
-        <div className="flex items-center justify-between text-[10px] p-2 bg-warn/8 border border-warn/25 rounded-lg">
+        <div className="flex items-center justify-between text-[11px] p-3 bg-warn/10 border-2 border-warn/30 rounded-xl font-bold uppercase tracking-tight shadow-inner">
           <span className="text-warn">Mengganti nilai yang tersimpan</span>
-          <button onClick={() => { setEditing(false); onChange('') }} className="text-ink-3 hover:text-ink">✕ Batal</button>
+          <button onClick={() => { setEditing(false); onChange('') }} className="text-ink-3 hover:text-ink uppercase tracking-widest text-[10px]">✕ Batal</button>
         </div>
       )}
       {isSecret
@@ -244,48 +244,48 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden transition-all duration-200">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-bg-4 transition-colors">
-        <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-lg flex-shrink-0">✈️</div>
+    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden transition-all duration-300">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-4 px-5 py-4 hover:bg-bg-4 transition-all">
+        <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">✈️</div>
         <div className="flex-1 min-w-0 text-left">
-          <div className="text-sm font-semibold text-ink">Telegram Bot</div>
-          <div className="text-[10px] text-ink-3">Auto-reply via AI ke chat Telegram</div>
+          <div className="text-lg font-bold text-ink uppercase tracking-tight">Telegram Bot</div>
+          <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Auto-reply via AI ke chat Telegram</div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <StatusBadge ok={configured}/>
           {polling.running && (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-sky-400 bg-sky-400/10 border border-sky-400/20 px-2 py-0.5 rounded-full">
-              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"/>Polling
+            <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-sky-400 bg-sky-400/10 border border-sky-400/30 px-3 py-1 rounded-full shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse shadow-lg"/>Polling
             </span>
           )}
-          {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+          {open ? <ChevronUp size={18} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={18} className="text-ink-3 flex-shrink-0"/>}
         </div>
       </button>
 
       <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
-          <div className="px-4 pb-4 pt-2 border-t border-border">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
+          <div className="px-6 pb-6 pt-2 border-t-2 border-border/40">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
                 {configured && status?.telegram?.token_masked && !showTokenForm ? (
                   <div>
                     <Label>Bot Token</Label>
-                    <div className="flex items-center gap-2 p-2.5 bg-bg-4 rounded-xl border border-border">
+                    <div className="flex items-center gap-3 p-3 bg-bg-4 rounded-xl border-2 border-border shadow-inner">
                       <div className="flex-1 min-w-0">
-                        <div className="font-mono text-xs text-accent-2 truncate">{status.telegram.token_masked}</div>
+                        <div className="font-mono text-sm text-accent-2 truncate font-bold tracking-widest">{status.telegram.token_masked}</div>
                       </div>
                       <button onClick={() => setShowTF(true)}
-                        className="text-[10px] text-ink-3 hover:text-accent-2 border border-border hover:border-accent/40 px-2.5 py-1 rounded-lg transition-colors flex-shrink-0">
+                        className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border-2 border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
                         Ganti
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-4">
                     {showTokenForm && (
-                      <div className="flex items-center justify-between text-[10px] p-2 bg-warn/8 border border-warn/25 rounded-lg">
+                      <div className="flex items-center justify-between text-[11px] p-3 bg-warn/10 border-2 border-warn/30 rounded-xl font-bold uppercase tracking-tight shadow-inner">
                         <span className="text-warn">Mengganti token tersimpan</span>
-                        <button onClick={() => { setShowTF(false); setToken('') }} className="text-ink-3 hover:text-ink">✕ Batal</button>
+                        <button onClick={() => { setShowTF(false); setToken('') }} className="text-ink-3 hover:text-ink uppercase tracking-widest text-[10px]">✕ Batal</button>
                       </div>
                     )}
                     <SecretInput label="Bot Token" value={token} onChange={setToken}
@@ -294,7 +294,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                     <TextInput label="Webhook URL (opsional)" value={webhook} onChange={setWebhook}
                       placeholder="https://domain-kamu.com/api/integrations/telegram/webhook"
                       hint="Kosongkan untuk mode Polling (cocok localhost)" mono/>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       <Btn label="Simpan" onClick={() => {
                         if (!token.trim()) { toast.error('Isi token terlebih dahulu'); return }
                         onSave('telegram', { TELEGRAM_BOT_TOKEN: token, ...(webhook ? { TELEGRAM_WEBHOOK_URL: webhook } : {}) })
@@ -305,8 +305,8 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                   </div>
                 )}
 
-                <div className="bg-bg-4 rounded-xl p-3 text-[10px] space-y-1 text-ink-3">
-                  <div className="text-ink-2 font-semibold mb-1.5">📱 Cara setup:</div>
+                <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 text-xs space-y-2 text-ink-3 font-semibold shadow-inner">
+                  <div className="text-ink-2 font-bold mb-2 uppercase tracking-widest opacity-80">📱 Cara setup:</div>
                   {[
                     ['Buka Telegram → cari', '@BotFather', ' → kirim /newbot'],
                     ['Ikuti instruksi → copy token'],
@@ -314,54 +314,54 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                     ['Klik Start Bot di kanan →'],
                   ].map((parts, i) => (
                     <div key={i}>{i + 1}. {parts.map((p, j) => (
-                      p.startsWith('@') || p.startsWith('/') ? <code key={j} className="font-mono text-accent-2">{p}</code> : p
+                      p.startsWith('@') || p.startsWith('/') ? <code key={j} className="font-mono text-accent-2 font-bold">{p}</code> : p
                     ))}</div>
                   ))}
-                  <div className="pt-1 font-mono text-accent-2">/start /help /clear /model</div>
+                  <div className="pt-2 font-mono text-accent-2 font-bold text-[11px] uppercase tracking-widest opacity-60">/start /help /clear /model</div>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className={clsx('rounded-xl border p-3.5', polling.running ? 'bg-sky-400/5 border-sky-400/20' : 'bg-bg-4 border-border')}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      {polling.running ? <Wifi size={13} className="text-sky-400"/> : <WifiOff size={13} className="text-ink-3"/>}
-                      <span className="text-xs font-semibold text-ink">
+              <div className="space-y-4">
+                <div className={clsx('rounded-2xl border-2 p-5 shadow-inner transition-all', polling.running ? 'bg-sky-400/5 border-sky-400/30' : 'bg-bg-4 border-border')}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      {polling.running ? <Wifi size={18} className="text-sky-400"/> : <WifiOff size={18} className="text-ink-3 opacity-60"/>}
+                      <span className="text-sm font-bold text-ink uppercase tracking-tight">
                         {polling.running ? 'Bot Aktif (Polling)' : 'Bot Tidak Aktif'}
                       </span>
                     </div>
-                    <label className={clsx("flex items-center gap-2", (!configured || pollingLoading) ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}>
-                      <span className="text-[10px] font-medium text-ink-3 mr-1">
+                    <label className={clsx("flex items-center gap-3", (!configured || pollingLoading) ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}>
+                      <span className="text-[10px] font-bold text-ink-3 uppercase tracking-widest">
                         {pollingLoading ? 'Memproses...' : (polling.running ? 'On' : 'Off')}
                       </span>
                       <div onClick={() => {
                         if (!configured || pollingLoading) return;
                         if (polling.running) handleStop(); else handleStart();
                       }}
-                        className={clsx('w-8 h-4 rounded-full relative transition-colors', polling.running ? 'bg-success' : 'bg-bg-5 border border-border')}>
-                        <div className={clsx('absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform', polling.running ? 'translate-x-4' : 'translate-x-0.5')}/>
+                        className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border-2', polling.running ? 'bg-success border-success/30' : 'bg-bg-5 border-border')}>
+                        <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-lg transition-transform', polling.running ? 'translate-x-4.5' : 'translate-x-0.5')}/>
                       </div>
                     </label>
                   </div>
 
                   {polling.running && botInfo && (
-                    <div className="text-[10px] text-sky-400 font-mono mb-1.5">🤖 @{botInfo.username} ({botInfo.name})</div>
+                    <div className="text-xs text-sky-400 font-mono mb-3 font-bold uppercase tracking-tight border-b border-sky-400/20 pb-2">🤖 @{botInfo.username} ({botInfo.name})</div>
                   )}
 
-                  <div className="text-[10px] text-ink-3">
+                  <div className="text-xs text-ink-3 font-semibold leading-relaxed opacity-80">
                     {polling.running
-                      ? 'Bot menerima & menjawab pesan secara otomatis via AI.'
+                      ? 'Bot menerima & menjawab pesan secara otomatis via AI menggunakan memori kontekstual.'
                       : configured
-                        ? 'Klik Start Bot untuk mulai menerima pesan dari Telegram.'
-                        : 'Simpan token Bot dulu sebelum menjalankan.'
+                        ? 'Klik tombol saklar untuk mengaktifkan bot dan mulai menerima pesan dari Telegram.'
+                        : 'Simpan token Bot yang valid terlebih dahulu sebelum dapat menjalankan layanan polling.'
                     }
                   </div>
                 </div>
 
                 {!configured && (
-                  <div className="p-3 bg-accent/8 border border-accent/20 rounded-xl text-[10px] text-ink-2">
-                    <strong className="text-ink block mb-1">Tips:</strong>
-                    Mode Polling tidak memerlukan domain publik atau HTTPS — cocok untuk menjalankan di localhost / komputer rumah.
+                  <div className="p-4 bg-accent/8 border-2 border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-sm leading-relaxed">
+                    <strong className="text-ink-2 block mb-2 text-sm font-bold uppercase tracking-widest opacity-80">💡 Tips Konektivitas:</strong>
+                    Mode Polling dirancang untuk kemudahan setup tanpa memerlukan konfigurasi domain publik atau sertifikat SSL — sangat ideal untuk pengembangan di lingkungan localhost.
                   </div>
                 )}
               </div>
@@ -474,59 +474,59 @@ function CustomModelSection() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden mt-0">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-bg-4 transition-colors">
-        <div className="flex items-center gap-3 text-left">
-          <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-lg flex-shrink-0">🔌</div>
+    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
+        <div className="flex items-center gap-4 text-left">
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🔌</div>
           <div>
-            <div className="text-sm font-semibold text-ink">Custom Model Provider</div>
-            <div className="text-[10px] text-ink-3">Tambah model API pihak ketiga (format OpenAI)</div>
+            <div className="text-lg font-bold text-ink uppercase tracking-tight">Custom Model Provider</div>
+            <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Tambah model API pihak ketiga (format OpenAI)</div>
           </div>
-          {providers.length > 0 && <span className="ml-2 text-[10px] bg-accent/15 text-accent-2 px-1.5 py-0.5 rounded-full">{providers.length} provider</span>}
+          {providers.length > 0 && <span className="ml-2 text-[10px] bg-accent/15 text-accent-2 px-2 py-1 rounded-full font-bold uppercase tracking-widest shadow-sm border border-accent/20">{providers.length} provider</span>}
         </div>
-        {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+        {open ? <ChevronUp size={18} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={18} className="text-ink-3 flex-shrink-0"/>}
       </button>
 
-      <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+      <div className={clsx("grid transition-all duration-500 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
-          <div className="p-4 space-y-3 border-t border-border">
-            <div className="flex justify-end mb-1">
+          <div className="p-6 space-y-4 border-t-2 border-border/40">
+            <div className="flex justify-end mb-2">
               <Btn label="+ Tambah Provider" onClick={() => { setShowAdd(!showAdd); setEditId(null); setForm(emptyForm); setTestResult(null) }} variant="primary" icon={Plus} small/>
             </div>
             {showAdd && (
-              <div className="bg-bg-4 border border-accent/25 rounded-xl p-4 space-y-3 animate-fade">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-ink">{editId ? '✏️ Edit Model AI Provider' : '➕ Tambah Model AI Provider'}</span>
-                  <button onClick={() => { setShowAdd(false); setEditId(null); setTestResult(null) }} className="text-ink-3 hover:text-ink text-xs">✕</button>
+              <div className="bg-bg-4 border-2 border-accent/25 rounded-2xl p-6 space-y-4 animate-fade shadow-xl">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-lg font-bold text-ink uppercase tracking-tight">{editId ? '✏️ Edit Model AI Provider' : '➕ Tambah Model AI Provider'}</span>
+                  <button onClick={() => { setShowAdd(false); setEditId(null); setTestResult(null) }} className="text-ink-3 hover:text-ink text-sm font-bold">✕</button>
                 </div>
                 <div>
-                  <Label>Ikon</Label>
-                  <div className="flex gap-1.5 flex-wrap">
+                  <Label>Ikon Provider</Label>
+                  <div className="flex gap-2 flex-wrap">
                     {ICON_OPTIONS.map(ic => (
                       <button key={ic} onClick={() => setF('icon', ic)}
-                        className={clsx('w-8 h-8 rounded-lg flex items-center justify-center text-base border transition-all',
-                          form.icon === ic ? 'border-accent bg-accent/10' : 'border-border bg-bg-3 hover:border-border-2')}>
+                        className={clsx('w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 transition-all shadow-sm',
+                          form.icon === ic ? 'border-accent bg-accent/15 shadow-accent/10' : 'border-border bg-bg-3 hover:border-border-2')}>
                         {ic}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <TextInput label="Nama Provider *" value={form.name} onChange={v => setF('name', v)} placeholder="Together AI, Groq, dll"/>
                   <TextInput label="Base URL *" value={form.base_url} onChange={v => setF('base_url', v)} placeholder="https://api.together.xyz/v1" mono/>
                 </div>
                 <SecretInput label="API Key *" value={form.api_key} onChange={v => setF('api_key', v)} placeholder="sk-..."/>
                 <TextInput label="Model (pisah koma) *" value={form.models} onChange={v => setF('models', v)} placeholder="llama-3.1-70b,mixtral-8x7b" mono/>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <Btn label="Test Koneksi" onClick={handleTestConnection} loading={acting.testConn} variant="success" icon={Send}/>
                   {testResult && (
-                    <div className={clsx('flex-1 text-[10px] px-3 py-2 rounded-lg font-medium',
-                      testResult.status === 'ok' ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20')}>
+                    <div className={clsx('flex-1 text-[11px] px-4 py-3 rounded-xl font-bold uppercase tracking-tight shadow-inner border-2',
+                      testResult.status === 'ok' ? 'bg-success/10 text-success border-success/30' : 'bg-danger/10 text-danger border-danger/30')}>
                       {testResult.message}
                     </div>
                   )}
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-1">
+                <div className="flex items-center justify-end gap-3 pt-2">
                   <Btn label="Batal" onClick={() => { setShowAdd(false); setEditId(null); setTestResult(null) }} variant="default" small/>
                   <Btn label={editId ? 'Simpan Perubahan' : 'Simpan Provider'} onClick={handleSave} loading={acting.save} variant="primary" icon={Save}/>
                 </div>
@@ -537,27 +537,27 @@ function CustomModelSection() {
             ) : providers.length === 0 && !showAdd ? (
               <div className="text-center py-6 text-xs text-ink-3">Belum ada custom provider.</div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {providers.map(p => {
                   const st = STATUS_STYLE[p.status] || STATUS_STYLE.untested
                   return (
-                    <div key={p.id} className="bg-bg-4 rounded-xl border border-border p-3">
-                      <div className="flex items-start gap-2">
-                        <span className="text-base flex-shrink-0 mt-0.5">{p.icon || '🔌'}</span>
+                    <div key={p.id} className="bg-bg-4 rounded-2xl border-2 border-border p-4 shadow-sm group/item">
+                      <div className="flex items-start gap-4">
+                        <span className="text-2xl flex-shrink-0 mt-1">{p.icon || '🔌'}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-semibold text-ink">{p.name}</span>
-                            <span className={clsx('text-[9px] px-1.5 py-0.5 rounded-full font-medium border', st.cls)}>{st.label}</span>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="text-base font-bold text-ink uppercase tracking-tight">{p.name}</span>
+                            <span className={clsx('text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-widest border-2', st.cls)}>{st.label}</span>
                           </div>
-                          <div className="text-[9px] text-ink-3 mt-0.5">Model: {p.models}</div>
+                          <div className="text-xs text-ink-3 mt-1.5 font-semibold opacity-70">Model: {p.models}</div>
                         </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <Btn label="Test" onClick={() => handleTest(p.id)} loading={acting[p.id+'_test']} variant="success" icon={Send} small/>
-                          <button onClick={() => handleEdit(p)} className="p-1.5 rounded-lg text-ink-3 hover:text-accent hover:bg-accent/10 transition-colors" title="Edit">
-                            <Code size={11} />
+                          <button onClick={() => handleEdit(p)} className="p-2 rounded-xl text-ink-3 hover:text-accent hover:bg-accent/10 transition-all shadow-sm border border-transparent hover:border-accent/30" title="Edit">
+                            <Code size={16} />
                           </button>
-                          <button onClick={() => handleDelete(p.id)} disabled={acting[p.id+'_del']} className="p-1.5 rounded-lg text-ink-3 hover:text-danger hover:bg-danger/10 transition-colors" title="Hapus">
-                            <Trash2 size={11}/>
+                          <button onClick={() => handleDelete(p.id)} disabled={acting[p.id+'_del']} className="p-2 rounded-xl text-ink-3 hover:text-danger hover:bg-danger/10 transition-all shadow-sm border border-transparent hover:border-danger/30" title="Hapus">
+                            <Trash2 size={16}/>
                           </button>
                         </div>
                       </div>
@@ -637,29 +637,29 @@ function WebhookSection() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden mt-0">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-bg-4 transition-colors">
-        <div className="flex items-center gap-3 text-left">
-          <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-accent-2 flex-shrink-0"><Webhook size={16}/></div>
+    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
+        <div className="flex items-center gap-4 text-left">
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-accent-2 flex-shrink-0 shadow-inner"><Webhook size={20}/></div>
           <div>
-            <div className="text-sm font-semibold text-ink">Webhook Lanjutan</div>
-            <div className="text-[10px] text-ink-3">Kirim triggger ke Fonnte, n8n, Make, Zapier, dll</div>
+            <div className="text-lg font-bold text-ink uppercase tracking-tight">Webhook Lanjutan</div>
+            <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Kirim triggger ke Fonnte, n8n, Make, Zapier, dll</div>
           </div>
         </div>
-        {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+        {open ? <ChevronUp size={18} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={18} className="text-ink-3 flex-shrink-0"/>}
       </button>
 
-      <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+      <div className={clsx("grid transition-all duration-500 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
-          <div className="p-4 space-y-3 border-t border-border">
-            <div className="flex gap-2 justify-end mb-2">
+          <div className="p-6 space-y-4 border-t-2 border-border/40">
+            <div className="flex gap-3 justify-end mb-2">
               <Btn label="+ Tambah Webhook" onClick={() => { setShowAdd(!showAdd); setEditId(null); setForm(emptyForm) }} variant="primary" icon={Plus} small/>
             </div>
             {showAdd && (
-              <div className="bg-bg-4 border border-accent/25 rounded-xl p-4 space-y-3">
+              <div className="bg-bg-4 border-2 border-accent/25 rounded-2xl p-6 space-y-4 animate-fade shadow-xl">
                 <TextInput label="Nama Webhook *" value={form.name} onChange={v => setF('name', v)}/>
                 <TextInput label="URL Endpoint *" value={form.url} onChange={v => setF('url', v)} mono/>
-                <div className="flex items-center justify-end gap-2 pt-1">
+                <div className="flex items-center justify-end gap-3 pt-2">
                   <Btn label="Simpan Webhook" onClick={handleSave} loading={acting.save} variant="primary" icon={Save}/>
                 </div>
               </div>
@@ -669,19 +669,24 @@ function WebhookSection() {
             ) : hooks.length === 0 ? (
               <div className="text-center py-6 text-xs text-ink-3">Belum ada webhook.</div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {hooks.map(h => {
                   const meta = pm(h.provider)
                   return (
-                    <div key={h.id} className="bg-bg-4 rounded-xl border border-border p-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="text-xs font-semibold text-ink">{h.name}</div>
-                          <div className="text-[9px] text-ink-3 font-mono truncate max-w-xs">{h.url}</div>
+                    <div key={h.id} className="bg-bg-4 rounded-2xl border-2 border-border p-4 shadow-sm group/item">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="text-xl">{meta.emoji}</span>
+                            <div className="text-base font-bold text-ink uppercase tracking-tight">{h.name}</div>
+                          </div>
+                          <div className="text-xs text-ink-3 font-mono truncate max-w-md font-bold opacity-60 bg-bg-2 px-2 py-1 rounded border border-border/40 inline-block">{h.url}</div>
                         </div>
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-2 flex-shrink-0">
                           <Btn label="Test" onClick={() => handleTest(h.id)} loading={acting[h.id+'_test']} variant="success" icon={Send} small/>
-                          <button onClick={() => handleDelete(h.id)} className="text-ink-3 hover:text-danger"><Trash2 size={11}/></button>
+                          <button onClick={() => handleDelete(h.id)} className="p-2 rounded-xl text-ink-3 hover:text-danger transition-all hover:bg-danger/10 shadow-sm" title="Hapus">
+                            <Trash2 size={16}/>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -764,34 +769,34 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
   const configuredCount = Object.values(roles).filter(v => v).length
 
   return (
-    <div className="bg-bg-3 border border-border shadow-sm rounded-xl overflow-hidden mt-0">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-bg-4 transition-colors">
-        <div className="flex items-center gap-3 text-left">
-          <div className="w-8 h-8 rounded-lg bg-bg-4 border border-border flex items-center justify-center text-accent-2 flex-shrink-0"><Zap size={16}/></div>
+    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
+        <div className="flex items-center gap-4 text-left">
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-accent-2 flex-shrink-0 shadow-inner"><Zap size={20}/></div>
           <div>
-            <div className="text-sm font-semibold text-ink">AI Roles Mapping</div>
-            <div className="text-[10px] text-ink-3">
-              Petakan setiap jenis tugas ke model spesifik — atau biarkan kosong untuk auto-routing cerdas
+            <div className="text-lg font-bold text-ink uppercase tracking-tight">AI Roles Mapping</div>
+            <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">
+              Petakan setiap jenis tugas ke model spesifik — atau biarkan kosong untuk auto-routing
             </div>
           </div>
           {configuredCount > 0 && (
-            <span className="ml-1 text-[10px] bg-accent/15 text-accent-2 px-1.5 py-0.5 rounded-full flex-shrink-0">
+            <span className="ml-1 text-[10px] bg-accent/15 text-accent-2 px-2.5 py-1 rounded-full flex-shrink-0 font-bold uppercase tracking-widest border border-accent/20 shadow-sm">
               {configuredCount}/{AI_ROLE_DEFINITIONS.length} dikonfigurasi
             </span>
           )}
         </div>
-        {open ? <ChevronUp size={14} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={14} className="text-ink-3 flex-shrink-0"/>}
+        {open ? <ChevronUp size={18} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={18} className="text-ink-3 flex-shrink-0"/>}
       </button>
 
-      <div className={clsx("grid transition-all duration-300 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+      <div className={clsx("grid transition-all duration-500 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
-          <div className="p-4 space-y-4 border-t border-border">
+          <div className="p-6 space-y-6 border-t-2 border-border/40">
 
             {/* Info banner */}
-            <div className="p-3 bg-accent/8 border border-accent/20 rounded-xl text-[10px] text-ink-2 leading-relaxed">
-              <span className="font-semibold text-ink block mb-1">🤖 Auto-Routing Cerdas</span>
+            <div className="p-4 bg-accent/8 border-2 border-accent/20 rounded-2xl text-xs text-ink-2 leading-relaxed font-semibold shadow-sm">
+              <span className="font-bold text-ink-2 block mb-2 text-sm uppercase tracking-widest opacity-80">🤖 Auto-Routing Cerdas</span>
               Jika slot dikosongkan, AI Orchestrator otomatis memilih model terbaik berdasarkan kemampuan dan performa historis.
-              Model yang dipilih sistem ditampilkan sebagai <span className="bg-blue-500/15 text-blue-400 px-1 py-0.5 rounded text-[9px] font-medium">🤖 Auto</span>.
+              Model yang dipilih sistem ditampilkan sebagai <span className="bg-blue-500/20 text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm border border-blue-500/30">🤖 Auto</span>.
             </div>
 
             {/* Role grid */}
@@ -810,16 +815,16 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
                     <div className="flex items-center gap-2">
                       <span className="text-base">{role.emoji}</span>
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs font-semibold text-ink">{role.label}</div>
-                        <div className="text-[9px] text-ink-3 truncate">{role.desc}</div>
+                        <div className="text-sm font-semibold text-ink">{role.label}</div>
+                        <div className="text-xs text-ink-3 truncate font-medium">{role.desc}</div>
                       </div>
                       {/* Status badge */}
                       {isManual ? (
-                        <span className="flex-shrink-0 text-[9px] bg-success/15 text-success px-1.5 py-0.5 rounded-full font-medium">
+                        <span className="flex-shrink-0 text-[11px] bg-success/15 text-success px-1.5 py-0.5 rounded-full font-semibold">
                           ✏️ Manual
                         </span>
                       ) : autoModel ? (
-                        <span className="flex-shrink-0 text-[9px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-full font-medium">
+                        <span className="flex-shrink-0 text-[11px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-full font-semibold">
                           🤖 Auto
                         </span>
                       ) : null}
@@ -827,9 +832,9 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
 
                     {/* Resolved model display (when not manually set) */}
                     {!isManual && autoDisplay && (
-                      <div className="text-[10px] text-ink-2 bg-bg-2 rounded-lg px-2.5 py-1.5 border border-border/60 truncate">
+                      <div className="text-xs text-ink-2 bg-bg-2 rounded-lg px-2.5 py-1.5 border border-border/60 truncate font-medium">
                         <span className="text-ink-3 mr-1">Aktif:</span>
-                        <span className="font-medium text-blue-400">{autoDisplay}</span>
+                        <span className="font-semibold text-blue-400">{autoDisplay}</span>
                       </div>
                     )}
 
@@ -838,7 +843,7 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
                       <select
                         value={manualVal}
                         onChange={e => setRoles(r => ({ ...r, [role.key]: e.target.value }))}
-                        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-1.5 text-[11px] text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-7"
+                        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-1.5 text-xs text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-7 font-medium"
                       >
                         <option value="">
                           {loadingResolved ? '⏳ Memuat...' : autoDisplay ? `🤖 Auto — ${autoDisplay}` : '🤖 Auto (pilih terbaik)'}
@@ -859,7 +864,7 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
             </div>
 
             <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <p className="text-[10px] text-ink-3 italic">
+              <p className="text-xs text-ink-3 italic font-medium">
                 * Auto-routing belajar dari performa historis dan menyesuaikan diri secara otomatis.
               </p>
               <Btn label="Simpan Pemetaan" onClick={handleSave} loading={saving} variant="primary" icon={Save}/>
@@ -953,13 +958,13 @@ function GoogleEcosystemSection() {
           <span>G</span>
         </div>
         <div className="flex-1 min-w-0 text-left">
-          <div className="text-sm font-semibold text-ink">GOG CLI — Google Ecosystem</div>
-          <div className="text-[10px] text-ink-3">Gmail · Calendar · Sheets · Drive — dikendalikan oleh AI</div>
+          <div className="text-base font-semibold text-ink">GOG CLI — Google Ecosystem</div>
+          <div className="text-xs text-ink-3 font-medium">Gmail · Calendar · Sheets · Drive — dikendalikan oleh AI</div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {configured
-            ? <span className="flex items-center gap-1 text-[10px] font-medium text-success bg-success/10 border border-success/20 px-2 py-0.5 rounded-full"><CheckCircle2 size={10}/>Terhubung</span>
-            : <span className="flex items-center gap-1 text-[10px] font-medium text-ink-3 bg-bg-4 border border-border px-2 py-0.5 rounded-full"><XCircle size={10}/>Belum Setup</span>
+            ? <span className="flex items-center gap-1 text-xs font-semibold text-success bg-success/10 border border-success/20 px-2 py-0.5 rounded-full"><CheckCircle2 size={10}/>Terhubung</span>
+            : <span className="flex items-center gap-1 text-xs font-semibold text-ink-3 bg-bg-4 border border-border px-2 py-0.5 rounded-full"><XCircle size={10}/>Belum Setup</span>
           }
           {open ? <ChevronUp size={14} className="text-ink-3"/> : <ChevronDown size={14} className="text-ink-3"/>}
         </div>
@@ -974,8 +979,8 @@ function GoogleEcosystemSection() {
               {SERVICES.map(s => (
                 <div key={s.name} className={clsx('rounded-xl border p-3 text-center transition-all', configured ? 'bg-success/5 border-success/20' : 'bg-bg-4 border-border opacity-60')}>
                   <div className="text-2xl mb-1">{s.icon}</div>
-                  <div className="text-[11px] font-semibold text-ink">{s.name}</div>
-                  <div className="text-[9px] text-ink-3 mt-0.5">{s.desc}</div>
+                  <div className="text-xs font-semibold text-ink">{s.name}</div>
+                  <div className="text-[11px] text-ink-3 mt-0.5 font-medium">{s.desc}</div>
                 </div>
               ))}
             </div>
@@ -985,20 +990,20 @@ function GoogleEcosystemSection() {
                 <div className="bg-success/5 border border-success/20 rounded-xl p-3.5 flex items-center gap-3">
                   <CheckCircle2 size={18} className="text-success flex-shrink-0"/>
                   <div>
-                    <div className="text-xs font-semibold text-ink">Google Ecosystem Aktif</div>
-                    <div className="text-[10px] text-ink-3 mt-0.5">AI dapat mengakses Gmail, Calendar, Sheets, dan Drive Anda secara otonom.</div>
+                    <div className="text-sm font-semibold text-ink">Google Ecosystem Aktif</div>
+                    <div className="text-xs text-ink-3 mt-0.5 font-medium">AI dapat mengakses Gmail, Calendar, Sheets, dan Drive Anda secara otonom.</div>
                   </div>
                 </div>
                 <div className="bg-bg-4 rounded-xl p-3 border border-border">
-                  <div className="text-[10px] text-ink-2 font-semibold mb-2">💡 Contoh Perintah</div>
-                  <div className="space-y-1">
+                  <div className="text-xs text-ink-2 font-semibold mb-2">💡 Contoh Perintah</div>
+                  <div className="space-y-1.5">
                     {[
                       '"Cek email baru dari bos saya"',
                       '"Jadwalkan meeting besok jam 10 pagi"',
                       '"Tambahkan data ini ke Google Sheets"',
                       '"Carikan file laporan Q1 di Drive saya"',
                     ].map((cmd, i) => (
-                      <div key={i} className="text-[10px] text-ink-3 font-mono flex items-start gap-2">
+                      <div key={i} className="text-xs text-ink-3 font-mono flex items-start gap-2 font-medium">
                         <span className="text-accent-2">→</span> {cmd}
                       </div>
                     ))}
@@ -1010,16 +1015,16 @@ function GoogleEcosystemSection() {
               <div className="space-y-4">
                 {/* Setup Instructions */}
                 <div className="bg-accent/5 border border-accent/20 rounded-xl p-3.5 space-y-2">
-                  <div className="text-xs font-semibold text-ink">📋 Cara Setup (3 langkah)</div>
+                  <div className="text-sm font-semibold text-ink">📋 Cara Setup (3 langkah)</div>
                   {[
                     ['Buka', 'console.cloud.google.com', '→ buat project baru'],
                     ['Aktifkan API: Gmail, Calendar, Sheets, Drive di', 'Library'],
                     ['Buat', 'OAuth 2.0 Client ID', '(tipe: Desktop App) → Download JSON'],
                   ].map((parts, i) => (
-                    <div key={i} className="text-[10px] text-ink-3 flex gap-1.5">
-                      <span className="text-accent-2 font-bold flex-shrink-0">{i+1}.</span>
+                    <div key={i} className="text-xs text-ink-3 flex gap-1.5 font-medium">
+                      <span className="text-accent-2 font-semibold flex-shrink-0">{i+1}.</span>
                       <span>{parts.map((p, j) => p.startsWith('console') || p === 'Library' || p === 'OAuth 2.0 Client ID'
-                        ? <code key={j} className="font-mono text-accent-2 bg-accent/10 px-1 rounded">{p}</code>
+                        ? <code key={j} className="font-mono text-accent-2 bg-accent/10 px-1 rounded font-semibold">{p}</code>
                         : p
                       )}</span>
                     </div>
@@ -1034,7 +1039,7 @@ function GoogleEcosystemSection() {
                       onChange={e => setCredsJson(e.target.value)}
                       rows={6}
                       placeholder={'{ "installed": { "client_id": "...", "client_secret": "...", ... } }'}
-                      className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-[10px] text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none"
+                      className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none"
                     />
                     <Btn label="Otorisasi dengan Google →" onClick={handleGetAuthUrl} loading={acting} variant="primary" icon={Globe} full/>
                   </div>
@@ -1043,11 +1048,11 @@ function GoogleEcosystemSection() {
                 {authStep === 'authorizing' && (
                   <div className="space-y-3">
                     <div className="bg-warn/8 border border-warn/25 rounded-xl p-3.5 space-y-2">
-                      <div className="text-xs font-semibold text-warn">⏳ Langkah 2 dari 2</div>
-                      <div className="text-[10px] text-ink-3">
+                      <div className="text-sm font-semibold text-warn">⏳ Langkah 2 dari 2</div>
+                      <div className="text-xs text-ink-3 font-medium">
                         Tab Google baru telah dibuka. Setelah Anda memberi izin, Google akan menampilkan <strong className="text-ink">Authorization Code</strong>. Salin kode tersebut dan tempel di bawah.
                       </div>
-                      <button onClick={() => window.open(authUrl, '_blank')} className="text-[10px] text-accent underline">Buka ulang halaman Google</button>
+                      <button onClick={() => window.open(authUrl, '_blank')} className="text-xs text-accent underline font-semibold">Buka ulang halaman Google</button>
                     </div>
                     <div>
                       <Label>Authorization Code</Label>
@@ -1167,8 +1172,8 @@ export default function Integrations() {
     <div className="p-4 md:p-6 w-full">
       <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="text-lg font-bold text-ink">Integrasi Platform</h1>
-          <p className="text-xs text-ink-3 mt-0.5">API key & koneksi layanan eksternal</p>
+          <h1 className="text-xl font-semibold text-ink">Integrasi Platform</h1>
+          <p className="text-sm text-ink-3 mt-0.5">API key & koneksi layanan eksternal</p>
         </div>
         <div className="flex items-center gap-2">
           <Btn label="Reload Model" onClick={async () => {
@@ -1195,9 +1200,9 @@ export default function Integrations() {
       <div className="flex gap-2 overflow-x-auto pb-0 mb-5 border-b border-border scrollbar-hide">
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
-            className={clsx('flex items-center gap-2 px-4 py-2.5 text-xs font-semibold transition-all whitespace-nowrap border-b-2 outline-none',
+            className={clsx('flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all whitespace-nowrap border-b-2 outline-none',
               activeTab === t.id ? 'border-accent text-accent' : 'border-transparent text-ink-3 hover:text-ink hover:border-border-2')}>
-            <span className="text-base">{t.icon}</span> {t.label}
+            <span className="text-xl">{t.icon}</span> {t.label}
           </button>
         ))}
       </div>
@@ -1288,8 +1293,8 @@ export default function Integrations() {
             <Card icon="🔍" title="Tavily" subtitle="AI Search Engine" configured={status?.tavily?.configured}>
               <div className="mt-3 space-y-2.5">
                 <MaskedField masked={status?.tavily?.key_masked} label="API Key" value={tavilyKey} onChange={setTavilyKey} onSave={() => save('tavily', { TAVILY_API_KEY: tavilyKey })} saving={saving.tavily}/>
-                <div className="p-3 bg-bg-4 border border-border rounded-xl text-[10px] text-ink-3">
-                  <strong className="text-ink block mb-1">Pencarian Cerdas</strong>
+                <div className="p-3 bg-bg-4 border border-border rounded-xl text-xs text-ink-3 font-medium">
+                  <strong className="text-ink block mb-1 text-sm font-semibold">Pencarian Cerdas</strong>
                   Tavily dirancang khusus untuk agen AI. Dengan API Key ini, AI dapat mengakses informasi terkini secara real-time dari internet.
                 </div>
               </div>
@@ -1299,8 +1304,8 @@ export default function Integrations() {
 
         <div className={clsx(activeTab !== 'api_docs' && "hidden")}>
           <div className="bg-bg-3 border border-border shadow-sm rounded-xl p-4">
-            <h2 className="text-sm font-semibold text-ink mb-3">🔌 REST API Endpoints</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-[10px] font-mono text-ink-2">
+            <h2 className="text-base font-semibold text-ink mb-3">🔌 REST API Endpoints</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 text-xs font-mono text-ink-2 font-semibold">
               <div className="p-2 bg-bg-4 rounded-lg border border-border">POST /api/chat/send</div>
               <div className="p-2 bg-bg-4 rounded-lg border border-border">GET /api/models</div>
             </div>

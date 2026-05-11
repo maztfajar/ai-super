@@ -117,7 +117,7 @@ export function LiveModelPerformanceChart({ activeSessions = [] }) {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <Activity size={16} className="text-accent animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-accent/80">🟢 Real-Time Data</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-accent/80">🟢 Real-Time Data</span>
         </div>
         
         <div className="flex items-center gap-2 flex-wrap">
@@ -143,12 +143,13 @@ export function LiveModelPerformanceChart({ activeSessions = [] }) {
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" vertical={false} />
-              <XAxis dataKey="time" stroke="rgba(200,200,200,0.4)" height={25} style={{ fontSize: '11px' }} />
-              <YAxis stroke="rgba(200,200,200,0.4)" style={{ fontSize: '11px' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-2)" vertical={false} />
+              <XAxis dataKey="time" stroke="var(--ink-3)" height={25} style={{ fontSize: '11px' }} />
+              <YAxis stroke="var(--ink-3)" style={{ fontSize: '11px' }} />
               <Tooltip 
-                contentStyle={{ background: 'rgba(15,20,50,0.95)', border: '1px solid #555', borderRadius: '8px', padding: '10px' }}
-                labelStyle={{ color: '#fff', fontSize: '12px' }}
+                contentStyle={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px' }}
+                labelStyle={{ color: 'var(--ink)', fontSize: '12px' }}
+                itemStyle={{ color: 'var(--ink-2)' }}
               />
               {Object.keys(modelColors).map(model => (
                 <Area
@@ -173,12 +174,12 @@ export function LiveModelPerformanceChart({ activeSessions = [] }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-accent/10 border border-accent/30 rounded-lg p-3">
-          <div className="text-[9px] font-bold text-accent/70 uppercase tracking-widest">Model Paling Aktif</div>
-          <div className="text-base font-black text-accent mt-1 truncate">{liveMetrics.mostActive}</div>
+          <div className="text-[9px] font-semibold text-accent/70 uppercase tracking-widest">Model Paling Aktif</div>
+          <div className="text-base font-bold text-accent mt-1 truncate">{liveMetrics.mostActive}</div>
         </div>
         <div className="bg-warn/10 border border-warn/30 rounded-lg p-3">
-          <div className="text-[9px] font-bold text-warn/70 uppercase tracking-widest">Total Requests</div>
-          <div className="text-base font-black text-warn mt-1">{liveMetrics.throughput}</div>
+          <div className="text-[9px] font-semibold text-warn/70 uppercase tracking-widest">Total Requests</div>
+          <div className="text-base font-bold text-warn mt-1">{liveMetrics.throughput}</div>
         </div>
       </div>
     </div>

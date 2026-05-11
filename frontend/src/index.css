@@ -2,8 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .font-black { font-weight: 500 !important; }
+  .font-bold { font-weight: 500 !important; }
+  .font-semibold { font-weight: 400 !important; }
+  .uppercase { text-transform: none !important; }
+  .tracking-tighter, .tracking-tight, .tracking-normal, .tracking-wide, .tracking-wider, .tracking-widest { letter-spacing: normal !important; }
+  .font-mono { font-family: 'Outfit', system-ui, sans-serif !important; }
+}
+
 /* ── Theme Variables ─────────────────────────────────── */
 :root, [data-theme="dark"] {
+  color-scheme: dark;
   --bg:       #0a0b0f;
   --bg-2:     #111218;
   --bg-3:     #16181f;
@@ -24,6 +34,7 @@
 }
 
 [data-theme="light"] {
+  color-scheme: light;
   --bg:       #f4f6fb;
   --bg-2:     #ffffff;
   --bg-3:     #eef0f8;
@@ -48,13 +59,16 @@
   color: var(--ink);
 }
 
-:root {
-  --accent: #4f6ef7;
+/* accent2 alias — matches accent-2 CSS variable */
+[data-theme="dark"], :root {
   --accent2: #7b93ff;
+}
+[data-theme="light"] {
+  --accent2: #4f6ef7;
 }
 
 body {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: 'Outfit', system-ui, sans-serif;
   background: var(--bg);
   color: var(--ink);
   transition: background 0.2s ease, color 0.2s ease;
@@ -305,8 +319,8 @@ body {
 
 .prose {
   color: var(--ink);
-  font-size: 0.875rem;
-  line-height: 1.7;
+  font-size: 0.9375rem; /* 15px */
+  line-height: 1.6;
   word-break: break-word;
 }
 

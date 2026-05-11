@@ -7,17 +7,28 @@ function getToken() {
   } catch { return null }
 }
 
+async function fetchWithRetry(fetchFn, attempts = 3, delay = 500) {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fetchFn();
+    } catch (e) {
+      if (i === attempts - 1) throw e;
+      await new Promise(r => setTimeout(r, delay * (i + 1)));
+    }
+  }
+}
 async function req(method, path, body, opts = {}) {
   const token = getToken()
   const headers = { 'Content-Type': 'application/json' }
   if (token) headers['Authorization'] = 'Bearer ' + token
 
-  const res = await fetch(BASE + path, {
+  const fetchFn = () => fetch(BASE + path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
     ...opts,
   })
+  const res = await fetchWithRetry(fetchFn)
 
   if (res.status === 401) {
     localStorage.removeItem('ai-orchestrator-auth')
@@ -41,11 +52,11 @@ async function req(method, path, body, opts = {}) {
   return res.json()
 }
 
-// Fetch tanpa redirect (untuk endpoint public sebelum login)
 async function reqPublic(method, path) {
   try {
-    const res = await fetch(BASE + path, { method, headers: { 'Content-Type': 'application/json' } })
-    if (!res.ok) return null
+    const fetchFn = () => fetch(BASE + path, { method, headers: { 'Content-Type': 'application/json' } })
+    const res = await fetchWithRetry(fetchFn)
+    if (!res || !res.ok) return null
     return res.json()
   } catch { return null }
 }

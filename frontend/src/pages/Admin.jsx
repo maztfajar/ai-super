@@ -12,18 +12,18 @@ import {
 import clsx from 'clsx'
 
 function Label({ children }) {
-  return <label className="block text-[10px] text-ink-3 mb-1.5 uppercase tracking-wider font-medium">{children}</label>
+  return <label className="block text-[13px] text-ink-3 mb-1.5 uppercase tracking-wider font-semibold">{children}</label>
 }
 function Inp({ value, onChange, placeholder, disabled, mono }) {
   return <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
-    className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50', mono && 'font-mono')}/>
+    className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50', mono && 'font-mono')}/>
 }
 function SecretInp({ value, onChange, placeholder }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative">
       <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
+        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
       <button type="button" onClick={() => setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
         {show ? <EyeOff size={13}/> : <Eye size={13}/>}
       </button>
@@ -32,19 +32,19 @@ function SecretInp({ value, onChange, placeholder }) {
 }
 function RoleBadge({ role }) {
   return role === 'admin' ? (
-    <span className="flex items-center gap-1 text-[10px] font-semibold bg-accent/15 text-accent-2 px-2 py-0.5 rounded-full">
+    <span className="flex items-center gap-1 text-xs font-semibold bg-accent/15 text-accent-2 px-2 py-0.5 rounded-full">
       <Crown size={9}/>Admin
     </span>
   ) : (
-    <span className="flex items-center gap-1 text-[10px] font-medium bg-bg-4 text-ink-3 px-2 py-0.5 rounded-full border border-border">
+    <span className="flex items-center gap-1 text-xs font-medium bg-bg-4 text-ink-3 px-2 py-0.5 rounded-full border border-border">
       <UserCheck size={9}/>Sub Admin
     </span>
   )
 }
 function StatusDot({ active }) {
   return active
-    ? <span className="flex items-center gap-1 text-[10px] text-success"><span className="w-1.5 h-1.5 rounded-full bg-success"/>Aktif</span>
-    : <span className="flex items-center gap-1 text-[10px] text-ink-3"><span className="w-1.5 h-1.5 rounded-full bg-ink-3"/>Nonaktif</span>
+    ? <span className="flex items-center gap-1 text-xs text-success"><span className="w-1.5 h-1.5 rounded-full bg-success"/>Aktif</span>
+    : <span className="flex items-center gap-1 text-xs text-ink-3"><span className="w-1.5 h-1.5 rounded-full bg-ink-3"/>Nonaktif</span>
 }
 
 // ── Hak Akses per Role ────────────────────────────────────────
@@ -83,7 +83,7 @@ function UserForm({ editUser, onSave, onCancel, saving }) {
   return (
     <div className="bg-bg-4 border border-accent/25 rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-ink">{editUser ? '✏️ Edit Pengguna' : '➕ Tambah Pengguna Baru'}</span>
+        <span className="text-sm font-semibold text-ink">{editUser ? '✏️ Edit Pengguna' : '➕ Tambah Pengguna Baru'}</span>
         <button onClick={onCancel} className="text-ink-3 hover:text-ink"><X size={14}/></button>
       </div>
 
@@ -116,12 +116,12 @@ function UserForm({ editUser, onSave, onCancel, saving }) {
                   role === k ? 'border-accent bg-accent/8' : 'border-border bg-bg-3 hover:border-border-2')}>
                 <div className="flex items-center gap-2 mb-1">
                   <Icon size={13} className={role === k ? 'text-accent-2' : 'text-ink-3'}/>
-                  <span className="text-xs font-semibold text-ink">{v.label}</span>
+                  <span className="text-sm font-semibold text-ink">{v.label}</span>
                 </div>
-                <div className="text-[10px] text-ink-3 mb-2">{v.desc}</div>
+                <div className="text-xs text-ink-3 mb-2">{v.desc}</div>
                 <div className="flex flex-wrap gap-1">
                   {v.pages.map(p => (
-                    <span key={p} className={clsx('text-[9px] px-1.5 py-0.5 rounded font-mono',
+                    <span key={p} className={clsx('text-[11px] px-1.5 py-0.5 rounded font-mono',
                       role === k ? 'bg-accent/15 text-accent-2' : 'bg-bg-5 text-ink-3')}>
                       {p}
                     </span>
@@ -135,12 +135,12 @@ function UserForm({ editUser, onSave, onCancel, saving }) {
 
       <div className="flex gap-2 pt-1">
         <button onClick={handleSave} disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-accent hover:bg-accent/80 text-white font-medium disabled:opacity-50">
+          className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-accent hover:bg-accent/80 text-white font-medium disabled:opacity-50">
           {saving ? <RefreshCw size={11} className="animate-spin"/> : <Save size={11}/>}
           {editUser ? 'Update Pengguna' : 'Buat Pengguna'}
         </button>
         <button onClick={onCancel}
-          className="px-3 py-2 text-xs rounded-lg bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink">
+          className="px-3 py-2 text-sm rounded-lg bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink">
           Batal
         </button>
       </div>
@@ -204,13 +204,13 @@ function RecoveryTokenPanel() {
       <div className="p-4 space-y-4">
 
         {/* Penjelasan */}
-        <div className="flex items-start gap-2.5 p-3 bg-warn/8 border border-warn/20 rounded-xl text-[11px] text-ink-2">
+        <div className="flex items-start gap-2.5 p-3 bg-warn/8 border border-warn/20 rounded-xl text-[13px] text-ink-2">
           <AlertTriangle size={13} className="text-warn flex-shrink-0 mt-0.5"/>
           <div>
             <strong className="text-ink block mb-0.5">Cara kerja:</strong>
             Generate token → salin → kirim ke pengguna via WhatsApp/Telegram → 
             pengguna buka halaman login → tab "Lupa Password?" → pilih "Token Recovery" → paste token → set password baru.
-            <span className="text-warn font-medium block mt-1">Token berlaku 15 menit dan hanya bisa dipakai 1 kali.</span>
+            <span className="text-warn font-semibold block mt-1">Token berlaku 15 menit dan hanya bisa dipakai 1 kali.</span>
           </div>
         </div>
 
@@ -218,11 +218,11 @@ function RecoveryTokenPanel() {
           {/* Generate */}
           <div className="space-y-3">
             <div>
-              <label className="block text-[10px] text-ink-3 mb-1.5 uppercase tracking-wider font-medium">
+              <label className="block text-[12px] text-ink-3 mb-1.5 uppercase tracking-wider font-semibold">
                 Generate Token Untuk
               </label>
               <select value={selUser} onChange={e => setSelUser(e.target.value)}
-                className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink outline-none focus:border-accent">
+                className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-accent">
                 <option value="">Akun saya sendiri (Admin)</option>
                 {users.map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
@@ -246,7 +246,7 @@ function RecoveryTokenPanel() {
                     <CheckCircle2 size={13} className="text-success"/>
                     <span className="text-xs font-semibold text-success">Token Siap!</span>
                   </div>
-                  <div className={clsx('text-xs font-mono font-bold px-2 py-1 rounded-lg',
+                  <div className={clsx('text-xs font-mono font-semibold px-2 py-1 rounded-lg',
                     countdown > 120 ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger animate-pulse')}>
                     <Clock size={10} className="inline mr-1"/>
                     {fmt(countdown)}
@@ -254,11 +254,11 @@ function RecoveryTokenPanel() {
                 </div>
 
                 <div className="relative bg-bg-2 border border-success/30 rounded-xl p-3">
-                  <div className="text-[10px] text-ink-3 mb-1.5 flex items-center gap-1">
+                  <div className="text-xs text-ink-3 mb-1.5 flex items-center gap-1">
                     <AlertTriangle size={9} className="text-warn"/>
                     Hanya tampil sekali — salin sekarang!
                   </div>
-                  <code className="text-[11px] font-mono text-success break-all leading-relaxed block pr-8">
+                  <code className="text-sm font-mono text-success break-all leading-relaxed block pr-8">
                     {token.token}
                   </code>
                   <button onClick={copyToken}
@@ -268,7 +268,7 @@ function RecoveryTokenPanel() {
                   </button>
                 </div>
 
-                <div className="text-[10px] text-ink-3 bg-bg-4 rounded-xl p-2.5">
+                <div className="text-xs text-ink-3 bg-bg-4 rounded-xl p-2.5">
                   <div>👤 Untuk: <strong className="text-ink">{token.username}</strong></div>
                   <div className="mt-1">📋 Kirim token ini ke pengguna via WhatsApp atau Telegram</div>
                   <div className="mt-0.5">🔗 Pengguna: Login → "Lupa Password?" → "Token Recovery"</div>
@@ -278,7 +278,7 @@ function RecoveryTokenPanel() {
               <div className="h-full flex items-center justify-center text-center p-6 border-2 border-dashed border-border rounded-xl">
                 <div className="text-ink-3">
                   <Key size={20} className="mx-auto mb-2 opacity-40"/>
-                  <div className="text-xs">Token akan muncul di sini setelah di-generate</div>
+                  <div className="text-sm">Token akan muncul di sini setelah di-generate</div>
                 </div>
               </div>
             )}
@@ -289,14 +289,14 @@ function RecoveryTokenPanel() {
         {active.length > 0 && (
           <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-semibold text-ink-2">Token Aktif ({active.length})</span>
-              <button onClick={loadActive} className="text-[10px] text-ink-3 hover:text-ink flex items-center gap-1">
+              <span className="text-[13px] font-semibold text-ink-2">Token Aktif ({active.length})</span>
+              <button onClick={loadActive} className="text-xs text-ink-3 hover:text-ink flex items-center gap-1">
                 <RefreshCw size={9}/>Refresh
               </button>
             </div>
             <div className="space-y-1.5">
               {active.map((t, i) => (
-                <div key={i} className={clsx('flex items-center gap-3 px-3 py-2 rounded-lg text-[10px]',
+                <div key={i} className={clsx('flex items-center gap-3 px-3 py-2 rounded-lg text-xs',
                   t.used ? 'bg-bg-4 opacity-50' : 'bg-success/5 border border-success/20')}>
                   <div className={clsx('w-1.5 h-1.5 rounded-full flex-shrink-0',
                     t.used ? 'bg-ink-3' : t.expires_in < 120 ? 'bg-warn animate-pulse' : 'bg-success')}/>
@@ -392,13 +392,13 @@ export default function Admin() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-lg font-bold text-ink flex items-center gap-2">
+          <h1 className="text-xl font-semibold text-ink flex items-center gap-2">
             <Users size={18} className="text-accent-2"/>Panel Admin
           </h1>
-          <p className="text-xs text-ink-3 mt-0.5">Kelola pengguna dan hak akses</p>
+          <p className="text-sm text-ink-3 mt-0.5">Kelola pengguna dan hak akses</p>
         </div>
         <button onClick={() => { setShowAdd(!showAdd); setEditUser(null) }}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-accent hover:bg-accent/80 text-white font-medium transition-colors">
+          className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-accent hover:bg-accent/80 text-white font-medium transition-colors">
           <Plus size={12}/>Tambah Pengguna
         </button>
       </div>
@@ -415,12 +415,12 @@ export default function Admin() {
                   <Icon size={14}/>
                   <span className="text-sm font-semibold">{v.label}</span>
                 </div>
-                <span className="text-xl font-bold font-mono">{count}</span>
+                <span className="text-xl font-semibold font-mono">{count}</span>
               </div>
-              <div className="text-[10px] opacity-80 mb-2">{v.desc}</div>
+              <div className="text-xs opacity-80 mb-2">{v.desc}</div>
               <div className="flex flex-wrap gap-1">
                 {v.pages.map(p => (
-                  <span key={p} className="text-[9px] bg-bg-2/50 px-1.5 py-0.5 rounded font-mono">{p}</span>
+                  <span key={p} className="text-[11px] bg-bg-2/50 px-1.5 py-0.5 rounded font-mono">{p}</span>
                 ))}
               </div>
             </div>
@@ -439,13 +439,13 @@ export default function Admin() {
       {/* Tabel Pengguna */}
       <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="text-sm font-semibold text-ink flex items-center gap-2">
+          <span className="text-base font-semibold text-ink flex items-center gap-2">
             <Users size={14} className="text-ink-3"/>
             Daftar Pengguna
-            <span className="text-[10px] bg-bg-4 text-ink-3 px-2 py-0.5 rounded-full font-normal">{users.length} akun</span>
+            <span className="text-xs bg-bg-4 text-ink-3 px-2 py-0.5 rounded-full font-normal">{users.length} akun</span>
           </span>
           <button onClick={loadUsers} disabled={loading}
-            className="text-xs text-ink-3 hover:text-ink flex items-center gap-1 disabled:opacity-50">
+            className="text-sm text-ink-3 hover:text-ink flex items-center gap-1 disabled:opacity-50">
             <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
           </button>
         </div>
@@ -458,14 +458,14 @@ export default function Admin() {
           <div className="py-10 text-center text-xs text-ink-3">Belum ada pengguna</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left px-4 py-2.5 text-[10px] text-ink-3 uppercase tracking-wider font-medium">Pengguna</th>
-                  <th className="text-left px-3 py-2.5 text-[10px] text-ink-3 uppercase tracking-wider font-medium">Email</th>
-                  <th className="text-center px-3 py-2.5 text-[10px] text-ink-3 uppercase tracking-wider font-medium">Hak Akses</th>
-                  <th className="text-center px-3 py-2.5 text-[10px] text-ink-3 uppercase tracking-wider font-medium">Status</th>
-                  <th className="text-center px-3 py-2.5 text-[10px] text-ink-3 uppercase tracking-wider font-medium">Bergabung</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Pengguna</th>
+                  <th className="text-left px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Email</th>
+                  <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Hak Akses</th>
+                  <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Status</th>
+                  <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Bergabung</th>
                   <th className="px-3 py-2.5"></th>
                 </tr>
               </thead>
@@ -477,19 +477,19 @@ export default function Admin() {
                     <tr key={u.id} className={clsx('hover:bg-bg-4/50 transition-colors', !u.is_active && 'opacity-60')}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
-                          <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0',
+                          <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0',
                             role === 'admin' ? 'bg-accent/20 text-accent-2' : 'bg-bg-5 text-ink-3')}>
                             {u.username[0].toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-medium text-ink flex items-center gap-1.5">
+                            <div className="font-semibold text-ink flex items-center gap-1.5">
                               {u.username}
-                              {isSelf && <span className="text-[9px] bg-success/15 text-success px-1.5 py-0.5 rounded">Anda</span>}
+                              {isSelf && <span className="text-[11px] bg-success/15 text-success px-1.5 py-0.5 rounded font-semibold">Anda</span>}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-ink-3 font-mono text-[11px]">{u.email}</td>
+                      <td className="px-3 py-3 text-ink-3 font-mono text-sm">{u.email}</td>
                       <td className="px-3 py-3 text-center">
                         <RoleBadge role={role}/>
                       </td>
@@ -511,17 +511,17 @@ export default function Admin() {
                                 u.is_active ? 'text-ink-3 hover:text-warn hover:bg-warn/10' : 'text-ink-3 hover:text-success hover:bg-success/10')}>
                               {u.is_active ? <XCircle size={12}/> : <CheckCircle2 size={12}/>}
                             </button>
-                            {confirmDelete === u.id ? (
-                              <div className="flex items-center gap-1">
-                                <button onClick={() => handleDelete(u)} disabled={deleting === u.id}
-                                  className="px-2 py-1 text-[10px] bg-danger text-white rounded-lg font-medium disabled:opacity-50">
-                                  {deleting === u.id ? '...' : 'Hapus'}
-                                </button>
-                                <button onClick={() => setConfirmDelete(null)}
-                                  className="px-2 py-1 text-[10px] bg-bg-4 border border-border text-ink-2 rounded-lg">
-                                  Batal
-                                </button>
-                              </div>
+                              {confirmDelete === u.id ? (
+                                <div className="flex items-center gap-1">
+                                  <button onClick={() => handleDelete(u)} disabled={deleting === u.id}
+                                    className="px-2 py-1 text-xs bg-danger text-white rounded-lg font-medium disabled:opacity-50">
+                                    {deleting === u.id ? '...' : 'Hapus'}
+                                  </button>
+                                  <button onClick={() => setConfirmDelete(null)}
+                                    className="px-2 py-1 text-xs bg-bg-4 border border-border text-ink-2 rounded-lg">
+                                    Batal
+                                  </button>
+                                </div>
                             ) : (
                               <button onClick={() => setConfirmDelete(u.id)}
                                 className="p-1.5 rounded-lg text-ink-3 hover:text-danger hover:bg-danger/10 transition-colors">
@@ -530,7 +530,7 @@ export default function Admin() {
                             )}
                           </div>
                         )}
-                        {isSelf && <span className="text-[10px] text-ink-3 px-2">—</span>}
+                        {isSelf && <span className="text-xs text-ink-3 px-2">—</span>}
                       </td>
                     </tr>
                   )
@@ -551,12 +551,12 @@ export default function Admin() {
           <span className="text-sm font-semibold text-ink">Ringkasan Hak Akses</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-[10px]">
+          <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-2 pr-4 text-ink-3 font-medium">Menu / Fitur</th>
-                <th className="text-center py-2 px-3 text-accent-2 font-medium">👑 Admin</th>
-                <th className="text-center py-2 px-3 text-ink-3 font-medium">👤 Sub Admin</th>
+                <th className="text-left py-2 pr-4 text-ink-3 font-semibold">Menu / Fitur</th>
+                <th className="text-center py-2 px-3 text-accent-2 font-semibold">👑 Admin</th>
+                <th className="text-center py-2 px-3 text-ink-3 font-semibold">👤 Sub Admin</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
@@ -576,7 +576,7 @@ export default function Admin() {
                 ['Panel Admin',  true,  false],
               ].map(([name, admin, sub]) => (
                 <tr key={name} className="hover:bg-bg-4/30">
-                  <td className="py-1.5 pr-4 text-ink-2 font-medium">{name}</td>
+                  <td className="py-1.5 pr-4 text-ink-2 font-semibold">{name}</td>
                   <td className="py-1.5 px-3 text-center">{admin ? <CheckCircle2 size={12} className="text-success mx-auto"/> : <XCircle size={12} className="text-danger/40 mx-auto"/>}</td>
                   <td className="py-1.5 px-3 text-center">{sub ? <CheckCircle2 size={12} className="text-success mx-auto"/> : <XCircle size={12} className="text-danger/40 mx-auto"/>}</td>
                 </tr>

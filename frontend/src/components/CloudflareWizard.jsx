@@ -178,7 +178,7 @@ function Step1({ onDone, alreadyDone }) {
           ['5', 'Copy token → paste di bawah'],
         ].map(([n, text]) => (
           <div key={n} className="flex items-start gap-2">
-            <span className="text-accent-2 font-bold w-3 flex-shrink-0">{n}.</span>
+            <span className="text-accent-2 font-semibold w-3 flex-shrink-0">{n}.</span>
             <span>{text}</span>
           </div>
         ))}
@@ -586,7 +586,7 @@ function ResetDialog({ onClose, onConfirm }) {
         <div className="bg-danger/8 border-b border-danger/20 px-4 py-3 flex items-center gap-2.5">
           <ShieldAlert size={18} className="text-danger flex-shrink-0"/>
           <div>
-            <div className="text-sm font-bold text-danger">Reset Konfigurasi Cloudflare</div>
+            <div className="text-sm font-semibold text-danger">Reset Konfigurasi Cloudflare</div>
             <div className="text-[10px] text-danger/70">Tindakan ini tidak bisa dibatalkan</div>
           </div>
         </div>
@@ -744,7 +744,7 @@ export default function CloudflareWizard({ onClose }) {
   if (finished) return (
     <div className="space-y-4 py-2 text-center">
       <div className="text-5xl mb-2">🎉</div>
-      <div className="text-sm font-bold text-ink">Cloudflare Tunnel Aktif!</div>
+      <div className="text-sm font-semibold text-ink">Cloudflare Tunnel Aktif!</div>
       <div className="text-xs text-ink-3">
         {status?.installed_via_terminal
           ? 'Tunnel terdeteksi berjalan (instalasi via terminal)'

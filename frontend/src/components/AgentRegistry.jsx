@@ -120,10 +120,10 @@ function AgentRegistry({ viewMode = 'grid' }) {
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <div className="flex items-center gap-2">
           <Zap size={16} className="text-accent-2" />
-          <h2 className="text-base font-black text-ink tracking-tight">
+          <h2 className="text-xl font-bold text-ink tracking-tight uppercase">
             🤖 Agents
           </h2>
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+          <span className="text-xs font-bold px-2.5 py-1 rounded-full shadow-sm"
             style={{ background: 'rgba(100,102,241,0.15)', color: '#818CF8' }}>
             {agents.length}
           </span>
@@ -135,12 +135,12 @@ function AgentRegistry({ viewMode = 'grid' }) {
               key={mode}
               onClick={() => setSelectedView(mode)}
               className={clsx(
-                'px-2 py-1 rounded text-[9px] font-bold uppercase transition-all',
+                'px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition-all shadow-sm',
                 selectedView === mode
                   ? 'bg-accent text-white shadow-lg'
                   : 'text-ink-3 hover:text-ink-2'
               )}>
-              {mode === 'grid' ? '📊' : '📋'}
+              {mode === 'grid' ? '📊 Grid' : '📋 List'}
             </button>
           ))}
         </div>
@@ -166,10 +166,10 @@ function AgentRegistry({ viewMode = 'grid' }) {
 
                 <div className="relative z-10 space-y-2">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                      <span className="text-lg flex-shrink-0">{agent.icon || '🤖'}</span>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="text-2xl flex-shrink-0">{agent.icon || '🤖'}</span>
                       <div className="min-w-0">
-                        <h3 className="text-[11px] font-bold text-ink truncate">{agent.name}</h3>
+                        <h3 className="text-sm font-bold text-ink truncate uppercase tracking-tight">{agent.name}</h3>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0 relative">
@@ -181,24 +181,24 @@ function AgentRegistry({ viewMode = 'grid' }) {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-0.5">
+                  <div className="flex flex-wrap gap-1">
                     {agent.skills?.slice(0, 2).map((skill, i) => (
-                      <span key={i} className="text-[7px] px-1 py-0.5 rounded font-semibold"
+                      <span key={i} className="text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider"
                         style={{
                           background: 'rgba(100,102,241,0.15)',
                           color: '#818CF8',
                         }}>
-                        {typeof skill === 'string' ? skill.substring(0, 8) : skill}
+                        {typeof skill === 'string' ? skill.substring(0, 10) : skill}
                       </span>
                     ))}
                     {agent.skills?.length > 2 && (
-                      <span className="text-[7px] text-ink-3">+{agent.skills.length - 2}</span>
+                      <span className="text-[10px] text-ink-3 font-semibold">+{agent.skills.length - 2}</span>
                     )}
                   </div>
 
-                  <div className="space-y-1 text-[8px] text-ink-3">
-                    <div>Tasks: {perf.tasks || 0}</div>
-                    <div>Success: {(perf.success * 100 || 0).toFixed(0)}%</div>
+                  <div className="space-y-1 text-xs text-ink-3 font-semibold uppercase tracking-tight">
+                    <div>Tasks: <span className="text-ink-2 font-bold">{perf.tasks || 0}</span></div>
+                    <div>Success: <span className="text-ink-2 font-bold">{(perf.success * 100 || 0).toFixed(0)}%</span></div>
                   </div>
 
                   <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
@@ -225,21 +225,21 @@ function AgentRegistry({ viewMode = 'grid' }) {
             const cfg = statusConfig[status]
 
             return (
-              <div key={agent.type} className="flex items-center justify-between p-2 rounded border border-border/30 hover:border-accent/50 transition-all cursor-pointer text-xs">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-sm flex-shrink-0">{agent.icon || '🤖'}</span>
+              <div key={agent.type} className="flex items-center justify-between p-3 rounded-lg border border-border/30 hover:border-accent/50 transition-all cursor-pointer text-sm">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="text-2xl flex-shrink-0">{agent.icon || '🤖'}</span>
                   <div className="min-w-0">
-                    <div className="text-[10px] font-bold text-ink truncate">{agent.name}</div>
-                    <div className="text-[8px] text-ink-3">{perf.tasks || 0} tasks</div>
+                    <div className="text-sm font-bold text-ink truncate uppercase tracking-tight">{agent.name}</div>
+                    <div className="text-xs text-ink-3 font-semibold">{perf.tasks || 0} tasks</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0 min-w-[70px] justify-end">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{ 
+                <div className="flex items-center gap-2 flex-shrink-0 min-w-[80px] justify-end">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-sm" style={{ 
                     background: cfg.bg, 
                     color: cfg.color,
                     boxShadow: cfg.glow || 'none'
                   }}>
-                    {cfg.pulse && <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: cfg.color }} />}
+                    {cfg.pulse && <span className="w-2 h-2 rounded-full animate-pulse shadow-sm" style={{ backgroundColor: cfg.color }} />}
                     {cfg.label.split(' ')[1]}
                   </span>
                 </div>

@@ -34,7 +34,7 @@ export default function Playground() {
   return (
     <div className="p-4 md:p-6 w-full">
       <div className="mb-5">
-        <h1 className="text-lg font-bold text-ink">Playground</h1>
+        <h1 className="text-lg font-semibold text-ink">Playground</h1>
         <p className="text-xs text-ink-3">Test prompt & compare model langsung</p>
       </div>
 

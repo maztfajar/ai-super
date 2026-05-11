@@ -1,0 +1,208 @@
+/* ChatHistorySidebar.css */
+.chsb {
+  width: 280px;
+  min-width: 280px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-2);
+  border-right: 0.5px solid var(--border);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.chsb-header {
+  height: 64px;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.5px solid var(--border);
+  flex-shrink: 0;
+}
+
+.chsb-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.chsb-new-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-2);
+  background: var(--bg-4);
+  border: 0.5px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chsb-new-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.chsb-search-wrap {
+  padding: 0.75rem 1rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.chsb-search-icon {
+  position: absolute;
+  left: 1.5rem;
+  color: var(--ink-3);
+}
+
+.chsb-search {
+  width: 100%;
+  height: 38px;
+  padding: 0 0.75rem 0 2.25rem;
+  background: var(--bg-3);
+  border: 0.5px solid var(--border);
+  border-radius: 6px;
+  font-size: 1rem;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chsb-search:focus {
+  border-color: var(--accent);
+}
+
+.chsb-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chsb-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chsb-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.chsb-item {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+  group: hover;
+}
+
+.chsb-item:hover {
+  background: var(--bg-4);
+}
+
+.chsb-item--active {
+  background: var(--bg-3);
+  border: 0.5px solid var(--border);
+}
+
+.chsb-item--active::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 12px;
+  bottom: 12px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+.chsb-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chsb-item-title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chsb-item-time {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.chsb-delete {
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--ink-3);
+  opacity: 0;
+  transition: all 0.2s;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.chsb-item:hover .chsb-delete {
+  opacity: 1;
+}
+
+.chsb-delete:hover {
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+}
+
+.chsb-empty {
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--ink-3);
+  gap: 0.5rem;
+}
+
+.chsb-empty-icon {
+  margin-bottom: 0.5rem;
+  opacity: 0.3;
+}
+
+.chsb-empty p {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .chsb {
+    display: none; /* Handled by bottom nav/modal on mobile */
+  }
+}

@@ -46,6 +46,13 @@ step "1. Validasi Environment"
 mkdir -p "$APP_DIR/data/logs"
 log "Semua validasi lolos"
 
+# Load variabel dari .env
+if [ -f "$APP_DIR/.env" ]; then
+    set -a
+    source "$APP_DIR/.env"
+    set +a
+fi
+
 # ── Cek SECRET_KEY ────────────────────────────────────────────
 step "2. Cek Keamanan .env"
 

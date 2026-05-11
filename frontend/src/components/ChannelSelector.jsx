@@ -58,17 +58,17 @@ export default function ChannelSelector() {
       <button
         onClick={() => setOpen(!open)}
         className={clsx(
-          'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border',
+          'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm',
           'bg-bg-4 border-border-2 text-ink hover:bg-bg-5 hover:border-accent/40',
           open && 'border-accent/60 bg-bg-5 ring-1 ring-accent/20'
         )}
       >
-        <CurrentIcon size={13} className="text-accent-2 flex-shrink-0" />
-        <span className="truncate max-w-[130px]">
+        <CurrentIcon size={14} className="text-accent-2 flex-shrink-0" />
+        <span className="truncate max-w-[150px] font-bold">
           {currentChannel?.name || 'Pilih Channel'}
         </span>
         <ChevronDown
-          size={12}
+          size={14}
           className={clsx('text-ink-3 transition-transform duration-200', open && 'rotate-180')}
         />
       </button>
@@ -77,9 +77,9 @@ export default function ChannelSelector() {
       {open && (
         <div className="absolute right-0 top-full mt-1.5 w-56 bg-bg-2 border border-border-2 rounded-xl shadow-2xl shadow-black/20 z-[100] overflow-hidden animate-fade">
           {/* Header */}
-          <div className="px-3 pt-3 pb-1.5">
-            <div className="text-[10px] font-bold tracking-widest uppercase text-ink-3 flex items-center gap-1.5">
-              <Radio size={10} className="text-accent-2" />
+          <div className="px-3 pt-3 pb-2 border-b border-border/20 mb-1">
+            <div className="text-xs font-bold tracking-widest uppercase text-ink-3 flex items-center gap-2">
+              <Radio size={12} className="text-accent-2" />
               Channel / Session
             </div>
           </div>
@@ -99,17 +99,17 @@ export default function ChannelSelector() {
                     key={ch.id}
                     onClick={() => handleSelect(ch.id)}
                     className={clsx(
-                      'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all text-sm group',
+                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all text-sm group',
                       isSelected
-                        ? 'bg-accent/10 text-accent-2'
-                        : 'text-ink hover:bg-bg-4'
+                        ? 'bg-accent/10 text-accent-2 font-semibold shadow-sm'
+                        : 'text-ink hover:bg-bg-4 font-medium'
                     )}
                   >
-                    <Icon size={14} className={clsx('flex-shrink-0', isSelected ? 'text-accent-2' : 'text-ink-3 group-hover:text-ink-2')} />
+                    <Icon size={16} className={clsx('flex-shrink-0', isSelected ? 'text-accent-2' : 'text-ink-3 group-hover:text-ink-2')} />
                     <span className="flex-1 truncate">{ch.name}</span>
-                    {isSelected && <Check size={13} className="text-accent-2" />}
+                    {isSelected && <Check size={14} className="text-accent-2" />}
                     {ch.isDefault && !isSelected && (
-                      <span className="text-[10px] text-ink-3 border border-border rounded px-1.5 py-0.5 font-medium">Main</span>
+                      <span className="text-[11px] text-ink-3 border border-border rounded px-2 py-0.5 font-semibold uppercase tracking-tight bg-bg-5">Main</span>
                     )}
                   </button>
                 )

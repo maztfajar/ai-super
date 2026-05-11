@@ -69,7 +69,7 @@ function OtpBoxes({ value, onChange, onEnter }) {
           onFocus={e => e.target.select()}
           onPaste={handlePaste}
           className={clsx(
-            "w-11 text-center text-xl font-bold font-mono rounded-xl outline-none transition-all border-2",
+            "w-11 text-center text-xl font-semibold font-mono rounded-xl outline-none transition-all border-2",
             d ? "bg-accent/10 border-accent text-accent-2" : "bg-bg-3 border-border-2 text-ink focus:border-accent"
           )}
           style={{ height: "3rem" }}
@@ -187,7 +187,7 @@ function RecoveryPanel({ onBack }) {
         <CheckCircle2 size={28} className="text-success"/>
       </div>
       <div>
-        <div className="text-base font-bold text-ink">Password Berhasil Direset!</div>
+        <div className="text-base font-semibold text-ink">Password Berhasil Direset!</div>
         <div className="text-xs text-ink-3 mt-1">Silakan login dengan password baru Anda.</div>
       </div>
       <button onClick={onBack}
@@ -442,11 +442,11 @@ function RecoveryPanel({ onBack }) {
       {/* Panduan langkah */}
       <div className="bg-bg-4 border border-border rounded-xl p-3 text-[11px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">Cara menggunakan:</div>
-        <div className="flex gap-2"><span className="text-accent-2 font-bold flex-shrink-0">1.</span>
+        <div className="flex gap-2"><span className="text-accent-2 font-semibold flex-shrink-0">1.</span>
           <span>Minta Admin generate token di menu <strong className="text-ink-2">Admin → Recovery Token</strong></span></div>
-        <div className="flex gap-2"><span className="text-accent-2 font-bold flex-shrink-0">2.</span>
+        <div className="flex gap-2"><span className="text-accent-2 font-semibold flex-shrink-0">2.</span>
           <span>Admin pilih akun Anda saat generate token</span></div>
-        <div className="flex gap-2"><span className="text-accent-2 font-bold flex-shrink-0">3.</span>
+        <div className="flex gap-2"><span className="text-accent-2 font-semibold flex-shrink-0">3.</span>
           <span>Isi username, paste token, dan set password baru di bawah</span></div>
         <div className="text-warn font-medium pt-0.5">⏱ Token berlaku 15 menit, hanya 1x pakai</div>
       </div>
@@ -528,7 +528,7 @@ function RecoveryPanel({ onBack }) {
         },
       ].map(item => (
         <div key={item.n} className={clsx('border rounded-xl p-3', item.color)}>
-          <div className="text-xs font-bold mb-2">Opsi {item.n}: {item.title}</div>
+          <div className="text-xs font-semibold mb-2">Opsi {item.n}: {item.title}</div>
           <div className="space-y-1.5">
             {item.steps.map((s, i) => (
               <div key={i} className="flex gap-2">
@@ -655,7 +655,7 @@ export default function Login() {
               : <span className="text-3xl">🧠</span>
             }
           </div>
-          <h1 className="text-2xl font-bold text-ink">{appName}</h1>
+          <h1 className="text-2xl font-semibold text-ink">{appName}</h1>
           <p className="text-ink-3 text-sm mt-1">AI Orchestrator</p>
         </div>
 

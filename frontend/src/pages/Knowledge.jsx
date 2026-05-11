@@ -112,61 +112,61 @@ export default function Knowledge() {
 
   return (
     <div className="p-4 md:p-6 w-full">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-lg font-bold text-ink">Knowledge Base (RAG)</h1>
-          <p className="text-xs text-ink-3 mt-0.5">{docs.length} dokumen · ChromaDB vector store</p>
+      <div className="flex items-center justify-between mb-8">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold text-ink uppercase tracking-tight">Knowledge Base (RAG)</h1>
+          <p className="text-sm text-ink-3 font-semibold uppercase tracking-widest opacity-60">{docs.length} dokumen terindeks · ChromaDB vector store</p>
         </div>
-        <button onClick={loadDocs} className="flex items-center gap-1.5 px-3 py-1.5 border border-border-2 rounded-lg text-xs text-ink-2 hover:bg-bg-4 transition-colors">
-          <RefreshCw size={12} /> Refresh
+        <button onClick={loadDocs} className="flex items-center gap-2 px-6 py-3 bg-bg-3 border-2 border-border rounded-xl text-xs font-bold text-ink uppercase tracking-widest hover:bg-bg-4 transition-all shadow-md active:scale-95">
+          <RefreshCw size={18} className={clsx(loading && 'animate-spin')} /> Refresh
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Left: Doc list */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className="lg:col-span-2 space-y-4">
           {/* Upload zone */}
           <div {...getRootProps()} className={clsx(
-            'border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all',
-            isDragActive ? 'border-accent bg-accent/5' : 'border-border hover:border-border-2 hover:bg-bg-3'
+            'border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all shadow-inner',
+            isDragActive ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/40 hover:bg-bg-3'
           )}>
             <input {...getInputProps()} />
-            <Upload size={24} className={clsx('mx-auto mb-2', isDragActive ? 'text-accent-2' : 'text-ink-3')} />
-            <p className="text-sm font-medium text-ink-2">
-              {uploading ? 'Mengupload...' : isDragActive ? 'Lepas file di sini!' : 'Drag & drop atau klik untuk upload'}
+            <Upload size={40} className={clsx('mx-auto mb-4 transition-transform', isDragActive ? 'text-accent-2 scale-110' : 'text-ink-3')} />
+            <p className="text-lg font-bold text-ink uppercase tracking-tight">
+              {uploading ? 'Mengupload Dokumen...' : isDragActive ? 'Lepas file di sini!' : 'Drag & drop atau klik untuk upload'}
             </p>
-            <p className="text-xs text-ink-3 mt-1">PDF · DOCX · TXT · CSV · MD — Maks {50}MB</p>
+            <p className="text-[10px] text-ink-3 mt-2 font-bold uppercase tracking-widest opacity-50">PDF · DOCX · TXT · CSV · MD — Maks 50MB</p>
           </div>
 
           {/* Doc list */}
-          <div className="space-y-2">
-            {loading && <div className="text-xs text-ink-3 py-4 flex items-center gap-2"><RefreshCw size={12} className="animate-spin" /> Memuat dokumen...</div>}
+          <div className="space-y-3">
+            {loading && <div className="text-sm font-bold text-ink-3 py-6 flex items-center justify-center gap-3 uppercase tracking-widest opacity-60"><RefreshCw size={20} className="animate-spin" /> Memuat dokumen...</div>}
             {!loading && docs.length === 0 && (
-              <div className="bg-bg-3 border border-border rounded-xl p-6 text-center">
-                <FileText size={28} className="text-ink-3 mx-auto mb-2" />
-                <p className="text-sm text-ink-3">Belum ada dokumen. Upload untuk mulai!</p>
+              <div className="bg-bg-3 border-2 border-border rounded-2xl p-10 text-center shadow-inner">
+                <FileText size={40} className="text-ink-3 mx-auto mb-4 opacity-30" />
+                <p className="text-sm font-bold text-ink-3 uppercase tracking-widest opacity-60">Belum ada dokumen di basis pengetahuan.</p>
               </div>
             )}
             {docs.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-3 p-3 bg-bg-3 border border-border rounded-xl hover:border-border-2 transition-colors group">
-                <div className="text-xl flex-shrink-0">{DOC_ICON[doc.doc_type] || '📄'}</div>
+              <div key={doc.id} className="flex items-center gap-5 p-4 bg-bg-3 border-2 border-border rounded-2xl hover:border-accent/40 transition-all group shadow-sm">
+                <div className="text-2xl flex-shrink-0 bg-bg-4 w-12 h-12 rounded-xl flex items-center justify-center shadow-inner border border-border/20">{DOC_ICON[doc.doc_type] || '📄'}</div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-ink truncate">{doc.original_name}</div>
-                  <div className="flex items-center gap-2 mt-0.5 text-[10px]">
-                    <span className="text-ink-3">{doc.doc_type.toUpperCase()}</span>
-                    <span className="text-ink-3">·</span>
+                  <div className="text-lg font-bold text-ink truncate tracking-tight uppercase leading-tight">{doc.original_name}</div>
+                  <div className="flex items-center gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest">
+                    <span className="text-accent-2 bg-accent/10 px-2 py-0.5 rounded border border-accent/20">{doc.doc_type}</span>
+                    <span className="text-ink-3 opacity-40">·</span>
                     <span className="text-ink-3">{doc.file_size_kb}KB</span>
-                    <span className="text-ink-3">·</span>
+                    <span className="text-ink-3 opacity-40">·</span>
                     <span className="text-ink-3">{doc.chunks} chunks</span>
-                    <span className="text-ink-3">·</span>
-                    <span className={STATUS_COLOR[doc.status]}>{STATUS_LABEL[doc.status]}</span>
+                    <span className="text-ink-3 opacity-40">·</span>
+                    <span className={clsx(STATUS_COLOR[doc.status])}>{STATUS_LABEL[doc.status]}</span>
                   </div>
                 </div>
                 <button
                   onClick={() => deleteDoc(doc.id, doc.original_name)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-danger/10 transition-all"
+                  className="opacity-0 group-hover:opacity-100 p-2.5 rounded-xl hover:bg-danger/10 text-danger transition-all shadow-sm border border-transparent hover:border-danger/30"
                 >
-                  <Trash2 size={13} className="text-danger" />
+                  <Trash2 size={18} />
                 </button>
               </div>
             ))}
@@ -174,29 +174,32 @@ export default function Knowledge() {
         </div>
 
         {/* Right: Search + Scrape */}
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Search */}
-          <div className="bg-bg-3 border border-border rounded-xl p-3">
-            <h3 className="text-xs font-semibold text-ink mb-2">🔍 Test RAG Search</h3>
-            <div className="flex gap-2 mb-3">
+          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+            <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">🔍 Test RAG Search</h3>
+            <div className="flex gap-3 mb-4">
               <input
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchKB()}
-                placeholder="Cari di knowledge base..."
-                className="flex-1 bg-bg-4 border border-border-2 rounded-lg px-2.5 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent"
+                placeholder="Cari pengetahuan..."
+                className="flex-1 bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent transition-all shadow-inner"
               />
-              <button onClick={searchKB} className="px-3 py-2 bg-accent hover:bg-accent/80 rounded-lg">
-                <Search size={13} className="text-white" />
+              <button onClick={searchKB} className="p-3.5 bg-accent hover:bg-accent/80 rounded-xl transition-all shadow-xl shadow-accent/25 active:scale-95">
+                <Search size={20} className="text-white" />
               </button>
             </div>
             {searchResults.length > 0 && (
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {searchResults.map((r, i) => (
-                  <div key={i} className="p-2 bg-bg-4 rounded-lg border border-border text-[10px]">
-                    <div className="font-medium text-accent-2 mb-1 truncate">📄 {r.source}</div>
-                    <div className="text-ink-3 line-clamp-3">{r.content}</div>
-                    <div className="text-ink-3 mt-1">Score: {(r.score * 100).toFixed(0)}%</div>
+                  <div key={i} className="p-4 bg-bg-4 rounded-xl border-2 border-border/50 text-[11px] shadow-sm">
+                    <div className="font-bold text-accent-2 mb-2 uppercase tracking-tight truncate border-b border-border/40 pb-2">📄 {r.source}</div>
+                    <div className="text-ink-2 line-clamp-5 leading-relaxed font-semibold opacity-80">{r.content}</div>
+                    <div className="text-[10px] text-ink-3 mt-3 font-bold uppercase tracking-widest flex items-center justify-between">
+                       <span>Akurasi:</span>
+                       <span className="text-success">{(r.score * 100).toFixed(0)}%</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -204,60 +207,60 @@ export default function Knowledge() {
           </div>
 
           {/* Scrape */}
-          <div className="bg-bg-3 border border-border rounded-xl p-3">
-            <h3 className="text-xs font-semibold text-ink mb-2">🌐 Scrape Website</h3>
+          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+            <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">🌐 Scrape Website</h3>
             <input
               value={scrapeUrl}
               onChange={(e) => setScrapeUrl(e.target.value)}
               placeholder="https://example.com/page"
-              className="w-full bg-bg-4 border border-border-2 rounded-lg px-2.5 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent mb-2"
+              className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent mb-4 transition-all shadow-inner"
             />
             <button
               onClick={scrapeWebsite}
               disabled={scraping || !scrapeUrl.trim()}
-              className="w-full flex items-center justify-center gap-1.5 py-2 bg-info/10 hover:bg-info/20 border border-info/20 text-info rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-bg-4 hover:bg-info/10 border-2 border-info/30 text-info rounded-xl text-xs font-bold uppercase tracking-widest disabled:opacity-40 transition-all shadow-md active:scale-95"
             >
-              <Globe size={12} /> {scraping ? 'Scraping...' : 'Scrape & Index'}
+              <Globe size={18} className={clsx(scraping && 'animate-spin')} /> {scraping ? 'Scraping...' : 'Scrape & Index'}
             </button>
           </div>
 
           {/* GDrive Import */}
-          <div className="bg-bg-3 border border-border rounded-xl p-3">
-            <h3 className="text-xs font-semibold text-ink mb-2">☁️ Import Google Drive</h3>
+          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+            <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">☁️ Import Google Drive</h3>
             
             {folders.length === 0 && !loadingFolders ? (
               <button
                 onClick={loadFolders}
-                className="w-full flex items-center justify-center gap-1.5 py-2 bg-success/10 hover:bg-success/20 border border-success/20 text-success rounded-lg text-xs font-medium transition-colors"
+                className="w-full flex items-center justify-center gap-3 py-4 bg-bg-4 hover:bg-success/10 border-2 border-success/30 text-success rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-md active:scale-95"
               >
-                Pilih Folder dari Drive
+                <File size={18} /> Pilih Folder Drive
               </button>
             ) : null}
 
             {loadingFolders && (
-              <div className="flex items-center gap-2 text-xs text-ink-3 py-2 justify-center">
-                <RefreshCw size={12} className="animate-spin" /> Memuat folder...
+              <div className="flex items-center gap-3 text-xs font-bold text-ink-3 py-4 justify-center uppercase tracking-widest opacity-60">
+                <RefreshCw size={18} className="animate-spin" /> Memuat folder...
               </div>
             )}
 
             {folders.length > 0 && (
-              <div className="space-y-2 mt-2 animate-fade">
+              <div className="space-y-4 mt-2 animate-fade">
                 <select
                   value={selectedFolder}
                   onChange={(e) => setSelectedFolder(e.target.value)}
-                  className="w-full bg-bg-4 border border-border-2 rounded-lg px-2 text-[10px] text-ink outline-none py-2 focus:border-accent"
+                  className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent transition-all shadow-inner"
                 >
                   <option value="">-- Pilih Folder --</option>
                   {folders.map(f => (
                     <option key={f.id} value={f.id}>📁 {f.name}</option>
                   ))}
                 </select>
-                <div className="flex gap-2">
-                  <button onClick={() => setFolders([])} className="flex-1 py-1.5 bg-bg-4 hover:bg-bg-5 border border-border-2 rounded-lg text-xs font-medium text-ink-3 transition-colors">Batal</button>
+                <div className="flex gap-3">
+                  <button onClick={() => setFolders([])} className="flex-1 py-3 bg-bg-4 border-2 border-border rounded-xl text-[10px] font-bold text-ink-3 uppercase tracking-widest transition-all hover:bg-bg-5 active:scale-95">Batal</button>
                   <button
                     onClick={syncGDrive}
                     disabled={syncingDrive || !selectedFolder}
-                    className="flex-[2] flex items-center justify-center gap-1.5 py-1.5 bg-success/10 hover:bg-success/20 border border-success/20 text-success rounded-lg text-xs font-medium disabled:opacity-50 transition-colors"
+                    className="flex-[2] flex items-center justify-center gap-3 py-3 bg-bg-4 hover:bg-success/10 border-2 border-success/30 text-success rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 transition-all shadow-md active:scale-95"
                   >
                     {syncingDrive ? 'Sinkronisasi...' : 'Sync ke RAG'}
                   </button>
@@ -267,13 +270,13 @@ export default function Knowledge() {
           </div>
 
           {/* Tips */}
-          <div className="bg-bg-3 border border-border rounded-xl p-3">
-            <h3 className="text-xs font-semibold text-ink mb-2">💡 Tips RAG</h3>
-            <ul className="text-[10px] text-ink-3 space-y-1.5">
-              <li>• Upload PDF laporan → AI bisa menjawab dari laporan</li>
-              <li>• Scrape website perusahaan → AI tahu tentang produk kamu</li>
-              <li>• Aktifkan tombol 📚 RAG di chat agar AI gunakan knowledge base</li>
-              <li>• Makin banyak dokumen = AI makin relevan</li>
+          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-inner">
+            <h3 className="text-xs font-bold text-ink mb-4 uppercase tracking-widest opacity-60">💡 Tips RAG</h3>
+            <ul className="text-xs text-ink-3 space-y-3 font-semibold leading-relaxed opacity-80 uppercase tracking-tight">
+              <li className="flex gap-2"><span className="text-accent-2">•</span> <span>Upload PDF laporan → AI bisa menjawab dari laporan</span></li>
+              <li className="flex gap-2"><span className="text-accent-2">•</span> <span>Scrape website → AI tahu tentang produk kamu</span></li>
+              <li className="flex gap-2"><span className="text-accent-2">•</span> <span>Aktifkan RAG di chat agar AI gunakan basis data</span></li>
+              <li className="flex gap-2"><span className="text-accent-2">•</span> <span>Makin banyak data = AI makin akurat & relevan</span></li>
             </ul>
           </div>
         </div>

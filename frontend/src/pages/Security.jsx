@@ -13,7 +13,7 @@ import clsx from 'clsx'
 
 // ── Primitive ─────────────────────────────────────────────────
 function Label({ children }) {
-  return <label className="block text-[10px] text-ink-3 mb-1.5 uppercase tracking-wider font-medium">{children}</label>
+  return <label className="block text-xs text-ink-3 mb-2 uppercase tracking-widest font-bold opacity-60">{children}</label>
 }
 function SecretInp({ value, onChange, placeholder, disabled }) {
   const [show, setShow] = useState(false)
@@ -21,9 +21,9 @@ function SecretInp({ value, onChange, placeholder, disabled }) {
     <div className="relative">
       <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled} autoComplete="new-password"
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono disabled:opacity-50"/>
-      <button type="button" onClick={() => setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
-        {show ? <EyeOff size={13}/> : <Eye size={13}/>}
+        className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono disabled:opacity-50 shadow-inner"/>
+      <button type="button" onClick={() => setShow(!show)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-all">
+        {show ? <EyeOff size={16}/> : <Eye size={16}/>}
       </button>
     </div>
   )
@@ -31,15 +31,15 @@ function SecretInp({ value, onChange, placeholder, disabled }) {
 function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disabled, full }) {
   return (
     <button onClick={onClick} disabled={loading || disabled}
-      className={clsx('flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg font-medium transition-all disabled:opacity-50',
+      className={clsx('flex items-center justify-center gap-2 px-5 py-3 text-sm rounded-xl font-bold uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95 shadow-md',
         full && 'w-full',
         variant === 'primary' && 'bg-accent hover:bg-accent/80 text-white',
-        variant === 'success' && 'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
-        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn',
-        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger',
-        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink',
+        variant === 'success' && 'bg-success/10 hover:bg-success/20 border-2 border-success/30 text-success',
+        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border-2 border-warn/30 text-warn',
+        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border-2 border-danger/30 text-danger',
+        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink',
       )}>
-      {loading ? <RefreshCw size={12} className="animate-spin"/> : Icon && <Icon size={12}/>}
+      {loading ? <RefreshCw size={14} className="animate-spin"/> : Icon && <Icon size={14}/>}
       {label}
     </button>
   )
@@ -47,15 +47,15 @@ function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disable
 function Card({ title, icon: Icon, iconColor = 'text-accent-2', children, badge, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
+    <div className="bg-bg-3 border-2 border-border rounded-2xl overflow-hidden shadow-lg">
       <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-4 py-3 border-b border-border hover:bg-bg-4/50 transition-colors">
-        <Icon size={14} className={iconColor}/>
-        <span className="text-sm font-semibold text-ink flex-1 text-left">{title}</span>
+        className="w-full flex items-center gap-3 px-5 py-4 border-b-2 border-border hover:bg-bg-4/50 transition-all">
+        <Icon size={18} className={iconColor}/>
+        <span className="text-base font-bold text-ink uppercase tracking-tight flex-1 text-left">{title}</span>
         {badge}
-        {open ? <ChevronUp size={13} className="text-ink-3"/> : <ChevronDown size={13} className="text-ink-3"/>}
+        {open ? <ChevronUp size={16} className="text-ink-3"/> : <ChevronDown size={16} className="text-ink-3"/>}
       </button>
-      {open && <div className="p-4">{children}</div>}
+      {open && <div className="p-6">{children}</div>}
     </div>
   )
 }
@@ -63,15 +63,15 @@ function CopyBtn({ text }) {
   const [ok, setOk] = useState(false)
   return (
     <button onClick={() => { copyToClipboard(text); setOk(true); setTimeout(() => setOk(false), 2000) }}
-      className="p-1.5 rounded hover:bg-bg-5 text-ink-3 hover:text-ink transition-colors flex-shrink-0">
-      {ok ? <Check size={12} className="text-success"/> : <Copy size={12}/>}
+      className="p-2 rounded-lg hover:bg-bg-5 text-ink-3 hover:text-ink transition-all flex-shrink-0">
+      {ok ? <Check size={16} className="text-success"/> : <Copy size={16}/>}
     </button>
   )
 }
 function CodeLine({ cmd }) {
   return (
-    <div className="flex items-center gap-2 bg-bg-2 border border-border rounded-lg px-3 py-2 font-mono text-[11px]">
-      <span className="text-accent-2 flex-1">{cmd}</span>
+    <div className="flex items-center gap-3 bg-bg-2 border-2 border-border rounded-xl px-4 py-3 font-mono text-xs shadow-inner">
+      <span className="text-accent-2 flex-1 font-bold">{cmd}</span>
       <CopyBtn text={cmd}/>
     </div>
   )
@@ -98,12 +98,12 @@ function PasswordStrength({ password }) {
           <div key={i} className={clsx('flex-1 rounded-full transition-all', i < score ? color : 'bg-bg-5')}/>
         ))}
       </div>
-      <div className="text-[10px] text-ink-3">Kekuatan: <span className={clsx('font-semibold',
+      <div className="text-[10px] text-ink-3 font-bold uppercase tracking-widest opacity-60">Kekuatan: <span className={clsx('font-bold',
         score <= 1 ? 'text-danger' : score <= 3 ? 'text-warn' : 'text-success')}>{label}</span></div>
-      <div className="grid grid-cols-2 gap-1">
+      <div className="grid grid-cols-2 gap-2">
         {checks.map(c => (
-          <div key={c.label} className={clsx('flex items-center gap-1 text-[9px]', c.ok ? 'text-success' : 'text-ink-3')}>
-            {c.ok ? <CheckCircle2 size={9}/> : <XCircle size={9}/>}{c.label}
+          <div key={c.label} className={clsx('flex items-center gap-2 text-[10px] font-bold uppercase tracking-tight', c.ok ? 'text-success' : 'text-ink-3 opacity-50')}>
+            {c.ok ? <CheckCircle2 size={11}/> : <XCircle size={11}/>}{c.label}
           </div>
         ))}
       </div>
@@ -199,28 +199,28 @@ export default function Security() {
   return (
     <div className="p-4 md:p-6 w-full space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-lg font-bold text-ink flex items-center gap-2">
-          <Shield size={18} className="text-accent-2"/>Keamanan Akun
+      <div className="mb-2">
+        <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter flex items-center gap-3">
+          <Shield size={28} className="text-accent-2"/>Keamanan Akun
         </h1>
-        <p className="text-xs text-ink-3 mt-0.5">Kelola password, recovery, dan pantau aktivitas login</p>
+        <p className="text-base text-ink-3 mt-1 font-semibold uppercase tracking-tight opacity-70">Kelola password, recovery, dan pantau aktivitas login</p>
       </div>
 
       {/* ── Security Status ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { icon: Lock, label: 'Brute Force', value: 'Aktif', sub: 'Blokir 5 gagal', ok: true, color: 'text-success', bg: 'bg-success/10' },
           { icon: Clock, label: 'Session JWT', value: '7 Hari', sub: 'Auto-expire', ok: true, color: 'text-accent-2', bg: 'bg-accent/10' },
           { icon: FileKey, label: 'Recovery Token', value: '1 Jam', sub: 'One-time use', ok: true, color: 'text-warn', bg: 'bg-warn/10' },
           { icon: LogIn, label: 'Login Log', value: logs.length + ' entri', sub: 'Tersimpan DB', ok: true, color: 'text-sky-400', bg: 'bg-sky-400/10' },
         ].map(s => (
-          <div key={s.label} className="bg-bg-3 border border-border rounded-xl p-3.5">
-            <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center mb-2', s.bg)}>
-              <s.icon size={13} className={s.color}/>
+          <div key={s.label} className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+            <div className={clsx('w-9 h-9 rounded-xl flex items-center justify-center mb-3', s.bg)}>
+              <s.icon size={16} className={s.color}/>
             </div>
-            <div className="text-sm font-bold text-ink">{s.value}</div>
-            <div className="text-[10px] text-ink-2 font-medium">{s.label}</div>
-            <div className="text-[9px] text-ink-3">{s.sub}</div>
+            <div className="text-xl font-bold text-ink uppercase tracking-tighter font-mono">{s.value}</div>
+            <div className="text-xs text-ink-2 font-bold uppercase tracking-widest mt-1.5 opacity-80">{s.label}</div>
+            <div className="text-[10px] text-ink-3 font-semibold uppercase tracking-widest opacity-60 mt-1">{s.sub}</div>
           </div>
         ))}
       </div>
@@ -244,7 +244,7 @@ export default function Security() {
                 <Label>Konfirmasi Password Baru</Label>
                 <SecretInp value={confPass} onChange={setConfPass} placeholder="ketik ulang..."/>
                 {confPass && newPass !== confPass && (
-                  <p className="text-[10px] text-danger mt-1">⚠ Password tidak cocok</p>
+                  <p className="text-[11px] text-danger mt-2 font-bold uppercase tracking-widest">⚠ Password tidak cocok</p>
                 )}
               </div>
             )}
@@ -253,19 +253,19 @@ export default function Security() {
               disabled={!curPass || !newPass || newPass !== confPass}/>
 
             {/* Tips password */}
-            <div className="bg-bg-4 rounded-xl p-3 text-[10px] text-ink-3 space-y-1">
-              <div className="text-ink-2 font-semibold mb-1.5">💡 Tips password kuat:</div>
-              <div>• Minimal 12 karakter, campuran huruf besar/kecil, angka, simbol</div>
-              <div>• Jangan gunakan nama, tanggal lahir, atau kata umum</div>
-              <div>• Gunakan password manager (Bitwarden, 1Password, dll)</div>
-              <div>• Ganti password secara berkala setiap 3-6 bulan</div>
+            <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 text-xs text-ink-3 space-y-2 font-semibold shadow-inner">
+              <div className="text-ink-2 font-bold uppercase tracking-widest mb-2 opacity-80">💡 Tips password kuat:</div>
+              <div className="flex items-start gap-2">• <span>Minimal 12 karakter, campuran huruf besar/kecil, angka, simbol</span></div>
+              <div className="flex items-start gap-2">• <span>Jangan gunakan nama, tanggal lahir, atau kata umum</span></div>
+              <div className="flex items-start gap-2">• <span>Gunakan password manager (Bitwarden, 1Password, dll)</span></div>
+              <div className="flex items-start gap-2">• <span>Ganti password secara berkala setiap 3-6 bulan</span></div>
             </div>
           </div>
         </Card>
 
         {/* ── Ide Keamanan Mendatang ── */}
         <Card title="Fitur Keamanan Mendatang" icon={Shield} iconColor="text-warn"
-          badge={<span className="text-[9px] bg-warn/15 text-warn px-2 py-0.5 rounded-full font-medium">Roadmap</span>}>
+          badge={<span className="text-[10px] bg-warn/15 text-warn px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-warn/30 shadow-sm">Roadmap</span>}>
           <div className="space-y-2.5">
             {[
               {
@@ -305,20 +305,20 @@ export default function Security() {
                 status: 'soon',
               },
             ].map(f => (
-              <div key={f.title} className="bg-bg-4 border border-border rounded-xl p-3">
-                <div className="flex items-start gap-2.5">
-                  <span className="text-xl flex-shrink-0">{f.icon}</span>
+              <div key={f.title} className="bg-bg-4 border-2 border-border/50 rounded-2xl p-4 hover:border-accent/30 transition-all shadow-sm group">
+                <div className="flex items-start gap-4">
+                  <span className="text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">{f.icon}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-semibold text-ink">{f.title}</span>
-                      <span className={clsx('text-[9px] px-1.5 py-0.5 rounded-full font-medium',
-                        f.status === 'soon' ? 'bg-accent/15 text-accent-2' : 'bg-bg-5 text-ink-3')}>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="text-base font-bold text-ink uppercase tracking-tight">{f.title}</span>
+                      <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest border shadow-sm',
+                        f.status === 'soon' ? 'bg-accent/15 text-accent-2 border-accent/30' : 'bg-bg-5 text-ink-3 border-border/50')}>
                         {f.status === 'soon' ? '🚀 Segera' : '🔮 Masa Depan'}
                       </span>
                     </div>
-                    <div className="text-[10px] text-ink-3 mt-0.5">{f.desc}</div>
-                    <div className="text-[10px] text-ink-2 mt-1 flex items-center gap-1">
-                      <Info size={9} className="text-accent-2 flex-shrink-0"/>
+                    <div className="text-sm text-ink-3 mt-1 font-semibold leading-relaxed">{f.desc}</div>
+                    <div className="text-[11px] text-ink-2 mt-2 flex items-center gap-2 font-bold uppercase tracking-tight opacity-70">
+                      <Info size={12} className="text-accent-2 flex-shrink-0"/>
                       {f.how}
                     </div>
                   </div>
@@ -333,18 +333,18 @@ export default function Security() {
       {/* ── Recovery Token (Admin) ── */}
       {isAdmin && (
         <Card title="🔑 Generate Token Recovery" icon={FileKey} iconColor="text-warn"
-          badge={<span className="text-[9px] bg-warn/15 text-warn px-2 py-0.5 rounded-full font-medium">Admin Only</span>}
+          badge={<span className="text-[10px] bg-warn/15 text-warn px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-warn/30 shadow-sm">Admin Only</span>}
           defaultOpen={false}>
           <div className="space-y-4">
 
             {/* Info */}
-            <div className="flex items-start gap-2.5 p-3 bg-accent/8 border border-accent/20 rounded-xl text-[10px] text-ink-2">
-              <Info size={12} className="text-accent-2 flex-shrink-0 mt-0.5"/>
-              <div>
-                <strong className="text-ink block mb-0.5">Cara pakai Token Recovery:</strong>
+            <div className="flex items-start gap-3 p-4 bg-accent/10 border-2 border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-inner">
+              <Info size={16} className="text-accent-2 flex-shrink-0 mt-0.5"/>
+              <div className="leading-relaxed">
+                <strong className="text-ink block mb-1 font-bold uppercase tracking-tight">Cara pakai Token Recovery:</strong>
                 Admin generate token → kirim ke user yang lupa password →
                 user paste token di halaman login (tab "Lupa Password?" → Token Recovery).
-                Token berlaku <strong>15 menit</strong> dan hanya bisa dipakai <strong>1 kali</strong>.
+                Token berlaku <strong className="text-accent-2 font-bold">15 menit</strong> dan hanya bisa dipakai <strong className="text-accent-2 font-bold">1 kali</strong>.
               </div>
             </div>
 
@@ -352,7 +352,7 @@ export default function Security() {
             <div>
               <Label>Generate Token untuk:</Label>
               <select value={genTargetId} onChange={e => setGenTargetId(e.target.value)}
-                className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink outline-none focus:border-accent">
+                className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent appearance-none cursor-pointer shadow-inner">
                 <option value="">Diri sendiri (Admin)</option>
                 {users.filter(u => !u.is_admin || u.id !== undefined).map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
@@ -366,35 +366,35 @@ export default function Security() {
 
             {/* Token result */}
             {recovToken && (
-              <div className="bg-success/8 border-2 border-success/40 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-success"/>
-                    <span className="text-sm font-semibold text-success">Token Dibuat!</span>
-                    <span className="text-[10px] text-ink-3">untuk: <strong className="text-ink">{recovToken.username}</strong></span>
+              <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5 space-y-4 shadow-lg">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={18} className="text-success"/>
+                    <span className="text-base font-bold text-success uppercase tracking-tight">Token Dibuat!</span>
+                    <span className="text-xs text-ink-3 font-bold uppercase tracking-widest opacity-60">untuk: <strong className="text-ink">{recovToken.username}</strong></span>
                   </div>
-                  <div className={clsx('text-xs font-mono font-bold px-2 py-1 rounded-lg',
-                    countdown > 120 ? 'bg-success/15 text-success' : 'bg-danger/15 text-danger animate-pulse')}>
+                  <div className={clsx('text-sm font-mono font-bold px-3 py-1.5 rounded-xl shadow-inner border border-border/20',
+                    countdown > 120 ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger animate-pulse')}>
                     ⏱ {fmtCountdown(countdown)}
                   </div>
                 </div>
 
-                <div className="bg-bg-2 border border-border rounded-xl p-3">
-                  <div className="text-[10px] text-warn mb-1.5 flex items-center gap-1">
-                    <AlertTriangle size={10}/>Token hanya tampil SEKALI — salin sekarang!
+                <div className="bg-bg-2 border-2 border-border rounded-2xl p-4 shadow-inner">
+                  <div className="text-xs text-warn mb-2 flex items-center gap-2 font-bold uppercase tracking-widest opacity-80">
+                    <AlertTriangle size={14}/>Token hanya tampil SEKALI — salin sekarang!
                   </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 font-mono text-sm text-accent-2 break-all leading-relaxed select-all">
+                  <div className="flex items-center gap-3">
+                    <code className="flex-1 font-mono text-base text-accent-2 break-all leading-relaxed select-all font-bold">
                       {recovToken.token}
                     </code>
                     <CopyBtn text={recovToken.token}/>
                   </div>
                 </div>
 
-                <div className="text-[10px] text-ink-3 bg-bg-4 rounded-xl p-2.5 space-y-1">
-                  <div>📋 <strong className="text-ink-2">Cara kirim ke user:</strong></div>
-                  <div>WhatsApp/Telegram: "Ini token reset password kamu: <code className="font-mono">{recovToken.token}</code>"</div>
-                  <div>User buka login → <strong>Lupa Password?</strong> → <strong>Token Recovery</strong> → paste token</div>
+                <div className="text-xs text-ink-3 bg-bg-4 border border-border/30 rounded-2xl p-4 space-y-2 font-semibold shadow-sm">
+                  <div className="flex items-center gap-2">📋 <strong className="text-ink-2 font-bold uppercase tracking-widest">Cara kirim ke user:</strong></div>
+                  <div className="opacity-80">WhatsApp/Telegram: "Ini token reset password kamu: <code className="font-mono bg-bg-5 px-1.5 py-0.5 rounded text-accent-2">{recovToken.token}</code>"</div>
+                  <div className="opacity-80">User buka login → <strong>Lupa Password?</strong> → <strong>Token Recovery</strong> → paste token</div>
                 </div>
               </div>
             )}
@@ -407,39 +407,39 @@ export default function Security() {
         <Card title="Riwayat Login" icon={LogIn} iconColor="text-sky-400" defaultOpen={false}
           badge={
             <button onClick={loadLogs} disabled={loadLog}
-              className="text-[10px] text-ink-3 hover:text-ink flex items-center gap-1 mr-2">
-              <RefreshCw size={10} className={loadLog ? 'animate-spin' : ''}/>Refresh
+              className="text-xs text-ink-3 hover:text-ink flex items-center gap-2 mr-3 font-bold uppercase tracking-widest transition-all p-2 rounded-lg hover:bg-bg-3">
+              <RefreshCw size={14} className={loadLog ? 'animate-spin' : ''}/>Refresh
             </button>
           }>
           {logs.length === 0 ? (
             <div className="text-center py-6 text-xs text-ink-3">Belum ada log login</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[10px]">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left px-2 py-2 text-ink-3 font-medium">Waktu</th>
-                    <th className="text-left px-2 py-2 text-ink-3 font-medium">Username</th>
-                    <th className="text-center px-2 py-2 text-ink-3 font-medium">Status</th>
-                    <th className="text-left px-2 py-2 text-ink-3 font-medium">Keterangan</th>
-                    <th className="text-left px-2 py-2 text-ink-3 font-medium">IP</th>
+                  <tr className="border-b-2 border-border bg-bg-2/50">
+                    <th className="text-left px-4 py-3 text-ink-3 font-bold uppercase tracking-widest opacity-60">Waktu</th>
+                    <th className="text-left px-4 py-3 text-ink-3 font-bold uppercase tracking-widest opacity-60">Username</th>
+                    <th className="text-center px-4 py-3 text-ink-3 font-bold uppercase tracking-widest opacity-60">Status</th>
+                    <th className="text-left px-4 py-3 text-ink-3 font-bold uppercase tracking-widest opacity-60">Keterangan</th>
+                    <th className="text-left px-4 py-3 text-ink-3 font-bold uppercase tracking-widest opacity-60">IP</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
                   {logs.map(l => (
-                    <tr key={l.id} className={clsx('hover:bg-bg-4/50', !l.success && 'bg-danger/3')}>
-                      <td className="px-2 py-2 text-ink-3 font-mono whitespace-nowrap">
+                    <tr key={l.id} className={clsx('hover:bg-bg-4/50 transition-colors', !l.success && 'bg-danger/5')}>
+                      <td className="px-4 py-3 text-ink-3 font-bold font-mono whitespace-nowrap opacity-80">
                         {new Date(l.created_at).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}
                       </td>
-                      <td className="px-2 py-2 text-ink-2 font-medium">{l.username}</td>
-                      <td className="px-2 py-2 text-center">
+                      <td className="px-4 py-3 text-ink-2 font-bold uppercase tracking-tight">{l.username}</td>
+                      <td className="px-4 py-3 text-center">
                         {l.success
-                          ? <span className="inline-flex items-center gap-1 text-success"><CheckCircle2 size={11}/>OK</span>
-                          : <span className="inline-flex items-center gap-1 text-danger"><XCircle size={11}/>Gagal</span>
+                          ? <span className="inline-flex items-center gap-2 text-success font-bold uppercase tracking-widest border border-success/30 px-2 py-1 rounded-lg bg-success/10 shadow-sm"><CheckCircle2 size={14}/>OK</span>
+                          : <span className="inline-flex items-center gap-2 text-danger font-bold uppercase tracking-widest border border-danger/30 px-2 py-1 rounded-lg bg-danger/10 shadow-sm"><XCircle size={14}/>Gagal</span>
                         }
                       </td>
-                      <td className="px-2 py-2 text-ink-3">{l.reason || (l.success ? 'Login berhasil' : '—')}</td>
-                      <td className="px-2 py-2 text-ink-3 font-mono">{l.ip || '—'}</td>
+                      <td className="px-4 py-3 text-ink-3 font-semibold opacity-70">{l.reason || (l.success ? 'Login berhasil' : '—')}</td>
+                      <td className="px-4 py-3 text-ink-3 font-bold font-mono opacity-60">{l.ip || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -451,7 +451,7 @@ export default function Security() {
 
       {/* ── Checklist Keamanan ── */}
       <Card title="Checklist Keamanan" icon={Shield} iconColor="text-success" defaultOpen={false}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { label: 'Ganti SECRET_KEY dari default',              key: 'secret_key',  critical: true },
             { label: 'Ganti password admin dari admin',    key: 'admin_pass',  critical: true },
@@ -463,16 +463,16 @@ export default function Security() {
             { label: 'Review login log secara berkala',            key: 'log_review',  critical: false },
             { label: 'Batasi pengguna Sub Admin sesuai kebutuhan', key: 'subadmin',    critical: false },
           ].map(item => (
-            <label key={item.key} className="flex items-center gap-2.5 p-2.5 bg-bg-4 rounded-xl border border-border cursor-pointer hover:border-border-2 transition-colors group">
-              <input type="checkbox" className="accent-accent w-3.5 h-3.5 flex-shrink-0"/>
-              <span className="text-[11px] text-ink-2 flex-1">{item.label}</span>
+            <label key={item.key} className="flex items-center gap-3 p-4 bg-bg-4 border-2 border-border/50 rounded-2xl cursor-pointer hover:border-accent/30 hover:bg-bg-5 transition-all shadow-sm group">
+              <input type="checkbox" className="accent-accent w-5 h-5 flex-shrink-0 rounded-lg"/>
+              <span className="text-sm text-ink-2 flex-1 font-bold uppercase tracking-tight opacity-80">{item.label}</span>
               {item.critical && (
-                <span className="text-[9px] bg-danger/15 text-danger px-1.5 py-0.5 rounded font-medium flex-shrink-0">Wajib</span>
+                <span className="text-[10px] bg-danger/15 text-danger px-2.5 py-1 rounded-full font-bold uppercase tracking-widest border border-danger/30 shadow-sm">Wajib</span>
               )}
             </label>
           ))}
         </div>
-        <p className="text-[10px] text-ink-3 mt-3">
+        <p className="text-xs text-ink-3 mt-4 font-semibold uppercase tracking-widest opacity-60">
           Centang item yang sudah diselesaikan. Status checklist tidak tersimpan (hanya sebagai pengingat).
         </p>
       </Card>

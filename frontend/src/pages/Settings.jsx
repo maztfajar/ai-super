@@ -38,52 +38,52 @@ const sApi = {
 
 // ── UI primitives ─────────────────────────────────────────────
 function Label({ children }) {
-  return <label className="block text-[10px] text-ink-3 mb-1.5 uppercase tracking-wider font-medium">{children}</label>
+  return <label className="block text-xs text-ink-3 mb-2 uppercase tracking-widest font-bold opacity-60">{children}</label>
 }
 function Inp({ value, onChange, placeholder, mono, disabled, type="text" }) {
   return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
-    className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors disabled:opacity-50', mono&&'font-mono')}/>
+    className={clsx('w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-all disabled:opacity-50 shadow-inner', mono&&'font-mono font-bold')}/>
 }
 function SecretInp({ value, onChange, placeholder }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative">
       <input type={show?'text':'password'} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
-      <button type="button" onClick={()=>setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
-        {show?<EyeOff size={13}/>:<Eye size={13}/>}
+        className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono shadow-inner"/>
+      <button type="button" onClick={()=>setShow(!show)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-all">
+        {show?<EyeOff size={16}/>:<Eye size={16}/>}
       </button>
     </div>
   )
 }
 function Sel({ value, onChange, options }) {
   return <select value={value} onChange={e=>onChange(e.target.value)}
-    className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink outline-none focus:border-accent cursor-pointer">
+    className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent cursor-pointer appearance-none shadow-inner">
     {options.map(([v,l])=><option key={v} value={v}>{l}</option>)}
   </select>
 }
 function Toggle({ value, onChange, label }) {
   return (
-    <label className="flex items-center gap-2.5 cursor-pointer select-none">
-      <div onClick={()=>onChange(!value)} className={clsx('w-9 h-5 rounded-full relative transition-colors',value?'bg-accent':'bg-bg-4 border border-border-2')}>
-        <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',value?'translate-x-4':'translate-x-0.5')}/>
+    <label className="flex items-center gap-3 cursor-pointer select-none">
+      <div onClick={()=>onChange(!value)} className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border-2',value?'bg-accent border-accent/30':'bg-bg-4 border-border-2')}>
+        <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-lg transition-transform',value?'translate-x-4.5':'translate-x-0.5')}/>
       </div>
-      <span className="text-xs text-ink-2">{label}</span>
+      <span className="text-sm text-ink-2 font-bold uppercase tracking-tight opacity-80">{label}</span>
     </label>
   )
 }
 function Btn({ label, onClick, loading, variant='default', icon:Icon, full, small, disabled }) {
   return (
     <button onClick={onClick} disabled={loading||disabled}
-      className={clsx('flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all disabled:opacity-50',
-        full?'w-full':'', small?'px-2.5 py-1.5 text-[10px]':'px-3 py-2 text-xs',
+      className={clsx('flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95 shadow-md',
+        full?'w-full':'', small?'px-3 py-2 text-[10px]':'px-5 py-3 text-sm',
         variant==='primary'&&'bg-accent hover:bg-accent/80 text-white',
-        variant==='success'&&'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
-        variant==='danger' &&'bg-danger/10  hover:bg-danger/20  border border-danger/30  text-danger',
-        variant==='warn'   &&'bg-warn/10    hover:bg-warn/20    border border-warn/30    text-warn',
-        variant==='default'&&'bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink',
+        variant==='success'&&'bg-success/10 hover:bg-success/20 border-2 border-success/30 text-success',
+        variant==='danger' &&'bg-danger/10  hover:bg-danger/20  border-2 border-danger/30  text-danger',
+        variant==='warn'   &&'bg-warn/10    hover:bg-warn/20    border-2 border-warn/30    text-warn',
+        variant==='default'&&'bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink',
       )}>
-      {loading?<RefreshCw size={small?10:12} className="animate-spin"/>:Icon&&<Icon size={small?10:12}/>}
+      {loading?<RefreshCw size={small?12:16} className="animate-spin"/>:Icon&&<Icon size={small?12:16}/>}
       {label}
     </button>
   )
@@ -91,14 +91,14 @@ function Btn({ label, onClick, loading, variant='default', icon:Icon, full, smal
 function Section({ title, icon, children, defaultOpen=false, badge, className }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className={clsx("bg-bg-3 border border-border rounded-xl overflow-hidden", className)}>
-      <div className="flex items-center gap-2.5 px-4 py-3 cursor-pointer hover:bg-bg-4 transition-colors border-b border-border" onClick={()=>setOpen(!open)}>
-        <span className="text-base">{icon}</span>
-        <span className="text-sm font-semibold text-ink flex-1">{title}</span>
-        {badge && <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', badge.color)}>{badge.text}</span>}
-        {open?<ChevronUp size={14} className="text-ink-3"/>:<ChevronDown size={14} className="text-ink-3"/>}
+    <div className={clsx("bg-bg-3 border-2 border-border rounded-2xl overflow-hidden shadow-lg", className)}>
+      <div className="flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-bg-4 transition-all border-b-2 border-border" onClick={()=>setOpen(!open)}>
+        <span className="text-2xl">{icon}</span>
+        <span className="text-lg font-bold text-ink uppercase tracking-tight flex-1">{title}</span>
+        {badge && <span className={clsx('text-[11px] px-3 py-1 rounded-full font-bold uppercase tracking-widest border shadow-sm', badge.color)}>{badge.text}</span>}
+        {open?<ChevronUp size={18} className="text-ink-3"/>:<ChevronDown size={18} className="text-ink-3"/>}
       </div>
-      {open&&<div className="p-4">{children}</div>}
+      {open&&<div className="p-6">{children}</div>}
     </div>
   )
 }
@@ -106,24 +106,24 @@ function CopyBtn({ text }) {
   const [copied, setCopied] = useState(false)
   return (
     <button onClick={()=>{copyToClipboard(text);setCopied(true);setTimeout(()=>setCopied(false),2000)}}
-      className="p-1 rounded hover:bg-bg-5 text-ink-3 hover:text-ink transition-colors flex-shrink-0">
-      {copied?<Check size={12} className="text-success"/>:<Copy size={12}/>}
+      className="p-2 rounded-lg hover:bg-bg-5 text-ink-3 hover:text-ink transition-all flex-shrink-0">
+      {copied?<Check size={16} className="text-success"/>:<Copy size={16}/>}
     </button>
   )
 }
 function Alert({ type='info', children }) {
   const styles = {
-    info:  'bg-accent/8 border-accent/25 text-ink-2',
-    warn:  'bg-warn/8 border-warn/25 text-warn',
-    error: 'bg-danger/8 border-danger/25 text-danger',
-    ok:    'bg-success/8 border-success/25 text-success',
+    info:  'bg-accent/10 border-accent/30 text-ink-2',
+    warn:  'bg-warn/10 border-warn/30 text-warn',
+    error: 'bg-danger/10 border-danger/30 text-danger',
+    ok:    'bg-success/10 border-success/30 text-success',
   }
   const icons = { info: Info, warn: AlertTriangle, error: XCircle, ok: CheckCircle2 }
   const Icon = icons[type]
   return (
-    <div className={clsx('flex items-start gap-2 p-3 rounded-xl border text-xs', styles[type])}>
-      <Icon size={13} className="flex-shrink-0 mt-0.5"/>
-      <div>{children}</div>
+    <div className={clsx('flex items-start gap-3 p-4 rounded-2xl border-2 text-sm font-semibold shadow-inner', styles[type])}>
+      <Icon size={16} className="flex-shrink-0 mt-0.5"/>
+      <div className="leading-relaxed">{children}</div>
     </div>
   )
 }
@@ -175,18 +175,18 @@ function ServiceStatusCard({ onSetupDone }) {
     finally { setSetupLoading(false) }
   }
 
-  if (loading) return <div className="text-xs text-ink-3 flex items-center gap-2"><RefreshCw size={12} className="animate-spin"/>Cek status service...</div>
+  if (loading) return <div className="text-sm text-ink-3 flex items-center gap-2"><RefreshCw size={12} className="animate-spin"/>Cek status service...</div>
 
   if (!svc?.service_exists) return (
     <div className="space-y-3">
       <Alert type="warn">
-        <div className="font-semibold mb-1">cloudflared belum diinstall sebagai System Service</div>
-        <div className="text-[10px] opacity-80">Klik tombol di bawah untuk setup otomatis (membutuhkan token tersimpan)</div>
+        <div className="font-semibold mb-1 text-sm">cloudflared belum diinstall sebagai System Service</div>
+        <div className="text-xs opacity-90">Klik tombol di bawah untuk setup otomatis (membutuhkan token tersimpan)</div>
       </Alert>
       <div className="flex gap-2">
         <Btn label={setupLoading ? 'Setup...' : '⚡ Setup Otomatis'} onClick={handleSetup} loading={setupLoading} variant="primary" full/>
       </div>
-      <div className="text-[10px] text-ink-3">Atau manual: <code className="font-mono text-accent-2 bg-bg-4 px-1 rounded">bash scripts/setup-cloudflare-service.sh</code></div>
+      <div className="text-xs text-ink-3">Atau manual: <code className="font-mono text-accent-2 bg-bg-4 px-1 rounded font-semibold">bash scripts/setup-cloudflare-service.sh</code></div>
     </div>
   )
 
@@ -195,9 +195,9 @@ function ServiceStatusCard({ onSetupDone }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           {svc.is_active
-            ? <><CheckCircle2 size={15} className="text-success"/><span className="text-sm font-semibold text-success">Service Aktif</span></>
-            : <><XCircle size={15} className="text-danger"/><span className="text-sm font-semibold text-danger">Service Tidak Aktif</span></>}
-          <span className={clsx('text-[10px] px-2 py-0.5 rounded-full font-medium', svc.is_enabled?'bg-success/10 text-success':'bg-bg-5 text-ink-3')}>
+            ? <><CheckCircle2 size={16} className="text-success"/><span className="text-base font-semibold text-success">Service Aktif</span></>
+            : <><XCircle size={16} className="text-danger"/><span className="text-base font-semibold text-danger">Service Tidak Aktif</span></>}
+          <span className={clsx('text-xs px-2 py-0.5 rounded-full font-semibold', svc.is_enabled?'bg-success/10 text-success':'bg-bg-5 text-ink-3')}>
             {svc.is_enabled ? '● auto-start ON' : '○ auto-start OFF'}
           </span>
         </div>
@@ -212,7 +212,7 @@ function ServiceStatusCard({ onSetupDone }) {
         </div>
       </div>
       <div>
-        <button onClick={()=>setShowLog(!showLog)} className="text-[10px] text-ink-3 hover:text-ink flex items-center gap-1">
+        <button onClick={()=>setShowLog(!showLog)} className="text-xs text-ink-3 hover:text-ink flex items-center gap-1 font-medium">
           <Terminal size={10}/> {showLog?'Sembunyikan':'Lihat'} log cloudflared ({svc.recent_log?.length||0} baris)
         </button>
         {showLog && svc.recent_log?.length > 0 && (
@@ -302,8 +302,8 @@ function DomainManager() {
         <div className="flex items-center gap-2 p-2.5 bg-success/8 border border-success/20 rounded-xl">
           <Globe size={13} className="text-success flex-shrink-0"/>
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] text-success/70 mb-0.5">Domain Aktif</div>
-            <code className="font-mono text-xs text-success truncate block">https://{active}</code>
+            <div className="text-xs text-success font-semibold mb-0.5">Domain Aktif</div>
+            <code className="font-mono text-sm text-success truncate block font-semibold">https://{active}</code>
           </div>
           <CopyBtn text={`https://${active}`}/>
           <a href={`https://${active}`} target="_blank" rel="noopener noreferrer" className="text-success hover:text-success/80">
@@ -327,11 +327,11 @@ function DomainManager() {
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    {d.is_active && <span className="text-[9px] bg-success/15 text-success px-1.5 py-0.5 rounded font-semibold">AKTIF</span>}
-                    <code className="font-mono text-xs text-ink font-medium truncate">{full(d)}</code>
+                    {d.is_active && <span className="text-[11px] bg-success/15 text-success px-1.5 py-0.5 rounded font-semibold">AKTIF</span>}
+                    <code className="font-mono text-sm text-ink font-semibold truncate">{full(d)}</code>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] text-ink-3">
-                    <span>→ {d.tunnel_type}://localhost:{d.local_port}{d.local_path ? '/'+d.local_path : ''}</span>
+                  <div className="flex items-center gap-3 text-xs text-ink-3">
+                    <span className="font-medium">→ {d.tunnel_type}://localhost:{d.local_port}{d.local_path ? '/'+d.local_path : ''}</span>
                     {d.notes && <span className="text-ink-3 truncate">· {d.notes}</span>}
                   </div>
                 </div>
@@ -380,7 +380,7 @@ function DomainManager() {
             <Inp value={notes} onChange={setNotes} placeholder="Mis: domain utama, backup, dll"/>
           </div>
           {sub && root && (
-            <div className="flex items-center gap-2 p-2 bg-bg-2 rounded-lg border border-border text-[10px] font-mono text-accent-2">
+            <div className="flex items-center gap-2 p-2 bg-bg-2 rounded-lg border border-border text-xs font-mono text-accent-2 font-semibold">
               <Globe size={10}/>
               Preview: https://{sub}.{root}{path ? '/'+path : ''}
               <ArrowRight size={10} className="text-ink-3"/>
@@ -398,18 +398,18 @@ function DomainManager() {
 
       {/* Setup guide */}
       <details className="group">
-        <summary className="text-[10px] text-ink-3 cursor-pointer hover:text-ink-2 list-none flex items-center gap-1">
+        <summary className="text-xs text-ink-3 cursor-pointer hover:text-ink-2 list-none flex items-center gap-1 font-medium">
           <ChevronDown size={10} className="group-open:rotate-180 transition-transform"/>Cara konfigurasi hostname di Cloudflare Dashboard
         </summary>
-        <div className="mt-2 bg-bg-2 rounded-xl p-3 border border-border text-[10px] text-ink-3 space-y-1.5">
+        <div className="mt-2 bg-bg-2 rounded-xl p-3 border border-border text-[13px] text-ink-3 space-y-2">
           <div className="font-semibold text-ink-2 mb-2">Setelah domain ditambahkan dan diaktifkan:</div>
           <div>1. Buka <strong className="text-ink">Cloudflare Zero Trust Dashboard</strong> → Networks → Tunnels</div>
           <div>2. Klik tunnel → tab <strong className="text-ink">Public Hostname</strong> → <strong className="text-ink">Add a public hostname</strong></div>
           <div>3. Subdomain: isi sesuai subdomain yang didaftarkan</div>
           <div>4. Domain: pilih root domain Anda</div>
-          <div>5. <strong className="text-ink">Path: kosongkan</strong> | Type: <code className="font-mono text-accent-2">HTTP</code> | URL: <code className="font-mono text-accent-2">localhost:7860</code></div>
+          <div>5. <strong className="text-ink">Path: kosongkan</strong> | Type: <code className="font-mono text-accent-2 font-semibold">HTTP</code> | URL: <code className="font-mono text-accent-2 font-semibold">localhost:7860</code></div>
           <div>6. Klik <strong className="text-ink">Save hostname</strong> → tunggu 30-60 detik</div>
-          <div className="pt-1 text-warn">⚠ Path HARUS dikosongkan agar semua route bisa diakses</div>
+          <div className="pt-1 text-warn font-semibold">⚠ Path HARUS dikosongkan agar semua route bisa diakses</div>
         </div>
       </details>
     </div>
@@ -510,17 +510,17 @@ function TunnelPanel() {
     <div className="space-y-4">
       {/* ── System Service Status ──────────────────────────── */}
       <div>
-        <div className="text-xs font-semibold text-ink mb-2 flex items-center gap-1.5">
+        <div className="text-sm font-semibold text-ink mb-2 flex items-center gap-1.5">
           <Zap size={13} className="text-accent-2"/> Status cloudflared System Service
-          <span className="text-[10px] font-normal text-ink-3">(Rekomendasi: gunakan ini agar otomatis berjalan)</span>
+          <span className="text-xs font-normal text-ink-3">(Rekomendasi: gunakan ini agar otomatis berjalan)</span>
         </div>
         <ServiceStatusCard onSetupDone={refreshStatus}/>
       </div>
 
       <div className="border-t border-border pt-3">
-        <div className="text-xs font-semibold text-ink mb-3 flex items-center gap-2">
+        <div className="text-sm font-semibold text-ink mb-3 flex items-center gap-2">
           Kontrol Tunnel Manual
-          <span className="text-[10px] font-normal text-ink-3">— gunakan jika system service tidak tersedia</span>
+          <span className="text-xs font-normal text-ink-3">— gunakan jika system service tidak tersedia</span>
         </div>
 
         {/* Status bar */}
@@ -528,14 +528,14 @@ function TunnelPanel() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {status.running
-                ? <><Wifi size={14} className="text-success"/><span className="text-xs font-semibold text-success">Aktif (Manual)</span></>
-                : <><WifiOff size={14} className="text-ink-3"/><span className="text-xs text-ink-3">Tidak aktif</span></>}
+                ? <><Wifi size={14} className="text-success"/><span className="text-sm font-semibold text-success">Aktif (Manual)</span></>
+                : <><WifiOff size={14} className="text-ink-3"/><span className="text-sm text-ink-3 font-medium">Tidak aktif</span></>}
               {status.cloudflared_installed
-                ? <span className="text-[9px] bg-success/10 text-success px-1.5 py-0.5 rounded">cloudflared ✓</span>
-                : <span className="text-[9px] bg-danger/10 text-danger px-1.5 py-0.5 rounded">cloudflared tidak ditemukan</span>}
+                ? <span className="text-[11px] bg-success/10 text-success px-1.5 py-0.5 rounded font-semibold">cloudflared ✓</span>
+                : <span className="text-[11px] bg-danger/10 text-danger px-1.5 py-0.5 rounded font-semibold">cloudflared tidak ditemukan</span>}
               {status.has_token
-                ? <span className="text-[9px] bg-accent/10 text-accent-2 px-1.5 py-0.5 rounded">Token ✓</span>
-                : <span className="text-[9px] bg-warn/10 text-warn px-1.5 py-0.5 rounded">Quick tunnel mode</span>}
+                ? <span className="text-[11px] bg-accent/10 text-accent-2 px-1.5 py-0.5 rounded font-semibold">Token ✓</span>
+                : <span className="text-[11px] bg-warn/10 text-warn px-1.5 py-0.5 rounded font-semibold">Quick tunnel mode</span>}
             </div>
             <div className="flex gap-1.5">
               {status.running
@@ -548,7 +548,7 @@ function TunnelPanel() {
           {status.running&&(status.quick_url||status.domain)&&(
             <div className="flex items-center gap-2 mt-2 p-2 bg-success/8 border border-success/20 rounded-lg">
               <Globe size={11} className="text-success flex-shrink-0"/>
-              <code className="text-[10px] font-mono text-success flex-1 truncate">
+              <code className="text-xs font-mono text-success flex-1 truncate font-semibold">
                 {status.quick_url || `https://${status.domain}`}
               </code>
               <CopyBtn text={status.quick_url || `https://${status.domain}`}/>
@@ -618,7 +618,7 @@ function TunnelPanel() {
 
       {/* Terminal commands */}
       <details className="group">
-        <summary className="text-[10px] text-ink-3 cursor-pointer hover:text-ink-2 list-none flex items-center gap-1">
+        <summary className="text-xs text-ink-3 cursor-pointer hover:text-ink-2 list-none flex items-center gap-1 font-medium">
           <ChevronDown size={10} className="group-open:rotate-180 transition-transform"/>Perintah terminal
         </summary>
         <div className="mt-2 bg-bg-2 rounded-xl p-3 border border-border space-y-2">
@@ -630,8 +630,8 @@ function TunnelPanel() {
             ['Uninstall',     'sudo cloudflared service uninstall'],
           ].map(([lbl,cmd])=>(
             <div key={lbl} className="flex items-center gap-2">
-              <span className="text-[10px] text-ink-3 w-24 flex-shrink-0">{lbl}</span>
-              <code className="text-[10px] font-mono text-accent-2 flex-1">{cmd}</code>
+              <span className="text-xs text-ink-3 w-28 flex-shrink-0 font-medium">{lbl}</span>
+              <code className="text-xs font-mono text-accent-2 flex-1 font-semibold">{cmd}</code>
               <CopyBtn text={cmd}/>
             </div>
           ))}
@@ -658,7 +658,7 @@ function TunnelTabbed({ settings }) {
           <Wand2 size={12}/>
           Setup Wizard
           {!settings?.tunnel?.has_token && (
-            <span className="ml-1 text-[9px] bg-white/20 px-1.5 py-0.5 rounded-full">Mulai di sini</span>
+            <span className="ml-1 text-[11px] bg-white/20 px-1.5 py-0.5 rounded-full font-semibold">Mulai di sini</span>
           )}
         </button>
         <button onClick={()=>setTab('manual')}
@@ -785,9 +785,9 @@ function AiCoreSection({ systemPrompt, setSystemPrompt, saving, onSave }) {
           <div className="flex-1 min-w-0">
             <div className="text-sm font-semibold text-ink flex items-center gap-2">
               ✨ Generate AI Core Otomatis
-              <span className="text-[9px] bg-accent/15 text-accent-2 px-1.5 py-0.5 rounded-full font-medium">AI-powered</span>
+              <span className="text-[11px] bg-accent/15 text-accent-2 px-1.5 py-0.5 rounded-full font-semibold">AI-powered</span>
             </div>
-            <div className="text-[10px] text-ink-3">
+            <div className="text-xs text-ink-3 font-medium">
               Deskripsikan AI yang Anda inginkan — sistem akan generate AI Core lengkap dari AI Roles Mapping aktif
             </div>
           </div>
@@ -1042,7 +1042,7 @@ export default function SettingsPage() {
     <div className="p-4 md:p-6 w-full">
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-lg font-bold text-ink">{t('settings_title')}</h1>
+          <h1 className="text-lg font-semibold text-ink">{t('settings_title')}</h1>
           <p className="text-xs text-ink-3 mt-0.5">{t('settings_subtitle')}</p>
         </div>
         <Btn label={restarting?'Restarting...':'Restart Server'} onClick={restart} loading={restarting} variant="danger" icon={RotateCcw}/>

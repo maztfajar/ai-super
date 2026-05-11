@@ -12,15 +12,15 @@ import clsx from 'clsx'
 
 // ── Primitives ────────────────────────────────────────────────
 function Label({ children }) {
-  return <label className="block text-[10px] text-ink-3 mb-1.5 uppercase tracking-wider font-medium">{children}</label>
+  return <label className="block text-[13px] text-ink-3 mb-1.5 uppercase tracking-wider font-semibold">{children}</label>
 }
 function Inp({ value, onChange, placeholder, disabled, mono, type = 'text', maxLength }) {
   return (
     <input type={type} value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder} disabled={disabled} maxLength={maxLength}
       autoComplete="new-password"
-      className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 transition-colors',
-        mono && 'font-mono tracking-widest text-center text-sm')}/>
+      className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 transition-colors',
+        mono && 'font-mono tracking-widest text-center text-base')}/>
   )
 }
 function PassInp({ value, onChange, placeholder }) {
@@ -29,7 +29,7 @@ function PassInp({ value, onChange, placeholder }) {
     <div className="relative">
       <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} autoComplete="new-password"
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
+        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
       <button type="button" onClick={() => setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
         {show ? <EyeOff size={13}/> : <Eye size={13}/>}
       </button>
@@ -39,7 +39,7 @@ function PassInp({ value, onChange, placeholder }) {
 function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disabled, full }) {
   return (
     <button onClick={onClick} disabled={loading || disabled}
-      className={clsx('flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-xl font-medium transition-all disabled:opacity-50',
+      className={clsx('flex items-center justify-center gap-1.5 px-3 py-2 text-sm rounded-xl font-medium transition-all disabled:opacity-50',
         full && 'w-full',
         variant === 'primary' && 'bg-accent hover:bg-accent/80 text-white',
         variant === 'success' && 'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
@@ -54,8 +54,8 @@ function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disable
 }
 function StatusBadge({ ok, labelOk = 'Aktif', labelNo = 'Belum Disetup' }) {
   return ok
-    ? <span className="flex items-center gap-1 text-[10px] bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded-full font-medium"><CheckCircle2 size={9}/>{labelOk}</span>
-    : <span className="flex items-center gap-1 text-[10px] bg-bg-4 text-ink-3 border border-border px-2 py-0.5 rounded-full"><XCircle size={9}/>{labelNo}</span>
+    ? <span className="flex items-center gap-1 text-xs bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded-full font-semibold"><CheckCircle2 size={9}/>{labelOk}</span>
+    : <span className="flex items-center gap-1 text-xs bg-bg-4 text-ink-3 border border-border px-2 py-0.5 rounded-full font-medium"><XCircle size={9}/>{labelNo}</span>
 }
 function OtpInput({ value, onChange, length = 6 }) {
   const refs = useRef([])
@@ -122,7 +122,7 @@ function OtpInput({ value, onChange, length = 6 }) {
           onFocus={e => e.target.select()}
           onPaste={handlePaste}
           className={clsx(
-            "w-11 h-14 text-center text-2xl font-bold font-mono rounded-xl outline-none transition-all border-2",
+            "w-11 h-14 text-center text-2xl font-semibold font-mono rounded-xl outline-none transition-all border-2",
             digit
               ? "bg-accent/10 border-accent text-accent-2"
               : "bg-bg-2 border-border-2 text-ink focus:border-accent focus:bg-bg-3"
@@ -216,20 +216,20 @@ function EmailResetSection({ isAdmin }) {
     <div className="mt-3 space-y-4">
       <div className="flex items-center gap-3">
         <StatusBadge ok={smtp?.configured} labelOk="SMTP Terkonfigurasi"/>
-        {smtp?.configured && <span className="text-[10px] text-ink-3 font-mono">{smtp.host}:{smtp.port}</span>}
+        {smtp?.configured && <span className="text-xs text-ink-3 font-mono">{smtp.host}:{smtp.port}</span>}
       </div>
 
-      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[10px] text-ink-3 space-y-1.5">
+      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja reset via email:</div>
         <div>1. User klik "Lupa Password?" di halaman login → masukkan email</div>
         <div>2. AI ORCHESTRATOR kirim link reset ke email terdaftar</div>
         <div>3. User klik link → set password baru (link berlaku 15 menit)</div>
-        <div className="text-warn pt-1">⚠ Butuh konfigurasi SMTP di bawah. Cocok untuk Gmail, Outlook, Mailtrap.</div>
+        <div className="text-warn font-semibold pt-1">⚠ Butuh konfigurasi SMTP di bawah. Cocok untuk Gmail, Outlook, Mailtrap.</div>
       </div>
 
       {isAdmin && (
         <div className="space-y-3">
-          <div className="text-xs font-semibold text-ink border-b border-border pb-2">⚙️ Konfigurasi SMTP</div>
+          <div className="text-sm font-semibold text-ink border-b border-border pb-2">⚙️ Konfigurasi SMTP</div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -264,7 +264,7 @@ function EmailResetSection({ isAdmin }) {
                 className={clsx('w-8 h-4 rounded-full relative transition-colors', tls ? 'bg-accent' : 'bg-bg-5 border border-border')}>
                 <div className={clsx('absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform', tls ? 'translate-x-4' : 'translate-x-0.5')}/>
               </div>
-              <span className="text-xs text-ink-2">STARTTLS (port 587) — matikan untuk SSL port 465</span>
+              <span className="text-sm text-ink-2">STARTTLS (port 587) — matikan untuk SSL port 465</span>
             </label>
           </div>
 
@@ -275,14 +275,14 @@ function EmailResetSection({ isAdmin }) {
 
           {/* Panduan Gmail */}
           <details className="group">
-            <summary className="text-[10px] text-accent-2 cursor-pointer hover:underline">📧 Panduan setup Gmail →</summary>
-            <div className="mt-2 bg-bg-4 rounded-xl p-3 text-[10px] text-ink-3 space-y-1.5">
+            <summary className="text-[12px] text-accent-2 cursor-pointer hover:underline font-semibold">📧 Panduan setup Gmail →</summary>
+            <div className="mt-2 bg-bg-4 rounded-xl p-3 text-xs text-ink-3 space-y-1.5">
               <div className="font-semibold text-ink-2 mb-1">Gmail App Password (bukan password biasa):</div>
-              <div>1. Buka <span className="text-accent-2">myaccount.google.com</span> → Security</div>
+              <div>1. Buka <span className="text-accent-2 font-semibold">myaccount.google.com</span> → Security</div>
               <div>2. Aktifkan "2-Step Verification" terlebih dahulu</div>
               <div>3. Cari "App passwords" → pilih "Mail" → Generate</div>
               <div>4. Copy 16 karakter yang muncul → paste ke kolom Password di atas</div>
-              <div className="pt-1 font-mono text-accent-2">Host: smtp.gmail.com | Port: 587 | TLS: ON</div>
+              <div className="pt-1 font-mono text-accent-2 font-semibold">Host: smtp.gmail.com | Port: 587 | TLS: ON</div>
             </div>
           </details>
         </div>
@@ -329,8 +329,8 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
       <div className="flex items-center gap-2 p-3 bg-success/8 border border-success/25 rounded-xl">
         <CheckCircle2 size={14} className="text-success"/>
         <div>
-          <div className="text-xs font-semibold text-success">Telegram OTP Aktif</div>
-          <div className="text-[10px] text-ink-3">Saat login, kode OTP akan dikirim ke Telegram Anda</div>
+          <div className="text-sm font-semibold text-success">Telegram OTP Aktif</div>
+          <div className="text-xs text-ink-3">Saat login, kode OTP akan dikirim ke Telegram Anda</div>
         </div>
       </div>
       <Btn label="Nonaktifkan Telegram OTP" onClick={async () => {
@@ -346,26 +346,26 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
 
   return (
     <div className="mt-3 space-y-4">
-      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[10px] text-ink-3 space-y-1.5">
+      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja Telegram OTP:</div>
         <div>1. Setelah password benar saat login, AI ORCHESTRATOR kirim kode 6 digit ke Telegram</div>
         <div>2. Masukkan kode tersebut untuk melanjutkan login</div>
         <div>3. Kode berlaku 5 menit dan hanya sekali pakai</div>
-        <div className="text-accent-2 pt-1">✓ Tidak perlu aplikasi tambahan — cukup Telegram!</div>
+        <div className="text-accent-2 font-semibold pt-1">✓ Tidak perlu aplikasi tambahan — cukup Telegram!</div>
       </div>
 
       {/* Step indicator */}
       <div className="flex items-center gap-2">
         {[1,2,3].map(s => (
           <div key={s} className="flex items-center gap-2">
-            <div className={clsx('w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all',
+            <div className={clsx('w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all',
               step >= s ? 'bg-accent text-white' : 'bg-bg-4 text-ink-3 border border-border')}>
               {step > s ? '✓' : s}
             </div>
             {s < 3 && <div className={clsx('flex-1 h-px w-8', step > s ? 'bg-accent' : 'bg-border')}/>}
           </div>
         ))}
-        <div className="text-[10px] text-ink-3 ml-2">
+        <div className="text-xs text-ink-3 ml-2 font-medium">
           {step === 1 && 'Mulai Setup'}
           {step === 2 && 'Masukkan Chat ID'}
           {step === 3 && 'Verifikasi Kode'}
@@ -375,13 +375,13 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
       {step === 1 && (
         <div className="space-y-3">
           <div className="bg-sky-400/8 border border-sky-400/20 rounded-xl p-3 space-y-2">
-            <div className="text-xs font-semibold text-sky-400 flex items-center gap-1.5">
+            <div className="text-sm font-semibold text-sky-400 flex items-center gap-1.5">
               <MessageSquare size={12}/>Langkah 1: Dapatkan Chat ID Telegram
             </div>
-            <div className="text-[10px] text-ink-3 space-y-1">
-              <div>1. Buka Telegram → cari <span className="font-mono text-accent-2">@userinfobot</span></div>
+            <div className="text-xs text-ink-3 space-y-1.5">
+              <div>1. Buka Telegram → cari <span className="font-mono text-accent-2 font-semibold">@userinfobot</span></div>
               <div>2. Kirim pesan apa saja → bot akan balas dengan ID Anda</div>
-              <div>3. Atau: buka bot AI ORCHESTRATOR Anda → kirim <span className="font-mono text-accent-2">/start</span> → catat angka ID yang muncul</div>
+              <div>3. Atau: buka bot AI ORCHESTRATOR Anda → kirim <span className="font-mono text-accent-2 font-semibold">/start</span> → catat angka ID yang muncul</div>
             </div>
           </div>
           <Btn label="Lanjut →" onClick={() => setStep(2)} variant="primary" icon={MessageSquare}/>
@@ -393,7 +393,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
           <div>
             <Label>Telegram Chat ID (angka)</Label>
             <Inp value={chatId} onChange={setChatId} placeholder="123456789" mono/>
-            <p className="text-[10px] text-ink-3 mt-1">Dapatkan dari @userinfobot — berupa angka panjang</p>
+            <p className="text-xs text-ink-3 mt-1">Dapatkan dari @userinfobot — berupa angka panjang</p>
           </div>
           <div className="flex gap-2">
             <Btn label="← Kembali" onClick={() => setStep(1)} variant="default"/>
@@ -405,7 +405,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
 
       {step === 3 && (
         <div className="space-y-3">
-          <div className="text-[10px] text-ink-3 bg-bg-4 border border-border rounded-xl p-3">
+          <div className="text-xs text-ink-3 bg-bg-4 border border-border rounded-xl p-3">
             Kode OTP telah dikirim ke Telegram Anda. Masukkan kode 6 digit di bawah.
           </div>
           <div>
@@ -489,12 +489,12 @@ function TotpSection({ status, onRefresh }) {
 
   return (
     <div className="mt-3 space-y-4">
-      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[10px] text-ink-3 space-y-1.5">
+      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja TOTP 2FA:</div>
         <div>1. Scan QR code dengan Google Authenticator / Authy / FreeOTP</div>
         <div>2. Setiap login, masukkan kode 6 digit dari aplikasi (berganti tiap 30 detik)</div>
         <div>3. Tanpa akses ke aplikasi authenticator, tidak bisa login</div>
-        <div className="text-success pt-1">✓ Perlindungan terkuat — tidak bisa diakses tanpa HP Anda</div>
+        <div className="text-success font-semibold pt-1">✓ Perlindungan terkuat — tidak bisa diakses tanpa HP Anda</div>
       </div>
 
       {enabled ? (
@@ -502,8 +502,8 @@ function TotpSection({ status, onRefresh }) {
           <div className="flex items-center gap-2 p-3 bg-success/8 border border-success/25 rounded-xl">
             <CheckCircle2 size={14} className="text-success"/>
             <div>
-              <div className="text-xs font-semibold text-success">2FA TOTP Aktif</div>
-              <div className="text-[10px] text-ink-3">Login memerlukan kode 6 digit dari aplikasi authenticator</div>
+              <div className="text-sm font-semibold text-success">2FA TOTP Aktif</div>
+              <div className="text-xs text-ink-3">Login memerlukan kode 6 digit dari aplikasi authenticator</div>
             </div>
           </div>
 
@@ -533,7 +533,7 @@ function TotpSection({ status, onRefresh }) {
           <div className="flex items-center gap-2">
             {['Info', 'Scan QR', 'Verifikasi'].map((label, i) => (
               <div key={label} className="flex items-center gap-2">
-                <div className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-medium transition-all',
+                <div className={clsx('flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all',
                   step > i+1 ? 'bg-success/15 text-success' :
                   step === i+1 ? 'bg-accent/15 text-accent-2' : 'bg-bg-4 text-ink-3')}>
                   {step > i+1 ? '✓' : i+1}. {label}
@@ -554,9 +554,9 @@ function TotpSection({ status, onRefresh }) {
                   <div key={app.name} className={clsx('rounded-xl border p-3 text-center',
                     app.recommended ? 'border-accent/40 bg-accent/5' : 'border-border bg-bg-4')}>
                     <div className="text-2xl mb-1">{app.icon}</div>
-                    <div className="text-[11px] font-semibold text-ink">{app.name}</div>
-                    <div className="text-[9px] text-ink-3">{app.dl}</div>
-                    {app.recommended && <div className="text-[9px] text-accent-2 mt-1 font-medium">⭐ Direkomendasikan</div>}
+                    <div className="text-xs font-semibold text-ink">{app.name}</div>
+                    <div className="text-[11px] text-ink-3">{app.dl}</div>
+                    {app.recommended && <div className="text-[11px] text-accent-2 mt-1 font-semibold">⭐ Direkomendasikan</div>}
                   </div>
                 ))}
               </div>
@@ -566,7 +566,7 @@ function TotpSection({ status, onRefresh }) {
 
           {step === 2 && qrUri && (
             <div className="space-y-4">
-              <div className="text-xs text-ink-2">Scan QR code ini dengan aplikasi authenticator:</div>
+              <div className="text-sm font-semibold text-ink-2">Scan QR code ini dengan aplikasi authenticator:</div>
 
               <div className="flex flex-col md:flex-row items-start gap-5">
                 {/* QR Code */}
@@ -575,20 +575,20 @@ function TotpSection({ status, onRefresh }) {
                     <canvas ref={canvasRef} width={200} height={200}
                       className="block"/>
                   </div>
-                  <div className="text-[10px] text-ink-3">Scan dengan aplikasi authenticator</div>
+                  <div className="text-xs text-ink-3">Scan dengan aplikasi authenticator</div>
                 </div>
 
                 {/* Manual entry */}
                 <div className="flex-1 space-y-3">
-                  <div className="text-[10px] text-ink-3">Atau masukkan kode ini secara manual:</div>
+                  <div className="text-xs text-ink-3">Atau masukkan kode ini secara manual:</div>
                   <div className="flex items-center gap-2 bg-bg-2 border border-border rounded-xl px-3 py-2">
-                    <code className="flex-1 font-mono text-xs text-accent-2 tracking-widest break-all">{secret}</code>
+                    <code className="flex-1 font-mono text-sm text-accent-2 tracking-widest break-all font-semibold">{secret}</code>
                     <CopyBtn text={secret}/>
                   </div>
-                  <div className="bg-bg-4 rounded-xl p-3 text-[10px] text-ink-3 space-y-1">
+                  <div className="bg-bg-4 rounded-xl p-3 text-xs text-ink-3 space-y-1.5">
                     <div className="font-semibold text-ink-2 mb-1">Manual entry di Google Authenticator:</div>
                     <div>1. Ketuk "+" → "Enter a setup key"</div>
-                    <div>2. Account: <span className="font-mono text-accent-2">AI ORCHESTRATOR</span></div>
+                    <div>2. Account: <span className="font-mono text-accent-2 font-semibold">AI ORCHESTRATOR</span></div>
                     <div>3. Key: copy dari kotak di atas</div>
                     <div>4. Type: Time-based</div>
                   </div>
@@ -601,7 +601,7 @@ function TotpSection({ status, onRefresh }) {
 
           {step === 3 && (
             <div className="space-y-3">
-              <div className="text-[10px] text-ink-3 bg-bg-4 rounded-xl p-3">
+              <div className="text-xs text-ink-3 bg-bg-4 rounded-xl p-3 font-medium">
                 Buka Google Authenticator → cari AI ORCHESTRATOR → masukkan kode 6 digit yang muncul
               </div>
               <div>
@@ -643,10 +643,10 @@ export default function Security2FA() {
   return (
     <div className="p-4 md:p-6 w-full space-y-4">
       <div>
-        <h1 className="text-lg font-bold text-ink flex items-center gap-2">
+        <h1 className="text-xl font-semibold text-ink flex items-center gap-2">
           <Shield size={18} className="text-accent-2"/>Autentikasi & Keamanan
         </h1>
-        <p className="text-xs text-ink-3 mt-0.5">Reset password, OTP Telegram, dan Two-Factor Authentication</p>
+        <p className="text-sm text-ink-3 mt-0.5">Reset password, OTP Telegram, dan Two-Factor Authentication</p>
       </div>
 
       {/* Status overview */}
@@ -661,8 +661,8 @@ export default function Security2FA() {
             <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center mb-2.5', m.active ? 'bg-success/15' : m.bg)}>
               <m.icon size={15} className={m.active ? 'text-success' : m.color}/>
             </div>
-            <div className="text-xs font-semibold text-ink">{m.label}</div>
-            <div className="text-[10px] text-ink-3 mt-0.5">{m.sub}</div>
+            <div className="text-sm font-semibold text-ink">{m.label}</div>
+            <div className="text-xs text-ink-3 mt-0.5">{m.sub}</div>
             <div className="mt-2">
               <StatusBadge ok={m.active} labelOk="Aktif" labelNo="Belum disetup"/>
             </div>
@@ -671,10 +671,10 @@ export default function Security2FA() {
       </div>
 
       {/* Rekomendasi */}
-      <div className="flex items-start gap-2.5 p-3 bg-accent/8 border border-accent/20 rounded-xl text-[10px] text-ink-2">
+      <div className="flex items-start gap-2.5 p-3 bg-accent/8 border border-accent/20 rounded-xl text-xs text-ink-2">
         <Info size={12} className="text-accent-2 flex-shrink-0 mt-0.5"/>
         <div>
-          <strong className="text-ink block mb-0.5">Rekomendasi Keamanan:</strong>
+          <strong className="text-ink block mb-0.5 text-sm">Rekomendasi Keamanan:</strong>
           Setup minimal 1 metode 2FA. <strong>TOTP</strong> paling aman (tanpa internet untuk generate kode).
           <strong>Telegram OTP</strong> paling mudah. <strong>Email Reset</strong> sebagai fallback jika lupa password.
         </div>

@@ -108,24 +108,24 @@ function ActiveSessionCard({ session }) {
           <div className="w-2 h-2 rounded-full flex-shrink-0"
             style={{ background: `linear-gradient(135deg, ${c1}, ${c2})`, boxShadow: `0 0 8px ${c1}80` }} />
           <div className="min-w-0">
-            <div className="text-[13px] font-bold text-ink truncate" title={session.title}>
+            <div className="text-base font-bold text-ink truncate uppercase tracking-tight" title={session.title}>
               {session.title || 'New Chat'}
             </div>
-            <div className="text-[10px] text-ink-3 font-mono truncate">
+            <div className="text-xs text-ink-3 font-bold font-mono truncate uppercase tracking-widest opacity-60">
               #{session.session_id.slice(0, 8)}
             </div>
           </div>
         </div>
         {session.is_streaming ? (
-          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex-shrink-0"
+          <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest flex-shrink-0"
             style={{ background: `${c1}20`, color: c1 }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-ping" style={{ background: c1 }} />
+            <span className="w-2 h-2 rounded-full animate-ping" style={{ background: c1 }} />
             Memproses
           </span>
         ) : (
-          <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase flex-shrink-0"
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest flex-shrink-0"
             style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
-            <Eye size={9} /> Aktif
+            <Eye size={12} /> Aktif
           </span>
         )}
       </div>
@@ -133,42 +133,42 @@ function ActiveSessionCard({ session }) {
       {/* Model detail section */}
       <div className="mb-3 p-2.5 rounded-lg" style={{ background: `${c1}10`, border: `0.5px solid ${c1}20` }}>
         {/* Model name */}
-        <div className="flex items-center gap-2 mb-2">
-          <Bot size={11} style={{ color: c1 }} />
-          <span className="text-[10px] font-semibold text-ink truncate">{modelShort}</span>
-          <span className="text-[8px] text-ink-3 font-mono flex-shrink-0 bg-bg-4 px-1.5 py-0.5 rounded">
+        <div className="flex items-center gap-2.5 mb-2.5">
+          <Bot size={14} style={{ color: c1 }} />
+          <span className="text-sm font-bold text-ink truncate uppercase tracking-tight">{modelShort}</span>
+          <span className="text-[11px] text-ink-3 font-bold font-mono flex-shrink-0 bg-bg-4 px-2 py-0.5 rounded border border-border/30 shadow-inner">
             {modelFull}
           </span>
         </div>
         
         {/* Provider info */}
-        <div className="flex items-center gap-1.5 px-2 py-1.5 rounded bg-bg-4/50 border border-border/40">
-          <span>{provider.icon}</span>
-          <span className="text-[9px] font-medium text-ink-2">{provider.name}</span>
-          <span className="ml-auto text-[8px] text-ink-3">Provider</span>
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-4 border-2 border-border/20 shadow-inner">
+          <span className="text-sm">{provider.icon}</span>
+          <span className="text-xs font-bold text-ink-2 uppercase tracking-widest">{provider.name}</span>
+          <span className="ml-auto text-[10px] text-ink-3 font-bold uppercase tracking-widest opacity-50">Provider</span>
         </div>
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-3 gap-2 text-center mb-2">
-        <div className="rounded-lg py-1.5" style={{ background: 'rgba(255,255,255,0.04)' }}>
-          <div className="text-[15px] font-black" style={{ color: c1 }}>{session.msg_count}</div>
-          <div className="text-[9px] text-ink-3 uppercase tracking-wider">Pesan</div>
+      <div className="grid grid-cols-3 gap-3 text-center mb-3">
+        <div className="rounded-xl py-2.5 bg-bg-4 border border-border/20 shadow-sm">
+          <div className="text-xl font-bold font-mono tracking-tighter" style={{ color: c1 }}>{session.msg_count}</div>
+          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Pesan</div>
         </div>
-        <div className="rounded-lg py-1.5" style={{ background: 'rgba(255,255,255,0.04)' }}>
-          <div className="text-[13px] font-black text-success">✓</div>
-          <div className="text-[9px] text-ink-3 uppercase tracking-wider">Aktif</div>
+        <div className="rounded-xl py-2.5 bg-bg-4 border border-border/20 shadow-sm">
+          <div className="text-xl font-bold text-success">✓</div>
+          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Aktif</div>
         </div>
-        <div className="rounded-lg py-1.5" style={{ background: 'rgba(255,255,255,0.04)' }}>
-          <div className="text-[11px] font-bold text-ink-2" title={lastActivityFull}>{lastActivity}</div>
-          <div className="text-[9px] text-ink-3 uppercase tracking-wider">Update</div>
+        <div className="rounded-xl py-2.5 bg-bg-4 border border-border/20 shadow-sm">
+          <div className="text-base font-bold font-mono text-ink-2" title={lastActivityFull}>{lastActivity.split(':').slice(0,2).join(':')}</div>
+          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Update</div>
         </div>
       </div>
 
       {/* Orchestrator info  */}
-      <div className="px-2 py-1.5 rounded bg-bg-3/70 border border-border/30 text-center">
-        <div className="text-[8px] text-ink-3 uppercase tracking-wider font-semibold">Orchestrator</div>
-        <div className="text-[10px] font-bold text-accent mt-0.5">Auto-Orchestrator</div>
+      <div className="px-3 py-2 rounded-xl bg-bg-3 border-2 border-border/40 text-center shadow-md">
+        <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Orchestrator</div>
+        <div className="text-base font-bold text-accent uppercase tracking-tighter mt-0.5">Auto-Orchestrator</div>
       </div>
     </div>
   )
@@ -187,7 +187,7 @@ function StatusBadge({ status }) {
   }
   const cfg = map[status] || map.executing
   return (
-    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider"
+    <span className="text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-widest border border-border/30 shadow-sm"
       style={{ background: cfg.bg, color: cfg.color }}>
       {cfg.label}
     </span>
@@ -197,18 +197,18 @@ function StatusBadge({ status }) {
 // ── Metric Card ─────────────────────────────────────────────────
 function MetricCard({ label, value, subtext, icon: Icon, color }) {
   return (
-    <GlassCard className="p-5 group hover:scale-[1.02] transition-transform duration-300">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] text-ink-3 uppercase tracking-[0.1em] font-semibold">{label}</span>
-        <div className="p-1.5 rounded-lg" style={{ background: color + '18' }}>
-          <Icon size={14} style={{ color }} />
+    <GlassCard className="p-6 group hover:scale-[1.02] transition-transform duration-300 shadow-lg">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-xs text-ink-3 uppercase tracking-widest font-bold opacity-60">{label}</span>
+        <div className="p-2 rounded-xl" style={{ background: color + '18', border: `1px solid ${color}30` }}>
+          <Icon size={18} style={{ color }} />
         </div>
       </div>
-      <div className="text-3xl font-black text-ink tracking-tight">{value}</div>
+      <div className="text-4xl font-bold text-ink tracking-tighter font-mono">{value}</div>
       {subtext && (
-        <div className="flex items-center gap-1.5 mt-2">
-          <TrendingUp size={10} className="text-success" />
-          <span className="text-[9px] text-ink-3 font-medium">{subtext}</span>
+        <div className="flex items-center gap-2 mt-3">
+          <TrendingUp size={12} className="text-success" />
+          <span className="text-xs text-ink-3 font-bold uppercase tracking-tight opacity-80">{subtext}</span>
         </div>
       )}
     </GlassCard>
@@ -275,18 +275,18 @@ export default function MonitoringAI() {
   }, [autoRefresh])
 
   if (loading && !data) return (
-    <div className="p-8 flex flex-col items-center justify-center min-h-[70vh] gap-6 text-accent">
-      <div className="w-20 h-20 border-4 border-t-transparent border-accent rounded-full animate-spin" />
-      <span className="text-sm font-black uppercase tracking-[0.4em] animate-pulse">Loading AI Metrics...</span>
+    <div className="p-8 flex flex-col items-center justify-center min-h-[70vh] gap-8 text-accent">
+      <div className="w-24 h-24 border-8 border-t-transparent border-accent rounded-full animate-spin shadow-2xl" />
+      <span className="text-lg font-bold uppercase tracking-[0.5em] animate-pulse opacity-80">Loading AI Metrics...</span>
     </div>
   )
 
   if (error && !data) return (
-    <div className="p-8 flex flex-col items-center justify-center min-h-[70vh] gap-4">
-      <AlertTriangle size={48} className="text-warn opacity-60" />
-      <span className="text-sm text-ink-2 font-medium">{error}</span>
+    <div className="p-8 flex flex-col items-center justify-center min-h-[70vh] gap-5">
+      <AlertTriangle size={64} className="text-warn opacity-40 animate-bounce" />
+      <span className="text-base text-ink-2 font-bold uppercase tracking-tight">{error}</span>
       <button onClick={() => { setLoading(true); fetchAll() }}
-        className="px-5 py-2.5 bg-accent hover:bg-accent/80 text-white text-xs font-bold rounded-xl transition-colors">
+        className="px-8 py-4 bg-accent hover:bg-accent/80 text-white text-sm font-bold uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-accent/20 active:scale-95">
         Coba Lagi
       </button>
     </div>
@@ -303,7 +303,7 @@ export default function MonitoringAI() {
   const streamingCount = activeSessions.filter(s => s.is_streaming).length
 
   return (
-    <div className="p-3 md:p-6 lg:p-8 w-full max-w-full space-y-4 md:space-y-6 lg:space-y-8 relative overflow-hidden">
+    <div className="p-3 md:p-4 lg:p-6 lg:pt-4 w-full max-w-full space-y-4 md:space-y-6 relative overflow-hidden">
       {/* Background particles */}
       <div className="fixed inset-0 pointer-events-none opacity-10 z-0">
         {[...Array(20)].map((_, i) => (
@@ -322,35 +322,35 @@ export default function MonitoringAI() {
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 relative z-10">
         <div className="space-y-2">
           <div className="flex items-center gap-3 text-accent">
-            <Radio size={22} className="animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-[0.5em] opacity-70">Realtime</span>
+            <Radio size={24} className="animate-pulse" />
+            <span className="text-base font-bold uppercase tracking-[0.6em] opacity-80">Realtime</span>
           </div>
-          <h1 className="text-5xl font-black tracking-tighter text-ink lg:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-ink to-ink-3">
+          <h1 className="text-5xl font-bold tracking-tighter text-ink lg:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-ink to-ink-3">
             Monitoring AI
           </h1>
-          <p className="text-sm text-ink-3 max-w-lg">
+          <p className="text-lg text-ink-3 max-w-lg font-semibold uppercase tracking-tight opacity-80">
             Pantau kinerja AI secara realtime — model aktif, sesi berjalan, dan metrik performa orchestrator.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {lastUpdated && (
-            <span className="text-[10px] text-ink-3 font-mono">
+            <span className="text-base text-ink-3 font-bold font-mono uppercase tracking-tight opacity-70">
               Diperbarui: {lastUpdated.toLocaleTimeString('id-ID')}
             </span>
           )}
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}
             className={clsx(
-              'flex items-center gap-2 px-4 py-3 rounded-2xl text-xs font-bold transition-all shadow-lg',
-              autoRefresh ? 'bg-success/20 text-success' : 'bg-bg-3 text-ink-3'
+              'flex items-center gap-3 px-6 py-3.5 rounded-2xl text-base font-bold uppercase tracking-widest transition-all shadow-xl',
+              autoRefresh ? 'bg-success/20 text-success border border-success/30' : 'bg-bg-3 text-ink-3 border border-border/40'
             )}
           >
-            {autoRefresh ? <Wifi size={14} /> : <WifiOff size={14} />}
+            {autoRefresh ? <Wifi size={20} /> : <WifiOff size={20} />}
             {autoRefresh ? 'Live ON' : 'Live OFF'}
           </button>
           <button onClick={fetchAll}
-            className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-accent to-accent-2 text-white rounded-2xl text-xs font-black shadow-[0_10px_40px_rgba(var(--accent-rgb),0.4)] active:scale-95 transition-all">
-            <RefreshCw size={14} /> REFRESH
+            className="flex items-center gap-3 px-8 py-3.5 bg-gradient-to-r from-accent to-accent-2 text-white rounded-2xl text-sm font-bold tracking-widest shadow-[0_15px_50px_rgba(var(--accent-rgb),0.5)] active:scale-95 transition-all">
+            <RefreshCw size={18} /> REFRESH
           </button>
         </div>
       </div>
@@ -358,19 +358,19 @@ export default function MonitoringAI() {
       {/* ── Sesi Aktif AI — PANEL UTAMA ──────────────────────── */}
       <div className="relative z-10">
         <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-          <div className="flex items-center gap-2">
-            <MessageSquare size={18} className="text-accent" />
-            <h2 className="text-xl font-black text-ink tracking-tight">📚 Sesi Aktif AI</h2>
+          <div className="flex items-center gap-3">
+            <MessageSquare size={22} className="text-accent" />
+            <h2 className="text-2xl font-bold text-ink uppercase tracking-tighter">📚 Sesi Aktif AI</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase"
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border border-border/30 shadow-inner"
               style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
               {activeSessions.length} Running
             </div>
             {streamingCount > 0 && (
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase animate-pulse"
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest animate-pulse border border-success/30 shadow-md"
                 style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-success animate-ping" />
                 {streamingCount} Processing
               </div>
             )}
@@ -378,18 +378,18 @@ export default function MonitoringAI() {
         </div>
 
         {loadingAS && activeSessions.length === 0 ? (
-          <GlassCard className="p-8 flex items-center justify-center">
-            <div className="flex items-center gap-3 text-ink-3">
-              <RefreshCw size={16} className="animate-spin" />
-              <span className="text-sm">Memuat sesi aktif...</span>
+          <GlassCard className="p-10 flex items-center justify-center shadow-inner">
+            <div className="flex items-center gap-4 text-ink-3">
+              <RefreshCw size={24} className="animate-spin text-accent" />
+              <span className="text-base font-bold uppercase tracking-widest opacity-60">Memuat sesi aktif...</span>
             </div>
           </GlassCard>
         ) : activeSessions.length === 0 ? (
-          <GlassCard className="p-8">
-            <div className="flex flex-col items-center justify-center gap-3 text-ink-3 py-4">
-              <MessageSquare size={40} className="opacity-20" />
-              <p className="text-sm font-medium">Tidak ada sesi aktif saat ini</p>
-              <p className="text-[11px] text-ink-3">Sesi dengan aktivitas dalam 30 menit terakhir akan muncul di sini</p>
+          <GlassCard className="p-12 shadow-inner border-dashed border-2 border-border/40 bg-bg-4/20">
+            <div className="flex flex-col items-center justify-center gap-5 text-ink-3 py-6">
+              <MessageSquare size={56} className="opacity-10" />
+              <p className="text-xl font-bold uppercase tracking-tight opacity-40">Tidak ada sesi aktif saat ini</p>
+              <p className="text-sm text-ink-3 font-semibold uppercase tracking-widest opacity-30 text-center">Sesi dengan aktivitas dalam 30 menit terakhir akan muncul di sini</p>
             </div>
           </GlassCard>
         ) : (
@@ -425,14 +425,14 @@ export default function MonitoringAI() {
 
         {/* ── Model Power Distribution (Responsive Col) ─────────────────────── */}
         <GlassCard className="p-4 sm:p-5 lg:p-6 flex flex-col">
-          <div className="flex items-center gap-2 mb-3 lg:mb-5">
-            <Zap size={16} className="text-warn" />
-            <h2 className="text-base lg:text-lg font-black text-ink tracking-tight">Model Power</h2>
+          <div className="flex items-center gap-3 mb-5">
+            <Zap size={20} className="text-warn" />
+            <h2 className="text-xl font-bold text-ink uppercase tracking-tight">Model Power</h2>
           </div>
           {activeSessions.length === 0 ? (
-            <div className="flex items-center justify-center gap-2 text-ink-3 min-h-32">
-              <Zap size={20} className="opacity-30 flex-shrink-0" />
-              <span className="text-xs lg:text-sm">No active sessions</span>
+            <div className="flex items-center justify-center gap-4 text-ink-3 min-h-32 opacity-40">
+              <Zap size={28} className="flex-shrink-0" />
+              <span className="text-base font-bold uppercase tracking-widest">No active sessions</span>
             </div>
           ) : (() => {
             const modelPower = {}
@@ -451,20 +451,20 @@ export default function MonitoringAI() {
                   const [c1, c2] = modelColor(model)
                   const modelShort = model.split('/').pop()
                   return (
-                    <div key={i} className="space-y-0.5">
-                      <div className="flex items-center justify-between text-[10px] lg:text-[11px]">
-                        <span className="font-semibold text-ink truncate" title={model}>
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-tight">
+                        <span className="text-ink truncate max-w-[70%] shadow-sm" title={model}>
                           {modelShort}
                         </span>
-                        <span className="font-bold" style={{color: c1}}>{power}%</span>
+                        <span style={{color: c1}} className="font-mono text-sm">{power}%</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-bg-4/50 overflow-hidden">
+                      <div className="w-full h-3 rounded-full bg-bg-5 border border-border/20 overflow-hidden shadow-inner">
                         <div 
-                          className="h-full transition-all duration-500 relative"
+                          className="h-full transition-all duration-700 relative rounded-full"
                           style={{
                             background: `linear-gradient(90deg, ${c1}, ${c2})`,
                             width: `${power}%`,
-                            boxShadow: `0 0 8px ${c1}80`
+                            boxShadow: `0 0 12px ${c1}60`
                           }}
                         />
                       </div>
@@ -484,26 +484,26 @@ export default function MonitoringAI() {
 
       {/* ── Model Health (Circuit Breakers) ───────────────────── */}
       {Object.keys(health).length > 0 && (
-        <GlassCard className="p-4 sm:p-5 lg:p-6 relative z-10">
-          <div className="flex items-center gap-2 mb-3 lg:mb-5">
-            <Shield size={16} className="text-warn" />
-            <h2 className="text-base lg:text-lg font-black text-ink tracking-tight">Circuit Breakers</h2>
-            <span className="ml-auto text-[9px] lg:text-[10px] font-bold text-ink-3">
-              {(recovery.success_rate * 100 || 0).toFixed(0)}% OK
+        <GlassCard className="p-6 sm:p-8 lg:p-10 relative z-10 shadow-2xl">
+          <div className="flex items-center gap-3 mb-5 lg:mb-8 border-b border-border/20 pb-4">
+            <Shield size={24} className="text-warn" />
+            <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">Circuit Breakers</h2>
+            <span className="ml-auto text-sm lg:text-base font-bold text-success uppercase tracking-widest bg-success/10 px-4 py-1 rounded-full border border-success/30 shadow-sm">
+              {(recovery.success_rate * 100 || 0).toFixed(0)}% HEALTHY
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-5">
             {Object.entries(health).map(([model, status]) => (
               <div key={model}
-                className={clsx('flex items-center gap-2 p-2 lg:p-3 rounded-lg transition-all text-xs',
-                  status.circuit_open ? 'bg-danger/10 border border-danger/20' : 'bg-white/3')}>
+                className={clsx('flex items-center gap-3 p-4 lg:p-5 rounded-2xl transition-all border-2 shadow-md group',
+                  status.circuit_open ? 'bg-danger/10 border-danger/40 animate-pulse' : 'bg-white/5 border-border/20 hover:border-accent/40')}>
                 {status.available
-                  ? <CheckCircle size={14} className="text-success flex-shrink-0" />
-                  : <XCircle    size={14} className="text-danger  flex-shrink-0" />}
+                  ? <CheckCircle size={20} className="text-success flex-shrink-0 group-hover:scale-110 transition-transform" />
+                  : <XCircle    size={20} className="text-danger  flex-shrink-0 group-hover:scale-110 transition-transform" />}
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] lg:text-[12px] font-semibold text-ink truncate">{model.split('/').pop()}</div>
-                  <div className="text-[9px] lg:text-[10px] text-ink-3">
-                    {status.failures} {status.circuit_open ? '⚠️' : '✓'}
+                  <div className="text-base lg:text-lg font-bold text-ink truncate uppercase tracking-tight">{model.split('/').pop()}</div>
+                  <div className="text-xs lg:text-sm text-ink-3 font-bold uppercase tracking-widest opacity-60 flex items-center gap-2">
+                    {status.failures} FAILS {status.circuit_open ? <span className="text-danger animate-pulse">OPEN ⚠️</span> : <span className="text-success">CLOSED ✓</span>}
                   </div>
                 </div>
               </div>
@@ -514,24 +514,24 @@ export default function MonitoringAI() {
 
       {/* ── Recent Task Executions ────────────────────────────── */}
       {recentExecs.length > 0 && (
-        <GlassCard className="p-4 sm:p-5 lg:p-6 relative z-10">
-          <div className="flex items-center gap-2 mb-3 lg:mb-5">
-            <Activity size={16} className="text-accent" />
-            <h2 className="text-base lg:text-lg font-black text-ink tracking-tight">Recent Orchestrations</h2>
-            <div className="ml-auto flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-success animate-ping" />
-              <span className="text-[8px] lg:text-[10px] font-black text-success uppercase tracking-widest">Live</span>
+        <GlassCard className="p-6 sm:p-8 lg:p-10 relative z-10 shadow-2xl">
+          <div className="flex items-center gap-3 mb-5 lg:mb-8 border-b border-border/20 pb-4">
+            <Activity size={24} className="text-accent" />
+            <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">Recent Orchestrations</h2>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-success animate-ping" />
+              <span className="text-sm font-bold text-success uppercase tracking-[0.2em]">Live Stream</span>
             </div>
           </div>
-          <div className="space-y-2 lg:space-y-3">
+          <div className="space-y-3 lg:space-y-4">
             {recentExecs.slice(0, 5).map((exec, i) => (
-              <div key={i} className="flex items-center gap-2 lg:gap-4 p-2 lg:p-4 rounded-lg bg-white/3 hover:bg-white/5 transition-all group text-xs">
+              <div key={i} className="flex items-center gap-4 lg:gap-6 p-4 lg:p-5 rounded-2xl bg-white/5 border border-border/20 hover:bg-white/10 hover:border-accent/40 transition-all group shadow-sm">
                 <StatusBadge status={exec.status} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] lg:text-[13px] font-medium text-ink truncate">{exec.request}</div>
-                  <div className="flex items-center gap-2 lg:gap-3 mt-0.5 text-[9px] lg:text-[10px] text-ink-3 truncate">
-                    <span>⏱ {exec.time_ms}ms</span>
-                    <span>• 🎟 {exec.tokens}</span>
+                  <div className="text-base lg:text-lg font-bold text-ink truncate uppercase tracking-tight">{exec.request}</div>
+                  <div className="flex items-center gap-4 lg:gap-6 mt-1.5 text-xs text-ink-3 font-bold uppercase tracking-widest opacity-60">
+                    <span className="flex items-center gap-2"><Clock size={14} className="text-accent"/> {exec.time_ms}ms</span>
+                    <span className="flex items-center gap-2"><Zap size={14} className="text-warn"/> {exec.tokens} TOKENS</span>
                   </div>
                 </div>
               </div>

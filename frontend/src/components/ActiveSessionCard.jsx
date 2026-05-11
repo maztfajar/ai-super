@@ -91,10 +91,10 @@ function ActiveSessionCardNew({ session }) {
 
       <div className="relative z-10 space-y-3">
         {/* Row 1: User Prompt */}
-        <div className="flex items-start gap-3 pb-2 border-b border-border/30">
-          <MessageSquare size={16} className="text-ink-3 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-4 pb-3 border-b border-border/30">
+          <MessageSquare size={18} className="text-ink-3 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-ink line-clamp-2">
+            <p className="text-base font-semibold text-ink line-clamp-2">
               {session.title || 'New Chat Session'}
             </p>
           </div>
@@ -103,41 +103,41 @@ function ActiveSessionCardNew({ session }) {
         {/* Row 2: Timer & Status */}
         <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
           {/* Timer */}
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-bg-4/50">
-            <Clock size={13} className="text-accent" />
-            <span className="text-[11px] font-mono font-bold text-ink">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-bg-4/50">
+            <Clock size={14} className="text-accent" />
+            <span className="text-xs font-mono font-bold text-ink">
               {formatTime(elapsed)}s elapsed
             </span>
           </div>
 
           {/* Orchestrator Status */}
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-lg"
+          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg"
             style={{ background: `${orchestratorStatus.color}15`, border: `1px solid ${orchestratorStatus.color}30` }}>
-            <span className="text-[13px]">{orchestratorStatus.icon}</span>
-            <span className="text-[10px] font-semibold text-ink-2">{orchestratorStatus.label}</span>
+            <span className="text-base">{orchestratorStatus.icon}</span>
+            <span className="text-xs font-bold text-ink-2 uppercase tracking-tight">{orchestratorStatus.label}</span>
           </div>
 
           {/* Streaming Indicator */}
           {session.is_streaming && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-success/15 border border-success/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[10px] font-bold text-success">Processing</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-success/15 border border-success/30">
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
+              <span className="text-xs font-bold text-success uppercase">Processing</span>
             </div>
           )}
         </div>
 
         {/* Row 3: Agents Involved */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[9px] font-bold text-ink-3 uppercase tracking-widest">Agents:</span>
+          <span className="text-[10px] font-bold text-ink-3 uppercase tracking-widest mr-1">Agents:</span>
           {agents.map((agent, i) => (
-            <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px]"
+            <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs shadow-sm"
               style={{
                 background: `${agent.color}15`,
                 border: `1px solid ${agent.color}35`,
               }}>
-              <span className="text-[11px]">{agent.icon}</span>
+              <span className="text-xs">{agent.icon}</span>
               <span className="font-semibold text-ink-2">{agent.name}</span>
-              <span className="w-1.5 h-1.5 rounded-full"
+              <span className="w-2 h-2 rounded-full"
                 style={{
                   background: session.is_streaming ? agent.color : '#999',
                   animation: session.is_streaming ? 'pulse 1.5s ease-in-out infinite' : 'none',

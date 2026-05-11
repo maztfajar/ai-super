@@ -246,11 +246,11 @@ function GlassGauge({ metricKey, percent, subtext }) {
         </div>
 
         {/* Labels */}
-        <div className="text-center mt-2 space-y-0.5">
-          <div className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.15em]">
+        <div className="text-center mt-3 space-y-1">
+          <div className="text-[10px] font-bold text-ink-2 uppercase tracking-widest opacity-60">
             {cfg.label}
           </div>
-          <div className="text-[8px] text-ink-3 opacity-50 truncate max-w-[90px]">
+          <div className="text-xs text-ink-3 opacity-80 truncate max-w-[120px] font-bold uppercase tracking-tight">
             {subtext}
           </div>
         </div>
@@ -275,9 +275,9 @@ function ModelIcon({ name = '' }) {
   return (
     <div className="relative shrink-0 group/icon">
       <div className={clsx("absolute inset-0 bg-gradient-to-br rounded-xl blur-md opacity-30 group-hover/icon:opacity-60 transition-opacity", grad)} />
-      <div className={clsx("w-9 h-9 rounded-xl flex items-center justify-center bg-bg-4 relative z-10 overflow-hidden shadow-inner border-0")}>
+      <div className={clsx("w-10 h-10 rounded-xl flex items-center justify-center bg-bg-4 relative z-10 overflow-hidden shadow-inner border-0")}>
         <div className={clsx("absolute inset-0 bg-gradient-to-br opacity-20", grad)} />
-        <Icon size={16} className={clsx("relative z-10 transition-transform group-hover/icon:scale-110", grad.split(' ')[0].replace('from-', 'text-'))} />
+        <Icon size={18} className={clsx("relative z-10 transition-transform group-hover/icon:scale-110", grad.split(' ')[0].replace('from-', 'text-'))} />
       </div>
     </div>
   )
@@ -290,24 +290,24 @@ function StatCard({ label, value, subtext, icon: Icon, colorClass, glowClass, sp
       sparkline={sparkline || null}
     >
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           {accentColor && (
             <span
-              className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              className="w-2 h-2 rounded-full flex-shrink-0"
               style={{ background: accentColor }}
             />
           )}
-          <h3 className="text-[11px] text-ink-3 uppercase tracking-[0.08em]">{label}</h3>
+          <h3 className="text-xs font-bold text-ink-3 uppercase tracking-widest opacity-60">{label}</h3>
         </div>
-        <div className={clsx("p-2 rounded-xl bg-opacity-10", colorClass, colorClass.replace('bg-', 'text-'))}>
-          <Icon size={16} />
+        <div className={clsx("p-2.5 rounded-xl bg-opacity-10", colorClass, colorClass.replace('bg-', 'text-'))}>
+          <Icon size={20} />
         </div>
       </div>
       
-      <div className="text-4xl font-black text-ink tracking-tighter">{value}</div>
-      <div className="flex items-center gap-1.5 mt-3">
-        <TrendingUp size={12} className="text-success" />
-        <p className="text-[10px] font-bold text-ink-3 tracking-wide">{subtext}</p>
+      <div className="text-5xl font-bold text-ink tracking-tighter font-mono">{value}</div>
+      <div className="flex items-center gap-2 mt-4">
+        <TrendingUp size={14} className="text-success" />
+        <p className="text-xs font-bold text-ink-3 tracking-widest uppercase opacity-60">{subtext}</p>
       </div>
     </Card>
   )
@@ -325,8 +325,8 @@ function OverviewChart({ data, metric }) {
   if (!data || data.length === 0) return (
     <div className="h-[180px] flex flex-col items-center justify-center gap-2 text-ink-3">
       <Clock size={20} className="opacity-30" />
-      <span className="text-xs font-medium">Belum ada data aktivitas</span>
-      <span className="text-[10px] opacity-50">Mulai chat untuk melihat statistik di sini</span>
+      <span className="text-sm font-semibold">Belum ada data aktivitas</span>
+      <span className="text-xs opacity-60 font-medium">Mulai chat untuk melihat statistik di sini</span>
     </div>
   )
   
@@ -348,7 +348,7 @@ function OverviewChart({ data, metric }) {
           const val = getVal(item)
           return (
             <div key={i} className="flex flex-col items-center flex-1 h-full relative group">
-              <div className="absolute -top-12 px-3 py-1.5 bg-bg/90 rounded-xl shadow-2xl text-[10px] font-black text-ink opacity-0 group-hover:opacity-100 transition-all transform group-hover:-translate-y-2 z-30 backdrop-blur-md">
+              <div className="absolute -top-12 px-3 py-1.5 bg-bg/90 rounded-xl shadow-2xl text-xs font-bold text-ink opacity-0 group-hover:opacity-100 transition-all transform group-hover:-translate-y-2 z-30 backdrop-blur-md">
                 {val.toLocaleString()} {metric}
               </div>
               
@@ -358,7 +358,7 @@ function OverviewChart({ data, metric }) {
                   style={{ height: `${(val / maxVal) * 100}%`, minHeight: '6px' }}
                 />
               </div>
-              <div className="text-[9px] font-black text-ink-3 mt-4 uppercase tracking-widest opacity-60 group-hover:opacity-100">
+              <div className="text-xs font-bold text-ink-3 mt-4 uppercase tracking-widest opacity-60 group-hover:opacity-100">
                 {item.label}
               </div>
             </div>
@@ -385,12 +385,12 @@ function SystemMonitor({ system }) {
       }}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-5">
-        <Cpu size={14} className="text-accent-2" />
-        <span className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.15em]">System Resources</span>
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-          <span className="text-[9px] text-ink-3 uppercase tracking-wider">Live</span>
+      <div className="flex items-center gap-3 mb-6">
+        <Cpu size={18} className="text-accent-2" />
+        <span className="text-xs font-bold text-ink-2 uppercase tracking-widest opacity-60">System Resources</span>
+        <div className="ml-auto flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-success animate-pulse shadow-lg" />
+          <span className="text-[10px] font-bold text-success uppercase tracking-widest border border-success/30 px-2 py-0.5 rounded-full bg-success/10">Live</span>
         </div>
       </div>
 
@@ -468,7 +468,7 @@ export default function Dashboard() {
   if (loading) return (
     <div className="p-8 flex flex-col items-center justify-center min-h-[70vh] gap-6 text-accent">
       <div className="w-20 h-20 border-4 border-t-transparent border-accent rounded-full animate-spin" />
-      <span className="text-sm font-black uppercase tracking-[0.4em] animate-pulse">Synchronizing Grid...</span>
+      <span className="text-sm font-bold uppercase tracking-[0.4em] animate-pulse">Synchronizing Grid...</span>
     </div>
   )
 
@@ -479,7 +479,7 @@ export default function Dashboard() {
       <span className="text-sm text-ink-2 font-medium">{error}</span>
       <button
         onClick={() => { setLoading(true); setError(null); api.dashboard().then(d => { setData(d); setError(null) }).catch(e => setError(e.message)).finally(() => setLoading(false)) }}
-        className="px-5 py-2.5 bg-accent hover:bg-accent/80 text-white text-xs font-bold rounded-xl transition-colors"
+        className="px-5 py-2.5 bg-accent hover:bg-accent/80 text-white text-xs font-semibold rounded-xl transition-colors"
       >
         Coba Lagi
       </button>
@@ -522,7 +522,7 @@ export default function Dashboard() {
   }))
 
   return (
-    <div className="p-4 md:p-10 w-full max-w-full space-y-8 relative overflow-hidden">
+    <div className="p-4 md:p-6 md:pt-4 w-full max-w-full space-y-6 relative overflow-hidden">
       
       {/* Background Particles (VFX) */}
       <div className="fixed inset-0 pointer-events-none opacity-20 z-0">
@@ -540,19 +540,19 @@ export default function Dashboard() {
 
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-8 relative z-10">
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex items-center gap-3 text-accent transition-all hover:translate-x-1">
-            <Bot size={22} className="animate-bounce" />
-            <span className="text-xs font-black uppercase tracking-[0.5em] opacity-70">AI Orchestrator</span>
+            <Bot size={28} className="animate-bounce" />
+            <span className="text-xs font-bold uppercase tracking-[0.6em] opacity-60">AI Orchestrator Platform</span>
           </div>
-          <h1 className="text-5xl font-black tracking-tighter text-ink lg:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-ink to-ink-3">Dashboard</h1>
+          <h1 className="text-6xl font-bold tracking-tighter text-ink lg:text-8xl bg-clip-text text-transparent bg-gradient-to-r from-ink via-ink-2 to-ink-3 uppercase">Dashboard</h1>
         </div>
         <div className="flex items-center gap-4">
-          <button className="flex items-center gap-3 px-5 py-3.5 bg-bg-3 rounded-2xl text-xs font-black text-ink hover:bg-bg-4 transition-all shadow-2xl backdrop-blur-sm">
-            <Calendar size={16} className="text-accent" /> Mar 20, 2026 - Mar 28, 2026
+          <button className="flex items-center gap-3 px-6 py-4 bg-bg-3 border-2 border-border rounded-2xl text-sm font-bold text-ink hover:bg-bg-4 transition-all shadow-xl backdrop-blur-md uppercase tracking-widest">
+            <Calendar size={18} className="text-accent" /> Mar 20, 2026 - Mar 28, 2026
           </button>
-          <button onClick={downloadReport} className="flex items-center gap-3 px-6 py-3.5 bg-gradient-to-r from-accent to-accent-2 text-white rounded-2xl text-xs font-black shadow-[0_10px_40px_rgba(var(--accent-rgb),0.4)] active:scale-95 transition-all">
-            <Download size={16} /> DOWNLOAD LAPORAN
+          <button onClick={downloadReport} className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-accent to-accent-2 text-white rounded-2xl text-sm font-bold shadow-[0_10px_40px_rgba(var(--accent-rgb),0.4)] active:scale-95 transition-all uppercase tracking-widest">
+            <Download size={18} /> DOWNLOAD LAPORAN
           </button>
         </div>
       </div>
@@ -569,16 +569,16 @@ export default function Dashboard() {
         
         {/* Left Column Stack */}
         <div className="lg:col-span-8 flex flex-col gap-8">
-          <Card className="p-8 bg-gradient-to-br from-bg-3 to-bg-4 h-[320px] flex flex-col">
+          <Card className="p-8 bg-gradient-to-br from-bg-3 to-bg-4 border-2 border-border/50 h-[320px] flex flex-col shadow-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
               <div className="space-y-1">
-                <h2 className="text-2xl font-black text-ink tracking-tight">Overview Aktivitas</h2>
-                <p className="text-[10px] font-bold text-ink-3 uppercase tracking-[0.3em] opacity-40">Statistik orkestrasi harian</p>
+                <h2 className="text-3xl font-bold text-ink tracking-tighter uppercase">Overview Aktivitas</h2>
+                <p className="text-[10px] font-bold text-ink-3 uppercase tracking-[0.4em] opacity-50">Statistik orkestrasi harian</p>
               </div>
-              <div className="flex p-1 bg-bg/40 rounded-2xl backdrop-blur-xl border border-border/10 shadow-inner">
+              <div className="flex p-1.5 bg-bg/40 rounded-2xl backdrop-blur-xl border-2 border-border/10 shadow-inner">
                 {['Pesan', 'Token', 'Latensi', 'Error'].map(t => (
-                  <button key={t} onClick={() => setMetric(t)} className={clsx("px-5 py-2 text-[10px] font-black tracking-widest transition-all rounded-xl", metric === t ? "bg-accent text-white shadow-lg" : "text-ink-3 hover:text-ink")}>
-                    {t.toUpperCase()}
+                  <button key={t} onClick={() => setMetric(t)} className={clsx("px-6 py-2.5 text-[10px] font-bold tracking-[0.2em] transition-all rounded-xl uppercase", metric === t ? "bg-accent text-white shadow-xl" : "text-ink-3 hover:text-ink")}>
+                    {t}
                   </button>
                 ))}
               </div>
@@ -600,16 +600,16 @@ export default function Dashboard() {
           return (
             <Card className="lg:col-span-4 p-6 flex flex-col bg-gradient-to-b from-bg-3 to-ink/5 h-[672px]">
               {/* Header */}
-              <div className="flex items-center justify-between mb-4 px-1">
+              <div className="flex items-center justify-between mb-6 px-1">
                 <div>
-                  <div className="flex items-center gap-2.5 mb-0.5">
-                    <h2 className="text-xl font-black text-ink tracking-tight">Orkestrasi AI</h2>
-                    <div className="w-2 h-2 rounded-full bg-success animate-pulse shadow-[0_0_8px_#10b981]" />
+                  <div className="flex items-center gap-3 mb-1">
+                    <h2 className="text-2xl font-bold text-ink tracking-tighter uppercase">Orkestrasi AI</h2>
+                    <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse shadow-[0_0_12px_#10b981]" />
                   </div>
-                  <p className="text-[9px] font-bold text-ink-3 uppercase tracking-widest opacity-40">Distribusi beban kerja</p>
+                  <p className="text-[10px] font-bold text-ink-3 uppercase tracking-widest opacity-50">Distribusi beban kerja</p>
                 </div>
                 {sortedUsage.length > 0 && (
-                  <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
+                  <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-inner border border-success/30" style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
                     {sortedUsage.length} model aktif
                   </span>
                 )}
@@ -620,7 +620,7 @@ export default function Dashboard() {
                 {sortedUsage.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center opacity-20">
                     <LayoutDashboard size={40} className="mb-4" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Sistem Standby</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">Sistem Standby</span>
                   </div>
                 ) : (
                   sortedUsage.map((u, i) => {
@@ -631,23 +631,23 @@ export default function Dashboard() {
                     return (
                       <div
                         key={i}
-                        className="group flex items-center gap-3 rounded-xl overflow-hidden transition-all hover:brightness-110"
+                        className="group flex items-center gap-4 rounded-2xl overflow-hidden transition-all hover:brightness-110 shadow-sm"
                         style={{
                           background: 'var(--bg-4)',
-                          border: '0.5px solid var(--border)',
-                          padding: '10px 12px',
+                          border: '2px solid var(--border)',
+                          padding: '12px 16px',
                           position: 'relative',
                         }}
                       >
                         {/* Accent Bar */}
                         <div
-                          className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl"
+                          className="absolute left-0 top-0 bottom-0 w-[4px] rounded-l-2xl"
                           style={{ background: accent }}
                         />
 
                         {/* Avatar */}
                         <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold flex-shrink-0 shadow-inner"
                           style={{
                             background: accent + '18',
                             color: accent,
@@ -658,14 +658,14 @@ export default function Dashboard() {
 
                         {/* Name & Provider */}
                         <div className="flex-1 min-w-0">
-                          <div className="text-[13px] font-medium text-ink truncate leading-tight">{modelName}</div>
-                          <div className="text-[11px] text-ink-3 uppercase leading-tight mt-0.5">{provider}</div>
+                          <div className="text-base font-bold text-ink truncate tracking-tight leading-tight">{modelName}</div>
+                          <div className="text-[10px] text-ink-3 uppercase tracking-widest leading-tight mt-1 font-bold opacity-60">{provider}</div>
                         </div>
 
                         {/* Stats */}
-                        <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                          <div className="text-[12px] font-semibold" style={{ color: accent }}>+{u.count} req</div>
-                          <div className="text-[11px] text-ink-3">{u.latency}ms · {u.error_rate}%</div>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <div className="text-sm font-bold font-mono" style={{ color: accent }}>+{u.count} req</div>
+                          <div className="text-[10px] text-ink-3 font-bold uppercase tracking-tight opacity-70">{u.latency}ms · {u.error_rate}%</div>
                         </div>
                       </div>
                     )
@@ -675,15 +675,15 @@ export default function Dashboard() {
 
               <button
                 onClick={() => navigate('/chat')}
-                className="mt-4 w-full flex items-center justify-center gap-3 rounded-xl text-[13px] font-medium uppercase tracking-[0.04em] text-white transition-opacity duration-200 hover:opacity-[0.88]"
+                className="mt-6 w-full flex items-center justify-center gap-3 rounded-2xl text-sm font-bold uppercase tracking-widest text-white transition-all shadow-xl active:scale-95"
                 style={{
                   background: 'linear-gradient(135deg, #6366F1, #8B5CF6)',
-                  padding: '14px',
+                  padding: '18px',
                   border: 'none',
                   cursor: 'pointer',
                 }}
               >
-                <Bot size={16} className="text-white" />
+                <Bot size={20} className="text-white" />
                 <span>Luncurkan Agent</span>
               </button>
             </Card>
@@ -692,28 +692,28 @@ export default function Dashboard() {
       </div>
 
       {/* ── Live Event Feed ───────────────────────────────────── */}
-      <Card className="p-8 bg-bg-4/50 backdrop-blur-3xl relative z-10 transition-all hover:bg-bg-4/70 group">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-             <div className="p-2 rounded-xl bg-accent/20 text-accent"><Activity size={16} /></div>
-             <h2 className="text-xl font-black text-ink tracking-tight uppercase tracking-widest">Live Event Feed</h2>
+      <Card className="p-10 bg-bg-4/50 backdrop-blur-3xl border-2 border-border/50 relative z-10 transition-all hover:bg-bg-4/70 group shadow-2xl">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+             <div className="p-3 rounded-2xl bg-accent/20 text-accent shadow-lg"><Activity size={20} /></div>
+             <h2 className="text-2xl font-bold text-ink tracking-tighter uppercase">Live Event Feed</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-success animate-ping" />
-            <span className="text-[10px] font-black text-success uppercase tracking-widest">Streaming</span>
+          <div className="flex items-center gap-3 border border-success/30 px-3 py-1 rounded-full bg-success/5 shadow-inner">
+            <div className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
+            <span className="text-[10px] font-bold text-success uppercase tracking-widest">Streaming</span>
           </div>
         </div>
         
-        <div className="space-y-4 font-mono">
+        <div className="space-y-3 font-mono">
           {logs.length === 0 ? (
-            <div className="py-8 text-center text-[10px] text-ink-3 opacity-30 italic">Menunggu event sistem...</div>
+            <div className="py-12 text-center text-sm text-ink-3 opacity-40 italic font-bold uppercase tracking-widest">Menunggu event sistem...</div>
           ) : (
             logs.map((log, i) => (
-              <div key={i} className="flex items-center gap-4 text-[11px] group/item p-2 rounded-lg hover:bg-white/5 transition-colors">
-                 <span className="text-ink-3">{new Date().toLocaleTimeString()}</span>
-                 <div className="w-1.5 h-1.5 rounded-full bg-accent opacity-40" />
-                 <span className={clsx("flex-1 text-ink-2 truncate", log.level === 'ERROR' && "text-warn")}>{log.text}</span>
-                 <ChevronRight size={14} className="text-ink-3 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+              <div key={i} className="flex items-center gap-5 text-[11px] group/item p-3 rounded-xl hover:bg-white/5 transition-all font-bold border border-transparent hover:border-border/30 shadow-sm">
+                 <span className="text-accent opacity-60 font-mono tracking-tighter">{new Date().toLocaleTimeString()}</span>
+                 <div className="w-2 h-2 rounded-full bg-accent/40 shadow-inner" />
+                 <span className={clsx("flex-1 text-ink-2 truncate uppercase tracking-tight", log.level === 'ERROR' && "text-danger")}>{log.text}</span>
+                 <ChevronRight size={18} className="text-ink-3 opacity-0 group-hover/item:opacity-100 transition-all transform translate-x-0 group-hover/item:translate-x-1" />
               </div>
             ))
           )}

@@ -3,6 +3,8 @@ import { useAuthStore, useUIStore, useThemeStore, useOrchestratorStore, useChatS
 import { useState, useEffect } from 'react'
 import { api } from '../hooks/useApi'
 import { useTranslation } from 'react-i18next'
+import MinimalSidebar from '../components/MinimalSidebar';
+import ChatHistorySidebar from '../components/ChatHistorySidebar';
 import {
   LayoutDashboard, MessageSquare, Bot, BookOpen, Brain, Repeat2,
   BarChart3, Plug, FlaskConical, ScrollText, Menu, LogOut, Settings,
@@ -40,9 +42,9 @@ function TopbarNewChatButton() {
       onClick={handleClick}
       disabled={isCurrentSessionEmpty}
       title={isCurrentSessionEmpty ? 'Sesi ini masih kosong, mulai chat dulu!' : 'Buat sesi chat baru'}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent hover:bg-accent/80 text-white text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent/80 text-white text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-accent-2/20"
     >
-      <MessageSquare size={12}/>New Chat
+      <MessageSquare size={16}/>New Chat
     </button>
   )
 }
@@ -162,149 +164,31 @@ export default function Layout() {
     }
   }, [location.pathname, isAdmin])
 
-  const handleLogout = () => { logout(); navigate('/login') }
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login')
+  }
 
   return (
     <div className="flex h-[100dvh] bg-bg overflow-hidden">
-
-      
-      <aside className={clsx(
-        'flex flex-col bg-bg-2 border-r border-border transition-all duration-200 flex-shrink-0 z-50',
-        // Mobile styles: Always hidden, handled by Bottom Navigation
-        isMobile ? 'hidden' : (sidebarOpen ? 'w-52' : 'w-14')
-      )}>
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 px-3.5 py-4 border-b border-border">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center flex-shrink-0 shadow-lg shadow-accent/20 overflow-hidden">
-            {logoUrl ? <img src={logoUrl} alt="logo" className="w-full h-full object-contain"/> : <span className="text-sm font-bold">🧠</span>}
-          </div>
-          {(sidebarOpen || (isMobile && mobileMenuOpen)) && (
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold tracking-wide text-ink truncate">{appName}</div>
-              <div className="text-[9px] text-ink-3 tracking-widest uppercase">AI Orchestrator</div>
-            </div>
-          )}
-          {isMobile && mobileMenuOpen && (
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="p-1 rounded-lg hover:bg-bg-4 text-ink-2 transition-colors"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2">
-          {SECTIONS.map(section => {
-            const items = NAV.filter(n => n.section === section)
-            if (!items.length) return null
-            return (
-              <div key={section} className="mb-1">
-                {(sidebarOpen || (isMobile && mobileMenuOpen)) && (
-                  <div className="text-[9px] font-semibold tracking-widest uppercase text-ink-3 px-2 pt-3 pb-1">
-                    {sectionLabels[section]}
-                  </div>
-                )}
-                {!sidebarOpen && !isMobile && section !== 'Utama' && items.length > 0 && (
-                  <div className="border-t border-border/50 my-1 mx-2"/>
-                )}
-                {items.map(({ label, to, icon: Icon }) => (
-                  <NavLink 
-                    key={to} 
-                    to={to}
-                    onClick={() => isMobile && setMobileMenuOpen(false)}
-                    className={({ isActive }) => clsx(
-                      'flex items-center gap-2.5 px-2.5 py-2 rounded-lg mb-0.5 text-sm transition-all relative group',
-                      isActive ? 'bg-accent/10 text-accent-2 font-medium' : 'text-ink-2 hover:bg-bg-4 hover:text-ink'
-                    )}>
-                    {({ isActive }) => (
-                      <>
-                        {isActive && <span className="absolute left-0 top-1/4 bottom-1/4 w-0.5 bg-accent rounded-r"/>}
-                        <Icon size={15} className="flex-shrink-0"/>
-                        {(sidebarOpen || (isMobile && mobileMenuOpen)) && <span className={clsx('text-sm', isMobile && 'text-base')}>{label}</span>}
-                        {!sidebarOpen && !isMobile && (
-                          <div className="absolute left-full ml-2 px-2 py-1 bg-bg-4 border border-border rounded text-xs text-ink whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50 transition-opacity">
-                            {label}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                ))}
-              </div>
-            )
-          })}
-        </nav>
-
-        {/* User footer */}
-        <div className="border-t border-border p-2">
-          <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)}
-              className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-bg-4 transition-colors group">
-              <div className={clsx('w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0',
-                isAdmin ? 'bg-gradient-to-br from-accent to-pink text-white' : 'bg-bg-4 text-ink-2 border border-border')}>
-                {user?.username?.[0]?.toUpperCase() || 'A'}
-              </div>
-              {(sidebarOpen || (isMobile && mobileMenuOpen)) && (
-                <div className="flex-1 min-w-0 text-left">
-                  <div className="text-xs font-medium text-ink truncate">{user?.username}</div>
-                  <div className="text-[10px] text-ink-3 group-hover:text-accent-2 transition-colors">
-                    {isAdmin ? '👑 Admin' : '👤 Sub Admin'} · <span className="group-hover:underline">Edit Profil</span>
-                  </div>
-                </div>
-              )}
-            </button>
-
-            {showMenu && (
-              <div className={clsx(
-                'absolute bottom-full mb-1 bg-bg-3 border border-border rounded-xl shadow-xl overflow-hidden z-50',
-                // Mobile: full width from sidebar, Desktop: position based on sidebar state
-                isMobile ? 'left-0 right-0' : (sidebarOpen ? 'left-0 right-0' : 'left-full ml-2 w-40')
-              )}>
-                <NavLink to="/profile" onClick={() => {setShowMenu(false); isMobile && setMobileMenuOpen(false)}}
-                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-ink-2 hover:bg-bg-4 hover:text-ink transition-colors">
-                  <UserCircle size={13}/>Edit Profil
-                </NavLink>
-                <NavLink to="/security2fa" onClick={() => {setShowMenu(false); isMobile && setMobileMenuOpen(false)}}
-                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-ink-2 hover:bg-bg-4 hover:text-ink transition-colors">
-                  <Shield size={13}/>2FA & Keamanan
-                </NavLink>
-                {isAdmin && (
-                  <NavLink to="/admin" onClick={() => {setShowMenu(false); isMobile && setMobileMenuOpen(false)}}
-                    className="flex items-center gap-2.5 px-3 py-2.5 text-xs text-ink-2 hover:bg-bg-4 hover:text-ink transition-colors">
-                    <ShieldCheck size={13}/>{t('admin')}
-                  </NavLink>
-                )}
-                <div className="border-t border-border"/>
-                <button onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-danger hover:bg-danger/10 transition-colors">
-                  <LogOut size={13}/>{t('logout')}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </aside>
+      <MinimalSidebar />
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className={clsx(
-          'border-b border-border bg-bg-2 flex items-center justify-between flex-shrink-0',
+          'border-b-2 border-border bg-bg-2 flex items-center justify-between flex-shrink-0 z-50',
           // Mobile: taller header with better spacing
-          isMobile ? 'h-14 px-3' : 'h-12 px-4'
+          isMobile ? 'h-14 px-3' : 'h-14 px-6'
         )}>
           <div className="flex items-center gap-3">
-            {/* Desktop menu toggle (hidden on mobile) */}
-            {!isMobile && (
-              <button onClick={toggleSidebar} className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
-                {sidebarOpen ? <ChevronLeft size={16}/> : <Menu size={16}/>}
+            {isMobile && (
+              <button onClick={() => setMobileMenuOpen(true)} className="p-2 rounded-xl hover:bg-bg-4 text-ink-2 hover:text-ink transition-all shadow-sm">
+                <Menu size={20}/>
               </button>
             )}
-            
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse2 flex-shrink-0"/>
-              <span className={clsx('text-ink-3 truncate', isMobile ? 'text-xs' : 'text-xs')}>{appName}</span>
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-success animate-pulse2 flex-shrink-0 shadow-[0_0_10px_rgba(34,197,94,0.5)]"/>
+              <span className={clsx('text-ink-3 truncate font-bold uppercase tracking-tight', isMobile ? 'text-xs' : 'text-sm')}>{appName}</span>
             </div>
           </div>
           
@@ -330,47 +214,52 @@ export default function Layout() {
                   value={selectedOrchestrator}
                   onChange={setSelectedOrchestrator}
                 />
-                <div className="w-px h-5 bg-border" />
+                <div className="w-px h-6 bg-border opacity-50" />
                 <ChannelSelector />
-                <div className="w-px h-5 bg-border" />
+                <div className="w-px h-6 bg-border opacity-50" />
                 <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
-                  className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
-                  {theme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
+                  className="p-2 rounded-xl hover:bg-bg-4 text-ink-2 hover:text-ink transition-all shadow-sm">
+                  {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
                 </button>
                 <TopbarNewChatButton />
               </>
             )}
           </div>
         </header>
-        <main className={clsx("flex-1 overflow-auto", isMobile && "pb-14")}>
-          <Outlet/>
+        <main className={clsx("flex-1 flex overflow-hidden", isMobile && "pb-14")}>
+          {!isMobile && location.pathname.startsWith('/chat') && (
+            <ChatHistorySidebar />
+          )}
+          <div className="flex-1 overflow-auto">
+            <Outlet/>
+          </div>
         </main>
       </div>
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 h-14 bg-bg-2 border-t border-border flex items-center justify-around z-50 px-2 pb-safe">
-          <NavLink to="/dashboard" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
-            <LayoutDashboard size={20} />
-            <span className="text-[9px] font-medium">Utama</span>
+        <div className="fixed bottom-0 left-0 right-0 h-16 bg-bg border-t-2 border-border flex items-center justify-around z-50 px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
+          <NavLink to="/dashboard" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <LayoutDashboard size={26} />
+            <span className="text-xs font-bold uppercase tracking-tight">Utama</span>
           </NavLink>
-          <NavLink to="/chat" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
-            <MessageSquare size={20} />
-            <span className="text-[9px] font-medium">Chat</span>
+          <NavLink to="/chat" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <MessageSquare size={26} />
+            <span className="text-xs font-bold uppercase tracking-tight">Chat</span>
           </NavLink>
           {isAdmin && (
-            <NavLink to="/integrations" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
-              <Plug size={20} />
-              <span className="text-[9px] font-medium">Integrasi</span>
+            <NavLink to="/integrations" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+              <Plug size={26} />
+              <span className="text-xs font-bold uppercase tracking-tight">Integrasi</span>
             </NavLink>
           )}
-          <NavLink to="/analytics" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-1", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
-            <BarChart3 size={20} />
-            <span className="text-[9px] font-medium">Statistik</span>
+          <NavLink to="/analytics" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <BarChart3 size={26} />
+            <span className="text-xs font-bold uppercase tracking-tight">Statistik</span>
           </NavLink>
-          <button onClick={() => setMobileMenuOpen(true)} className={clsx("flex flex-col items-center justify-center w-full h-full gap-1", mobileMenuOpen ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
-            <Menu size={20} />
-            <span className="text-[9px] font-medium">Menu</span>
+          <button onClick={() => setMobileMenuOpen(true)} className={clsx("flex flex-col items-center justify-center w-full h-full gap-2", mobileMenuOpen ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
+            <Menu size={26} />
+            <span className="text-xs font-bold uppercase tracking-tight">Menu</span>
           </button>
         </div>
       )}
@@ -378,12 +267,12 @@ export default function Layout() {
       {/* Mobile Bottom Sheet Menu */}
       {isMobile && mobileMenuOpen && (
         <>
-          <div className="fixed inset-0 bg-black/60 z-[60] animate-fade" onClick={() => setMobileMenuOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 bg-bg-2 border-t border-border rounded-t-2xl z-[70] animate-slide-in-up max-h-[80vh] flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <span className="font-semibold text-ink">Menu Lainnya</span>
-              <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-lg bg-bg-4 text-ink-3 hover:text-ink transition-colors">
-                <X size={16} />
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] animate-fade" onClick={() => setMobileMenuOpen(false)} />
+          <div className="fixed bottom-0 left-0 right-0 bg-bg-2 border-t-2 border-border rounded-t-3xl z-[70] animate-slide-in-up max-h-[85vh] flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)] overflow-hidden">
+            <div className="p-6 border-b-2 border-border flex items-center justify-between bg-bg-3 shadow-sm">
+              <span className="text-lg font-bold text-ink uppercase tracking-tight">Menu Utama</span>
+              <button onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-bg-4 text-ink-3 hover:text-ink transition-all shadow-sm">
+                <X size={20} />
               </button>
             </div>
             <div className="overflow-y-auto p-2 pb-6">
@@ -392,8 +281,8 @@ export default function Layout() {
                   {user?.username?.[0]?.toUpperCase() || 'A'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-ink truncate">{user?.username}</div>
-                  <div className="text-xs text-ink-3">{isAdmin ? '👑 Admin' : '👤 Sub Admin'}</div>
+                  <div className="text-base font-semibold text-ink truncate">{user?.username}</div>
+                  <div className="text-sm text-ink-3 font-medium">{isAdmin ? '👑 Admin' : '👤 Sub Admin'}</div>
                 </div>
                 <NavLink to="/profile" onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-lg bg-bg-4 text-ink-3 hover:text-ink">
                   <Settings size={16} />
@@ -408,8 +297,8 @@ export default function Layout() {
                 if (!filteredItems.length) return null;
 
                 return (
-                  <div key={section} className="mb-4">
-                    <div className="text-[10px] font-semibold tracking-widest uppercase text-ink-3 px-3 mb-2">
+                  <div key={section} className="mb-6">
+                    <div className="text-[10px] font-bold tracking-widest uppercase text-accent-2 px-5 mb-3 opacity-80">
                       {sectionLabels[section]}
                     </div>
                     {filteredItems.map(({ label, to, icon: Icon }) => (
@@ -418,10 +307,10 @@ export default function Layout() {
                         to={to}
                         onClick={() => setMobileMenuOpen(false)}
                         className={({ isActive }) => clsx(
-                          'flex items-center gap-3 px-3 py-3 rounded-xl mb-1 text-sm transition-all',
-                          isActive ? 'bg-accent/10 text-accent-2 font-medium' : 'text-ink-2 hover:bg-bg-4 hover:text-ink'
+                          'flex items-center gap-4 px-4 py-4 rounded-2xl mb-1.5 text-[15px] transition-all',
+                          isActive ? 'bg-accent/10 text-accent-2 font-semibold' : 'text-ink-2 hover:bg-bg-4 hover:text-ink'
                         )}>
-                        <Icon size={18} />
+                        <Icon size={22} />
                         <span>{label}</span>
                       </NavLink>
                     ))}
@@ -429,9 +318,9 @@ export default function Layout() {
                 )
               })}
               
-              <div className="border-t border-border mt-2 pt-2 px-2">
-                <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-danger hover:bg-danger/10 transition-colors">
-                  <LogOut size={18} /> {t('logout')}
+              <div className="border-t-2 border-border mt-2 pt-4 px-4 pb-8">
+                <button onClick={handleLogout} className="w-full flex items-center gap-4 px-6 py-5 rounded-2xl text-lg font-bold text-danger bg-danger/5 hover:bg-danger/10 transition-all shadow-sm">
+                  <LogOut size={24} /> {t('logout')}
                 </button>
               </div>
             </div>
