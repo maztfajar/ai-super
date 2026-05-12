@@ -4,6 +4,8 @@ import { ChevronDown, Sparkles, Workflow, Brain, Check, AlertTriangle, Plug } fr
 import clsx from 'clsx'
 import { AUTO_ORCHESTRATOR } from '../data/mockOrchestratorData'
 import { useOrchestratorStore } from '../store'
+import { useTranslation } from 'react-i18next'
+import ReactMarkdown from 'react-markdown'
 
 /**
  * OrchestratorDropdown — Categorized custom dropdown for the top navbar.
@@ -15,6 +17,7 @@ import { useOrchestratorStore } from '../store'
  * If empty → shows a warning with a link to the relevant page.
  */
 export default function OrchestratorDropdown({ value, onChange, compact = false }) {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -96,7 +99,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
             >
               <span className="flex-1">✨ Auto-Orchestrator</span>
               {selected === AUTO_ORCHESTRATOR.id && <Check size={14} className="text-accent-2" />}
-              <span className="text-[11px] text-ink-3 border border-border rounded px-2 py-0.5 font-semibold uppercase bg-bg-5">Default</span>
+              <span className="text-[11px] text-ink-3 border border-border rounded px-2 py-0.5 font-semibold uppercase bg-bg-5">{t('default')}</span>
             </button>
           </div>
 
@@ -107,12 +110,12 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
           <div className="px-3 pt-2 pb-2 border-b border-border/20 mb-1">
             <div className="text-xs font-bold tracking-widest uppercase text-ink-3 flex items-center gap-2">
               <Workflow size={12} className="text-accent-2" />
-              Workflows
+              {t('workflows')}
             </div>
           </div>
           <div className="px-2 pb-1 max-h-36 overflow-y-auto scrollbar-hide">
             {savedWorkflows.length === 0 ? (
-              <div className="px-2.5 py-2 text-xs text-ink-3 italic">Belum ada workflow</div>
+              <div className="px-2.5 py-2 text-xs text-ink-3 italic">{t('no_workflows')}</div>
             ) : (
               savedWorkflows.map((wf) => {
                 // Generate dynamic model label based on active models
@@ -122,7 +125,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
                   
                   if (wf.id === 'wf-riset-data') {
                     dynamicModel = activeConfiguredModels.length > 1 
-                      ? `Kombinasi (${getName(0)} + ${getName(1)})` 
+                      ? `${t('combination')} (${getName(0)} + ${getName(1)})` 
                       : getName(0)
                   } else if (wf.id === 'wf-analisis-laporan') {
                     dynamicModel = getName(0)
@@ -131,7 +134,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
                     dynamicModel = getName(idx)
                   }
                 } else {
-                  dynamicModel = '(Belum ada model AI terhubung)'
+                  dynamicModel = t('no_models_connected')
                 }
 
                 return (
@@ -163,7 +166,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
           <div className="px-3 pt-2 pb-2 border-b border-border/20 mb-1">
             <div className="text-xs font-bold tracking-widest uppercase text-ink-3 flex items-center gap-2">
               <Brain size={12} className="text-accent-2" />
-              Single Models
+              {t('single_models')}
             </div>
           </div>
           <div className="px-2 pb-2 max-h-44 overflow-y-auto scrollbar-hide">
@@ -172,7 +175,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
               <div className="px-3 py-3 flex flex-col gap-2">
                 <div className="flex items-start gap-2.5 text-xs text-warn font-semibold">
                   <AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                  <span>Belum ada model terhubung. Buka menu <strong>Integrasi</strong>.</span>
+                  <span><ReactMarkdown className="prose prose-sm prose-p:my-0 prose-strong:text-warn">{t('no_models_connected_hint')}</ReactMarkdown></span>
                 </div>
                 <NavLink
                   to="/integrations"
@@ -180,7 +183,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
                   className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-accent/10 text-accent-2 hover:bg-accent/20 transition-all shadow-sm"
                 >
                   <Plug size={14} />
-                  Buka Integrasi Platform
+                  {t('open_integrations')}
                 </NavLink>
               </div>
             ) : (

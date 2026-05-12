@@ -70,7 +70,7 @@ function OtpBoxes({ value, onChange, onEnter }) {
           onPaste={handlePaste}
           className={clsx(
             "w-11 text-center text-xl font-semibold font-mono rounded-xl outline-none transition-all border-2",
-            d ? "bg-accent/10 border-accent text-accent-2" : "bg-bg-3 border-border-2 text-ink focus:border-accent"
+            d ? "bg-accent/10 border-accent text-accent-2" : "bg-bg-3 border-transparent text-ink focus:border-accent"
           )}
           style={{ height: "3rem" }}
         />
@@ -91,7 +91,7 @@ function PassInput({ value, onChange, placeholder, label, onKeyDown }) {
           onChange={e => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder} autoComplete="new-password"
-          className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 pr-10 text-sm text-ink font-mono placeholder-ink-3 outline-none focus:border-accent transition-colors"
+          className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 pr-10 text-sm text-ink font-mono placeholder-ink-3 outline-none focus:border-accent transition-colors"
         />
         <button type="button" onClick={() => setShow(!show)}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
@@ -106,7 +106,7 @@ function PassInput({ value, onChange, placeholder, label, onKeyDown }) {
 function MethodBtn({ icon, title, desc, color, bg, onClick, badge }) {
   return (
     <button onClick={onClick}
-      className="w-full flex items-center gap-3 p-3.5 bg-bg-3 hover:bg-bg-4 border border-border hover:border-border-2 rounded-xl transition-all text-left group">
+      className="w-full flex items-center gap-3 p-3.5 bg-bg-3 hover:bg-bg-4 border border-transparent hover:border-transparent rounded-xl transition-all text-left group">
       <div className={clsx('w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-lg', bg)}>
         {icon}
       </div>
@@ -256,7 +256,7 @@ function RecoveryPanel({ onBack }) {
             <input value={email} onChange={e => setEmail(e.target.value)}
               placeholder="email@domain.com" type="email"
               onKeyDown={e => e.key === 'Enter' && email && handleSendEmail()}
-              className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
+              className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
           </div>
           <button onClick={async () => {
             if (!email.trim()) { toast.error('Isi email'); return }
@@ -295,7 +295,7 @@ function RecoveryPanel({ onBack }) {
               <div className="text-[11px] text-warn bg-warn/8 border border-warn/20 rounded-xl p-3">
                 ⚠ SMTP belum dikonfigurasi. Gunakan token di bawah ini:
               </div>
-              <div className="bg-bg-2 border border-border rounded-xl px-3 py-2 font-mono text-xs text-accent-2 break-all">{resetToken}</div>
+              <div className="bg-bg-2 border border-transparent rounded-xl px-3 py-2 font-mono text-xs text-accent-2 break-all">{resetToken}</div>
             </div>
           )}
           <div className="text-[11px] text-ink-3 text-center">
@@ -305,7 +305,7 @@ function RecoveryPanel({ onBack }) {
             <label className="block text-xs text-ink-2 mb-1.5">Token dari Link Email</label>
             <input value={recToken} onChange={e => setRecToken(e.target.value)}
               placeholder="Token dari link email..."
-              className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 text-sm font-mono text-ink placeholder-ink-3 outline-none focus:border-accent"/>
+              className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 text-sm font-mono text-ink placeholder-ink-3 outline-none focus:border-accent"/>
           </div>
           <NewPassForm newPass={newPass} setNewPass={setNewPass} confPass={confPass} setConfPass={setConfPass} loading={loading}
             onSubmit={async () => {
@@ -361,7 +361,7 @@ function RecoveryPanel({ onBack }) {
                 } catch(e) { toast.error(e.message) }
                 finally { setLoading(false) }
               })()}
-              className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
+              className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
           </div>
 
           <button onClick={async () => {
@@ -440,7 +440,7 @@ function RecoveryPanel({ onBack }) {
       </div>
 
       {/* Panduan langkah */}
-      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[11px] text-ink-3 space-y-1.5">
+      <div className="bg-bg-4 border border-transparent rounded-xl p-3 text-[11px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">Cara menggunakan:</div>
         <div className="flex gap-2"><span className="text-accent-2 font-semibold flex-shrink-0">1.</span>
           <span>Minta Admin generate token di menu <strong className="text-ink-2">Admin → Recovery Token</strong></span></div>
@@ -459,7 +459,7 @@ function RecoveryPanel({ onBack }) {
         <input value={tgUser} onChange={e => setTgUser(e.target.value)}
           placeholder="username (tanpa @)"
           autoFocus
-          className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
+          className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
         <p className="text-[10px] text-ink-3 mt-1">Username harus sesuai dengan akun yang token-nya di-generate oleh Admin</p>
       </div>
 
@@ -469,7 +469,7 @@ function RecoveryPanel({ onBack }) {
         <textarea value={recToken} onChange={e => setRecToken(e.target.value)}
           placeholder="Paste token di sini..."
           rows={2}
-          className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 text-sm font-mono text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none"/>
+          className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 text-sm font-mono text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none"/>
       </div>
 
       {/* Step 3: Password baru */}
@@ -660,11 +660,11 @@ export default function Login() {
         </div>
 
         {/* Card */}
-        <div className="bg-bg-2 border border-border rounded-2xl overflow-hidden shadow-2xl">
+        <div className="bg-bg-2 border border-transparent rounded-2xl overflow-hidden shadow-2xl">
 
           {/* Tab header */}
           {tab !== 'recovery' ? (
-            <div className="flex border-b border-border">
+            <div className="flex border-b border-transparent">
               <button onClick={() => { setTab('login'); setOtpMode(null); setOtpCode('') }}
                 className={clsx('flex-1 flex items-center justify-center gap-1.5 py-3 text-xs font-medium transition-colors',
                   tab === 'login' ? 'text-accent-2 border-b-2 border-accent bg-accent/5' : 'text-ink-3 hover:text-ink')}>
@@ -676,7 +676,7 @@ export default function Login() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-transparent">
               <button onClick={() => setTab('login')} className="text-ink-3 hover:text-ink">
                 <ArrowLeft size={14}/>
               </button>
@@ -692,7 +692,7 @@ export default function Login() {
                   <label className="block text-xs text-ink-2 mb-1.5">Username</label>
                   <input value={username} onChange={e => setUsername(e.target.value)}
                     placeholder="admin" autoFocus autoComplete="username"
-                    className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
+                    className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
                 </div>
                 <div>
                   <label className="block text-xs text-ink-2 mb-1.5">Password</label>
@@ -700,7 +700,7 @@ export default function Login() {
                     <input type={showPass ? 'text' : 'password'}
                       value={password} onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••" autoComplete="current-password"
-                      className="w-full bg-bg-3 border border-border-2 rounded-xl px-3 py-2.5 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
+                      className="w-full bg-bg-3 border border-transparent rounded-xl px-3 py-2.5 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors"/>
                     <button type="button" onClick={() => setShowPass(!showPass)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
                       {showPass ? <EyeOff size={15}/> : <Eye size={15}/>}

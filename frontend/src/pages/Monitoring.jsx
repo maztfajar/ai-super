@@ -7,6 +7,7 @@ import {
   Palette, ClipboardCheck, MessageSquare, TrendingUp,
   Radio, Layers, Eye, Wifi, WifiOff
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import LiveModelPerformanceChart from '../components/MonitoringCharts'
 import { ActiveSessionCardNew } from '../components/ActiveSessionCard'
@@ -61,6 +62,7 @@ function GlassCard({ children, className, glow }) {
 
 // ── Active Session Card ─────────────────────────────────────────
 function ActiveSessionCard({ session }) {
+  const { t } = useTranslation()
   const [c1, c2] = modelColor(session.model_used)
   const modelShort = (session.model_used || '—').split('/').pop()
   const modelFull = session.model_used || '—'
@@ -119,12 +121,12 @@ function ActiveSessionCard({ session }) {
           <span className="flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest flex-shrink-0"
             style={{ background: `${c1}20`, color: c1 }}>
             <span className="w-2 h-2 rounded-full animate-ping" style={{ background: c1 }} />
-            Memproses
+            {t('processing_label')}
           </span>
         ) : (
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest flex-shrink-0"
             style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
-            <Eye size={12} /> Aktif
+            <Eye size={12} /> {t('active_label')}
           </span>
         )}
       </div>
@@ -144,7 +146,7 @@ function ActiveSessionCard({ session }) {
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-4 border-2 border-border/20 shadow-inner">
           <span className="text-sm">{provider.icon}</span>
           <span className="text-xs font-bold text-ink-2 uppercase tracking-widest">{provider.name}</span>
-          <span className="ml-auto text-[10px] text-ink-3 font-bold uppercase tracking-widest opacity-50">Provider</span>
+          <span className="ml-auto text-[10px] text-ink-3 font-bold uppercase tracking-widest opacity-50">{t('model_provider')}</span>
         </div>
       </div>
 
@@ -152,15 +154,15 @@ function ActiveSessionCard({ session }) {
       <div className="grid grid-cols-3 gap-3 text-center mb-3">
         <div className="rounded-xl py-2.5 bg-bg-4 border border-border/20 shadow-sm">
           <div className="text-xl font-bold font-mono tracking-tighter" style={{ color: c1 }}>{session.msg_count}</div>
-          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Pesan</div>
+          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">{t('messages_label')}</div>
         </div>
         <div className="rounded-xl py-2.5 bg-bg-4 border border-border/20 shadow-sm">
           <div className="text-xl font-bold text-success">✓</div>
-          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Aktif</div>
+          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">{t('active_label')}</div>
         </div>
         <div className="rounded-xl py-2.5 bg-bg-4 border border-border/20 shadow-sm">
           <div className="text-base font-bold font-mono text-ink-2" title={lastActivityFull}>{lastActivity.split(':').slice(0,2).join(':')}</div>
-          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Update</div>
+          <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">{t('updated_label')}</div>
         </div>
       </div>
 
@@ -216,6 +218,7 @@ function MetricCard({ label, value, subtext, icon: Icon, color }) {
 
 // ── Main Page ───────────────────────────────────────────────────
 export default function MonitoringAI() {
+  const { t } = useTranslation()
   const [data, setData]             = useState(null)
   const [activeSessions, setActive] = useState([])
   const [loading, setLoading]       = useState(true)
@@ -231,7 +234,7 @@ export default function MonitoringAI() {
       setData(d)
       setError(null)
     } catch (e) {
-      setError(e.message || 'Gagal memuat data monitoring')
+      setError(e.message || t('error_occurred'))
     } finally {
       setLoading(false)
     }
@@ -286,7 +289,7 @@ export default function MonitoringAI() {
       <span className="text-base text-ink-2 font-bold uppercase tracking-tight">{error}</span>
       <button onClick={() => { setLoading(true); fetchAll() }}
         className="px-8 py-4 bg-accent hover:bg-accent/80 text-white text-sm font-bold uppercase tracking-widest rounded-2xl transition-all shadow-xl shadow-accent/20 active:scale-95">
-        Coba Lagi
+        {t('retry')}
       </button>
     </div>
   )
@@ -325,16 +328,16 @@ export default function MonitoringAI() {
             <span className="text-base font-bold uppercase tracking-[0.6em] opacity-80">Realtime</span>
           </div>
           <h1 className="text-5xl font-bold tracking-tighter text-ink lg:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-ink to-ink-3">
-            Monitoring AI
+            {t('monitoring_title')}
           </h1>
           <p className="text-lg text-ink-3 max-w-lg font-semibold uppercase tracking-tight opacity-80">
-            Pantau kinerja AI secara realtime — model aktif, sesi berjalan, dan metrik performa orchestrator.
+            {t('monitoring_desc')}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {lastUpdated && (
             <span className="text-base text-ink-3 font-bold font-mono uppercase tracking-tight opacity-70">
-              Diperbarui: {lastUpdated.toLocaleTimeString('id-ID')}
+              {t('updated_at')}: {lastUpdated.toLocaleTimeString('id-ID')}
             </span>
           )}
           <button
@@ -349,7 +352,7 @@ export default function MonitoringAI() {
           </button>
           <button onClick={fetchAll}
             className="flex items-center gap-3 px-8 py-3.5 bg-gradient-to-r from-accent to-accent-2 text-white rounded-2xl text-sm font-bold tracking-widest shadow-[0_15px_50px_rgba(var(--accent-rgb),0.5)] active:scale-95 transition-all">
-            <RefreshCw size={18} /> REFRESH
+            <RefreshCw size={18} /> {t('refresh')}
           </button>
         </div>
       </div>
@@ -359,18 +362,18 @@ export default function MonitoringAI() {
         <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
           <div className="flex items-center gap-3">
             <MessageSquare size={22} className="text-accent" />
-            <h2 className="text-2xl font-bold text-ink uppercase tracking-tighter">📚 Sesi Aktif AI</h2>
+            <h2 className="text-2xl font-bold text-ink uppercase tracking-tighter">📚 {t('active_sessions_title')}</h2>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest border border-border/30 shadow-inner"
               style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
-              {activeSessions.length} Running
+              {activeSessions.length} {t('running_label')}
             </div>
             {streamingCount > 0 && (
               <div className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest animate-pulse border border-success/30 shadow-md"
                 style={{ background: 'rgba(16,185,129,0.15)', color: '#10B981' }}>
                 <span className="w-2 h-2 rounded-full bg-success animate-ping" />
-                {streamingCount} Processing
+                {streamingCount} {t('processing_label')}
               </div>
             )}
           </div>
@@ -380,15 +383,15 @@ export default function MonitoringAI() {
           <GlassCard className="p-10 flex items-center justify-center shadow-inner">
             <div className="flex items-center gap-4 text-ink-3">
               <RefreshCw size={24} className="animate-spin text-accent" />
-              <span className="text-base font-bold uppercase tracking-widest opacity-60">Memuat sesi aktif...</span>
+              <span className="text-base font-bold uppercase tracking-widest opacity-60">{t('loading_active_sessions')}</span>
             </div>
           </GlassCard>
         ) : activeSessions.length === 0 ? (
           <GlassCard className="p-12 shadow-inner border-dashed border-2 border-border/40 bg-bg-4/20">
             <div className="flex flex-col items-center justify-center gap-5 text-ink-3 py-6">
               <MessageSquare size={56} className="opacity-10" />
-              <p className="text-xl font-bold uppercase tracking-tight opacity-40">Tidak ada sesi aktif saat ini</p>
-              <p className="text-sm text-ink-3 font-semibold uppercase tracking-widest opacity-30 text-center">Sesi dengan aktivitas dalam 30 menit terakhir akan muncul di sini</p>
+              <p className="text-xl font-bold uppercase tracking-tight opacity-40">{t('no_active_sessions')}</p>
+              <p className="text-sm text-ink-3 font-semibold uppercase tracking-widest opacity-30 text-center">{t('session_activity_hint')}</p>
             </div>
           </GlassCard>
         ) : (
@@ -407,11 +410,11 @@ export default function MonitoringAI() {
         <MetricCard label="Tasks (24h)"       value={last24h.total_tasks || 0}
           subtext={`${(last24h.success_rate * 100 || 0).toFixed(0)}% success`} icon={Zap}      color="#3B82F6" />
         <MetricCard label="Confidence"    value={`${((last24h.avg_confidence || 0) * 100).toFixed(0)}%`}
-          subtext="Quality score"                                           icon={Shield}    color="#10B981" />
+          subtext={t('quality_score')}                                           icon={Shield}    color="#10B981" />
         <MetricCard label="Avg Response"  value={`${Math.round(last24h.avg_time_ms || 0)}ms`}
-          subtext="Latency" icon={Clock}     color="#F59E0B" />
+          subtext={t('latency_label')} icon={Clock}     color="#F59E0B" />
         <MetricCard label="Cost (24h)"  value={`$${(last24h.total_cost || 0).toFixed(4)}`}
-          subtext="Token spend"                                               icon={Activity}  color="#8B5CF6" />
+          subtext={t('token_spend')}                                               icon={Activity}  color="#8B5CF6" />
       </div>
 
       {/* ── Main Dashboard Grid: Responsive Layout ──────────────── */}
@@ -426,12 +429,12 @@ export default function MonitoringAI() {
         <GlassCard className="p-4 sm:p-5 lg:p-6 flex flex-col">
           <div className="flex items-center gap-3 mb-5">
             <Zap size={20} className="text-warn" />
-            <h2 className="text-xl font-bold text-ink uppercase tracking-tight">Model Power</h2>
+            <h2 className="text-xl font-bold text-ink uppercase tracking-tight">{t('model_power')}</h2>
           </div>
           {activeSessions.length === 0 ? (
             <div className="flex items-center justify-center gap-4 text-ink-3 min-h-32 opacity-40">
               <Zap size={28} className="flex-shrink-0" />
-              <span className="text-base font-bold uppercase tracking-widest">No active sessions</span>
+              <span className="text-base font-bold uppercase tracking-widest">{t('no_active_sessions')}</span>
             </div>
           ) : (() => {
             const modelPower = {}
@@ -486,9 +489,9 @@ export default function MonitoringAI() {
         <GlassCard className="p-6 sm:p-8 lg:p-10 relative z-10 shadow-2xl">
           <div className="flex items-center gap-3 mb-5 lg:mb-8 border-b border-border/20 pb-4">
             <Shield size={24} className="text-warn" />
-            <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">Circuit Breakers</h2>
+            <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">{t('circuit_breakers')}</h2>
             <span className="ml-auto text-sm lg:text-base font-bold text-success uppercase tracking-widest bg-success/10 px-4 py-1 rounded-full border border-success/30 shadow-sm">
-              {(recovery.success_rate * 100 || 0).toFixed(0)}% HEALTHY
+              {(recovery.success_rate * 100 || 0).toFixed(0)}% {t('healthy')}
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-5">
@@ -502,7 +505,7 @@ export default function MonitoringAI() {
                 <div className="flex-1 min-w-0">
                   <div className="text-base lg:text-lg font-bold text-ink truncate uppercase tracking-tight">{model.split('/').pop()}</div>
                   <div className="text-xs lg:text-sm text-ink-3 font-bold uppercase tracking-widest opacity-60 flex items-center gap-2">
-                    {status.failures} FAILS {status.circuit_open ? <span className="text-danger animate-pulse">OPEN ⚠️</span> : <span className="text-success">CLOSED ✓</span>}
+                    {status.failures} {t('fails')} {status.circuit_open ? <span className="text-danger animate-pulse">{t('open')} ⚠️</span> : <span className="text-success">{t('closed')} ✓</span>}
                   </div>
                 </div>
               </div>
@@ -516,7 +519,7 @@ export default function MonitoringAI() {
         <GlassCard className="p-6 sm:p-8 lg:p-10 relative z-10 shadow-2xl">
           <div className="flex items-center gap-3 mb-5 lg:mb-8 border-b border-border/20 pb-4">
             <Activity size={24} className="text-accent" />
-            <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">Recent Orchestrations</h2>
+            <h2 className="text-2xl font-bold text-ink uppercase tracking-tight">{t('recent_orchestrations')}</h2>
             <div className="ml-auto flex items-center gap-3">
               <div className="w-2 h-2 rounded-full bg-success animate-ping" />
               <span className="text-sm font-bold text-success uppercase tracking-[0.2em]">Live Stream</span>

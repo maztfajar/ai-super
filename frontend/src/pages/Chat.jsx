@@ -1344,7 +1344,7 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
           : <Bot size={13} className="text-white" />}
       </div>
 
-      <div className={clsx('max-w-[95%] lg:max-w-[90%] xl:max-w-[85%] flex flex-col', isUser ? 'items-end' : 'items-start')}>
+      <div className={clsx('max-w-[98%] lg:max-w-[95%] xl:max-w-[92%] flex flex-col', isUser ? 'items-end' : 'items-start')}>
         <div className={clsx(
           'px-4 py-3 rounded-2xl text-[15px] leading-relaxed relative border-[0.5px]',
           isUser
@@ -2650,7 +2650,7 @@ export default function Chat() {
         <div className="h-12 border-b-[0.5px] border-border flex items-center px-6 gap-3 flex-shrink-0 bg-bg">
           
           <span className="text-sm font-medium text-ink truncate flex-1">
-            {currentSession?.title || 'Pilih atau buat sesi chat'}
+            {currentSession?.title || t('select_or_create_session')}
           </span>
 
           {/* RAG toggle */}
@@ -2670,7 +2670,7 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-8 py-8 md:px-10 md:py-10 space-y-6">
+        <div className="flex-1 overflow-y-auto px-6 py-6 md:px-10 md:py-8 space-y-6">
           {!currentSession && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               {/* Animated brain icon */}
@@ -2685,10 +2685,10 @@ export default function Chat() {
 
               {/* Dynamic greeting using appName from global state */}
               <h2 className="text-xl font-semibold text-ink mb-2">
-                Halo! Saya <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">{appName}</span>
+                {t('chat_greeting')} <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">{appName}</span>
               </h2>
               <p className="text-sm text-ink-3 mb-8 max-w-md leading-relaxed">
-                Ketik pesan, berikan perintah, atau jalankan alur kerja otomatis. Saya akan mengatur model AI mana yang paling tepat untuk merespons Anda.
+                {t('chat_desc')}
               </p>
 
               {/* Quick action cards */}

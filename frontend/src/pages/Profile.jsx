@@ -6,6 +6,7 @@ import {
   User, Save, RefreshCw, Eye, EyeOff, CheckCircle2,
   Upload, Maximize2, Info, LayoutDashboard,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 // ── Primitives ────────────────────────────────────────────────
@@ -188,6 +189,7 @@ function LogoUploader({ current, onFileSelected }) {
 
 // ── Main ──────────────────────────────────────────────────────
 export default function Profile() {
+  const { t } = useTranslation()
   const { user, setAuth, token } = useAuthStore()
   const [loading, setLoading]  = useState(true)
   const [profile, setProfile]  = useState(null)
@@ -306,15 +308,15 @@ export default function Profile() {
 
   if (loading) return (
     <div className="p-6 flex items-center gap-3 text-ink-3 text-sm font-bold uppercase tracking-widest">
-      <RefreshCw size={18} className="animate-spin"/>Memuat...
+      <RefreshCw size={18} className="animate-spin"/>{t('loading') || 'Loading...'}
     </div>
   )
 
   return (
     <div className="p-4 md:p-6 w-full">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter">Edit Profil</h1>
-        <p className="text-base text-ink-3 mt-1 font-semibold uppercase tracking-tight opacity-70">Kelola akun dan tampilan aplikasi</p>
+        <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter">{t('edit_profile_title')}</h1>
+        <p className="text-base text-ink-3 mt-1 font-semibold uppercase tracking-tight opacity-70">{t('manage_account_desc')}</p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
@@ -323,7 +325,7 @@ export default function Profile() {
         <div className="bg-bg-3 border-2 border-border rounded-2xl overflow-hidden shadow-lg">
           <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-border">
             <User size={18} className="text-accent-2"/>
-            <span className="text-base font-bold text-ink uppercase tracking-tight">Profil Akun</span>
+            <span className="text-base font-bold text-ink uppercase tracking-tight">{t('account_profile')}</span>
           </div>
           <div className="p-6 space-y-5">
 
@@ -337,7 +339,7 @@ export default function Profile() {
                 <div className="text-sm text-ink-3 font-semibold opacity-80">{profile?.email || ''}</div>
                 <div className={clsx('text-[10px] mt-2 px-3 py-1 rounded-full inline-block font-bold uppercase tracking-widest shadow-sm',
                   isAdmin ? 'bg-accent/15 text-accent-2 border border-accent/30' : 'bg-bg-4 text-ink-3 border border-border')}>
-                  {isAdmin ? '👑 Admin' : '👤 Sub Admin'}
+                  {isAdmin ? `👑 ${t('admin_label')}` : `👤 ${t('sub_admin_label')}`}
                 </div>
               </div>
             </div>
@@ -352,7 +354,7 @@ export default function Profile() {
             />
 
             <PassInp
-              label="Password Baru (kosongkan jika tidak ingin ganti)"
+              label={t('new_password_label')}
               value={newPass}
               onChange={setNewPass}
               placeholder="password baru..."
@@ -379,11 +381,11 @@ export default function Profile() {
             <button onClick={handleSaveProfile} disabled={savingP || !canSave}
               className="w-full flex items-center justify-center gap-3 py-3.5 bg-accent hover:bg-accent/80 disabled:opacity-40 text-white text-sm font-bold uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95">
               {savingP ? <RefreshCw size={16} className="animate-spin"/> : <Save size={16}/>}
-              {savingP ? 'Menyimpan...' : 'Simpan Perubahan Akun'}
+              {savingP ? t('saving') : t('save_account_changes')}
             </button>
 
             <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 text-xs text-ink-3 space-y-2 font-semibold shadow-inner">
-              <div className="text-ink-2 font-bold uppercase tracking-widest mb-2 opacity-80">💡 Tips keamanan:</div>
+              <div className="text-ink-2 font-bold uppercase tracking-widest mb-2 opacity-80">💡 {t('security_tips')}:</div>
               <div>• Gunakan password minimal 8 karakter + angka + simbol</div>
               <div>• Aktifkan <span className="text-accent-2 font-bold">2FA & Login</span> untuk perlindungan ekstra</div>
             </div>
@@ -395,7 +397,7 @@ export default function Profile() {
           <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-border">
             <LayoutDashboard size={18} className="text-success"/>
             <span className="text-base font-bold text-ink uppercase tracking-tight">
-              {isAdmin ? 'Logo & Nama Aplikasi' : 'Info Aplikasi'}
+              {isAdmin ? t('app_logo_name') : t('app_info')}
             </span>
           </div>
           <div className="p-6">

@@ -5,10 +5,12 @@ import { useModelsStore } from '../store'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Play, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export default function Playground() {
+  const { t } = useTranslation()
   const { models } = useModelsStore()
-  const [system, setSystem] = useState('Kamu adalah AI ORCHESTRATOR, asisten AI yang cerdas dan membantu.')
+  const [system, setSystem] = useState(t('default_system_prompt'))
   const [prompt, setPrompt] = useState('')
   const [model, setModel] = useState('')
   const [temp, setTemp] = useState(0.7)
@@ -34,8 +36,8 @@ export default function Playground() {
   return (
     <div className="p-4 md:p-6 w-full">
       <div className="mb-5">
-        <h1 className="text-lg font-semibold text-ink">Playground</h1>
-        <p className="text-xs text-ink-3">Test prompt & compare model langsung</p>
+        <h1 className="text-lg font-semibold text-ink">{t('playground_title')}</h1>
+        <p className="text-xs text-ink-3">{t('playground_desc')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -46,33 +48,33 @@ export default function Playground() {
             <select value={model} onChange={(e) => setModel(e.target.value)}
               className="w-full bg-bg-3 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink outline-none">
               {models.map((m) => <option key={m.id} value={m.id}>{m.display}</option>)}
-              {models.length === 0 && <option value="">Tidak ada model aktif</option>}
+              {models.length === 0 && <option value="">{t('no_active_models')}</option>}
             </select>
           </div>
 
           <div>
-            <label className="text-xs text-ink-3 mb-1 block">System Prompt</label>
+            <label className="text-xs text-ink-3 mb-1 block">{t('system_prompt')}</label>
             <textarea value={system} onChange={(e) => setSystem(e.target.value)} rows={3}
               className="w-full bg-bg-3 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-accent resize-none font-mono text-xs" />
           </div>
 
           <div>
-            <label className="text-xs text-ink-3 mb-1 block">User Message *</label>
+            <label className="text-xs text-ink-3 mb-1 block">{t('user_message')} *</label>
             <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
-              placeholder="Ketik prompt kamu di sini..."
+              placeholder={t('user_message_placeholder')}
               className="w-full bg-bg-3 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent resize-none" />
           </div>
 
           {/* Params */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-ink-3 mb-1 block">Temperature: {temp}</label>
+              <label className="text-xs text-ink-3 mb-1 block">{t('temperature_label')}: {temp}</label>
               <input type="range" min="0" max="1" step="0.05" value={temp}
                 onChange={(e) => setTemp(parseFloat(e.target.value))}
                 className="w-full accent-accent" />
             </div>
             <div>
-              <label className="text-xs text-ink-3 mb-1 block">Max Tokens: {maxTokens}</label>
+              <label className="text-xs text-ink-3 mb-1 block">{t('max_tokens_label')}: {maxTokens}</label>
               <input type="range" min="256" max="8192" step="256" value={maxTokens}
                 onChange={(e) => setMaxTokens(parseInt(e.target.value))}
                 className="w-full accent-accent" />
@@ -81,22 +83,22 @@ export default function Playground() {
 
           <button onClick={run} disabled={!prompt.trim() || streaming || models.length === 0}
             className="w-full flex items-center justify-center gap-2 py-2.5 bg-accent hover:bg-accent/80 disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors">
-            {streaming ? <><Loader2 size={15} className="animate-spin" /> Generating...</> : <><Play size={15} /> Run</>}
+            {streaming ? <><Loader2 size={15} className="animate-spin" /> {t('generating')}</> : <><Play size={15} /> {t('run_label')}</>}
           </button>
         </div>
 
         {/* Output */}
         <div className="bg-bg-3 border border-border rounded-xl p-4 min-h-64">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold text-ink">Output</h3>
+            <h3 className="text-xs font-semibold text-ink">{t('output_label')}</h3>
             {output && (
               <button onClick={() => copyToClipboard(output)}
-                className="text-xs text-accent-2 hover:underline">Copy</button>
+                className="text-xs text-accent-2 hover:underline">{t('copy_label')}</button>
             )}
           </div>
           {!output && !streaming && (
             <div className="text-xs text-ink-3 flex items-center justify-center h-40">
-              Output akan muncul di sini...
+              {t('output_placeholder')}
             </div>
           )}
           {output && (
@@ -110,7 +112,7 @@ export default function Playground() {
 
       {/* Quick prompts */}
       <div className="mt-4">
-        <h3 className="text-xs font-semibold text-ink mb-2">🚀 Quick Prompts</h3>
+        <h3 className="text-xs font-semibold text-ink mb-2">🚀 {t('quick_prompts')}</h3>
         <div className="flex flex-wrap gap-2">
           {[
             'Buat fungsi Python untuk sorting array',

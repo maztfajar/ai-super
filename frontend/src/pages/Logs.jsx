@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../hooks/useApi'
 import { RefreshCw, Filter, Download, Activity, AlertTriangle, Info, Bug } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 const LEVELS = ['ALL','INFO','WARN','ERROR','DEBUG']
@@ -12,6 +13,7 @@ const LEVEL_STYLE = {
 }
 
 export default function Logs() {
+  const { t } = useTranslation()
   const [logs,    setLogs]    = useState([])
   const [loading, setLoading] = useState(false)
   const [level,   setLevel]   = useState('ALL')
@@ -29,7 +31,7 @@ export default function Logs() {
       if (r.hint) setHint(r.hint)
     } catch(e) {
       // Fallback: gunakan health endpoint untuk cek server
-      setHint('Tidak dapat memuat log. Pastikan server berjalan.')
+      setHint(t('error_occurred') || 'Tidak dapat memuat log. Pastikan server berjalan.')
     } finally { setLoading(false) }
   }
 
@@ -67,9 +69,9 @@ export default function Logs() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink flex items-center gap-2">
-            <Activity size={20} className="text-accent-2"/>System Logs
+            <Activity size={20} className="text-accent-2"/>{t('logs_title')}
           </h1>
-          <p className="text-sm text-ink-3 mt-0.5 font-medium">{logs.length} entri · 200 log terbaru</p>
+          <p className="text-sm text-ink-3 mt-0.5 font-medium">{logs.length} {t('log_entries')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Level stats */}
@@ -98,7 +100,7 @@ export default function Logs() {
               <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
                 auto ? 'translate-x-4' : 'translate-x-0.5')}/>
             </div>
-            Auto-refresh
+            {t('auto_refresh')}
           </label>
           <button onClick={load} disabled={loading}
             className="p-1.5 rounded-lg bg-bg-4 hover:bg-bg-5 text-ink-3 hover:text-ink">
@@ -122,8 +124,8 @@ export default function Logs() {
           {logs.length === 0 && !loading ? (
             <div className="text-center py-12 text-ink-3">
               <Activity size={24} className="mx-auto mb-2 opacity-30"/>
-              <div className="text-sm">Tidak ada log yang cocok</div>
-              <div className="text-xs mt-1">Coba filter ALL atau ubah level</div>
+              <div className="text-sm">{t('no_logs_found')}</div>
+              <div className="text-xs mt-1">{t('try_filter_all')}</div>
             </div>
           ) : (
             logs.map((log, i) => (

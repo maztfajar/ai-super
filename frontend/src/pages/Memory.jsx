@@ -7,6 +7,7 @@ import {
   Database, Zap, Clock, MessageSquare, Info, Shield,
   ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 // ── Komponen kecil ────────────────────────────────────────────
@@ -42,6 +43,7 @@ function LayerCard({ icon, title, color, bgColor, badge, items, children }) {
 }
 
 export default function Memory() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const [memories,  setMemories]  = useState([])
   const [newMem,    setNewMem]    = useState('')
@@ -102,19 +104,19 @@ export default function Memory() {
     <div className="p-4 md:p-6 w-full space-y-5">
       <div>
         <h1 className="text-3xl font-bold text-ink flex items-center gap-3 uppercase tracking-tighter">
-          <Brain size={32} className="text-accent-2"/>Memory System
+          <Brain size={32} className="text-accent-2"/>{t('memory_system_title')}
         </h1>
         <p className="text-lg text-ink-3 mt-1.5 font-semibold uppercase tracking-tight opacity-80">
-          Sistem memori 3 lapis — AI mengingat konteks percakapan secara otomatis
+          {t('memory_system_desc')}
         </p>
       </div>
 
       {/* ── Penjelasan sistem memory ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
-        <LayerCard icon="⚡" title="Short-term Memory"
+        <LayerCard icon="⚡" title={t('short_term_memory')}
           color="text-sky-400" bgColor="bg-sky-400/5 border-sky-400/20"
-          badge="Redis Cache — TTL 7 hari">
+          badge={t('short_term_desc')}>
           <div className="text-base text-ink-3 space-y-3 font-semibold">
             <div className="flex items-start gap-3">
               <CheckCircle2 size={16} className="text-success mt-0.5 flex-shrink-0"/>
@@ -135,9 +137,9 @@ export default function Memory() {
           </div>
         </LayerCard>
 
-        <LayerCard icon="📚" title="Long-term Memory"
+        <LayerCard icon="📚" title={t('long_term_memory')}
           color="text-success" bgColor="bg-success/5 border-success/20"
-          badge="Database SQLite — Permanen">
+          badge={t('long_term_desc')}>
           <div className="text-base text-ink-3 space-y-3 font-semibold">
             <div className="flex items-start gap-3">
               <CheckCircle2 size={16} className="text-success mt-0.5 flex-shrink-0"/>
@@ -158,9 +160,9 @@ export default function Memory() {
           </div>
         </LayerCard>
 
-        <LayerCard icon="🎯" title="Behavioral Memory"
+        <LayerCard icon="🎯" title={t('behavioral_memory')}
           color="text-warn" bgColor="bg-warn/5 border-warn/20"
-          badge="Preferensi User — Permanen">
+          badge={t('behavioral_desc')}>
           <div className="text-base text-ink-3 space-y-3 font-semibold">
             <div className="flex items-start gap-3">
               <CheckCircle2 size={16} className="text-success mt-0.5 flex-shrink-0"/>
@@ -186,7 +188,7 @@ export default function Memory() {
       <div className="bg-bg-3 border border-border-2 rounded-2xl p-6 shadow-md">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-bold text-ink flex items-center gap-3 uppercase tracking-tight">
-            <Database size={20} className="text-accent-2"/>Status Memory
+            <Database size={20} className="text-accent-2"/>{t('memory_status')}
           </h2>
           <div className="flex items-center gap-3">
             {selSession && (
@@ -202,25 +204,25 @@ export default function Memory() {
               else setSelSession(null)
             }}
               className="text-xs text-ink-3 hover:text-accent-2 px-4 py-2 rounded-xl bg-bg-4 border border-border-2 font-bold uppercase tracking-wider transition-all shadow-sm">
-              {selSession ? 'Sembunyikan' : 'Pilih Sesi'}
+              {selSession ? t('hide_session') : t('select_session')}
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <InfoCard icon={Zap} title="Pesan di Redis"
+          <InfoCard icon={Zap} title={t('redis_messages')}
             value={memInfo?.redis_messages ?? '—'}
             sub="sesi ini (short-term)"
             color="text-sky-400" bg="bg-sky-400/10"/>
-          <InfoCard icon={Database} title="Pesan di Database"
+          <InfoCard icon={Database} title={t('db_messages')}
             value={memInfo?.db_messages ?? '—'}
             sub="sesi ini (long-term)"
             color="text-success" bg="bg-success/10"/>
-          <InfoCard icon={MessageSquare} title="Context Window"
+          <InfoCard icon={MessageSquare} title={t('context_window_label')}
             value={memInfo?.context_window ?? 20}
             sub="pesan terakhir dibawa ke AI"
             color="text-accent-2" bg="bg-accent/10"/>
-          <InfoCard icon={Clock} title="TTL Redis"
+          <InfoCard icon={Clock} title={t('redis_ttl_label')}
             value={(memInfo?.redis_ttl_days ?? 7) + ' hari'}
             sub="sebelum auto-expire"
             color="text-warn" bg="bg-warn/10"/>
@@ -235,7 +237,7 @@ export default function Memory() {
       </div>
 
       {/* ── FAQ Memory ── */}
-      <LayerCard icon="❓" title="Pertanyaan Umum"
+      <LayerCard icon="❓" title={t('common_questions')}
         color="text-accent-2" bgColor="bg-bg-3 border-border">
         <div className="space-y-3">
           {[
@@ -279,9 +281,9 @@ export default function Memory() {
       </LayerCard>
 
       {/* ── Behavioral Memory (tambah manual) ── */}
-      <LayerCard icon="🎯" title={`Behavioral Memory (${memories.length} tersimpan)`}
+      <LayerCard icon="🎯" title={`${t('behavioral_memory')} (${memories.length} tersimpan)`}
         color="text-warn" bgColor="bg-warn/5 border-warn/20"
-        badge="Preferensi yang selalu disertakan ke AI">
+        badge={t('behavioral_memory_desc')}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-base text-ink-3 font-semibold uppercase tracking-tight">Preferensi yang selalu disertakan ke AI di semua percakapan</p>
           <button onClick={load} className="text-ink-3 hover:text-ink p-2 rounded-lg hover:bg-bg-4 transition-all">
@@ -293,12 +295,12 @@ export default function Memory() {
         <div className="flex gap-3 mb-5">
           <input value={newMem} onChange={e => setNewMem(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && add()}
-            placeholder='Contoh: "Saya lebih suka jawaban dalam Bahasa Indonesia yang singkat"'
+            placeholder={t('add_memory_placeholder')}
             className="flex-1 bg-bg-2 border border-border-2 rounded-xl px-5 py-4 text-base text-ink placeholder-ink-3 outline-none focus:border-accent font-semibold shadow-inner"/>
           <button onClick={add} disabled={!newMem.trim() || adding}
             className="px-6 py-4 bg-accent hover:bg-accent/80 text-white rounded-xl text-base font-bold disabled:opacity-50 flex items-center gap-3 transition-all shadow-lg shadow-accent/20 active:scale-95">
             {adding ? <RefreshCw size={18} className="animate-spin"/> : <Plus size={18}/>}
-            Tambah
+            {t('add')}
           </button>
         </div>
 
@@ -329,7 +331,7 @@ export default function Memory() {
         {/* List memory */}
         {loading ? (
           <div className="text-base text-ink-3 font-semibold flex items-center gap-3 py-6">
-            <RefreshCw size={20} className="animate-spin"/>Memuat Behavioral Memory...
+            <RefreshCw size={20} className="animate-spin"/>{t('loading_behavioral')}
           </div>
         ) : memories.length === 0 ? (
           <div className="text-center py-12 bg-bg-4/50 rounded-2xl border-2 border-dashed border-border/50">

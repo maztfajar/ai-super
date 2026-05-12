@@ -3,13 +3,16 @@ import { useDropzone } from 'react-dropzone'
 import { api } from '../hooks/useApi'
 import toast from 'react-hot-toast'
 import { Upload, Trash2, Search, Globe, FileText, File, RefreshCw, Eye } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 const DOC_ICON = { pdf: '📕', docx: '📘', txt: '📄', csv: '📊', md: '📝', web: '🌐' }
 const STATUS_COLOR = { ready: 'text-success', indexing: 'text-warn', error: 'text-danger' }
-const STATUS_LABEL = { ready: '✓ Siap', indexing: '⟳ Indexing...', error: '✗ Error' }
+const STATUS_COLOR = { ready: 'text-success', indexing: 'text-warn', error: 'text-danger' }
 
 export default function Knowledge() {
+  const { t } = useTranslation()
+  const STATUS_LABEL = { ready: `✓ ${t('status_ready')}`, indexing: `⟳ ${t('status_indexing')}`, error: `✗ ${t('status_error')}` }
   const [docs, setDocs] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -114,8 +117,8 @@ export default function Knowledge() {
     <div className="p-4 md:p-6 w-full">
       <div className="flex items-center justify-between mb-8">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-ink uppercase tracking-tight">Knowledge Base (RAG)</h1>
-          <p className="text-sm text-ink-3 font-semibold uppercase tracking-widest opacity-60">{docs.length} dokumen terindeks · ChromaDB vector store</p>
+          <h1 className="text-3xl font-bold text-ink uppercase tracking-tight">{t('kb_title')}</h1>
+          <p className="text-sm text-ink-3 font-semibold uppercase tracking-widest opacity-60">{docs.length} {t('indexing_desc')}</p>
         </div>
         <button onClick={loadDocs} className="flex items-center gap-2 px-6 py-3 bg-bg-3 border-2 border-border rounded-xl text-xs font-bold text-ink uppercase tracking-widest hover:bg-bg-4 transition-all shadow-md active:scale-95">
           <RefreshCw size={18} className={clsx(loading && 'animate-spin')} /> Refresh
@@ -133,18 +136,18 @@ export default function Knowledge() {
             <input {...getInputProps()} />
             <Upload size={40} className={clsx('mx-auto mb-4 transition-transform', isDragActive ? 'text-accent-2 scale-110' : 'text-ink-3')} />
             <p className="text-lg font-bold text-ink uppercase tracking-tight">
-              {uploading ? 'Mengupload Dokumen...' : isDragActive ? 'Lepas file di sini!' : 'Drag & drop atau klik untuk upload'}
+              {uploading ? t('processing') : isDragActive ? t('drop_files_here') : t('upload_rag_desc')}
             </p>
             <p className="text-[10px] text-ink-3 mt-2 font-bold uppercase tracking-widest opacity-50">PDF · DOCX · TXT · CSV · MD — Maks 50MB</p>
           </div>
 
           {/* Doc list */}
           <div className="space-y-3">
-            {loading && <div className="text-sm font-bold text-ink-3 py-6 flex items-center justify-center gap-3 uppercase tracking-widest opacity-60"><RefreshCw size={20} className="animate-spin" /> Memuat dokumen...</div>}
+            {loading && <div className="text-sm font-bold text-ink-3 py-6 flex items-center justify-center gap-3 uppercase tracking-widest opacity-60"><RefreshCw size={20} className="animate-spin" /> {t('loading') || 'Loading...'}</div>}
             {!loading && docs.length === 0 && (
               <div className="bg-bg-3 border-2 border-border rounded-2xl p-10 text-center shadow-inner">
                 <FileText size={40} className="text-ink-3 mx-auto mb-4 opacity-30" />
-                <p className="text-sm font-bold text-ink-3 uppercase tracking-widest opacity-60">Belum ada dokumen di basis pengetahuan.</p>
+                <p className="text-sm font-bold text-ink-3 uppercase tracking-widest opacity-60">{t('no_documents')}</p>
               </div>
             )}
             {docs.map((doc) => (
@@ -208,7 +211,7 @@ export default function Knowledge() {
 
           {/* Scrape */}
           <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
-            <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">🌐 Scrape Website</h3>
+            <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">🌐 {t('scrape_title')}</h3>
             <input
               value={scrapeUrl}
               onChange={(e) => setScrapeUrl(e.target.value)}
@@ -226,7 +229,7 @@ export default function Knowledge() {
 
           {/* GDrive Import */}
           <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
-            <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">☁️ Import Google Drive</h3>
+            <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">☁️ {t('gdrive_title')}</h3>
             
             {folders.length === 0 && !loadingFolders ? (
               <button
@@ -271,7 +274,7 @@ export default function Knowledge() {
 
           {/* Tips */}
           <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-inner">
-            <h3 className="text-xs font-bold text-ink mb-4 uppercase tracking-widest opacity-60">💡 Tips RAG</h3>
+            <h3 className="text-xs font-bold text-ink mb-4 uppercase tracking-widest opacity-60">💡 {t('rag_tips_title')}</h3>
             <ul className="text-xs text-ink-3 space-y-3 font-semibold leading-relaxed opacity-80 uppercase tracking-tight">
               <li className="flex gap-2"><span className="text-accent-2">•</span> <span>Upload PDF laporan → AI bisa menjawab dari laporan</span></li>
               <li className="flex gap-2"><span className="text-accent-2">•</span> <span>Scrape website → AI tahu tentang produk kamu</span></li>

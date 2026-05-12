@@ -9,6 +9,7 @@ import {
   Play, Square, Wifi, WifiOff, Webhook, Plus, Trash2,
   Copy, Check, Code, Zap, Globe,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 const intApi = {
@@ -105,9 +106,10 @@ function Textarea({ label, value, onChange, placeholder, hint, rows = 3 }) {
 }
 
 function StatusBadge({ ok }) {
+  const { t } = useTranslation()
   return ok
-    ? <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-success bg-success/10 border border-success/30 px-3 py-1 rounded-full shadow-sm"><CheckCircle2 size={12}/>Aktif</span>
-    : <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-ink-3 bg-bg-4 border border-border px-3 py-1 rounded-full opacity-60"><XCircle size={12}/>Belum Setup</span>
+    ? <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-success bg-success/10 border border-success/30 px-3 py-1 rounded-full shadow-sm"><CheckCircle2 size={12}/>{t('active')}</span>
+    : <span className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-ink-3 bg-bg-4 border border-border px-3 py-1 rounded-full opacity-60"><XCircle size={12}/>{t('not_setup')}</span>
 }
 
 function Btn({ label, onClick, loading, variant = 'default', icon: Icon, small, disabled, full }) {
@@ -176,7 +178,7 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
           </div>
           <button onClick={() => setEditing(true)}
             className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border-2 border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
-            Ganti
+            {t('edit')}
           </button>
         </div>
       </div>
@@ -195,7 +197,7 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
         ? <SecretInput label={label} value={value} onChange={onChange} placeholder={placeholder} hint={hint}/>
         : <TextInput   label={label} value={value} onChange={onChange} placeholder={placeholder} hint={hint}/>
       }
-      <Btn label="Simpan" onClick={() => { onSave(); !masked && setEditing(false) }}
+      <Btn label={t('save')} onClick={() => { onSave(); !masked && setEditing(false) }}
         loading={saving} variant="primary" icon={Save} disabled={!value.trim()}/>
     </div>
   )
@@ -249,7 +251,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
         <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">✈️</div>
         <div className="flex-1 min-w-0 text-left">
           <div className="text-lg font-bold text-ink uppercase tracking-tight">Telegram Bot</div>
-          <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Auto-reply via AI ke chat Telegram</div>
+          <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">{t('telegram_desc')}</div>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
           <StatusBadge ok={configured}/>
@@ -306,7 +308,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                 )}
 
                 <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 text-xs space-y-2 text-ink-3 font-semibold shadow-inner">
-                  <div className="text-ink-2 font-bold mb-2 uppercase tracking-widest opacity-80">📱 Cara setup:</div>
+                  <div className="text-ink-2 font-bold mb-2 uppercase tracking-widest opacity-80">📱 {t('setup_guide')}:</div>
                   {[
                     ['Buka Telegram → cari', '@BotFather', ' → kirim /newbot'],
                     ['Ikuti instruksi → copy token'],
@@ -327,12 +329,12 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                     <div className="flex items-center gap-3">
                       {polling.running ? <Wifi size={18} className="text-sky-400"/> : <WifiOff size={18} className="text-ink-3 opacity-60"/>}
                       <span className="text-sm font-bold text-ink uppercase tracking-tight">
-                        {polling.running ? 'Bot Aktif (Polling)' : 'Bot Tidak Aktif'}
+                        {polling.running ? t('bot_active_polling') : t('bot_inactive')}
                       </span>
                     </div>
                     <label className={clsx("flex items-center gap-3", (!configured || pollingLoading) ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}>
                       <span className="text-[10px] font-bold text-ink-3 uppercase tracking-widest">
-                        {pollingLoading ? 'Memproses...' : (polling.running ? 'On' : 'Off')}
+                        {pollingLoading ? t('processing') : (polling.running ? 'On' : 'Off')}
                       </span>
                       <div onClick={() => {
                         if (!configured || pollingLoading) return;
@@ -350,10 +352,10 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
 
                   <div className="text-xs text-ink-3 font-semibold leading-relaxed opacity-80">
                     {polling.running
-                      ? 'Bot menerima & menjawab pesan secara otomatis via AI menggunakan memori kontekstual.'
+                      ? t('bot_active_desc')
                       : configured
-                        ? 'Klik tombol saklar untuk mengaktifkan bot dan mulai menerima pesan dari Telegram.'
-                        : 'Simpan token Bot yang valid terlebih dahulu sebelum dapat menjalankan layanan polling.'
+                        ? t('bot_inactive_desc')
+                        : t('bot_setup_desc')
                     }
                   </div>
                 </div>

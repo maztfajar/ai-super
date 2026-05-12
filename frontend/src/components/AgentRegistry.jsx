@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { Zap } from 'lucide-react'
 import clsx from 'clsx'
 import { api } from '../hooks/useApi'
+import { useTranslation } from 'react-i18next'
 
 function AgentRegistry({ viewMode = 'grid' }) {
+  const { t } = useTranslation()
   const [selectedView, setSelectedView] = useState(viewMode)
   const [agents, setAgents] = useState([])
   const [agentPerformance, setAgentPerformance] = useState({})
@@ -97,20 +99,20 @@ function AgentRegistry({ viewMode = 'grid' }) {
 
   const statusConfig = {
     active: { 
-      label: '🟢 Active', 
+      label: `🟢 ${t('status_active')}`, 
       color: '#10B981', 
       bg: 'rgba(16,185,129,0.2)', 
       pulse: true, 
       glow: '0 0 10px 2px rgba(16,185,129,0.8)' 
     },
-    ready: { label: '🟡 Ready', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
-    idle: { label: '⚪ Idle', color: '#64748B', bg: 'rgba(100,116,139,0.1)' },
+    ready: { label: `🟡 ${t('status_ready')}`, color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
+    idle: { label: `⚪ ${t('status_idle')}`, color: '#64748B', bg: 'rgba(100,116,139,0.1)' },
   }
 
   if (loading && agents.length === 0) {
     return (
       <div className="text-center py-8 text-ink-3">
-        <p className="text-sm">Memuat data agent...</p>
+        <p className="text-sm">{t('loading_agents')}</p>
       </div>
     )
   }
@@ -121,7 +123,7 @@ function AgentRegistry({ viewMode = 'grid' }) {
         <div className="flex items-center gap-2">
           <Zap size={16} className="text-accent-2" />
           <h2 className="text-xl font-bold text-ink tracking-tight uppercase">
-            🤖 Agents
+            🤖 {t('agents_title')}
           </h2>
           <span className="text-xs font-bold px-2.5 py-1 rounded-full shadow-sm"
             style={{ background: 'rgba(100,102,241,0.15)', color: '#818CF8' }}>
@@ -140,7 +142,7 @@ function AgentRegistry({ viewMode = 'grid' }) {
                   ? 'bg-accent text-white shadow-lg'
                   : 'text-ink-3 hover:text-ink-2'
               )}>
-              {mode === 'grid' ? '📊 Grid' : '📋 List'}
+              {mode === 'grid' ? `📊 ${t('grid_view')}` : `📋 ${t('list_view')}`}
             </button>
           ))}
         </div>
@@ -197,8 +199,8 @@ function AgentRegistry({ viewMode = 'grid' }) {
                   </div>
 
                   <div className="space-y-1 text-xs text-ink-3 font-semibold uppercase tracking-tight">
-                    <div>Tasks: <span className="text-ink-2 font-bold">{perf.tasks || 0}</span></div>
-                    <div>Success: <span className="text-ink-2 font-bold">{(perf.success * 100 || 0).toFixed(0)}%</span></div>
+                    <div>{t('tasks')}: <span className="text-ink-2 font-bold">{perf.tasks || 0}</span></div>
+                    <div>{t('success_rate')}: <span className="text-ink-2 font-bold">{(perf.success * 100 || 0).toFixed(0)}%</span></div>
                   </div>
 
                   <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
@@ -230,7 +232,7 @@ function AgentRegistry({ viewMode = 'grid' }) {
                   <span className="text-2xl flex-shrink-0">{agent.icon || '🤖'}</span>
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-ink truncate uppercase tracking-tight">{agent.name}</div>
-                    <div className="text-xs text-ink-3 font-semibold">{perf.tasks || 0} tasks</div>
+                    <div className="text-xs text-ink-3 font-semibold">{perf.tasks || 0} {t('tasks').toLowerCase()}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 min-w-[80px] justify-end">

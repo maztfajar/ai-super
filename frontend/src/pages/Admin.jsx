@@ -9,6 +9,7 @@ import {
   Eye, EyeOff, ShieldAlert, Crown, UserCheck, Pencil, X, Save,
   Key, Copy, Check, Clock, AlertTriangle,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 function Label({ children }) {
@@ -42,9 +43,10 @@ function RoleBadge({ role }) {
   )
 }
 function StatusDot({ active }) {
+  const { t } = useTranslation()
   return active
-    ? <span className="flex items-center gap-1 text-xs text-success"><span className="w-1.5 h-1.5 rounded-full bg-success"/>Aktif</span>
-    : <span className="flex items-center gap-1 text-xs text-ink-3"><span className="w-1.5 h-1.5 rounded-full bg-ink-3"/>Nonaktif</span>
+    ? <span className="flex items-center gap-1 text-xs text-success"><span className="w-1.5 h-1.5 rounded-full bg-success"/>{t('active_label')}</span>
+    : <span className="flex items-center gap-1 text-xs text-ink-3"><span className="w-1.5 h-1.5 rounded-full bg-ink-3"/>{t('inactive_label')}</span>
 }
 
 // ── Hak Akses per Role ────────────────────────────────────────
@@ -137,11 +139,11 @@ function UserForm({ editUser, onSave, onCancel, saving }) {
         <button onClick={handleSave} disabled={saving}
           className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-accent hover:bg-accent/80 text-white font-medium disabled:opacity-50">
           {saving ? <RefreshCw size={11} className="animate-spin"/> : <Save size={11}/>}
-          {editUser ? 'Update Pengguna' : 'Buat Pengguna'}
+          {editUser ? t('update_user') : t('create_user')}
         </button>
         <button onClick={onCancel}
           className="px-3 py-2 text-sm rounded-lg bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink">
-          Batal
+          {t('cancel')}
         </button>
       </div>
     </div>
@@ -199,7 +201,7 @@ function RecoveryTokenPanel() {
     <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <Key size={14} className="text-warn"/>
-        <span className="text-sm font-semibold text-ink">Recovery Token — Reset Password Pengguna</span>
+        <span className="text-sm font-semibold text-ink">{t('recovery_token_title')}</span>
       </div>
       <div className="p-4 space-y-4">
 
@@ -233,7 +235,7 @@ function RecoveryTokenPanel() {
             <button onClick={generate} disabled={loading}
               className="w-full flex items-center justify-center gap-2 py-2.5 bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn text-sm font-semibold rounded-xl disabled:opacity-50 transition-colors">
               {loading ? <RefreshCw size={14} className="animate-spin"/> : <Key size={14}/>}
-              {loading ? 'Membuat Token...' : 'Generate Token Recovery'}
+              {loading ? t('processing') : t('generate_recovery_token')}
             </button>
           </div>
 
@@ -289,7 +291,7 @@ function RecoveryTokenPanel() {
         {active.length > 0 && (
           <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[13px] font-semibold text-ink-2">Token Aktif ({active.length})</span>
+              <span className="text-[13px] font-semibold text-ink-2">{t('active_tokens')} ({active.length})</span>
               <button onClick={loadActive} className="text-xs text-ink-3 hover:text-ink flex items-center gap-1">
                 <RefreshCw size={9}/>Refresh
               </button>
@@ -319,6 +321,7 @@ function RecoveryTokenPanel() {
 
 // ── Main Admin Page ───────────────────────────────────────────
 export default function Admin() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const [users,   setUsers]   = useState([])
@@ -393,13 +396,13 @@ export default function Admin() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-ink flex items-center gap-2">
-            <Users size={18} className="text-accent-2"/>Panel Admin
+            <Users size={18} className="text-accent-2"/>{t('admin_panel_title')}
           </h1>
-          <p className="text-sm text-ink-3 mt-0.5">Kelola pengguna dan hak akses</p>
+          <p className="text-sm text-ink-3 mt-0.5">{t('user_management_desc')}</p>
         </div>
         <button onClick={() => { setShowAdd(!showAdd); setEditUser(null) }}
           className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-accent hover:bg-accent/80 text-white font-medium transition-colors">
-          <Plus size={12}/>Tambah Pengguna
+          <Plus size={12}/>{t('add_user')}
         </button>
       </div>
 
@@ -441,12 +444,12 @@ export default function Admin() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <span className="text-base font-semibold text-ink flex items-center gap-2">
             <Users size={14} className="text-ink-3"/>
-            Daftar Pengguna
-            <span className="text-xs bg-bg-4 text-ink-3 px-2 py-0.5 rounded-full font-normal">{users.length} akun</span>
+            {t('user_list')}
+            <span className="text-xs bg-bg-4 text-ink-3 px-2 py-0.5 rounded-full font-normal">{users.length} {t('accounts') || 'accounts'}</span>
           </span>
           <button onClick={loadUsers} disabled={loading}
             className="text-sm text-ink-3 hover:text-ink flex items-center gap-1 disabled:opacity-50">
-            <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
+            <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>{t('refresh_label')}
           </button>
         </div>
 
@@ -463,9 +466,9 @@ export default function Admin() {
                 <tr className="border-b border-border">
                   <th className="text-left px-4 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Pengguna</th>
                   <th className="text-left px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Email</th>
-                  <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Hak Akses</th>
+                  <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">{t('access_rights')}</th>
                   <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Status</th>
-                  <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">Bergabung</th>
+                  <th className="text-center px-3 py-2.5 text-xs text-ink-3 uppercase tracking-wider font-semibold">{t('joined_label')}</th>
                   <th className="px-3 py-2.5"></th>
                 </tr>
               </thead>
@@ -548,7 +551,7 @@ export default function Admin() {
       <div className="bg-bg-3 border border-border rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <ShieldAlert size={14} className="text-warn"/>
-          <span className="text-sm font-semibold text-ink">Ringkasan Hak Akses</span>
+          <span className="text-sm font-semibold text-ink">{t('access_summary')}</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">

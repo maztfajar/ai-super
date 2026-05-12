@@ -19,6 +19,7 @@ import toast from 'react-hot-toast'
 
 // ── Topbar New Chat Button dengan guard sesi kosong ─────────────
 function TopbarNewChatButton() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const currentSession = useChatStore(s => s.currentSession)
@@ -29,7 +30,7 @@ function TopbarNewChatButton() {
 
   const handleClick = () => {
     if (isCurrentSessionEmpty) {
-      toast('Sesi ini masih kosong. Mulai chat dulu!', { icon: '💬', duration: 2000 })
+      toast(t('session_empty_hint'), { icon: '💬', duration: 2000 })
       return
     }
     useChatStore.getState().setCurrentSession(null)
@@ -41,10 +42,10 @@ function TopbarNewChatButton() {
     <button
       onClick={handleClick}
       disabled={isCurrentSessionEmpty}
-      title={isCurrentSessionEmpty ? 'Sesi ini masih kosong, mulai chat dulu!' : 'Buat sesi chat baru'}
+      title={isCurrentSessionEmpty ? t('session_empty_hint') : t('new_chat_desc')}
       className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent/80 text-white text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-accent-2/20"
     >
-      <MessageSquare size={16}/>New Chat
+      <MessageSquare size={16}/>{t('new_chat')}
     </button>
   )
 }
@@ -176,7 +177,7 @@ export default function Layout() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className={clsx(
-          'border-b-2 border-border bg-bg-2 flex items-center justify-between flex-shrink-0 z-50',
+          'bg-bg-2 flex items-center justify-between flex-shrink-0 z-50',
           // Mobile: taller header with better spacing
           isMobile ? 'h-14 px-3' : 'h-14 px-6'
         )}>
@@ -201,7 +202,7 @@ export default function Layout() {
                   onChange={setSelectedOrchestrator}
                   compact={true}
                 />
-                <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                <button onClick={toggleTheme} title={theme === 'dark' ? t('light_mode') : t('dark_mode')}
                   className="p-1.5 rounded-lg hover:bg-bg-4 text-ink-2 hover:text-ink transition-colors">
                   {theme === 'dark' ? <Sun size={15}/> : <Moon size={15}/>}
                 </button>
@@ -215,7 +216,7 @@ export default function Layout() {
                   onChange={setSelectedOrchestrator}
                 />
                 <ChannelSelector />
-                <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                <button onClick={toggleTheme} title={theme === 'dark' ? t('light_mode') : t('dark_mode')}
                   className="p-2 rounded-xl hover:bg-bg-4 text-ink-2 hover:text-ink transition-all shadow-sm">
                   {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
                 </button>
@@ -236,24 +237,24 @@ export default function Layout() {
 
       {/* Mobile Bottom Navigation */}
       {isMobile && (
-        <div className="fixed bottom-0 left-0 right-0 h-16 bg-bg border-t-2 border-border flex items-center justify-around z-50 px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
+        <div className="fixed bottom-0 left-0 right-0 h-16 bg-bg flex items-center justify-around z-50 px-2 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.2)]">
           <NavLink to="/dashboard" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
             <LayoutDashboard size={26} />
-            <span className="text-xs font-bold uppercase tracking-tight">Utama</span>
+            <span className="text-xs font-bold uppercase tracking-tight">{t('dashboard')}</span>
           </NavLink>
           <NavLink to="/chat" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
             <MessageSquare size={26} />
-            <span className="text-xs font-bold uppercase tracking-tight">Chat</span>
+            <span className="text-xs font-bold uppercase tracking-tight">{t('chat')}</span>
           </NavLink>
           {isAdmin && (
             <NavLink to="/integrations" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
               <Plug size={26} />
-              <span className="text-xs font-bold uppercase tracking-tight">Integrasi</span>
+              <span className="text-xs font-bold uppercase tracking-tight">{t('integrations')}</span>
             </NavLink>
           )}
           <NavLink to="/analytics" className={({isActive}) => clsx("flex flex-col items-center justify-center w-full h-full gap-2", isActive ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
             <BarChart3 size={26} />
-            <span className="text-xs font-bold uppercase tracking-tight">Statistik</span>
+            <span className="text-xs font-bold uppercase tracking-tight">{t('analytics')}</span>
           </NavLink>
           <button onClick={() => setMobileMenuOpen(true)} className={clsx("flex flex-col items-center justify-center w-full h-full gap-2", mobileMenuOpen ? "text-accent-2" : "text-ink-3 hover:text-ink")}>
             <Menu size={26} />
@@ -268,7 +269,7 @@ export default function Layout() {
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] animate-fade" onClick={() => setMobileMenuOpen(false)} />
           <div className="fixed bottom-0 left-0 right-0 bg-bg-2 border-t-2 border-border rounded-t-3xl z-[70] animate-slide-in-up max-h-[85vh] flex flex-col shadow-[0_-20px_60px_rgba(0,0,0,0.5)] overflow-hidden">
             <div className="p-6 border-b-2 border-border flex items-center justify-between bg-bg-3 shadow-sm">
-              <span className="text-lg font-bold text-ink uppercase tracking-tight">Menu Utama</span>
+              <span className="text-lg font-bold text-ink uppercase tracking-tight">{t('main_menu')}</span>
               <button onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-xl bg-bg-4 text-ink-3 hover:text-ink transition-all shadow-sm">
                 <X size={20} />
               </button>

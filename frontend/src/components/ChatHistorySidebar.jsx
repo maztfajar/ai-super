@@ -4,9 +4,13 @@ import { MessageSquare, Plus, Trash2, Search } from 'lucide-react'
 import { useChatStore } from '../store'
 import clsx from 'clsx'
 import { api } from '../hooks/useApi'
+import { useTranslation } from 'react-i18next'
 import './ChatHistorySidebar.css'
 
+const NEON_COLORS = ['neon-success', 'neon-sky', 'neon-accent']
+
 export default function ChatHistorySidebar() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
   const [search, setSearch] = useState('')
@@ -33,7 +37,7 @@ export default function ChatHistorySidebar() {
 
   const handleDelete = async (e, sessionId) => {
     e.stopPropagation()
-    if (!window.confirm('Hapus chat ini?')) return
+    if (!window.confirm(t('confirm_delete_chat'))) return
 
     // Optimistic UI update
     const prevSessions = useChatStore.getState().sessions
@@ -57,7 +61,7 @@ export default function ChatHistorySidebar() {
       if (wasActive) {
         useChatStore.getState().setCurrentSession(prevSessions.find(s => s.id === sessionId) || null)
       }
-      alert('Gagal menghapus chat')
+      alert(t('error_delete_chat'))
     }
   }
 
@@ -79,12 +83,12 @@ export default function ChatHistorySidebar() {
       <div className="chsb-header">
         <span className="chsb-title">
           <MessageSquare size={16} />
-          Conversations
+          {t('conversations')}
         </span>
         <button
           className="chsb-new-btn"
           onClick={handleNew}
-          title="New chat"
+          title={t('new_chat')}
         >
           <Plus size={18} />
         </button>
@@ -95,7 +99,7 @@ export default function ChatHistorySidebar() {
         <Search size={14} className="chsb-search-icon" />
         <input
           className="chsb-search"
-          placeholder="Search…"
+          placeholder={t('search_placeholder')}
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
@@ -106,22 +110,23 @@ export default function ChatHistorySidebar() {
         {filtered.length === 0 ? (
           <div className="chsb-empty">
             <MessageSquare size={28} className="chsb-empty-icon" />
-            <p>No conversations yet</p>
-            <p>Start a new chat</p>
+            <p>{t('no_conversations')}</p>
+            <p>{t('start_new_chat')}</p>
           </div>
         ) : (
-          filtered.map(session => {
+          filtered.map((session, idx) => {
             const isActive = currentSession?.id === session.id ||
               location.pathname === `/chat/${session.id}`
+            const neonClass = NEON_COLORS[idx % NEON_COLORS.length]
             return (
               <button
                 key={session.id}
                 onClick={() => handleSelect(session)}
-                className={clsx('chsb-item', isActive && 'chsb-item--active')}
+                className={clsx('chsb-item', neonClass, isActive && 'chsb-item--active')}
               >
                 <div className="chsb-item-body">
                   <span className="chsb-item-title">
-                    {session.title || 'New Conversation'}
+                    {session.title || t('new_conversation')}
                   </span>
                   <span className="chsb-item-time">
                     {relativeTime(session.updated_at || session.created_at)}
@@ -130,7 +135,7 @@ export default function ChatHistorySidebar() {
                 <button
                   className="chsb-delete"
                   onClick={e => handleDelete(e, session.id)}
-                  title="Delete conversation"
+                  title={t('delete')}
                 >
                   <Trash2 size={14} />
                 </button>

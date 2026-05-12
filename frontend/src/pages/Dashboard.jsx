@@ -23,6 +23,7 @@ import {
   Atom
 } from 'lucide-react'
 import clsx from 'clsx'
+import { useTranslation } from 'react-i18next'
 
 // ── Sparkline Components (unique per card) ──────────────────
 
@@ -324,8 +325,8 @@ function OverviewChart({ data, metric }) {
   if (!data || data.length === 0) return (
     <div className="h-[180px] flex flex-col items-center justify-center gap-2 text-ink-3">
       <Clock size={20} className="opacity-30" />
-      <span className="text-sm font-semibold">Belum ada data aktivitas</span>
-      <span className="text-xs opacity-60 font-medium">Mulai chat untuk melihat statistik di sini</span>
+      <span className="text-sm font-semibold">{t('no_data_available')}</span>
+      <span className="text-xs opacity-60 font-medium">{t('no_messages')}</span>
     </div>
   )
   
@@ -407,6 +408,7 @@ function SystemMonitor({ system }) {
 // ── Main Page ──────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   const [data, setData] = useState(null)
   const [system, setSystem] = useState(null)
   const [savedModels, setSavedModels] = useState([])
@@ -421,7 +423,7 @@ export default function Dashboard() {
     const fetchDashboard = () => {
       api.dashboard()
         .then(d => { setData(d); setError(null) })
-        .catch(e => { console.error(e); setError(e.message || 'Gagal memuat data') })
+        .catch(e => { console.error(e); setError(e.message || t('error_occurred')) })
         .finally(() => setLoading(false))
     }
     fetchDashboard()
@@ -479,7 +481,7 @@ export default function Dashboard() {
         onClick={() => { setLoading(true); setError(null); api.dashboard().then(d => { setData(d); setError(null) }).catch(e => setError(e.message)).finally(() => setLoading(false)) }}
         className="px-5 py-2.5 bg-accent hover:bg-accent/80 text-white text-xs font-semibold rounded-xl transition-colors"
       >
-        Coba Lagi
+        {t('refresh')}
       </button>
     </div>
   )
@@ -550,17 +552,17 @@ export default function Dashboard() {
             <Calendar size={18} className="text-accent" /> Mar 20, 2026 - Mar 28, 2026
           </button>
           <button onClick={downloadReport} className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-accent to-accent-2 text-white rounded-2xl text-sm font-bold shadow-[0_10px_40px_rgba(var(--accent-rgb),0.4)] active:scale-95 transition-all uppercase tracking-widest">
-            <Download size={18} /> DOWNLOAD LAPORAN
+            <Download size={18} /> {t('download_report') || 'DOWNLOAD REPORT'}
           </button>
         </div>
       </div>
 
       {/* ── StatCards Row ──────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
-        <StatCard label="Total Pesan" value={(stats.total_messages ?? 0).toLocaleString()} subtext="+24.1% dari rata-rata" icon={MessageSquare} colorClass="bg-blue-600" glowClass="hover:shadow-blue-500/20" sparkline={<WaveSparkline/>} accentColor="#3B82F6" />
-        <StatCard label="Sesi Aktif" value={(stats.total_sessions ?? 0).toLocaleString()} subtext="+102 sesi baru minggu ini" icon={Zap} colorClass="bg-emerald-600" glowClass="hover:shadow-emerald-500/20" sparkline={<HeartbeatSparkline/>} accentColor="#10B981" />
-        <StatCard label="Kapasitas RAG" value={(stats.total_docs ?? 0).toLocaleString()} subtext="+12 file diunggah hari ini" icon={BookOpen} colorClass="bg-orange-600" glowClass="hover:shadow-orange-500/20" sparkline={<VectorSearchSparkline/>} accentColor="#F59E0B" />
-        <StatCard label="Workflow Run" value={(stats.workflow_runs ?? 0).toLocaleString()} subtext="+1.2k jam eksekusi" icon={Repeat2} colorClass="bg-purple-600" glowClass="hover:shadow-purple-500/20" sparkline={<NodeNetworkSparkline/>} accentColor="#7C3AED" />
+        <StatCard label={t('total_messages')} value={(stats.total_messages ?? 0).toLocaleString()} subtext={t('avg_latency_desc') || "+24.1% average"} icon={MessageSquare} colorClass="bg-blue-600" glowClass="hover:shadow-blue-500/20" sparkline={<WaveSparkline/>} accentColor="#3B82F6" />
+        <StatCard label={t('active_sessions')} value={(stats.total_sessions ?? 0).toLocaleString()} subtext={t('new_sessions_desc') || "+102 new sessions"} icon={Zap} colorClass="bg-emerald-600" glowClass="hover:shadow-emerald-500/20" sparkline={<HeartbeatSparkline/>} accentColor="#10B981" />
+        <StatCard label={t('knowledge_capacity')} value={(stats.total_docs ?? 0).toLocaleString()} subtext={t('docs_uploaded_desc') || "+12 files uploaded"} icon={BookOpen} colorClass="bg-orange-600" glowClass="hover:shadow-orange-500/20" sparkline={<VectorSearchSparkline/>} accentColor="#F59E0B" />
+        <StatCard label={t('workflow_runs')} value={(stats.workflow_runs ?? 0).toLocaleString()} subtext={t('exec_hours_desc') || "+1.2k hours exec"} icon={Repeat2} colorClass="bg-purple-600" glowClass="hover:shadow-purple-500/20" sparkline={<NodeNetworkSparkline/>} accentColor="#7C3AED" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
@@ -570,13 +572,13 @@ export default function Dashboard() {
           <Card className="p-8 bg-gradient-to-br from-bg-3 to-bg-4 border-2 border-border/50 h-[320px] flex flex-col shadow-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
               <div className="space-y-1">
-                <h2 className="text-3xl font-bold text-ink tracking-tighter uppercase">Overview Aktivitas</h2>
-                <p className="text-[10px] font-bold text-ink-3 uppercase tracking-[0.4em] opacity-50">Statistik orkestrasi harian</p>
+                <h2 className="text-3xl font-bold text-ink tracking-tighter uppercase">{t('activity_overview')}</h2>
+                <p className="text-[10px] font-bold text-ink-3 uppercase tracking-[0.4em] opacity-50">{t('daily_stats')}</p>
               </div>
               <div className="flex p-1.5 bg-bg/40 rounded-2xl backdrop-blur-xl border-2 border-border/10 shadow-inner">
-                {['Pesan', 'Token', 'Latensi', 'Error'].map(t => (
-                  <button key={t} onClick={() => setMetric(t)} className={clsx("px-6 py-2.5 text-[10px] font-bold tracking-[0.2em] transition-all rounded-xl uppercase", metric === t ? "bg-accent text-white shadow-xl" : "text-ink-3 hover:text-ink")}>
-                    {t}
+                {['messages', 'tokens', 'avg_latency', 'error_rate'].map(tKey => (
+                  <button key={tKey} onClick={() => setMetric(tKey)} className={clsx("px-6 py-2.5 text-[10px] font-bold tracking-[0.2em] transition-all rounded-xl uppercase", metric === tKey ? "bg-accent text-white shadow-xl" : "text-ink-3 hover:text-ink")}>
+                    {t(tKey)}
                   </button>
                 ))}
               </div>
@@ -601,14 +603,14 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-6 px-1">
                 <div>
                   <div className="flex items-center gap-3 mb-1">
-                    <h2 className="text-2xl font-bold text-ink tracking-tighter uppercase">Orkestrasi AI</h2>
+                    <h2 className="text-2xl font-bold text-ink tracking-tighter uppercase">{t('ai_orchestration')}</h2>
                     <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse shadow-[0_0_12px_#10b981]" />
                   </div>
-                  <p className="text-[10px] font-bold text-ink-3 uppercase tracking-widest opacity-50">Distribusi beban kerja</p>
+                  <p className="text-[10px] font-bold text-ink-3 uppercase tracking-widest opacity-50">{t('workload_distribution')}</p>
                 </div>
                 {sortedUsage.length > 0 && (
                   <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-inner border border-success/30" style={{ background: 'rgba(16,185,129,0.12)', color: '#10B981' }}>
-                    {sortedUsage.length} model aktif
+                    {sortedUsage.length} {t('active_models_label')}
                   </span>
                 )}
               </div>
@@ -618,7 +620,7 @@ export default function Dashboard() {
                 {sortedUsage.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center opacity-20">
                     <LayoutDashboard size={40} className="mb-4" />
-                    <span className="text-xs font-bold uppercase tracking-widest">Sistem Standby</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">{t('system_standby')}</span>
                   </div>
                 ) : (
                   sortedUsage.map((u, i) => {
@@ -681,7 +683,7 @@ export default function Dashboard() {
                 }}
               >
                 <Bot size={20} className="text-white" />
-                <span>Luncurkan Agent</span>
+                <span>{t('launch_agent') || 'LAUNCH AGENT'}</span>
               </button>
             </Card>
           )
@@ -693,17 +695,17 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
              <div className="p-3 rounded-2xl bg-accent/20 text-accent shadow-lg"><Activity size={20} /></div>
-             <h2 className="text-2xl font-bold text-ink tracking-tighter uppercase">Live Event Feed</h2>
+             <h2 className="text-2xl font-bold text-ink tracking-tighter uppercase">{t('live_event_feed')}</h2>
           </div>
           <div className="flex items-center gap-3 border border-success/30 px-3 py-1 rounded-full bg-success/5 shadow-inner">
             <div className="w-2.5 h-2.5 rounded-full bg-success animate-ping" />
-            <span className="text-[10px] font-bold text-success uppercase tracking-widest">Streaming</span>
+            <span className="text-[10px] font-bold text-success uppercase tracking-widest">{t('streaming')}</span>
           </div>
         </div>
         
         <div className="space-y-3 font-mono">
           {logs.length === 0 ? (
-            <div className="py-12 text-center text-sm text-ink-3 opacity-40 italic font-bold uppercase tracking-widest">Menunggu event sistem...</div>
+            <div className="py-12 text-center text-sm text-ink-3 opacity-40 italic font-bold uppercase tracking-widest">{t('waiting_events') || 'Waiting for events...'}</div>
           ) : (
             logs.map((log, i) => (
               <div key={i} className="flex items-center gap-5 text-[11px] group/item p-3 rounded-xl hover:bg-white/5 transition-all font-bold border border-transparent hover:border-border/30 shadow-sm">

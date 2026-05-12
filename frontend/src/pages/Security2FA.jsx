@@ -19,7 +19,7 @@ function Inp({ value, onChange, placeholder, disabled, mono, type = 'text', maxL
     <input type={type} value={value} onChange={e => onChange(e.target.value)}
       placeholder={placeholder} disabled={disabled} maxLength={maxLength}
       autoComplete="new-password"
-      className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 transition-colors',
+      className={clsx('w-full bg-bg-2 border-0 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:ring-1 focus:ring-accent/50 disabled:opacity-50 transition-colors',
         mono && 'font-mono tracking-widest text-center text-base')}/>
   )
 }
@@ -29,7 +29,7 @@ function PassInp({ value, onChange, placeholder }) {
     <div className="relative">
       <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} autoComplete="new-password"
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
+        className="w-full bg-bg-2 border-0 rounded-lg px-3 py-2 pr-9 text-sm text-ink placeholder-ink-3 outline-none focus:ring-1 focus:ring-accent/50 font-mono"/>
       <button type="button" onClick={() => setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
         {show ? <EyeOff size={13}/> : <Eye size={13}/>}
       </button>
@@ -45,7 +45,7 @@ function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disable
         variant === 'success' && 'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
         variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn',
         variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger',
-        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink',
+        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border border-transparent text-ink-2 hover:text-ink',
       )}>
       {loading ? <RefreshCw size={12} className="animate-spin"/> : Icon && <Icon size={12}/>}
       {label}
@@ -55,7 +55,7 @@ function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disable
 function StatusBadge({ ok, labelOk = 'Aktif', labelNo = 'Belum Disetup' }) {
   return ok
     ? <span className="flex items-center gap-1 text-xs bg-success/10 text-success border border-success/20 px-2 py-0.5 rounded-full font-semibold"><CheckCircle2 size={9}/>{labelOk}</span>
-    : <span className="flex items-center gap-1 text-xs bg-bg-4 text-ink-3 border border-border px-2 py-0.5 rounded-full font-medium"><XCircle size={9}/>{labelNo}</span>
+    : <span className="flex items-center gap-1 text-xs bg-bg-4 text-ink-3 border border-transparent px-2 py-0.5 rounded-full font-medium"><XCircle size={9}/>{labelNo}</span>
 }
 function OtpInput({ value, onChange, length = 6 }) {
   const refs = useRef([])
@@ -125,7 +125,7 @@ function OtpInput({ value, onChange, length = 6 }) {
             "w-11 h-14 text-center text-2xl font-semibold font-mono rounded-xl outline-none transition-all border-2",
             digit
               ? "bg-accent/10 border-accent text-accent-2"
-              : "bg-bg-2 border-border-2 text-ink focus:border-accent focus:bg-bg-3"
+              : "bg-bg-2 border-transparent text-ink focus:border-accent focus:bg-bg-3"
           )}
         />
       ))}
@@ -141,18 +141,18 @@ function CopyBtn({ text }) {
     </button>
   )
 }
-function Section({ title, icon: Icon, color = 'text-accent-2', badge, defaultOpen = false, children }) {
+function Section({ title, icon: Icon, color = 'text-accent-2', neon = 'neon-accent', badge, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="bg-bg-3 border border-border rounded-xl overflow-hidden">
+    <div className={clsx("bg-bg-3 rounded-xl overflow-hidden neon-card", neon)}>
       <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-4 py-3.5 hover:bg-bg-4/50 transition-colors">
+        className="w-full flex items-center gap-2.5 px-4 py-3.5 hover:bg-bg-4/20 transition-colors">
         <Icon size={15} className={color}/>
         <span className="text-sm font-semibold text-ink flex-1 text-left">{title}</span>
         {badge}
         {open ? <ChevronUp size={13} className="text-ink-3"/> : <ChevronDown size={13} className="text-ink-3"/>}
       </button>
-      {open && <div className="px-4 pb-5 pt-1 border-t border-border">{children}</div>}
+      {open && <div className="px-4 pb-5 pt-1 border-t border-transparent/5">{children}</div>}
     </div>
   )
 }
@@ -219,7 +219,7 @@ function EmailResetSection({ isAdmin }) {
         {smtp?.configured && <span className="text-xs text-ink-3 font-mono">{smtp.host}:{smtp.port}</span>}
       </div>
 
-      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
+      <div className="bg-bg-4 border-0 rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja reset via email:</div>
         <div>1. User klik "Lupa Password?" di halaman login → masukkan email</div>
         <div>2. AI ORCHESTRATOR kirim link reset ke email terdaftar</div>
@@ -229,7 +229,7 @@ function EmailResetSection({ isAdmin }) {
 
       {isAdmin && (
         <div className="space-y-3">
-          <div className="text-sm font-semibold text-ink border-b border-border pb-2">⚙️ Konfigurasi SMTP</div>
+          <div className="text-sm font-semibold text-ink border-b border-transparent pb-2">⚙️ Konfigurasi SMTP</div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -261,7 +261,7 @@ function EmailResetSection({ isAdmin }) {
           <div className="flex items-center gap-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <div onClick={() => setTls(!tls)}
-                className={clsx('w-8 h-4 rounded-full relative transition-colors', tls ? 'bg-accent' : 'bg-bg-5 border border-border')}>
+                className={clsx('w-8 h-4 rounded-full relative transition-colors', tls ? 'bg-accent' : 'bg-bg-5 border border-transparent')}>
                 <div className={clsx('absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform', tls ? 'translate-x-4' : 'translate-x-0.5')}/>
               </div>
               <span className="text-sm text-ink-2">STARTTLS (port 587) — matikan untuk SSL port 465</span>
@@ -346,7 +346,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
 
   return (
     <div className="mt-3 space-y-4">
-      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
+      <div className="bg-bg-4 border-0 rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja Telegram OTP:</div>
         <div>1. Setelah password benar saat login, AI ORCHESTRATOR kirim kode 6 digit ke Telegram</div>
         <div>2. Masukkan kode tersebut untuk melanjutkan login</div>
@@ -359,7 +359,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
         {[1,2,3].map(s => (
           <div key={s} className="flex items-center gap-2">
             <div className={clsx('w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all',
-              step >= s ? 'bg-accent text-white' : 'bg-bg-4 text-ink-3 border border-border')}>
+              step >= s ? 'bg-accent text-white' : 'bg-bg-4 text-ink-3 border-0')}>
               {step > s ? '✓' : s}
             </div>
             {s < 3 && <div className={clsx('flex-1 h-px w-8', step > s ? 'bg-accent' : 'bg-border')}/>}
@@ -405,7 +405,7 @@ function TelegramOtpSection({ totpStatus, onRefresh }) {
 
       {step === 3 && (
         <div className="space-y-3">
-          <div className="text-xs text-ink-3 bg-bg-4 border border-border rounded-xl p-3">
+          <div className="text-xs text-ink-3 bg-bg-4 border-0 rounded-xl p-3">
             Kode OTP telah dikirim ke Telegram Anda. Masukkan kode 6 digit di bawah.
           </div>
           <div>
@@ -489,7 +489,7 @@ function TotpSection({ status, onRefresh }) {
 
   return (
     <div className="mt-3 space-y-4">
-      <div className="bg-bg-4 border border-border rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
+      <div className="bg-bg-4 border-0 rounded-xl p-3 text-[13px] text-ink-3 space-y-1.5">
         <div className="text-ink-2 font-semibold mb-1">ℹ️ Cara kerja TOTP 2FA:</div>
         <div>1. Scan QR code dengan Google Authenticator / Authy / FreeOTP</div>
         <div>2. Setiap login, masukkan kode 6 digit dari aplikasi (berganti tiap 30 detik)</div>
@@ -551,8 +551,8 @@ function TotpSection({ status, onRefresh }) {
                   { icon: '🔐', name: 'Authy', dl: 'authy.com', recommended: false },
                   { icon: '🔓', name: 'FreeOTP', dl: 'Open source', recommended: false },
                 ].map(app => (
-                  <div key={app.name} className={clsx('rounded-xl border p-3 text-center',
-                    app.recommended ? 'border-accent/40 bg-accent/5' : 'border-border bg-bg-4')}>
+                  <div key={app.name} className={clsx('rounded-xl border-0 p-3 text-center neon-card',
+                    app.recommended ? 'bg-accent/10' : 'bg-bg-4')}>
                     <div className="text-2xl mb-1">{app.icon}</div>
                     <div className="text-xs font-semibold text-ink">{app.name}</div>
                     <div className="text-[11px] text-ink-3">{app.dl}</div>
@@ -581,7 +581,7 @@ function TotpSection({ status, onRefresh }) {
                 {/* Manual entry */}
                 <div className="flex-1 space-y-3">
                   <div className="text-xs text-ink-3">Atau masukkan kode ini secara manual:</div>
-                  <div className="flex items-center gap-2 bg-bg-2 border border-border rounded-xl px-3 py-2">
+                  <div className="flex items-center gap-2 bg-bg-2 border-0 rounded-xl px-3 py-2">
                     <code className="flex-1 font-mono text-sm text-accent-2 tracking-widest break-all font-semibold">{secret}</code>
                     <CopyBtn text={secret}/>
                   </div>
@@ -652,12 +652,12 @@ export default function Security2FA() {
       {/* Status overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {[
-          { icon: Mail, label: '📧 Email Reset', sub: 'Link reset via email', active: true, color: 'text-success', bg: 'bg-success/10' },
-          { icon: MessageSquare, label: '📱 Telegram OTP', sub: 'Kode OTP saat login', active: status?.telegram_otp_ready, color: 'text-sky-400', bg: 'bg-sky-400/10' },
-          { icon: Smartphone, label: '🔐 2FA TOTP', sub: 'Google Authenticator', active: status?.totp_enabled, color: 'text-accent-2', bg: 'bg-accent/10' },
+          { icon: Mail, label: '📧 Email Reset', sub: 'Link reset via email', active: true, color: 'text-success', bg: 'bg-success/10', neon: 'neon-success' },
+          { icon: MessageSquare, label: '📱 Telegram OTP', sub: 'Kode OTP saat login', active: status?.telegram_otp_ready, color: 'text-sky-400', bg: 'bg-sky-400/10', neon: 'neon-sky' },
+          { icon: Smartphone, label: '🔐 2FA TOTP', sub: 'Google Authenticator', active: status?.totp_enabled, color: 'text-accent-2', bg: 'bg-accent/10', neon: 'neon-accent' },
         ].map(m => (
-          <div key={m.label} className={clsx('rounded-xl border p-4 transition-all',
-            m.active ? 'border-success/30 bg-success/3' : 'border-border bg-bg-3')}>
+          <div key={m.label} className={clsx('rounded-xl p-4 transition-all neon-card', m.neon,
+            m.active ? 'bg-success/5' : 'bg-bg-3')}>
             <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center mb-2.5', m.active ? 'bg-success/15' : m.bg)}>
               <m.icon size={15} className={m.active ? 'text-success' : m.color}/>
             </div>
@@ -671,7 +671,7 @@ export default function Security2FA() {
       </div>
 
       {/* Rekomendasi */}
-      <div className="flex items-start gap-2.5 p-3 bg-accent/8 border border-accent/20 rounded-xl text-xs text-ink-2">
+      <div className="flex items-start gap-2.5 p-3 bg-accent/8 rounded-xl text-xs text-ink-2 neon-card neon-accent border-0">
         <Info size={12} className="text-accent-2 flex-shrink-0 mt-0.5"/>
         <div>
           <strong className="text-ink block mb-0.5 text-sm">Rekomendasi Keamanan:</strong>
@@ -681,14 +681,14 @@ export default function Security2FA() {
       </div>
 
       {/* ── Section 1: Email Reset ── */}
-      <Section title="📧 Reset Password via Email" icon={Mail} color="text-success"
+      <Section title="📧 Reset Password via Email" icon={Mail} color="text-success" neon="neon-success"
         badge={<StatusBadge ok={true} labelOk="Tersedia" labelNo="Perlu Setup"/>}
         defaultOpen={false}>
         <EmailResetSection isAdmin={user?.is_admin}/>
       </Section>
 
       {/* ── Section 2: Telegram OTP ── */}
-      <Section title="📱 OTP via Bot Telegram" icon={MessageSquare} color="text-sky-400"
+      <Section title="📱 OTP via Bot Telegram" icon={MessageSquare} color="text-sky-400" neon="neon-sky"
         badge={<StatusBadge ok={status?.telegram_otp_ready}/>}>
         <TelegramOtpSection totpStatus={status} onRefresh={loadStatus}/>
       </Section>

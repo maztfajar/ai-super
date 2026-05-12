@@ -8,6 +8,7 @@ import {
   BarChart3, Monitor, Thermometer, Activity, Copy, Check,
   Database, FolderOpen, ScrollText, Eraser, RotateCcw, AlertTriangle,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 // ── Gauge SVG ─────────────────────────────────────────────────
@@ -250,6 +251,7 @@ function PsutilInstallGuide({ onRetry }) {
 
 // ── Main ──────────────────────────────────────────────────────
 export default function Analytics() {
+  const { t } = useTranslation()
   const [dash,      setDash]      = useState(null)
   const [usage,     setUsage]     = useState([])
   const [system,    setSystem]    = useState(null)
@@ -450,20 +452,20 @@ export default function Analytics() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter">Analytics</h1>
+          <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter">{t('analytics_title')}</h1>
           <p className="text-base text-ink-3 font-semibold uppercase tracking-tight opacity-80">
-            Monitoring penggunaan & performa sistem
+            {t('analytics_desc')}
             {lastRef && <span className="ml-3 opacity-50">· {lastRef.toLocaleTimeString()}</span>}
           </p>
         </div>
         <div className="flex gap-3">
           <button onClick={fetchAll} disabled={loading}
             className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink disabled:opacity-50 font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/>Refresh
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/>{t('refresh')}
           </button>
           <button onClick={() => setShowReset(true)}
             className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-danger/10 hover:bg-danger/20 border-2 border-danger/30 text-danger font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
-            <Trash2 size={16}/>Reset
+            <Trash2 size={16}/>{t('reset')}
           </button>
         </div>
       </div>
@@ -482,10 +484,10 @@ export default function Analytics() {
 
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Total Pesan"   value={(stats.total_messages||0).toLocaleString()} icon={MessageSquare} colorClass="bg-accent"  sub={`${stats.total_sessions||0} sesi`}/>
-        <StatCard label="Total Token"   value={totalTok.toLocaleString()}                  icon={Zap}           colorClass="bg-warn"   sub={`$${totalCost.toFixed(4)}`}/>
-        <StatCard label="Dokumen RAG"   value={stats.total_docs||0}                        icon={HardDrive}     colorClass="bg-success" sub="terindeks"/>
-        <StatCard label="Uptime Server" value={system?.uptime || '—'}                      icon={Clock}         colorClass="bg-pink"/>
+        <StatCard label={t('total_messages')}   value={(stats.total_messages||0).toLocaleString()} icon={MessageSquare} colorClass="bg-accent"  sub={`${stats.total_sessions||0} sesi`}/>
+        <StatCard label={t('total_tokens')}   value={totalTok.toLocaleString()}                  icon={Zap}           colorClass="bg-warn"   sub={`$${totalCost.toFixed(4)}`}/>
+        <StatCard label={t('rag_docs')}   value={stats.total_docs||0}                        icon={HardDrive}     colorClass="bg-success" sub="terindeks"/>
+        <StatCard label={t('server_uptime')} value={system?.uptime || '—'}                      icon={Clock}         colorClass="bg-pink"/>
       </div>
 
       {/* ── System Resources ── */}
@@ -493,14 +495,14 @@ export default function Analytics() {
         <div className="flex items-center justify-between px-5 py-4 border-b-2 border-border bg-bg-2/30">
           <div className="flex items-center gap-3">
             <Activity size={20} className="text-accent-2"/>
-            <span className="text-lg font-bold text-ink uppercase tracking-tight">Sumber Daya Sistem</span>
-            <span className="text-xs text-ink-3 bg-bg-4 px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-border/30 shadow-inner ml-2">Realtime · 3 detik</span>
+            <span className="text-lg font-bold text-ink uppercase tracking-tight">{t('system_resources')}</span>
+            <span className="text-xs text-ink-3 bg-bg-4 px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-border/30 shadow-inner ml-2">{t('realtime_desc')}</span>
           </div>
           {system && (
             <button onClick={() => setShowCores(!showCores)}
               className="text-xs text-ink-3 hover:text-accent-2 flex items-center gap-2 font-bold uppercase tracking-widest transition-all p-2 rounded-lg hover:bg-bg-4">
               {showCores ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
-              Per Core
+              {t('per_core')}
             </button>
           )}
         </div>
@@ -510,7 +512,7 @@ export default function Analytics() {
             <PsutilInstallGuide onRetry={fetchSystem} />
           ) : !system ? (
             <div className="flex items-center justify-center h-20 text-xs text-ink-3 gap-2">
-              <RefreshCw size={13} className="animate-spin"/>Memuat data sistem...
+              <RefreshCw size={13} className="animate-spin"/>{t('loading_system_data')}
             </div>
           ) : (
             <div className="space-y-4">
@@ -587,15 +589,15 @@ export default function Analytics() {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <FolderOpen size={20} className="text-accent"/>
-              <span className="text-lg font-bold text-ink uppercase tracking-tight">Manajemen Media</span>
+              <span className="text-lg font-bold text-ink uppercase tracking-tight">{t('media_management')}</span>
             </div>
             <div className="text-xs text-ink-3 font-bold uppercase tracking-widest opacity-60">
-              {mediaFiles.length} file · Total {formatBytes(mediaFiles.reduce((sum, file) => sum + (file.size_bytes || 0), 0))}
+              {mediaFiles.length} {t('total_files')} · {t('total_size')} {formatBytes(mediaFiles.reduce((sum, file) => sum + (file.size_bytes || 0), 0))}
             </div>
           </div>
           <div className="flex gap-3">
             <button onClick={fetchMedia} disabled={mediaLoading} className="text-sm text-accent hover:text-accent-2 disabled:opacity-50 font-bold uppercase tracking-tight transition-all">
-              {mediaLoading ? 'Memuat...' : 'Refresh List'}
+              {mediaLoading ? t('processing') : t('refresh_list')}
             </button>
             {mediaFiles.length > 0 && (
               <button 
@@ -603,7 +605,7 @@ export default function Analytics() {
                 disabled={mediaLoading}
                 className="text-xs px-4 py-2 rounded-xl bg-danger/10 hover:bg-danger/20 text-danger font-bold uppercase tracking-widest disabled:opacity-50 transition-all border border-danger/20 shadow-sm"
               >
-                Hapus Semua
+                {t('delete_all')}
               </button>
             )}
           </div>
@@ -667,7 +669,7 @@ export default function Analytics() {
           <div className="px-5 py-4 border-b-2 border-border bg-bg-2/30 space-y-4">
             <div className="flex items-center gap-3">
               <ShieldAlert size={20} className="text-success"/>
-              <span className="text-base font-bold text-ink uppercase tracking-tight">Self-Healing Engine</span>
+              <span className="text-base font-bold text-ink uppercase tracking-tight">{t('self_healing_title')}</span>
               {healingStatus && (
                 <span className={clsx("ml-auto text-xs px-3 py-1 rounded-full font-bold tracking-widest border shadow-sm", 
                   healingStatus.running ? "bg-success/10 text-success border-success/30" : "bg-danger/10 text-danger border-danger/30"
@@ -730,7 +732,7 @@ export default function Analytics() {
         <div className="bg-bg-3 border border-border-2 rounded-2xl overflow-hidden flex flex-col shadow-lg">
           <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-border bg-bg-2/30">
             <RotateCcw size={20} className="text-accent"/>
-            <span className="text-base font-bold text-ink uppercase tracking-tight">AI Snapshots (Git)</span>
+            <span className="text-base font-bold text-ink uppercase tracking-tight">{t('rollback_title')}</span>
             <button 
               onClick={handleRollback}
               disabled={rollbackLoading || snapshots.length === 0}

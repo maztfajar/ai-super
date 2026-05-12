@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check, Globe, MessageCircle, Send, Radio } from 'lucide-react'
 import clsx from 'clsx'
 import { useOrchestratorStore } from '../store'
+import { useTranslation } from 'react-i18next'
 
 /**
  * Map channel type → Lucide icon for clean rendering alongside emoji.
@@ -21,6 +22,7 @@ const CHANNEL_ICONS = {
  *   api.getConnectedChannels().then(setConnectedChannels)
  */
 export default function ChannelSelector() {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -65,7 +67,7 @@ export default function ChannelSelector() {
       >
         <CurrentIcon size={14} className="text-accent-2 flex-shrink-0" />
         <span className="truncate max-w-[150px] font-bold">
-          {currentChannel?.name || 'Pilih Channel'}
+          {currentChannel?.name || t('select_channel')}
         </span>
         <ChevronDown
           size={14}
@@ -80,7 +82,7 @@ export default function ChannelSelector() {
           <div className="px-3 pt-3 pb-2 border-b border-border/20 mb-1">
             <div className="text-xs font-bold tracking-widest uppercase text-ink-3 flex items-center gap-2">
               <Radio size={12} className="text-accent-2" />
-              Channel / Session
+              {t('channel_session')}
             </div>
           </div>
 
@@ -88,7 +90,7 @@ export default function ChannelSelector() {
           <div className="px-2 pb-2">
             {connectedChannels.length === 0 ? (
               <div className="px-2.5 py-2 text-xs text-ink-3 italic">
-                Belum ada channel terhubung
+                {t('no_channels_connected')}
               </div>
             ) : (
               connectedChannels.map((ch) => {
@@ -109,7 +111,7 @@ export default function ChannelSelector() {
                     <span className="flex-1 truncate">{ch.name}</span>
                     {isSelected && <Check size={14} className="text-accent-2" />}
                     {ch.isDefault && !isSelected && (
-                      <span className="text-[11px] text-ink-3 border border-border rounded px-2 py-0.5 font-semibold uppercase tracking-tight bg-bg-5">Main</span>
+                      <span className="text-[11px] text-ink-3 border border-border rounded px-2 py-0.5 font-semibold uppercase tracking-tight bg-bg-5">{t('main')}</span>
                     )}
                   </button>
                 )

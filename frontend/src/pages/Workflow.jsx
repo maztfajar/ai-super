@@ -5,6 +5,7 @@ import {
   Plus, Trash2, Save, ChevronDown, GripVertical,
   Repeat2, ArrowDown, Sparkles, Brain, AlertTriangle, Plug,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 import { useOrchestratorStore } from '../store'
 
@@ -22,6 +23,7 @@ const createEmptyStep = (order, models) => ({
 
 // ── Step Card Component ───────────────────────────────────────────
 function StepCard({ step, index, total, onUpdate, onDelete, availableModels, modelsEmpty }) {
+  const { t } = useTranslation()
   const isLast = index === total - 1
 
   return (
@@ -36,7 +38,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, availableModels, mod
               <span className="text-sm font-bold text-white">{index + 1}</span>
             </div>
             <div>
-              <h4 className="text-lg font-bold text-ink uppercase tracking-tight">Langkah {index + 1}</h4>
+              <h4 className="text-lg font-bold text-ink uppercase tracking-tight">{t('step_label')} {index + 1}</h4>
               <p className="text-xs text-ink-3 leading-tight font-bold uppercase tracking-widest opacity-50">Pipeline step #{index + 1}</p>
             </div>
           </div>
@@ -119,6 +121,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, availableModels, mod
 
 // ── Main Workflow Editor Page ─────────────────────────────────────
 export default function Workflow() {
+  const { t } = useTranslation()
   // Read configured models from store — NO fallback to mock data
   const activeConfiguredModels = useOrchestratorStore(s => s.activeConfiguredModels)
   const addWorkflow = useOrchestratorStore(s => s.addWorkflow)
@@ -188,8 +191,8 @@ export default function Workflow() {
             <Repeat2 size={28} className="text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter">Workflow Editor</h1>
-            <p className="text-base text-ink-3 mt-1 font-semibold uppercase tracking-tight opacity-70">Bangun pipeline multi-agent step-by-step</p>
+            <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter">{t('workflow_editor_title')}</h1>
+            <p className="text-base text-ink-3 mt-1 font-semibold uppercase tracking-tight opacity-70">{t('workflow_editor_desc')}</p>
           </div>
         </div>
       </div>
@@ -199,16 +202,16 @@ export default function Workflow() {
         <div className="mb-8 bg-warn/10 border-2 border-warn/20 rounded-2xl p-6 flex items-start gap-5 shadow-inner">
           <AlertTriangle size={32} className="text-warn flex-shrink-0 mt-1" />
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-warn mb-1 uppercase tracking-tight">Belum Ada Model AI Terkonfigurasi</h3>
+            <h3 className="text-lg font-bold text-warn mb-1 uppercase tracking-tight">{t('no_active_models')}</h3>
             <p className="text-sm text-ink-3 mb-4 font-semibold opacity-80 leading-relaxed">
-              Anda harus menambahkan setidaknya satu model AI di halaman Integrasi sebelum bisa membuat workflow pipeline agar sistem dapat mengeksekusi instruksi.
+              {t('no_active_models_desc')}
             </p>
             <NavLink
               to="/integrations"
               className="inline-flex items-center gap-3 px-6 py-3 rounded-xl text-sm font-bold uppercase tracking-widest bg-accent text-white hover:bg-accent/80 transition-all shadow-lg active:scale-95"
             >
               <Plug size={16} />
-              Buka Integrasi Platform
+              {t('open_integrations')}
             </NavLink>
           </div>
         </div>
@@ -220,7 +223,7 @@ export default function Workflow() {
           {/* Workflow Name */}
           <div>
             <label htmlFor="workflow-name" className="text-xs font-bold text-ink-3 mb-2 block uppercase tracking-widest opacity-60">
-              Nama Workflow <span className="text-danger">*</span>
+              {t('workflow_name')} <span className="text-danger">*</span>
             </label>
             <input
               id="workflow-name"
@@ -235,7 +238,7 @@ export default function Workflow() {
           {/* Description / Trigger */}
           <div>
             <label htmlFor="workflow-description" className="text-xs font-bold text-ink-3 mb-2 block uppercase tracking-widest opacity-60">
-              Deskripsi / Trigger
+              {t('workflow_description')}
             </label>
             <textarea
               id="workflow-description"
@@ -253,11 +256,11 @@ export default function Workflow() {
       <div className="flex items-center gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
-          <h2 className="text-lg font-bold text-ink uppercase tracking-tight">Pipeline Steps</h2>
+          <h2 className="text-lg font-bold text-ink uppercase tracking-tight">{t('pipeline_steps')}</h2>
         </div>
         <div className="flex-1 h-[2px] bg-border" />
         <span className="text-[10px] text-ink-3 font-bold bg-bg-3 border-2 border-border rounded-full px-4 py-1.5 uppercase tracking-widest shadow-sm">
-          {steps.length} {steps.length === 1 ? 'langkah' : 'langkah'}
+          {steps.length} {t('step_label')}
         </span>
       </div>
 
@@ -292,7 +295,7 @@ export default function Workflow() {
           title={modelsEmpty ? 'Tambahkan model AI di Integrasi terlebih dahulu' : 'Tambah langkah baru'}
         >
           <Plus size={20} />
-          Tambah Langkah
+          {t('add_step_label')}
         </button>
 
         {/* Save workflow */}
@@ -307,7 +310,7 @@ export default function Workflow() {
           )}
         >
           <Save size={20} className={clsx(saving && 'animate-spin')} />
-          {saving ? 'Menyimpan...' : 'Simpan Workflow'}
+          {saving ? t('saving') : t('save_workflow')}
         </button>
       </div>
 
@@ -315,7 +318,7 @@ export default function Workflow() {
       <div className="mt-12 bg-bg-3 border-2 border-border rounded-2xl p-6 shadow-inner">
         <h3 className="text-sm font-bold text-ink mb-4 flex items-center gap-3 uppercase tracking-widest opacity-80">
           <Sparkles size={18} className="text-accent-2" />
-          Bagaimana Pipeline Bekerja?
+          {t('how_pipeline_works')}
         </h3>
         <ul className="text-sm text-ink-3 space-y-3 font-semibold leading-relaxed">
           <li className="flex items-start gap-3">

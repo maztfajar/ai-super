@@ -9,6 +9,7 @@ import {
   Clock, User, Terminal, ChevronDown, ChevronUp,
   FileKey, RotateCcw, Info, LogIn,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import clsx from 'clsx'
 
 // ── Primitive ─────────────────────────────────────────────────
@@ -113,6 +114,7 @@ function PasswordStrength({ password }) {
 
 // ── Main ──────────────────────────────────────────────────────
 export default function Security() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const isAdmin  = user?.is_admin
 
@@ -201,9 +203,9 @@ export default function Security() {
       {/* Header */}
       <div className="mb-2">
         <h1 className="text-3xl font-bold text-ink uppercase tracking-tighter flex items-center gap-3">
-          <Shield size={28} className="text-accent-2"/>Keamanan Akun
+          <Shield size={28} className="text-accent-2"/>{t('account_security')}
         </h1>
-        <p className="text-base text-ink-3 mt-1 font-semibold uppercase tracking-tight opacity-70">Kelola password, recovery, dan pantau aktivitas login</p>
+        <p className="text-base text-ink-3 mt-1 font-semibold uppercase tracking-tight opacity-70">{t('security_desc')}</p>
       </div>
 
       {/* ── Security Status ── */}
@@ -228,15 +230,15 @@ export default function Security() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
 
         {/* ── Ganti Password ── */}
-        <Card title="Ganti Password" icon={Key} iconColor="text-accent-2">
+        <Card title={t('change_password')} icon={Key} iconColor="text-accent-2">
           <div className="space-y-3">
             <div>
-              <Label>Password Saat Ini</Label>
-              <SecretInp value={curPass} onChange={setCurPass} placeholder="password lama..."/>
+              <Label>{t('current_password')}</Label>
+              <SecretInp value={curPass} onChange={setCurPass} placeholder={t('current_password') + '...'}/>
             </div>
             <div>
-              <Label>Password Baru</Label>
-              <SecretInp value={newPass} onChange={setNewPass} placeholder="password baru..."/>
+              <Label>{t('new_password')}</Label>
+              <SecretInp value={newPass} onChange={setNewPass} placeholder={t('new_password') + '...'}/>
               <PasswordStrength password={newPass}/>
             </div>
             {newPass && (
@@ -248,7 +250,7 @@ export default function Security() {
                 )}
               </div>
             )}
-            <Btn label="Ubah Password" onClick={handleChangePass}
+            <Btn label={t('change_password')} onClick={handleChangePass}
               loading={savingPw} icon={Key} full
               disabled={!curPass || !newPass || newPass !== confPass}/>
 
@@ -264,7 +266,7 @@ export default function Security() {
         </Card>
 
         {/* ── Ide Keamanan Mendatang ── */}
-        <Card title="Fitur Keamanan Mendatang" icon={Shield} iconColor="text-warn"
+        <Card title={t('upcoming_security')} icon={Shield} iconColor="text-warn"
           badge={<span className="text-[10px] bg-warn/15 text-warn px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-warn/30 shadow-sm">Roadmap</span>}>
           <div className="space-y-2.5">
             {[
@@ -332,7 +334,7 @@ export default function Security() {
 
       {/* ── Recovery Token (Admin) ── */}
       {isAdmin && (
-        <Card title="🔑 Generate Token Recovery" icon={FileKey} iconColor="text-warn"
+        <Card title={`🔑 ${t('generate_recovery_token')}`} icon={FileKey} iconColor="text-warn"
           badge={<span className="text-[10px] bg-warn/15 text-warn px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-warn/30 shadow-sm">Admin Only</span>}
           defaultOpen={false}>
           <div className="space-y-4">
@@ -404,7 +406,7 @@ export default function Security() {
 
       {/* ── Login Logs (Admin) ── */}
       {isAdmin && (
-        <Card title="Riwayat Login" icon={LogIn} iconColor="text-sky-400" defaultOpen={false}
+        <Card title={t('login_history')} icon={LogIn} iconColor="text-sky-400" defaultOpen={false}
           badge={
             <button onClick={loadLogs} disabled={loadLog}
               className="text-xs text-ink-3 hover:text-ink flex items-center gap-2 mr-3 font-bold uppercase tracking-widest transition-all p-2 rounded-lg hover:bg-bg-3">
@@ -450,7 +452,7 @@ export default function Security() {
       )}
 
       {/* ── Checklist Keamanan ── */}
-      <Card title="Checklist Keamanan" icon={Shield} iconColor="text-success" defaultOpen={false}>
+      <Card title={t('security_checklist')} icon={Shield} iconColor="text-success" defaultOpen={false}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
             { label: 'Ganti SECRET_KEY dari default',              key: 'secret_key',  critical: true },
