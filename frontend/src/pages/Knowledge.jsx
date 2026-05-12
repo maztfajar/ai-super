@@ -8,7 +8,6 @@ import clsx from 'clsx'
 
 const DOC_ICON = { pdf: '📕', docx: '📘', txt: '📄', csv: '📊', md: '📝', web: '🌐' }
 const STATUS_COLOR = { ready: 'text-success', indexing: 'text-warn', error: 'text-danger' }
-const STATUS_COLOR = { ready: 'text-success', indexing: 'text-warn', error: 'text-danger' }
 
 export default function Knowledge() {
   const { t } = useTranslation()
