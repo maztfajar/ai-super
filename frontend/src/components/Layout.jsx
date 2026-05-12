@@ -214,9 +214,7 @@ export default function Layout() {
                   value={selectedOrchestrator}
                   onChange={setSelectedOrchestrator}
                 />
-                <div className="w-px h-6 bg-border opacity-50" />
                 <ChannelSelector />
-                <div className="w-px h-6 bg-border opacity-50" />
                 <button onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
                   className="p-2 rounded-xl hover:bg-bg-4 text-ink-2 hover:text-ink transition-all shadow-sm">
                   {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}

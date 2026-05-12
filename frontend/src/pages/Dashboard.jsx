@@ -188,7 +188,6 @@ function GlassGauge({ metricKey, percent, subtext }) {
           background: 'rgba(255,255,255,0.06)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.10)',
           boxShadow: `0 4px 24px rgba(0,0,0,0.06)`,
         }}
         onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 8px 32px rgba(0,0,0,0.12), ${cfg.shadow}` }}
@@ -380,7 +379,6 @@ function SystemMonitor({ system }) {
         background: 'rgba(255,255,255,0.03)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
       }}
     >
@@ -634,7 +632,6 @@ export default function Dashboard() {
                         className="group flex items-center gap-4 rounded-2xl overflow-hidden transition-all hover:brightness-110 shadow-sm"
                         style={{
                           background: 'var(--bg-4)',
-                          border: '2px solid var(--border)',
                           padding: '12px 16px',
                           position: 'relative',
                         }}

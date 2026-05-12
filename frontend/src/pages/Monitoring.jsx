@@ -49,7 +49,6 @@ function GlassCard({ children, className, glow }) {
         background: 'rgba(255,255,255,0.04)',
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
-        border: '1px solid rgba(255,255,255,0.08)',
         boxShadow: glow
           ? `0 4px 40px ${glow}22`
           : '0 4px 24px rgba(0,0,0,0.06)',
@@ -131,7 +130,7 @@ function ActiveSessionCard({ session }) {
       </div>
 
       {/* Model detail section */}
-      <div className="mb-3 p-2.5 rounded-lg" style={{ background: `${c1}10`, border: `0.5px solid ${c1}20` }}>
+      <div className="mb-3 p-2.5 rounded-lg" style={{ background: `${c1}10` }}>
         {/* Model name */}
         <div className="flex items-center gap-2.5 mb-2.5">
           <Bot size={14} style={{ color: c1 }} />
@@ -200,7 +199,7 @@ function MetricCard({ label, value, subtext, icon: Icon, color }) {
     <GlassCard className="p-6 group hover:scale-[1.02] transition-transform duration-300 shadow-lg">
       <div className="flex items-center justify-between mb-4">
         <span className="text-xs text-ink-3 uppercase tracking-widest font-bold opacity-60">{label}</span>
-        <div className="p-2 rounded-xl" style={{ background: color + '18', border: `1px solid ${color}30` }}>
+        <div className="p-2 rounded-xl" style={{ background: color + '18' }}>
           <Icon size={18} style={{ color }} />
         </div>
       </div>

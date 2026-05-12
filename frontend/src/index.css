@@ -22,8 +22,8 @@
   --ink:      #d4d8f0;
   --ink-2:    #8b8fa8;
   --ink-3:    #565a70;
-  --border:   rgba(100,120,255,0.1);
-  --border-2: rgba(100,120,255,0.2);
+  --border:   transparent;
+  --border-2: rgba(255,255,255,0.06);
   --accent:   #4f6ef7;
   --accent-2: #7b93ff;
   --success:  #22c55e;
@@ -31,6 +31,13 @@
   --danger:   #ef4444;
   --code-bg:       var(--bg-3);
   --code-ink:      #c3e88d;
+}
+
+/* Force border-border to be transparent to fix Tailwind opacity fallbacks */
+[data-theme="dark"] .border-border,
+[data-theme="dark"] .border-border-2,
+[data-theme="dark"] [class*="border-border/"] {
+  border-color: transparent !important;
 }
 
 [data-theme="light"] {
@@ -52,6 +59,20 @@
   --danger:   #dc2626;
   --code-bg:       var(--bg-3);
   --code-ink:      #24292e;
+}
+
+/* ── Premium Card Hover Glow (Dark Mode) ──────────────── */
+[data-theme="dark"] div.rounded-2xl.bg-bg-3,
+[data-theme="dark"] div.rounded-2xl.bg-bg-2,
+[data-theme="dark"] .GlassCard {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-theme="dark"] div.rounded-2xl.bg-bg-3:hover,
+[data-theme="dark"] div.rounded-2xl.bg-bg-2:hover,
+[data-theme="dark"] .GlassCard:hover {
+  box-shadow: 0 12px 40px rgba(79, 110, 247, 0.15), inset 0 0 0 1px rgba(79, 110, 247, 0.2);
+  transform: translateY(-2px);
+  z-index: 10;
 }
 
 [data-theme="light"] body {
