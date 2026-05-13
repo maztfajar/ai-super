@@ -1009,9 +1009,15 @@ function parseArtifacts(content) {
     markerIndex++
   }
 
-  // Remove markers from display
-  cleanContent = cleanContent.replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '')
-                             .replace(/%%APP_PREVIEW%%[\s\S]*?%%END_PREVIEW%%/g, '').trim()
+  // Remove ALL template markers from display — strip regardless of whether artifacts were found
+  cleanContent = cleanContent
+    .replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '')
+    .replace(/%%APP_PREVIEW%%[\s\S]*?%%END_PREVIEW%%/g, '')
+    .replace(/%%SUCCESS_CARD%%[\s\S]*?%%END_SUCCESS_CARD%%/g, '')
+    .replace(/%%SAVE_FILE%%[\s\S]*?%%END_SAVE%%/g, '')
+    .replace(/%%[A-Z_]+%%[\s\S]*?%%END_[A-Z_]+%%/g, '')  // catch-all for any unknown markers
+    .replace(/%%[A-Z_]+%%/g, '')                           // strip lone markers
+    .trim()
 
   // 2. Auto-detect large fenced code blocks (```lang\n...```) with >15 lines
   if (artifacts.length === 0) {
@@ -1043,11 +1049,158 @@ function parseArtifacts(content) {
   return { artifacts, cleanContent }
 }
 
+// ── Parse %%SUCCESS_CARD%% marker ──────────────────────────────────────
+function parseSuccessCards(content) {
+  if (!content) return { cards: [], cleanContent: content }
+  const cards = []
+  let cleanContent = content
+  const regex = /%%SUCCESS_CARD%%([\s\S]*?)%%END_SUCCESS_CARD%%/g
+  let match
+  while ((match = regex.exec(content)) !== null) {
+    const block = match[1].trim()
+    const card = { title: '', url: '', details: [], note: '' }
+    for (const line of block.split('\n')) {
+      const l = line.trim()
+      if (l.toLowerCase().startsWith('title:'))  card.title  = l.substring(6).trim()
+      else if (l.toLowerCase().startsWith('url:')) card.url   = l.substring(4).trim()
+      else if (l.toLowerCase().startsWith('note:')) card.note = l.substring(5).trim()
+      else if (l.toLowerCase().startsWith('detail:')) card.details.push(l.substring(7).trim())
+    }
+    cards.push(card)
+    cleanContent = cleanContent.replace(match[0], '')
+  }
+  return { cards, cleanContent: cleanContent.trim() }
+}
+
+
 // ── Strip artifact markers from display content ───────────────
 function stripArtifactMarkers(content) {
   if (!content) return content
-  return content.replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '').trim()
+  return content
+    .replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '')
+    .replace(/%%APP_PREVIEW%%[\s\S]*?%%END_PREVIEW%%/g, '')
+    .replace(/%%SUCCESS_CARD%%[\s\S]*?%%END_SUCCESS_CARD%%/g, '')
+    .replace(/%%[A-Z_]+%%[\s\S]*?%%END_[A-Z_]+%%/g, '')
+    .replace(/%%[A-Z_]+%%/g, '')
+    .trim()
 }
+
+// ── SuccessCard: card cantik untuk status sukses ────────────────
+function SuccessCard({ card }) {
+  const [copied, setCopied] = useState(false)
+  const handleCopyUrl = () => {
+    if (!card.url) return
+    copyToClipboard(card.url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  // Detect detail type for icon
+  const getDetailMeta = (detail) => {
+    const d = detail.toLowerCase()
+    if (d.includes('http') || d.includes('url') || d.includes('localhost') || d.includes('port'))
+      return { icon: '🌐', label: 'URL APLIKASI' }
+    if (d.includes('server') || d.includes('script') || d.includes('.py') || d.includes('.js'))
+      return { icon: '🖥️', label: 'SERVER' }
+    if (d.includes('log') || d.includes('.log') || d.includes('file'))
+      return { icon: '📄', label: 'LOG FILE' }
+    if (d.includes('port') || d.includes(':'+'/'))
+      return { icon: '🔌', label: 'PORT' }
+    return { icon: '⚙️', label: 'DETAIL' }
+  }
+
+  return (
+    <div style={{
+      margin: '12px 0', borderRadius: 16,
+      background: 'linear-gradient(135deg, rgba(74,222,128,0.06) 0%, rgba(34,197,94,0.03) 100%)',
+      border: '1.5px solid rgba(74,222,128,0.25)',
+      overflow: 'hidden', boxShadow: '0 4px 20px rgba(74,222,128,0.08)',
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        borderBottom: '1px solid rgba(74,222,128,0.15)',
+        background: 'rgba(74,222,128,0.08)',
+      }}>
+        <span style={{ fontSize: 16 }}>✅</span>
+        <span style={{ fontWeight: 800, fontSize: 15, color: '#4ade80' }}>
+          {card.title || 'Berhasil!'}
+        </span>
+      </div>
+
+      {/* URL row */}
+      {card.url && (
+        <div style={{
+          margin: '10px 12px 4px', borderRadius: 10,
+          background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)',
+          padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{
+            width: 32, height: 32, borderRadius: 8, background: 'rgba(56,189,248,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0,
+          }}>🌐</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(56,189,248,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>URL APLIKASI</div>
+            <a
+              href={card.url} target="_blank" rel="noopener noreferrer"
+              style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', wordBreak: 'break-all', textDecoration: 'none' }}
+            >{card.url}</a>
+          </div>
+          <button
+            onClick={handleCopyUrl}
+            style={{
+              padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(56,189,248,0.3)',
+              background: 'rgba(56,189,248,0.1)', cursor: 'pointer', fontSize: 11, fontWeight: 700,
+              color: copied ? '#4ade80' : '#38bdf8', transition: 'all 0.2s', flexShrink: 0,
+            }}
+          >{copied ? '✓ Copied' : 'Copy'}</button>
+        </div>
+      )}
+
+      {/* Detail rows */}
+      {card.details.length > 0 && (
+        <div style={{ padding: '4px 12px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {card.details.map((detail, i) => {
+            const meta = getDetailMeta(detail)
+            // Split key: value if format is "Key: value"
+            const colonIdx = detail.indexOf(':')
+            const label = colonIdx > 0 ? detail.substring(0, colonIdx).trim() : meta.label
+            const value = colonIdx > 0 ? detail.substring(colonIdx + 1).trim() : detail
+            return (
+              <div key={i} style={{
+                borderRadius: 10, background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.07)',
+                padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{
+                  width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.05)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0,
+                }}>{meta.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{label.toUpperCase()}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{value}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Note */}
+      {card.note && (
+        <div style={{
+          margin: '0 12px 12px', borderRadius: 10,
+          background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)',
+          padding: '8px 12px', display: 'flex', alignItems: 'flex-start', gap: 8,
+        }}>
+          <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>ℹ️</span>
+          <span style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{card.note}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 
 // ── ARTIFACT TYPES — icons & color mapping ────────────────────
 const ARTIFACT_TYPE_META = {
@@ -1279,9 +1432,14 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
   const { artifacts: parsedArtifacts, cleanContent: artifactCleanContent } = !isUser
     ? parseArtifacts(mainContent)
     : { artifacts: [], cleanContent: mainContent }
-  // Use cleanContent for markdown render when explicit %%ARTIFACT%% markers were found
-  const hasExplicitArtifacts = parsedArtifacts.length > 0 && (mainContent || '').includes('%%ARTIFACT%%')
-  const displayContent = hasExplicitArtifacts ? artifactCleanContent : mainContent
+
+  // Parse SUCCESS_CARD markers from cleaned content
+  const { cards: successCards, cleanContent: finalContent } = !isUser
+    ? parseSuccessCards(artifactCleanContent)
+    : { cards: [], cleanContent: artifactCleanContent }
+
+  // ALWAYS use cleaned content — strips ALL template markers regardless of what type they are
+  const displayContent = finalContent
 
   const copy = () => {
     copyToClipboard(msg.content)
@@ -1443,6 +1601,11 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
                     }
                   }}
                 />
+              ))}
+
+              {/* ── Success Cards \u2014 rendered from %%SUCCESS_CARD%% markers ── */}
+              {successCards && successCards.length > 0 && successCards.map((card, i) => (
+                <SuccessCard key={i} card={card} />
               ))}
             </div>
           )}
