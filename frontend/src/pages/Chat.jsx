@@ -40,7 +40,7 @@ const LANG_COLORS = {
 // ── CodeBlock: replaces default ReactMarkdown pre/code renders ─
 function CodeBlock({ language, code, onOpenArtifact }) {
   const [copied, setCopied] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false) // Custom state to hide/show code
+  const [isExpanded, setIsExpanded] = useState(false) // Collapsed by default — less clutter
   const lines = code.split('\n').length
   const isLong = lines > 25
   const langColor = LANG_COLORS[language?.toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
@@ -52,47 +52,47 @@ function CodeBlock({ language, code, onOpenArtifact }) {
   }
 
   return (
-    <div className="code-block-wrapper relative my-4 rounded-2xl overflow-hidden border-2 border-border-2 bg-bg-3 shadow-lg">
+    <div className="code-block-wrapper relative my-3 rounded-xl overflow-hidden border border-border bg-bg-3 shadow-sm">
       {/* Header bar */}
       <div 
-        className="flex items-center justify-between px-4 py-2 border-b-2 border-border-2 bg-bg-4 cursor-pointer hover:bg-bg-5 transition-all"
+        className="flex items-center justify-between px-3 py-1.5 bg-bg-4 cursor-pointer hover:bg-bg-5 transition-all"
         onClick={() => setIsExpanded(!isExpanded)}
       >
-        <div className="flex items-center gap-3">
-          {isExpanded ? <ChevronDown size={18} className="text-ink-3" /> : <ChevronRight size={18} className="text-ink-3" />}
-          <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-2 py-0.5 rounded border-2 shadow-sm', langColor)}>
+        <div className="flex items-center gap-2">
+          {isExpanded ? <ChevronDown size={14} className="text-ink-3" /> : <ChevronRight size={14} className="text-ink-3" />}
+          <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', langColor)}>
             {language || 'code'}
           </span>
           {!isExpanded && (
-            <span className="text-[10px] text-ink-3 font-bold uppercase tracking-widest opacity-60">({lines} baris)</span>
+            <span className="text-[10px] text-ink-3 opacity-60">{lines} baris — klik untuk lihat</span>
           )}
         </div>
-        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
           {isLong && onOpenArtifact && (
             <button
               onClick={() => onOpenArtifact(code, language || 'txt')}
-              className="flex items-center gap-2 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border-2 border-transparent hover:border-accent/20 bg-bg-3 shadow-sm"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-transparent hover:border-accent/20 bg-bg-3 shadow-sm"
               style={{ color: 'var(--accent-2)' }}
               title="Buka di Artifacts Panel"
             >
-              <ExternalLink size={12} />
+              <ExternalLink size={11} />
               <span>Artifacts</span>
             </button>
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-2 px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border-2 border-transparent hover:border-border-2 bg-bg-3 shadow-sm"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-transparent hover:border-border-2 bg-bg-3 shadow-sm"
             style={{ color: copied ? 'var(--success)' : 'var(--ink-3)' }}
             title="Copy kode"
           >
-            {copied ? <Check size={12} /> : <Copy size={12} />}
+            {copied ? <Check size={11} /> : <Copy size={11} />}
             <span>{copied ? 'Copied!' : 'Copy'}</span>
           </button>
         </div>
       </div>
-      {/* Code content — automatically adapts to light/dark themes via CSS vars */}
+      {/* Code content */}
       {isExpanded && (
-        <pre className="p-5 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none shadow-inner">
+        <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none">
           <code className="text-inherit bg-transparent p-0 font-semibold">{code}</code>
         </pre>
       )}
@@ -1296,11 +1296,22 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
       const language = match ? match[1] : ''
       const codeText = String(children).replace(/\n$/, '')
       if (inline) {
+        // URL, path, atau kode pendek — tampil sebagai inline styled text, bukan block
         return (
           <code
-            className="px-1 py-0.5 bg-accent/10 rounded text-accent-2 text-[11px] font-mono border border-accent/20"
+            className="px-1.5 py-0.5 bg-accent/10 rounded text-accent-2 text-[12px] font-mono border border-accent/20 break-words"
             {...props}
           >{children}</code>
+        )
+      }
+      // Block code: hanya render sebagai CodeBlock jika ada bahasa atau multi-baris
+      if (!language && codeText.split('\n').length === 1 && codeText.length < 120) {
+        // Single-line tanpa bahasa → tampil sebagai inline text yang diperbesar sedikit
+        return (
+          <code
+            className="block px-3 py-1.5 my-1.5 bg-bg-4 rounded-lg text-ink-2 text-[13px] font-mono border border-border break-all"
+            {...props}
+          >{codeText}</code>
         )
       }
       return <CodeBlock language={language} code={codeText} onOpenArtifact={onOpenArtifact} />
@@ -1887,12 +1898,14 @@ export default function Chat() {
       }
       return
     }
-    // Jika URL berubah dan tidak sama dengan session yang sedang aktif
+    // Jika URL berubah dan tidak sama dengan session yang sedang aktif — SELALU load ulang
     if (currentSession?.id !== urlSessionId) {
-      const found = sessions.find(s => s.id === urlSessionId) || { id: urlSessionId }
-      loadSession(found)
+      // Cari di sessions, tapi tetap load meski tidak ketemu (sessions mungkin belum refresh)
+      const found = sessions.find(s => s.id === urlSessionId)
+      loadSession(found || { id: urlSessionId })
     }
-  }, [urlSessionId, sessionsLoaded, currentSession?.id, sessions])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlSessionId, sessionsLoaded])
 
   async function loadSession(session) {
     // Guard: jangan ganggu saat streaming aktif
