@@ -66,6 +66,7 @@ IMPORTANT:
 - Tasks with same priority and no mutual dependencies can run in PARALLEL
 - For simple requests, create just 1 subtask
 - Maximum 6 subtasks per request (to avoid over-decomposition)
+- DILARANG membuat subtask yang menyuruh pengguna melakukan sesuatu. Semua langkah harus bisa dijalankan oleh AI sendiri menggunakan tools. Jika butuh info tambahan (seperti path), tambahkan subtask untuk 'menemukan/mencari' (research/file_operation), bukan bertanya.
 """
 
 

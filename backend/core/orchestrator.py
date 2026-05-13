@@ -381,7 +381,12 @@ class Orchestrator:
             for st in assigned_subtasks
         ])
 
-        if not auto_execute and len(assigned_subtasks) > 1:
+        # Skip confirmation if:
+        # 1. auto_execute is True (Telegram/API)
+        # 2. It's a technical execution task (coding, system, file_operation)
+        is_technical_exec = spec.primary_intent in ("coding", "system", "file_operation", "web_development") and spec.action_type == "execute"
+        
+        if not auto_execute and len(assigned_subtasks) > 1 and not is_technical_exec:
             # Build plan detail for user review
             plan_detail = "📋 **Rencana Eksekusi:**\n\n"
             for i, st in enumerate(assigned_subtasks):
@@ -654,7 +659,7 @@ class Orchestrator:
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """Handle simple messages without full orchestration overhead."""
 
-        # Determine model
+                # Determine model
         if user_model_choice and user_model_choice in model_manager.available_models:
             model = user_model_choice
         elif force_agent:
@@ -663,41 +668,34 @@ class Orchestrator:
             yield OrchestratorEvent("status",
                 f"🤖 Capability routing: {force_agent} → {model}")
         else:
-            # Use agent registry for model selection
+            # Use agent registry for model selection based on primary intent
             model = agent_registry.resolve_model_for_agent(
                 spec.primary_intent, user_model_choice
             )
 
-        # Naikkan token limit untuk task yang butuh output panjang
-        if spec.primary_intent in ("coding", "web_development", "system"):
+        # Increase token limit for tasks that may need longer output
+        if spec.primary_intent in ("coding", "web_development", "system", "file_operation"):
             max_tokens = max(max_tokens, 8192)
 
-        # For simple messages (like "hai", greetings), use direct model call for speed
-        # For complex tasks or when auto_execute is needed, use agent executor
+        # Determine if the intent is complex (requires orchestrator)
         is_complex_intent = (
             spec.primary_intent in ("system", "file_operation", "coding", "web_development", "research")
             or not spec.is_simple
         )
 
-        # ── ACTION TYPE OVERRIDE ─────────────────────────────────────
-        # Jika preprocessor menentukan action_type == "explain", paksa direct chat
-        # meskipun intent-nya terlihat kompleks (misal: "jelaskan cara buat website")
-        if spec.action_type == "explain":
-            is_complex_intent = False
-            log.info("Forced simple/direct-chat due to action_type=explain",
-                     primary_intent=spec.primary_intent)
-
-        # Paksa kompleks jika ada command-like keyword di pesan user
-        # (hanya jika action_type bukan explain)
+                # Paksa kompleks jika ada command-like keyword di pesan user
         msg_lower = spec.original_message.lower()
-        if spec.action_type != "explain":
-            has_command_keyword = any(w in msg_lower.split() for w in [
-                "curl", "ping", "ls", "df", "free", "systemctl", "ps", "cat", "grep", 
-                "npm", "node", "python", "pip", "install", "run", "start", "cek", "status", "periksa"
-            ])
-            if has_command_keyword:
-                is_complex_intent = True
-                log.info("Forced complex intent due to command keyword in message")
+        # Perluasan keyword untuk mencakup perintah eksekusi langsung
+        TECH_COMMANDS = [
+            "curl", "ping", "ls", "df", "free", "systemctl", "ps", "cat", "grep", 
+            "npm", "node", "python", "pip", "install", "run", "start", "cek", 
+            "status", "periksa", "jalankan", "execute", "buka", "open", "buat", "create"
+        ]
+        
+        has_command_keyword = any(w in msg_lower.split() for w in TECH_COMMANDS)
+        if has_command_keyword:
+            is_complex_intent = True
+            log.info("Forced complex intent due to command keyword in message", keywords=has_command_keyword)
 
         # Paksa kompleks jika history panjang (ada task yang sedang berlangsung)
         if spec.action_type != "explain" and len(history) >= 4 and not is_complex_intent:
@@ -1190,7 +1188,8 @@ class Orchestrator:
             f"You are working on a specific sub-task as part of a larger request.\n\n"
             f"Original Request: {spec.original_message}\n\n"
             f"Your Sub-task: {subtask.description}\n\n"
-            f"Focus ONLY on this sub-task. Provide a clear, complete answer."
+            f"Focus ONLY on this sub-task. Provide a clear, complete answer.\n"
+            f"MANDATE: DO NOT give instructions for the user to follow. EXECUTE the sub-task directly using your tools."
         )})
 
         # ── QMD: distill subtask messages ─────────────────────────

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { api } from '../hooks/useApi'
@@ -1661,6 +1662,7 @@ function SessionItem({ session, active, onClick, onDelete }) {
 
 // ── Main Chat Page ────────────────────────────────────────────
 export default function Chat() {
+  const { t } = useTranslation()
   const { id: urlSessionId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuthStore()

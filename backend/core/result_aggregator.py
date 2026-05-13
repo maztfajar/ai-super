@@ -42,6 +42,8 @@ class AggregatedResult:
     synthesis_method: str = "direct"       # direct | merge | synthesize | voting
     had_failures: bool = False
     failure_count: int = 0
+    file_changes: List[Dict[str, Any]] = field(default_factory=list)
+    app_urls: List[str] = field(default_factory=list)
 
 
 SYNTHESIS_PROMPT = """You are the AI Orchestrator Result Synthesizer.
@@ -127,6 +129,26 @@ class ResultAggregator:
             for f in failed:
                 failure_note += f"- {f.description}: {f.error}\n"
             agg.final_response += failure_note
+
+        # Extract app previews
+        agg.app_urls = self._extract_app_urls(results)
+        
+        if agg.file_changes or agg.app_urls:
+            change_summary = self._format_file_changes(agg.file_changes)
+            app_summary = self._format_app_urls(agg.app_urls)
+            
+            summary = ""
+            if app_summary:
+                summary += app_summary + "\n"
+            if change_summary:
+                summary += change_summary
+                
+            if summary:
+                # Append to the final response if not already present
+                if "📂" not in agg.final_response and "🚀" not in agg.final_response:
+                    agg.final_response += "\n\n" + summary
+                else:
+                    log.debug("Summary already present in response")
 
         log.info("Results aggregated",
                  method=agg.synthesis_method,
@@ -220,6 +242,109 @@ class ResultAggregator:
                 if p in k:
                     return k
         return model_manager.get_default_model()
+
+    def _extract_file_changes(self, results: List[SubTaskResult]) -> List[Dict[str, Any]]:
+        """Extract file system operations from agent responses."""
+        changes = []
+        import re
+        
+        # Patterns for different file operations
+        patterns = [
+            (r"✅ (?:File|Direktori) dibuat: (.*)", "create"),
+            (r"✅ (?:File|Direktori) diperbarui: (.*)", "update"),
+            (r"✅ (?:File|Direktori) ditulis: (.*)", "write"),
+            (r"✅ (?:File|Direktori) dihapus: (.*)", "delete"),
+            (r"✅ (?:File|Direktori) dipindahkan: (.*)\n\s*→ (.*)", "move"),
+            (r"✅ (?:File|Direktori) disalin: (.*)\n\s*→ (.*)", "copy"),
+            (r"✅ (?:Folder|Direktori) dibuat: (.*)", "mkdir"),
+        ]
+        
+        for r in results:
+            if not r.success or not r.response:
+                continue
+                
+            for pattern, op_type in patterns:
+                matches = re.finditer(pattern, r.response)
+                for match in matches:
+                    if op_type in ("move", "copy"):
+                        changes.append({
+                            "type": op_type,
+                            "source": match.group(1).strip(),
+                            "destination": match.group(2).strip(),
+                            "agent": r.agent_type,
+                            "timestamp": time.time()
+                        })
+                    else:
+                        changes.append({
+                            "type": op_type,
+                            "path": match.group(1).strip(),
+                            "agent": r.agent_type,
+                            "timestamp": time.time()
+                        })
+        return changes
+
+    def _format_file_changes(self, changes: List[Dict[str, Any]]) -> str:
+        """Format extracted file changes into a clean markdown summary."""
+        if not changes:
+            return ""
+            
+        summary = "### 📂 Perubahan Filesystem\n"
+        icons = {
+            "create": "🆕",
+            "update": "📝",
+            "write": "💾",
+            "delete": "🗑️",
+            "move": "📦",
+            "copy": "📋",
+            "mkdir": "📁"
+        }
+        
+        for c in changes:
+            icon = icons.get(c['type'], "⚙️")
+            if c['type'] in ("move", "copy"):
+                summary += f"- {icon} **{c['type'].capitalize()}**: `{c['source']}` → `{c['destination']}`\n"
+            else:
+                summary += f"- {icon} **{c['type'].capitalize()}**: `{c['path']}`\n"
+        
+        return summary
+
+    def _extract_app_urls(self, results: List[SubTaskResult]) -> List[str]:
+        """Extract application URLs (%%APP_PREVIEW%%) from agent responses."""
+        urls = []
+        import re
+        pattern = r"%%APP_PREVIEW%%\n(http://localhost:\d+)\n%%END_PREVIEW%%"
+        
+        for r in results:
+            if not r.response:
+                continue
+            matches = re.finditer(pattern, r.response)
+            for match in matches:
+                url = match.group(1).strip()
+                if url not in urls:
+                    urls.append(url)
+                    
+        # Fallback: check for standard http://localhost:PORT strings
+        if not urls:
+            pattern_fallback = r"http://localhost:(\d+)"
+            for r in results:
+                if not r.response:
+                    continue
+                matches = re.finditer(pattern_fallback, r.response)
+                for match in matches:
+                    url = f"http://localhost:{match.group(1)}"
+                    if url not in urls:
+                        urls.append(url)
+        return urls
+
+    def _format_app_urls(self, urls: List[str]) -> str:
+        """Format app URLs into a clean markdown summary."""
+        if not urls:
+            return ""
+            
+        summary = "### 🚀 Aplikasi Sedang Berjalan\n"
+        for url in urls:
+            summary += f"- ✨ **Aplikasi aktif**: [{url}]({url})\n"
+        return summary
 
 
 result_aggregator = ResultAggregator()

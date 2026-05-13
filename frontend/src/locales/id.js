@@ -458,4 +458,10 @@ export default {
   channel_session: "Channel / Session",
   no_channels_connected: "Belum ada channel terhubung",
   main: "Utama",
+  filesystem_changes: "Perubahan Filesystem",
+  apps_running: "Aplikasi Sedang Berjalan",
+  active_app: "Aplikasi aktif",
+  autonomous_executor: "Eksekutor Otonom",
+  executor_mode: "Mode Eksekutor",
+  direct_execution: "Eksekusi Langsung",
 }

@@ -458,4 +458,10 @@ export default {
   channel_session: "Channel / Session",
   no_channels_connected: "No channels connected",
   main: "Main",
+  filesystem_changes: "Filesystem Changes",
+  apps_running: "Apps Currently Running",
+  active_app: "Active app",
+  autonomous_executor: "Autonomous Executor",
+  executor_mode: "Executor Mode",
+  direct_execution: "Direct Execution",
 }
