@@ -2003,22 +2003,20 @@ export default function Chat() {
       const currentUrlId = window.location.pathname.split('/chat/')[1]?.split('/')[0]
 
       if (currentUrlId) {
-        // LANGKAH 3a: Ada session ID di URL — cek apakah valid di server
-        const found = safe.find(x => x.id === currentUrlId)
-        if (found) {
-          // Sesi valid → load pesan
-          useChatStore.getState().setCurrentSession(found)
-          try {
-            const msgs = await api.getMessages(currentUrlId)
-            useChatStore.getState().setMessages(msgs || [])
-          } catch {
-            useChatStore.getState().setCurrentSession(null)
-            useChatStore.getState().clearMessages()
-            navigate('/chat', { replace: true })
+        // LANGKAH 3a: Ada session ID di URL — coba load pesan langsung
+        // Gunakan session dari `safe` jika ada, jika tidak buat objek referensi (karena listSessions bisa di-limit 50)
+        const found = safe.find(x => x.id === currentUrlId) || { id: currentUrlId }
+        
+        useChatStore.getState().setCurrentSession(found)
+        try {
+          const msgs = await api.getMessages(currentUrlId)
+          // Jika pesan berhasil dimuat, berarti sesi valid, update title jika belum ada
+          if (!found.title && msgs.length > 0) {
+             found.title = msgs[0].content.substring(0, 50)
           }
-        } else {
-          // Sesi TIDAK ada di server → bersihkan & redirect
-          console.info('[Chat] Session ID di URL tidak ada di server. Redirect ke /chat.')
+          useChatStore.getState().setMessages(msgs || [])
+        } catch {
+          console.info('[Chat] Session ID di URL tidak ada atau tidak dapat diakses. Redirect ke /chat.')
           useChatStore.getState().setCurrentSession(null)
           useChatStore.getState().clearMessages()
           navigate('/chat', { replace: true })

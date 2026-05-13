@@ -167,6 +167,7 @@ function Card({ icon, title, subtitle, configured, children }) {
 // ── MaskedField — tampil masked + tombol Ganti ────────────────
 function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave, saving, isSecret = true }) {
   const [editing, setEditing] = useState(false)
+  const { t } = useTranslation()
 
   if (masked && !editing) {
     return (
@@ -205,6 +206,7 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
 
 // ── Telegram Card ─────────────────────────────────────────────
 function TelegramCard({ status, onSave, saving, onTest, testing }) {
+  const { t } = useTranslation()
   const [token, setToken]             = useState('')
   const [webhook, setWebhook]         = useState('')
   const [showTokenForm, setShowTF]    = useState(false)
