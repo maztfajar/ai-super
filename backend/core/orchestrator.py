@@ -689,10 +689,13 @@ class Orchestrator:
         TECH_COMMANDS = [
             "curl", "ping", "ls", "df", "free", "systemctl", "ps", "cat", "grep", 
             "npm", "node", "python", "pip", "install", "run", "start", "cek", 
-            "status", "periksa", "jalankan", "execute", "buka", "open", "buat", "create"
+            "status", "periksa", "jalankan", "execute", "buka", "open", "buat", 
+            "create", "perbaiki", "fix", "hapus", "delete", "remove", "tambah", 
+            "add", "ubah", "ganti", "edit", "modify", "update", "setup", 
+            "konfigurasi", "configure", "simpan", "save"
         ]
         
-        has_command_keyword = any(w in msg_lower.split() for w in TECH_COMMANDS)
+        has_command_keyword = any(w in msg_lower for w in TECH_COMMANDS)
         if has_command_keyword:
             is_complex_intent = True
             log.info("Forced complex intent due to command keyword in message", keywords=has_command_keyword)

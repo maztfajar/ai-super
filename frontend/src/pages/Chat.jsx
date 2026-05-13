@@ -1428,15 +1428,15 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
     } catch(e) {}
   }
 
-  // ── Parse artifacts from mainContent (explicit markers + auto-detect large code blocks)
-  const { artifacts: parsedArtifacts, cleanContent: artifactCleanContent } = !isUser
-    ? parseArtifacts(mainContent)
-    : { artifacts: [], cleanContent: mainContent }
+  // 1. Extract Success Cards first (before any aggressive stripping)
+  const { cards: successCards, cleanContent: contentWithoutCards } = !isUser
+    ? parseSuccessCards(mainContent)
+    : { cards: [], cleanContent: mainContent }
 
-  // Parse SUCCESS_CARD markers from cleaned content
-  const { cards: successCards, cleanContent: finalContent } = !isUser
-    ? parseSuccessCards(artifactCleanContent)
-    : { cards: [], cleanContent: artifactCleanContent }
+  // 2. Parse artifacts from the remaining content
+  const { artifacts: parsedArtifacts, cleanContent: finalContent } = !isUser
+    ? parseArtifacts(contentWithoutCards)
+    : { artifacts: [], cleanContent: contentWithoutCards }
 
   // ALWAYS use cleaned content — strips ALL template markers regardless of what type they are
   const displayContent = finalContent
