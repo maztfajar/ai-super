@@ -18,6 +18,76 @@
 
 ---
 
+## 🏗️ System Architecture
+
+AI ORCHESTRATOR menggunakan arsitektur multi-agent berbasis Directed Acyclic Graph (DAG) untuk mengeksekusi tugas secara paralel dan aman.
+
+```mermaid
+graph TD
+    %% User Input
+    User((User)) -->|Input Request| RP[Request Preprocessor]
+
+    %% Preprocessing & Memory
+    sublayer_mem[Memory & Context Layer]
+    RP --> PM[(Procedural Memory)]
+    RP --> QMD[QMD / Token Killer]
+    PM -.->|Inject Context| RP
+
+    %% Orchestration Pipeline
+    RP -->|Intent & Complexity| TD[Task Decomposer]
+    TD -->|Sub-Tasks| DAG[DAG Builder]
+    DAG -->|Execution Plan| AS[Agent Scorer & Registry]
+
+    %% Execution Layer
+    AS -->|Assigned Agents| CC{Command Center}
+    
+    subgraph Execution Layer [True Parallel Execution]
+        CC -->|Task 1| A1[Agent: Coding]
+        CC -->|Task 2| A2[Agent: System]
+        CC -->|Task N| AN[Agent: Research]
+    end
+
+    %% Tools & Resilience
+    A1 <--> Tools[(Tools: bash, fs, web)]
+    A2 <--> Tools
+    AN <--> Tools
+    
+    Tools <--> ER[Error Recovery Engine]
+    ER -.->|Circuit Breaker / DLQ| Tools
+
+    %% Verification & Synthesis
+    A1 --> QE[Quality Engine]
+    A2 --> QE
+    AN --> QE
+    
+    QE -->|Verify & Refine| RA[Result Aggregator]
+    RA -->|Humanizer| Final[Final Response]
+    Final --> User
+
+    %% Styles
+    classDef core fill:#2c3e50,stroke:#34495e,stroke-width:2px,color:#fff
+    classDef agent fill:#2980b9,stroke:#3498db,stroke-width:2px,color:#fff
+    classDef tool fill:#27ae60,stroke:#2ecc71,stroke-width:2px,color:#fff
+    classDef recovery fill:#c0392b,stroke:#e74c3c,stroke-width:2px,color:#fff
+    
+    class RP,TD,DAG,AS,CC,RA,QE core
+    class A1,A2,AN agent
+    class Tools,PM,QMD tool
+    class ER recovery
+```
+
+### ⚙️ Alur Kerja Inti (Core Pipeline)
+1. **Request Preprocessor:** Menganalisa input pengguna, mengklasifikasikan *intent* (niat), mengukur skor kompleksitas, dan menarik konteks dari *Procedural Memory*.
+2. **Task Decomposer:** Memecah tugas kompleks menjadi beberapa sub-tugas yang lebih kecil dan terukur.
+3. **DAG Builder:** Menyusun sub-tugas ke dalam *Directed Acyclic Graph* (DAG) untuk menentukan urutan eksekusi berdasarkan dependensi.
+4. **Agent Scorer:** Memilih agen (misal: Coding, System, Research) dan model AI terbaik untuk setiap sub-tugas secara dinamis berdasarkan kapabilitas dan histori performa.
+5. **Command Center:** Menjalankan sub-tugas secara sekuensial atau paralel (simultan) tergantung pada DAG, dikawal oleh *Watchdog Timer* dan *Checkpointing*.
+6. **Error Recovery & Tools:** Agen mengeksekusi *tool* (bash, file system, dll). Jika gagal, *Error Recovery Engine* menangani *retry*, *fallback*, atau memindahkan tugas ke *Dead Letter Queue* (DLQ).
+7. **Quality Engine:** Memvalidasi output dari setiap agen. Jika kualitas di bawah standar, agen diminta untuk memperbaiki (*refine*).
+8. **Result Aggregator:** Menggabungkan semua hasil sub-tugas menjadi satu respons final yang rapi dan dipoles oleh *Humanizer*.
+
+---
+
 ## 🆕 What's New in v4.1 — Hardened Resilience & Execution Continuity
 
 ### 1. 🛡️ Resilience Layer (Anti-Crash & Circuit Breakers)
