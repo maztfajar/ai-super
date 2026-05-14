@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 from typing import Optional
 from pathlib import Path
 import os
@@ -221,6 +222,19 @@ class Settings(BaseSettings):
                 setattr(self, field, getattr(new_settings, field))
             except Exception:
                 pass
+
+    @model_validator(mode="after")
+    def _force_image_version(self):
+        """
+        PAKSA APP_VERSION dibaca dari /app/VERSION yang di-bake ke Docker image.
+        Ini memastikan Watchtower pull image baru = versi langsung update,
+        meskipun host VPS me-mount .env lama yang mengandung versi lama.
+        """
+        v = _read_image_version()
+        if v and v != "1.0.0":
+            # Bypass pydantic field assignment protection
+            object.__setattr__(self, "APP_VERSION", v)
+        return self
 
 
 settings = Settings()
