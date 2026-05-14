@@ -450,6 +450,16 @@ async def chat_send(
                         thinking_steps.append(event.content)
                         yield event.to_sse()
 
+                    elif event.type == "impl_plan":
+                        # Forward implementation plan directly to UI
+                        payload = {
+                            "type": "impl_plan",
+                            "content": event.content,
+                            "intent": event.data.get("intent", ""),
+                            "complexity": event.data.get("complexity", 0),
+                        }
+                        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
                     elif event.type == "pending_plan":
                         # Interactive planning — send plan for user review
                         payload = {

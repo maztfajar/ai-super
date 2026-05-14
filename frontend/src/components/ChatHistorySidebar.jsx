@@ -119,9 +119,12 @@ export default function ChatHistorySidebar() {
               location.pathname === `/chat/${session.id}`
             const neonClass = NEON_COLORS[idx % NEON_COLORS.length]
             return (
-              <button
+              <div
                 key={session.id}
                 onClick={() => handleSelect(session)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelect(session) }}
                 className={clsx('chsb-item', neonClass, isActive && 'chsb-item--active')}
               >
                 <div className="chsb-item-body">
@@ -139,7 +142,7 @@ export default function ChatHistorySidebar() {
                 >
                   <Trash2 size={14} />
                 </button>
-              </button>
+              </div>
             )
           })
         )}

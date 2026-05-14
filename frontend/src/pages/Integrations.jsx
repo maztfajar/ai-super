@@ -70,7 +70,7 @@ function SecretInput({ label, value, onChange, placeholder, hint, disabled }) {
         <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
           placeholder={placeholder} disabled={disabled}
           autoComplete="new-password"
-          className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent pr-11 font-mono disabled:opacity-50 shadow-inner transition-all"/>
+          className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent pr-11 font-mono disabled:opacity-50 shadow-inner transition-all"/>
         <button type="button" onClick={() => setShow(!show)}
           className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-all">
           {show ? <EyeOff size={16}/> : <Eye size={16}/>}
@@ -87,7 +87,7 @@ function TextInput({ label, value, onChange, placeholder, hint, mono, disabled }
       {label && <Label>{label}</Label>}
       <input type="text" value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled}
-        className={clsx('w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 shadow-inner transition-all', mono && 'font-mono')}/>
+        className={clsx('w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 shadow-inner transition-all', mono && 'font-mono')}/>
       {hint && <p className="text-[11px] text-ink-3 mt-1.5 font-semibold uppercase tracking-tight opacity-70">{hint}</p>}
     </div>
   )
@@ -99,7 +99,7 @@ function Textarea({ label, value, onChange, placeholder, hint, rows = 3 }) {
       {label && <Label>{label}</Label>}
       <textarea value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} rows={rows}
-        className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none shadow-inner transition-all"/>
+        className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none shadow-inner transition-all"/>
       {hint && <p className="text-[11px] text-ink-3 mt-1.5 font-semibold uppercase tracking-tight opacity-70">{hint}</p>}
     </div>
   )
@@ -119,10 +119,10 @@ function Btn({ label, onClick, loading, variant = 'default', icon: Icon, small, 
         full ? 'w-full' : '',
         small ? 'px-3 py-2 text-[10px]' : 'px-5 py-3 text-sm',
         variant === 'primary' && 'bg-accent hover:bg-accent/80 text-white shadow-accent/20',
-        variant === 'success' && 'bg-success/10 hover:bg-success/20 border-2 border-success/30 text-success',
-        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border-2 border-danger/30 text-danger',
-        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border-2 border-warn/30 text-warn',
-        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink',
+        variant === 'success' && 'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
+        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger',
+        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn',
+        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink',
       )}>
       {loading ? <RefreshCw size={small ? 12 : 16} className="animate-spin"/> : Icon && <Icon size={small ? 12 : 16}/>}
       {label}
@@ -144,10 +144,10 @@ function CopyBtn({ text }) {
 function Card({ icon, title, subtitle, configured, children }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden transition-all duration-300">
+    <div className="bg-bg-3 border border-border shadow-lg rounded-2xl overflow-hidden transition-all duration-300">
       <button className="w-full flex items-center gap-4 px-5 py-4 hover:bg-bg-4 transition-all"
         onClick={() => setOpen(!open)}>
-        <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">{icon}</div>
+        <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">{icon}</div>
         <div className="flex-1 min-w-0 text-left">
           <div className="text-lg font-bold text-ink uppercase tracking-tight">{title}</div>
           <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">{subtitle}</div>
@@ -173,12 +173,12 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
     return (
       <div className="mt-4">
         <Label>{label}</Label>
-        <div className="flex items-center gap-3 p-3 bg-bg-4 rounded-xl border-2 border-border shadow-inner">
+        <div className="flex items-center gap-3 p-3 bg-bg-4 rounded-xl border border-border shadow-inner">
           <div className="flex-1 min-w-0">
             <div className="font-mono text-sm text-accent-2 truncate font-bold tracking-widest">{masked}</div>
           </div>
           <button onClick={() => setEditing(true)}
-            className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border-2 border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
+            className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
             {t('edit')}
           </button>
         </div>
@@ -189,7 +189,7 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
   return (
     <div className="mt-4 space-y-4">
       {masked && editing && (
-        <div className="flex items-center justify-between text-[11px] p-3 bg-warn/10 border-2 border-warn/30 rounded-xl font-bold uppercase tracking-tight shadow-inner">
+        <div className="flex items-center justify-between text-[11px] p-3 bg-warn/10 border border-warn/30 rounded-xl font-bold uppercase tracking-tight shadow-inner">
           <span className="text-warn">Mengganti nilai yang tersimpan</span>
           <button onClick={() => { setEditing(false); onChange('') }} className="text-ink-3 hover:text-ink uppercase tracking-widest text-[10px]">✕ Batal</button>
         </div>
@@ -248,9 +248,9 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden transition-all duration-300">
+    <div className="bg-bg-3 border border-border shadow-lg rounded-2xl overflow-hidden transition-all duration-300">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center gap-4 px-5 py-4 hover:bg-bg-4 transition-all">
-        <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">✈️</div>
+        <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">✈️</div>
         <div className="flex-1 min-w-0 text-left">
           <div className="text-lg font-bold text-ink uppercase tracking-tight">Telegram Bot</div>
           <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">{t('telegram_desc')}</div>
@@ -274,12 +274,12 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                 {configured && status?.telegram?.token_masked && !showTokenForm ? (
                   <div>
                     <Label>Bot Token</Label>
-                    <div className="flex items-center gap-3 p-3 bg-bg-4 rounded-xl border-2 border-border shadow-inner">
+                    <div className="flex items-center gap-3 p-3 bg-bg-4 rounded-xl border border-border shadow-inner">
                       <div className="flex-1 min-w-0">
                         <div className="font-mono text-sm text-accent-2 truncate font-bold tracking-widest">{status.telegram.token_masked}</div>
                       </div>
                       <button onClick={() => setShowTF(true)}
-                        className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border-2 border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
+                        className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
                         Ganti
                       </button>
                     </div>
@@ -287,7 +287,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                 ) : (
                   <div className="space-y-4">
                     {showTokenForm && (
-                      <div className="flex items-center justify-between text-[11px] p-3 bg-warn/10 border-2 border-warn/30 rounded-xl font-bold uppercase tracking-tight shadow-inner">
+                      <div className="flex items-center justify-between text-[11px] p-3 bg-warn/10 border border-warn/30 rounded-xl font-bold uppercase tracking-tight shadow-inner">
                         <span className="text-warn">Mengganti token tersimpan</span>
                         <button onClick={() => { setShowTF(false); setToken('') }} className="text-ink-3 hover:text-ink uppercase tracking-widest text-[10px]">✕ Batal</button>
                       </div>
@@ -309,7 +309,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                   </div>
                 )}
 
-                <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 text-xs space-y-2 text-ink-3 font-semibold shadow-inner">
+                <div className="bg-bg-4 border border-border/40 rounded-2xl p-4 text-xs space-y-2 text-ink-3 font-semibold shadow-inner">
                   <div className="text-ink-2 font-bold mb-2 uppercase tracking-widest opacity-80">📱 {t('setup_guide')}:</div>
                   {[
                     ['Buka Telegram → cari', '@BotFather', ' → kirim /newbot'],
@@ -326,7 +326,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
               </div>
 
               <div className="space-y-4">
-                <div className={clsx('rounded-2xl border-2 p-5 shadow-inner transition-all', polling.running ? 'bg-sky-400/5 border-sky-400/30' : 'bg-bg-4 border-border')}>
+                <div className={clsx('rounded-2xl border p-5 shadow-inner transition-all', polling.running ? 'bg-sky-400/5 border-sky-400/30' : 'bg-bg-4 border-border')}>
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       {polling.running ? <Wifi size={18} className="text-sky-400"/> : <WifiOff size={18} className="text-ink-3 opacity-60"/>}
@@ -342,7 +342,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                         if (!configured || pollingLoading) return;
                         if (polling.running) handleStop(); else handleStart();
                       }}
-                        className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border-2', polling.running ? 'bg-success border-success/30' : 'bg-bg-5 border-border')}>
+                        className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border', polling.running ? 'bg-success border-success/30' : 'bg-bg-5 border-border')}>
                         <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-lg transition-transform', polling.running ? 'translate-x-4.5' : 'translate-x-0.5')}/>
                       </div>
                     </label>
@@ -363,7 +363,7 @@ function TelegramCard({ status, onSave, saving, onTest, testing }) {
                 </div>
 
                 {!configured && (
-                  <div className="p-4 bg-accent/8 border-2 border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-sm leading-relaxed">
+                  <div className="p-4 bg-accent/8 border border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-sm leading-relaxed">
                     <strong className="text-ink-2 block mb-2 text-sm font-bold uppercase tracking-widest opacity-80">💡 Tips Konektivitas:</strong>
                     Mode Polling dirancang untuk kemudahan setup tanpa memerlukan konfigurasi domain publik atau sertifikat SSL — sangat ideal untuk pengembangan di lingkungan localhost.
                   </div>
@@ -478,10 +478,10 @@ function CustomModelSection() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
+    <div className="bg-bg-3 border border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
         <div className="flex items-center gap-4 text-left">
-          <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🔌</div>
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🔌</div>
           <div>
             <div className="text-lg font-bold text-ink uppercase tracking-tight">Custom Model Provider</div>
             <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Tambah model API pihak ketiga (format OpenAI)</div>
@@ -498,7 +498,7 @@ function CustomModelSection() {
               <Btn label="+ Tambah Provider" onClick={() => { setShowAdd(!showAdd); setEditId(null); setForm(emptyForm); setTestResult(null) }} variant="primary" icon={Plus} small/>
             </div>
             {showAdd && (
-              <div className="bg-bg-4 border-2 border-accent/25 rounded-2xl p-6 space-y-4 animate-fade shadow-xl">
+              <div className="bg-bg-4 border border-accent/25 rounded-2xl p-6 space-y-4 animate-fade shadow-xl">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-lg font-bold text-ink uppercase tracking-tight">{editId ? '✏️ Edit Model AI Provider' : '➕ Tambah Model AI Provider'}</span>
                   <button onClick={() => { setShowAdd(false); setEditId(null); setTestResult(null) }} className="text-ink-3 hover:text-ink text-sm font-bold">✕</button>
@@ -508,8 +508,8 @@ function CustomModelSection() {
                   <div className="flex gap-2 flex-wrap">
                     {ICON_OPTIONS.map(ic => (
                       <button key={ic} onClick={() => setF('icon', ic)}
-                        className={clsx('w-10 h-10 rounded-xl flex items-center justify-center text-xl border-2 transition-all shadow-sm',
-                          form.icon === ic ? 'border-accent bg-accent/15 shadow-accent/10' : 'border-border bg-bg-3 hover:border-border-2')}>
+                        className={clsx('w-10 h-10 rounded-xl flex items-center justify-center text-xl border transition-all shadow-sm',
+                          form.icon === ic ? 'border-accent bg-accent/15 shadow-accent/10' : 'border-border bg-bg-3 hover:border-border')}>
                         {ic}
                       </button>
                     ))}
@@ -524,7 +524,7 @@ function CustomModelSection() {
                 <div className="flex items-center gap-3">
                   <Btn label="Test Koneksi" onClick={handleTestConnection} loading={acting.testConn} variant="success" icon={Send}/>
                   {testResult && (
-                    <div className={clsx('flex-1 text-[11px] px-4 py-3 rounded-xl font-bold uppercase tracking-tight shadow-inner border-2',
+                    <div className={clsx('flex-1 text-[11px] px-4 py-3 rounded-xl font-bold uppercase tracking-tight shadow-inner border',
                       testResult.status === 'ok' ? 'bg-success/10 text-success border-success/30' : 'bg-danger/10 text-danger border-danger/30')}>
                       {testResult.message}
                     </div>
@@ -545,13 +545,13 @@ function CustomModelSection() {
                 {providers.map(p => {
                   const st = STATUS_STYLE[p.status] || STATUS_STYLE.untested
                   return (
-                    <div key={p.id} className="bg-bg-4 rounded-2xl border-2 border-border p-4 shadow-sm group/item">
+                    <div key={p.id} className="bg-bg-4 rounded-2xl border border-border p-4 shadow-sm group/item">
                       <div className="flex items-start gap-4">
                         <span className="text-2xl flex-shrink-0 mt-1">{p.icon || '🔌'}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-base font-bold text-ink uppercase tracking-tight">{p.name}</span>
-                            <span className={clsx('text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-widest border-2', st.cls)}>{st.label}</span>
+                            <span className={clsx('text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-widest border', st.cls)}>{st.label}</span>
                           </div>
                           <div className="text-xs text-ink-3 mt-1.5 font-semibold opacity-70">Model: {p.models}</div>
                         </div>
@@ -641,10 +641,10 @@ function WebhookSection() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
+    <div className="bg-bg-3 border border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
         <div className="flex items-center gap-4 text-left">
-          <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-accent-2 flex-shrink-0 shadow-inner"><Webhook size={20}/></div>
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-accent-2 flex-shrink-0 shadow-inner"><Webhook size={20}/></div>
           <div>
             <div className="text-lg font-bold text-ink uppercase tracking-tight">Webhook Lanjutan</div>
             <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Kirim triggger ke Fonnte, n8n, Make, Zapier, dll</div>
@@ -660,7 +660,7 @@ function WebhookSection() {
               <Btn label="+ Tambah Webhook" onClick={() => { setShowAdd(!showAdd); setEditId(null); setForm(emptyForm) }} variant="primary" icon={Plus} small/>
             </div>
             {showAdd && (
-              <div className="bg-bg-4 border-2 border-accent/25 rounded-2xl p-6 space-y-4 animate-fade shadow-xl">
+              <div className="bg-bg-4 border border-accent/25 rounded-2xl p-6 space-y-4 animate-fade shadow-xl">
                 <TextInput label="Nama Webhook *" value={form.name} onChange={v => setF('name', v)}/>
                 <TextInput label="URL Endpoint *" value={form.url} onChange={v => setF('url', v)} mono/>
                 <div className="flex items-center justify-end gap-3 pt-2">
@@ -677,7 +677,7 @@ function WebhookSection() {
                 {hooks.map(h => {
                   const meta = pm(h.provider)
                   return (
-                    <div key={h.id} className="bg-bg-4 rounded-2xl border-2 border-border p-4 shadow-sm group/item">
+                    <div key={h.id} className="bg-bg-4 rounded-2xl border border-border p-4 shadow-sm group/item">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-1">
@@ -745,6 +745,12 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
     const fetchResolved = async () => {
       setLoadingResolved(true)
       try {
+        // Fetch current models list to keep mapping realtime
+        const r = await api.listModels()
+        const ms = r.models || []
+        useModelsStore.setState({ models: ms })
+        syncModelsToOrchestrator(ms)
+
         const data = await intApi.getResolvedRoles()
         if (!cancelled) setResolved(data.resolved || {})
       } catch {}
@@ -773,10 +779,10 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
   const configuredCount = Object.values(roles).filter(v => v).length
 
   return (
-    <div className="bg-bg-3 border-2 border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
+    <div className="bg-bg-3 border border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
       <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
         <div className="flex items-center gap-4 text-left">
-          <div className="w-10 h-10 rounded-xl bg-bg-4 border-2 border-border flex items-center justify-center text-accent-2 flex-shrink-0 shadow-inner"><Zap size={20}/></div>
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-accent-2 flex-shrink-0 shadow-inner"><Zap size={20}/></div>
           <div>
             <div className="text-lg font-bold text-ink uppercase tracking-tight">AI Roles Mapping</div>
             <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">
@@ -797,7 +803,7 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
           <div className="p-6 space-y-6 border-t-2 border-border/40">
 
             {/* Info banner */}
-            <div className="p-4 bg-accent/8 border-2 border-accent/20 rounded-2xl text-xs text-ink-2 leading-relaxed font-semibold shadow-sm">
+            <div className="p-4 bg-accent/8 border border-accent/20 rounded-2xl text-xs text-ink-2 leading-relaxed font-semibold shadow-sm">
               <span className="font-bold text-ink-2 block mb-2 text-sm uppercase tracking-widest opacity-80">🤖 Auto-Routing Cerdas</span>
               Jika slot dikosongkan, AI Orchestrator otomatis memilih model terbaik berdasarkan kemampuan dan performa historis.
               Model yang dipilih sistem ditampilkan sebagai <span className="bg-blue-500/20 text-blue-400 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest shadow-sm border border-blue-500/30">🤖 Auto</span>.
@@ -847,7 +853,7 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
                       <select
                         value={manualVal}
                         onChange={e => setRoles(r => ({ ...r, [role.key]: e.target.value }))}
-                        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-1.5 text-xs text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-7 font-medium"
+                        className="w-full bg-bg-2 border border-border rounded-lg px-3 py-1.5 text-xs text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-7 font-medium"
                       >
                         <option value="">
                           {loadingResolved ? '⏳ Memuat...' : autoDisplay ? `🤖 Auto — ${autoDisplay}` : '🤖 Auto (pilih terbaik)'}
@@ -1043,7 +1049,7 @@ function GoogleEcosystemSection() {
                       onChange={e => setCredsJson(e.target.value)}
                       rows={6}
                       placeholder={'{ "installed": { "client_id": "...", "client_secret": "...", ... } }'}
-                      className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none"
+                      className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono resize-none"
                     />
                     <Btn label="Otorisasi dengan Google →" onClick={handleGetAuthUrl} loading={acting} variant="primary" icon={Globe} full/>
                   </div>
@@ -1065,7 +1071,7 @@ function GoogleEcosystemSection() {
                         value={authCode}
                         onChange={e => setAuthCode(e.target.value)}
                         placeholder="4/0AX4..."
-                        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"
+                        className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -1205,7 +1211,7 @@ export default function Integrations() {
         {TABS.map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
             className={clsx('flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all whitespace-nowrap border-b-2 outline-none',
-              activeTab === t.id ? 'border-accent text-accent' : 'border-transparent text-ink-3 hover:text-ink hover:border-border-2')}>
+              activeTab === t.id ? 'border-accent text-accent' : 'border-transparent text-ink-3 hover:text-ink hover:border-border')}>
             <span className="text-xl">{t.icon}</span> {t.label}
           </button>
         ))}

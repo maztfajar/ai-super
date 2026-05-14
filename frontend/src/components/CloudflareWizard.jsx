@@ -51,7 +51,7 @@ function SecretInp({ value, onChange, placeholder, disabled }) {
     <div className="relative">
       <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled}
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono disabled:opacity-50" />
+        className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 pr-9 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono disabled:opacity-50" />
       <button type="button" onClick={() => setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
         {show ? <EyeOff size={13} /> : <Eye size={13} />}
       </button>
@@ -61,7 +61,7 @@ function SecretInp({ value, onChange, placeholder, disabled }) {
 function Inp({ value, onChange, placeholder, mono, disabled }) {
   return (
     <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
-      className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50', mono && 'font-mono')} />
+      className={clsx('w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50', mono && 'font-mono')} />
   )
 }
 function Label({ children }) {
@@ -270,7 +270,7 @@ function Step2({ accounts, savedAccountId, savedTunnelId, onDone }) {
         <div>
           <Label>Akun Cloudflare</Label>
           <select value={accountId} onChange={e => setAccountId(e.target.value)}
-            className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink outline-none focus:border-accent">
+            className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-xs text-ink outline-none focus:border-accent">
             {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
         </div>
@@ -283,7 +283,7 @@ function Step2({ accounts, savedAccountId, savedTunnelId, onDone }) {
         ].map(opt => (
           <div key={opt.v} onClick={() => setMode(opt.v)}
             className={clsx('p-2.5 rounded-xl border cursor-pointer transition-all',
-              mode === opt.v ? 'border-accent bg-accent/8' : 'border-border bg-bg-4 hover:border-border-2')}>
+              mode === opt.v ? 'border-accent bg-accent/8' : 'border-border bg-bg-4 hover:border-border')}>
             <div className="text-xs font-semibold text-ink">{opt.icon} {opt.title}</div>
             <div className="text-[10px] text-ink-3 mt-0.5">{opt.desc}</div>
           </div>
@@ -311,7 +311,7 @@ function Step2({ accounts, savedAccountId, savedTunnelId, onDone }) {
               {tunnels.map(t => (
                 <div key={t.id} onClick={() => setSelTunnel(t.id)}
                   className={clsx('p-2.5 rounded-xl border cursor-pointer transition-all',
-                    selTunnel === t.id ? 'border-accent bg-accent/8' : 'border-border bg-bg-4 hover:border-border-2')}>
+                    selTunnel === t.id ? 'border-accent bg-accent/8' : 'border-border bg-bg-4 hover:border-border')}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-ink">{t.name}</span>
                     <span className={clsx('text-[9px] px-1.5 py-0.5 rounded-full',
@@ -414,7 +414,7 @@ function Step3({ accountId, tunnelId, savedDomain, onDone }) {
           <div>
             <Label>Domain Anda (dari Cloudflare)</Label>
             <select value={zoneId} onChange={e => setZoneId(e.target.value)}
-              className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink outline-none focus:border-accent">
+              className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-xs text-ink outline-none focus:border-accent">
               {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
             </select>
           </div>
@@ -633,7 +633,7 @@ function ResetDialog({ onClose, onConfirm }) {
                   value={confirmText}
                   onChange={e => setConfirmText(e.target.value)}
                   placeholder="ketik: reset"
-                  className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-danger font-mono"
+                  className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-xs text-ink placeholder-ink-3 outline-none focus:border-danger font-mono"
                   onKeyDown={e => { if (e.key === 'Enter' && canConfirm) handleConfirm() }}
                 />
               </div>

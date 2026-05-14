@@ -55,7 +55,7 @@ function Bar({ pct, color = 'bg-accent', thin }) {
 // ── Stat card ─────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, colorClass, sub }) {
   return (
-    <div className="bg-bg-3 border border-border-2 rounded-xl p-5 shadow-sm">
+    <div className="bg-bg-3 border border-border rounded-xl p-5 shadow-sm">
       <div className={clsx('w-9 h-9 rounded-lg flex items-center justify-center mb-3', colorClass + '/15')}>
         <Icon size={16} className={colorClass.replace('bg-', 'text-')}/>
       </div>
@@ -76,7 +76,7 @@ function MiniBarChart({ data, valueKey, color }) {
         const day = (d.day || '').slice(5)
         return (
           <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group relative">
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-bg-2 border-2 border-border
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-bg-2 border border-border
               rounded-lg px-2.5 py-1 text-xs text-ink whitespace-nowrap opacity-0
               group-hover:opacity-100 transition-opacity pointer-events-none z-10 font-bold shadow-lg">
               {day}: {(d[valueKey] || 0).toLocaleString()}
@@ -128,7 +128,7 @@ function ResetModal({ onClose, onConfirm }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ backdropFilter: 'blur(4px)', background: 'rgba(0,0,0,0.65)' }}>
-      <div className="bg-bg-3 border-2 border-danger/30 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
+      <div className="bg-bg-3 border border-danger/30 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden">
         <div className="bg-danger/10 border-b-2 border-danger/20 px-5 py-4 flex items-center gap-3">
           <ShieldAlert size={22} className="text-danger"/>
           <div>
@@ -149,11 +149,11 @@ function ResetModal({ onClose, onConfirm }) {
             <input value={text} onChange={e => setText(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && ok && go()}
               placeholder="ketik: reset"
-              className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-mono text-ink outline-none focus:border-danger placeholder-ink-3 shadow-inner"/>
+              className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-mono text-ink outline-none focus:border-danger placeholder-ink-3 shadow-inner"/>
           </div>
           <div className="flex gap-3 pt-2">
             <button onClick={onClose}
-              className="flex-1 px-4 py-3 text-sm rounded-xl bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 font-bold uppercase tracking-tight transition-all">Batal</button>
+              className="flex-1 px-4 py-3 text-sm rounded-xl bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 font-bold uppercase tracking-tight transition-all">Batal</button>
             <button onClick={go} disabled={!ok || load}
               className="flex-1 px-4 py-3 text-sm rounded-xl bg-danger hover:bg-danger/80 text-white font-bold uppercase tracking-tight disabled:opacity-40 flex items-center justify-center gap-2 transition-all shadow-lg shadow-danger/20 active:scale-95">
               {load ? <><RefreshCw size={14} className="animate-spin"/>Mereset...</> : <><Trash2 size={14}/>Reset Sekarang</>}
@@ -169,7 +169,7 @@ function ResetModal({ onClose, onConfirm }) {
 function CmdLine({ cmd }) {
   const [copied, setCopied] = useState(false)
   return (
-    <div className="flex items-center gap-3 bg-bg-2 border-2 border-border rounded-xl px-4 py-3 group shadow-inner">
+    <div className="flex items-center gap-3 bg-bg-2 border border-border rounded-xl px-4 py-3 group shadow-inner">
       <code className="flex-1 font-mono text-sm text-accent-2 break-all font-bold">{cmd}</code>
       <button onClick={() => { copyToClipboard(cmd); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
         className="flex-shrink-0 text-ink-3 hover:text-ink transition-all p-1.5 rounded-lg hover:bg-bg-4">
@@ -192,7 +192,7 @@ function PsutilInstallGuide({ onRetry }) {
     apt:    'sudo apt install -y python3-psutil',
   }
   return (
-    <div className="bg-warn/10 border-2 border-warn/30 rounded-2xl overflow-hidden shadow-md">
+    <div className="bg-warn/10 border border-warn/30 rounded-2xl overflow-hidden shadow-md">
       <div className="flex items-center gap-3.5 p-5 border-b-2 border-warn/15 bg-warn/5">
         <span className="text-2xl">⚠️</span>
         <div>
@@ -202,7 +202,7 @@ function PsutilInstallGuide({ onRetry }) {
       </div>
       <div className="p-3.5 space-y-3">
         {/* Tab selector */}
-        <div className="flex gap-2 bg-bg-4 border-2 border-border/20 rounded-xl p-1.5 shadow-inner">
+        <div className="flex gap-2 bg-bg-4 border border-border/20 rounded-xl p-1.5 shadow-inner">
           {tabs.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
               className={clsx('flex-1 py-2 text-sm font-bold uppercase tracking-tight rounded-lg transition-all',
@@ -239,7 +239,7 @@ function PsutilInstallGuide({ onRetry }) {
 
         <div className="flex items-center gap-3 pt-2">
           <button onClick={onRetry}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl bg-warn/10 hover:bg-warn/20 border-2 border-warn/30 text-warn font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
+            className="flex items-center gap-2 px-4 py-2.5 text-sm rounded-xl bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
             <RefreshCw size={14}/>Coba lagi setelah install
           </button>
         </div>
@@ -460,11 +460,11 @@ export default function Analytics() {
         </div>
         <div className="flex gap-3">
           <button onClick={fetchAll} disabled={loading}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink disabled:opacity-50 font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
+            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink disabled:opacity-50 font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''}/>{t('refresh')}
           </button>
           <button onClick={() => setShowReset(true)}
-            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-danger/10 hover:bg-danger/20 border-2 border-danger/30 text-danger font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
+            className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-xl bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger font-bold uppercase tracking-tight transition-all shadow-md active:scale-95">
             <Trash2 size={16}/>{t('reset')}
           </button>
         </div>
@@ -491,7 +491,7 @@ export default function Analytics() {
       </div>
 
       {/* ── System Resources ── */}
-      <div className="bg-bg-3 border border-border-2 rounded-2xl overflow-hidden shadow-lg">
+      <div className="bg-bg-3 border border-border rounded-2xl overflow-hidden shadow-lg">
         <div className="flex items-center justify-between px-5 py-4 border-b-2 border-border bg-bg-2/30">
           <div className="flex items-center gap-3">
             <Activity size={20} className="text-accent-2"/>
@@ -584,7 +584,7 @@ export default function Analytics() {
       </div>
 
       {/* Media Management */}
-      <div className="bg-bg-3 border border-border-2 rounded-2xl p-6 shadow-lg">
+      <div className="bg-bg-3 border border-border rounded-2xl p-6 shadow-lg">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-5">
           <div>
             <div className="flex items-center gap-3 mb-1">
@@ -613,7 +613,7 @@ export default function Analytics() {
         {mediaFiles.length > 0 ? (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {mediaFiles.map((file) => (
-              <div key={file.filename} className="flex items-center justify-between p-4 bg-bg-4 rounded-2xl border-2 border-border/50 hover:border-accent/30 hover:bg-bg-5 transition-all shadow-sm group">
+              <div key={file.filename} className="flex items-center justify-between p-4 bg-bg-4 rounded-2xl border border-border/50 hover:border-accent/30 hover:bg-bg-5 transition-all shadow-sm group">
                 <div className="flex-1 min-w-0">
                   <div className="text-base font-semibold text-ink truncate">{file.filename}</div>
                   <div className="text-xs text-ink-3 font-bold uppercase tracking-tight opacity-70 mt-0.5">
@@ -641,7 +641,7 @@ export default function Analytics() {
       {storage && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {storage.components.map(comp => (
-            <div key={comp.id} className="bg-bg-4 border border-border-2 rounded-2xl p-5 space-y-3 shadow-md hover:border-accent/30 transition-all group">
+            <div key={comp.id} className="bg-bg-4 border border-border rounded-2xl p-5 space-y-3 shadow-md hover:border-accent/30 transition-all group">
               <div className="flex items-center justify-between">
                 <span className="text-2xl group-hover:scale-110 transition-transform">{comp.icon}</span>
                 <span className="text-base font-mono font-bold text-ink bg-bg-2 px-2 py-1 rounded-lg border border-border/50 shadow-inner">{comp.size}</span>
@@ -665,7 +665,7 @@ export default function Analytics() {
       {/* ── Healing & Snapshots ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Self-Healing Engine */}
-        <div className="bg-bg-3 border border-border-2 rounded-2xl overflow-hidden flex flex-col shadow-lg">
+        <div className="bg-bg-3 border border-border rounded-2xl overflow-hidden flex flex-col shadow-lg">
           <div className="px-5 py-4 border-b-2 border-border bg-bg-2/30 space-y-4">
             <div className="flex items-center gap-3">
               <ShieldAlert size={20} className="text-success"/>
@@ -709,7 +709,7 @@ export default function Analytics() {
           <div className="p-3 max-h-96 overflow-y-auto space-y-2 flex-1 scrollbar-thin">
             {healingEvents.length > 0 ? (
               healingEvents.map((ev, i) => (
-                <div key={i} className="p-4 rounded-2xl bg-bg-4 border-2 border-border/40 hover:border-success/30 transition-all shadow-sm">
+                <div key={i} className="p-4 rounded-2xl bg-bg-4 border border-border/40 hover:border-success/30 transition-all shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-bold text-accent-2 uppercase tracking-widest">{ev.issue_type?.toUpperCase()}</span>
                     <span className="text-[11px] text-ink-3 font-semibold uppercase tracking-tight opacity-60">{new Date(ev.timestamp * 1000).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' })}</span>
@@ -729,7 +729,7 @@ export default function Analytics() {
         </div>
 
         {/* AI Snapshots (Git) */}
-        <div className="bg-bg-3 border border-border-2 rounded-2xl overflow-hidden flex flex-col shadow-lg">
+        <div className="bg-bg-3 border border-border rounded-2xl overflow-hidden flex flex-col shadow-lg">
           <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-border bg-bg-2/30">
             <RotateCcw size={20} className="text-accent"/>
             <span className="text-base font-bold text-ink uppercase tracking-tight">{t('rollback_title')}</span>
@@ -744,7 +744,7 @@ export default function Analytics() {
           <div className="p-3 max-h-96 overflow-y-auto space-y-2 flex-1 scrollbar-thin">
             {snapshots.length > 0 ? (
               snapshots.map((s, i) => (
-                <div key={i} className="p-4 rounded-2xl bg-bg-4 border-2 border-border/40 hover:border-accent/30 transition-all group shadow-sm">
+                <div key={i} className="p-4 rounded-2xl bg-bg-4 border border-border/40 hover:border-accent/30 transition-all group shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-mono text-accent-2 font-bold border border-accent/20 px-1.5 py-0.5 rounded-lg bg-bg-2 shadow-inner">{s.hash?.slice(0, 7)}</span>
                     <span className="text-[11px] text-ink-3 font-semibold uppercase tracking-tight opacity-60">{s.time}</span>

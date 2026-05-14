@@ -17,14 +17,14 @@ function Label({ children }) {
 }
 function Inp({ value, onChange, placeholder, disabled, mono }) {
   return <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
-    className={clsx('w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50', mono && 'font-mono')}/>
+    className={clsx('w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50', mono && 'font-mono')}/>
 }
 function SecretInp({ value, onChange, placeholder }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative">
       <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 pr-9 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
+        className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 pr-9 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono"/>
       <button type="button" onClick={() => setShow(!show)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink">
         {show ? <EyeOff size={13}/> : <Eye size={13}/>}
       </button>
@@ -69,6 +69,7 @@ const ROLE_ACCESS = {
 
 // ── Form Tambah / Edit User ───────────────────────────────────
 function UserForm({ editUser, onSave, onCancel, saving }) {
+  const { t } = useTranslation()
   const [username, setUsername] = useState(editUser?.username || '')
   const [email,    setEmail]    = useState(editUser?.email    || '')
   const [password, setPassword] = useState('')
@@ -114,8 +115,8 @@ function UserForm({ editUser, onSave, onCancel, saving }) {
             const Icon = v.icon
             return (
               <div key={k} onClick={() => setRole(k)}
-                className={clsx('p-3 rounded-xl border-2 cursor-pointer transition-all',
-                  role === k ? 'border-accent bg-accent/8' : 'border-border bg-bg-3 hover:border-border-2')}>
+                className={clsx('p-3 rounded-xl border cursor-pointer transition-all',
+                  role === k ? 'border-accent bg-accent/8' : 'border-border bg-bg-3 hover:border-border')}>
                 <div className="flex items-center gap-2 mb-1">
                   <Icon size={13} className={role === k ? 'text-accent-2' : 'text-ink-3'}/>
                   <span className="text-sm font-semibold text-ink">{v.label}</span>
@@ -152,6 +153,7 @@ function UserForm({ editUser, onSave, onCancel, saving }) {
 
 // ── Recovery Token Panel ──────────────────────────────────────
 function RecoveryTokenPanel() {
+  const { t } = useTranslation()
   const [users,    setUsers]   = useState([])
   const [selUser,  setSelUser] = useState('')
   const [token,    setToken]   = useState(null)
@@ -224,7 +226,7 @@ function RecoveryTokenPanel() {
                 Generate Token Untuk
               </label>
               <select value={selUser} onChange={e => setSelUser(e.target.value)}
-                className="w-full bg-bg-2 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-accent">
+                className="w-full bg-bg-2 border border-border rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-accent">
                 <option value="">Akun saya sendiri (Admin)</option>
                 {users.map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
@@ -277,7 +279,7 @@ function RecoveryTokenPanel() {
                 </div>
               </div>
             ) : (
-              <div className="h-full flex items-center justify-center text-center p-6 border-2 border-dashed border-border rounded-xl">
+              <div className="h-full flex items-center justify-center text-center p-6 border border-dashed border-border rounded-xl">
                 <div className="text-ink-3">
                   <Key size={20} className="mx-auto mb-2 opacity-40"/>
                   <div className="text-sm">Token akan muncul di sini setelah di-generate</div>

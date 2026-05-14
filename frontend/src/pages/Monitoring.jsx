@@ -143,7 +143,7 @@ function ActiveSessionCard({ session }) {
         </div>
         
         {/* Provider info */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-4 border-2 border-border/20 shadow-inner">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-4 border border-border/20 shadow-inner">
           <span className="text-sm">{provider.icon}</span>
           <span className="text-xs font-bold text-ink-2 uppercase tracking-widest">{provider.name}</span>
           <span className="ml-auto text-[10px] text-ink-3 font-bold uppercase tracking-widest opacity-50">{t('model_provider')}</span>
@@ -167,7 +167,7 @@ function ActiveSessionCard({ session }) {
       </div>
 
       {/* Orchestrator info  */}
-      <div className="px-3 py-2 rounded-xl bg-bg-3 border-2 border-border/40 text-center shadow-md">
+      <div className="px-3 py-2 rounded-xl bg-bg-3 border border-border/40 text-center shadow-md">
         <div className="text-[10px] text-ink-3 uppercase tracking-widest font-bold opacity-60">Orchestrator</div>
         <div className="text-base font-bold text-accent uppercase tracking-tighter mt-0.5">Auto-Orchestrator</div>
       </div>
@@ -387,7 +387,7 @@ export default function MonitoringAI() {
             </div>
           </GlassCard>
         ) : activeSessions.length === 0 ? (
-          <GlassCard className="p-12 shadow-inner border-dashed border-2 border-border/40 bg-bg-4/20">
+          <GlassCard className="p-12 shadow-inner border-dashed border border-border/40 bg-bg-4/20">
             <div className="flex flex-col items-center justify-center gap-5 text-ink-3 py-6">
               <MessageSquare size={56} className="opacity-10" />
               <p className="text-xl font-bold uppercase tracking-tight opacity-40">{t('no_active_sessions')}</p>
@@ -497,7 +497,7 @@ export default function MonitoringAI() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-5">
             {Object.entries(health).map(([model, status]) => (
               <div key={model}
-                className={clsx('flex items-center gap-3 p-4 lg:p-5 rounded-2xl transition-all border-2 shadow-md group',
+                className={clsx('flex items-center gap-3 p-4 lg:p-5 rounded-2xl transition-all border shadow-md group',
                   status.circuit_open ? 'bg-danger/10 border-danger/40 animate-pulse' : 'bg-white/5 border-border/20 hover:border-accent/40')}>
                 {status.available
                   ? <CheckCircle size={20} className="text-success flex-shrink-0 group-hover:scale-110 transition-transform" />

@@ -143,7 +143,7 @@ export function LiveModelPerformanceChart({ activeSessions = [] }) {
                   </linearGradient>
                 ))}
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-2)" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis dataKey="time" stroke="var(--ink-3)" height={25} style={{ fontSize: '11px' }} />
               <YAxis stroke="var(--ink-3)" style={{ fontSize: '11px' }} />
               <Tooltip 

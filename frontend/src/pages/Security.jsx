@@ -22,7 +22,7 @@ function SecretInp({ value, onChange, placeholder, disabled }) {
     <div className="relative">
       <input type={show ? 'text' : 'password'} value={value} onChange={e => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled} autoComplete="new-password"
-        className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono disabled:opacity-50 shadow-inner"/>
+        className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono disabled:opacity-50 shadow-inner"/>
       <button type="button" onClick={() => setShow(!show)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-all">
         {show ? <EyeOff size={16}/> : <Eye size={16}/>}
       </button>
@@ -35,10 +35,10 @@ function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disable
       className={clsx('flex items-center justify-center gap-2 px-5 py-3 text-sm rounded-xl font-bold uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95 shadow-md',
         full && 'w-full',
         variant === 'primary' && 'bg-accent hover:bg-accent/80 text-white',
-        variant === 'success' && 'bg-success/10 hover:bg-success/20 border-2 border-success/30 text-success',
-        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border-2 border-warn/30 text-warn',
-        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border-2 border-danger/30 text-danger',
-        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink',
+        variant === 'success' && 'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
+        variant === 'warn'    && 'bg-warn/10 hover:bg-warn/20 border border-warn/30 text-warn',
+        variant === 'danger'  && 'bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger',
+        variant === 'default' && 'bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink',
       )}>
       {loading ? <RefreshCw size={14} className="animate-spin"/> : Icon && <Icon size={14}/>}
       {label}
@@ -48,7 +48,7 @@ function Btn({ label, onClick, loading, variant = 'primary', icon: Icon, disable
 function Card({ title, icon: Icon, iconColor = 'text-accent-2', children, badge, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className="bg-bg-3 border-2 border-border rounded-2xl overflow-hidden shadow-lg">
+    <div className="bg-bg-3 border border-border rounded-2xl overflow-hidden shadow-lg">
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-3 px-5 py-4 border-b-2 border-border hover:bg-bg-4/50 transition-all">
         <Icon size={18} className={iconColor}/>
@@ -71,7 +71,7 @@ function CopyBtn({ text }) {
 }
 function CodeLine({ cmd }) {
   return (
-    <div className="flex items-center gap-3 bg-bg-2 border-2 border-border rounded-xl px-4 py-3 font-mono text-xs shadow-inner">
+    <div className="flex items-center gap-3 bg-bg-2 border border-border rounded-xl px-4 py-3 font-mono text-xs shadow-inner">
       <span className="text-accent-2 flex-1 font-bold">{cmd}</span>
       <CopyBtn text={cmd}/>
     </div>
@@ -216,7 +216,7 @@ export default function Security() {
           { icon: FileKey, label: 'Recovery Token', value: '1 Jam', sub: 'One-time use', ok: true, color: 'text-warn', bg: 'bg-warn/10' },
           { icon: LogIn, label: 'Login Log', value: logs.length + ' entri', sub: 'Tersimpan DB', ok: true, color: 'text-sky-400', bg: 'bg-sky-400/10' },
         ].map(s => (
-          <div key={s.label} className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+          <div key={s.label} className="bg-bg-3 border border-border rounded-2xl p-5 shadow-lg">
             <div className={clsx('w-9 h-9 rounded-xl flex items-center justify-center mb-3', s.bg)}>
               <s.icon size={16} className={s.color}/>
             </div>
@@ -255,7 +255,7 @@ export default function Security() {
               disabled={!curPass || !newPass || newPass !== confPass}/>
 
             {/* Tips password */}
-            <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 text-xs text-ink-3 space-y-2 font-semibold shadow-inner">
+            <div className="bg-bg-4 border border-border/40 rounded-2xl p-4 text-xs text-ink-3 space-y-2 font-semibold shadow-inner">
               <div className="text-ink-2 font-bold uppercase tracking-widest mb-2 opacity-80">💡 Tips password kuat:</div>
               <div className="flex items-start gap-2">• <span>Minimal 12 karakter, campuran huruf besar/kecil, angka, simbol</span></div>
               <div className="flex items-start gap-2">• <span>Jangan gunakan nama, tanggal lahir, atau kata umum</span></div>
@@ -307,7 +307,7 @@ export default function Security() {
                 status: 'soon',
               },
             ].map(f => (
-              <div key={f.title} className="bg-bg-4 border-2 border-border/50 rounded-2xl p-4 hover:border-accent/30 transition-all shadow-sm group">
+              <div key={f.title} className="bg-bg-4 border border-border/50 rounded-2xl p-4 hover:border-accent/30 transition-all shadow-sm group">
                 <div className="flex items-start gap-4">
                   <span className="text-2xl flex-shrink-0 group-hover:scale-110 transition-transform">{f.icon}</span>
                   <div className="flex-1 min-w-0">
@@ -340,7 +340,7 @@ export default function Security() {
           <div className="space-y-4">
 
             {/* Info */}
-            <div className="flex items-start gap-3 p-4 bg-accent/10 border-2 border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-inner">
+            <div className="flex items-start gap-3 p-4 bg-accent/10 border border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-inner">
               <Info size={16} className="text-accent-2 flex-shrink-0 mt-0.5"/>
               <div className="leading-relaxed">
                 <strong className="text-ink block mb-1 font-bold uppercase tracking-tight">Cara pakai Token Recovery:</strong>
@@ -354,7 +354,7 @@ export default function Security() {
             <div>
               <Label>Generate Token untuk:</Label>
               <select value={genTargetId} onChange={e => setGenTargetId(e.target.value)}
-                className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent appearance-none cursor-pointer shadow-inner">
+                className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent appearance-none cursor-pointer shadow-inner">
                 <option value="">Diri sendiri (Admin)</option>
                 {users.filter(u => !u.is_admin || u.id !== undefined).map(u => (
                   <option key={u.id} value={u.id}>{u.username} ({u.role})</option>
@@ -368,7 +368,7 @@ export default function Security() {
 
             {/* Token result */}
             {recovToken && (
-              <div className="bg-success/10 border-2 border-success/40 rounded-2xl p-5 space-y-4 shadow-lg">
+              <div className="bg-success/10 border border-success/40 rounded-2xl p-5 space-y-4 shadow-lg">
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-3">
                     <CheckCircle2 size={18} className="text-success"/>
@@ -381,7 +381,7 @@ export default function Security() {
                   </div>
                 </div>
 
-                <div className="bg-bg-2 border-2 border-border rounded-2xl p-4 shadow-inner">
+                <div className="bg-bg-2 border border-border rounded-2xl p-4 shadow-inner">
                   <div className="text-xs text-warn mb-2 flex items-center gap-2 font-bold uppercase tracking-widest opacity-80">
                     <AlertTriangle size={14}/>Token hanya tampil SEKALI — salin sekarang!
                   </div>
@@ -465,7 +465,7 @@ export default function Security() {
             { label: 'Review login log secara berkala',            key: 'log_review',  critical: false },
             { label: 'Batasi pengguna Sub Admin sesuai kebutuhan', key: 'subadmin',    critical: false },
           ].map(item => (
-            <label key={item.key} className="flex items-center gap-3 p-4 bg-bg-4 border-2 border-border/50 rounded-2xl cursor-pointer hover:border-accent/30 hover:bg-bg-5 transition-all shadow-sm group">
+            <label key={item.key} className="flex items-center gap-3 p-4 bg-bg-4 border border-border/50 rounded-2xl cursor-pointer hover:border-accent/30 hover:bg-bg-5 transition-all shadow-sm group">
               <input type="checkbox" className="accent-accent w-5 h-5 flex-shrink-0 rounded-lg"/>
               <span className="text-sm text-ink-2 flex-1 font-bold uppercase tracking-tight opacity-80">{item.label}</span>
               {item.critical && (

@@ -81,7 +81,7 @@ function CodeBlock({ language, code, onOpenArtifact }) {
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-transparent hover:border-border-2 bg-bg-3 shadow-sm"
+            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-transparent hover:border-border bg-bg-3 shadow-sm"
             style={{ color: copied ? 'var(--success)' : 'var(--ink-3)' }}
             title="Copy kode"
           >
@@ -236,7 +236,7 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
             padding: '8px 12px', borderRadius: 12, cursor: 'pointer',
             transition: 'all 0.2s', border: '1px solid transparent',
           }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-5)'; e.currentTarget.style.borderColor = 'var(--border-2)' }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-5)'; e.currentTarget.style.borderColor = 'var(--border)' }}
           onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
         >
           {/* Status badge */}
@@ -272,7 +272,7 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
             <span style={{
               fontSize: 9, fontFamily: 'var(--font-mono, monospace)', fontWeight: 900,
               padding: '2px 8px', borderRadius: 6,
-              background: 'var(--bg-4)', border: '2px solid var(--border-2)',
+              background: 'var(--bg-4)', border: '2px solid var(--border)',
               color: 'var(--ink-3)', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.5px',
             }}>
               {step.language}
@@ -329,12 +329,12 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
               <button
                 onClick={handleCopy}
                 style={{
-                  padding: '4px 10px', borderRadius: 8, border: '2px solid var(--border-2)',
+                  padding: '4px 10px', borderRadius: 8, border: '2px solid var(--border)',
                   background: 'var(--bg-3)', cursor: 'pointer', fontSize: 10, fontWeight: 900,
                   color: 'var(--ink-3)', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.5px',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-5)'; e.currentTarget.style.borderColor = 'var(--accent-2)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.borderColor = 'var(--border-2)' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.borderColor = 'var(--border)' }}
               >
                 <i className="ti ti-copy" style={{ fontSize: 12, marginRight: 4 }} />
                 Copy
@@ -466,7 +466,7 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
           </span>
 
           {/* Step counter pill */}
-          <span className="text-[10px] px-3 py-1 rounded-full bg-bg-3 border-2 border-border text-ink-3 font-bold uppercase tracking-widest shadow-sm">
+          <span className="text-[10px] px-3 py-1 rounded-full bg-bg-3 border border-border text-ink-3 font-bold uppercase tracking-widest shadow-sm">
             {doneCount} / {steps.length} langkah
           </span>
 
@@ -582,7 +582,7 @@ function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
 
         {/* Running indicator for app previews */}
         {isAppPreview && (
-          <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-success/15 border-2 border-success/30 text-success text-[10px] font-bold uppercase tracking-widest flex-shrink-0 shadow-sm">
+          <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-success/15 border border-success/30 text-success text-[10px] font-bold uppercase tracking-widest flex-shrink-0 shadow-sm">
             <span className="w-2 h-2 rounded-full bg-success animate-pulse shadow-lg" />
             Running
           </span>
@@ -590,7 +590,7 @@ function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
 
         {!isAppPreview && (
           <>
-            <span className={clsx('text-[10px] font-mono font-bold px-2 py-0.5 rounded border-2 flex-shrink-0 uppercase tracking-widest shadow-sm', langColor)}>
+            <span className={clsx('text-[10px] font-mono font-bold px-2 py-0.5 rounded border flex-shrink-0 uppercase tracking-widest shadow-sm', langColor)}>
               {language || 'txt'}
             </span>
             <span className="text-[10px] text-ink-3 font-bold uppercase tracking-widest flex-shrink-0 opacity-60">{lines} baris</span>
@@ -651,7 +651,7 @@ function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
           <span className="flex-1 text-[11px] font-mono text-accent-2 truncate font-bold">{localCode}</span>
           <button
             onClick={() => window.open(localCode, '_blank')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border-2 border-accent/20 text-accent-2 text-[10px] font-bold uppercase tracking-widest transition-all flex-shrink-0 shadow-sm active:scale-95"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 text-[10px] font-bold uppercase tracking-widest transition-all flex-shrink-0 shadow-sm active:scale-95"
           >
             <ExternalLink size={12} /> Buka
           </button>
@@ -782,7 +782,7 @@ function SaveFileDialog({ filename, content, onClose }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-bg-2 border-2 border-border rounded-3xl w-[500px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl animate-slide-in-up overflow-hidden">
+      <div className="bg-bg-2 border border-border rounded-3xl w-[500px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl animate-slide-in-up overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b-2 border-border bg-bg-3">
           <div className="flex items-center gap-3">
@@ -800,7 +800,7 @@ function SaveFileDialog({ filename, content, onClose }) {
           <input
             value={customFilename}
             onChange={e => setCustomFilename(e.target.value)}
-            className="w-full px-4 py-3 bg-bg-2 border-2 border-border rounded-xl text-sm text-ink font-mono font-bold focus:outline-none focus:border-accent transition-all shadow-sm"
+            className="w-full px-4 py-3 bg-bg-2 border border-border rounded-xl text-sm text-ink font-mono font-bold focus:outline-none focus:border-accent transition-all shadow-sm"
           />
         </div>
 
@@ -1464,10 +1464,10 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
       }
       // Block code: hanya render sebagai CodeBlock jika ada bahasa atau multi-baris
       if (!language && codeText.split('\n').length === 1 && codeText.length < 120) {
-        // Single-line tanpa bahasa → tampil sebagai inline text yang diperbesar sedikit
+        // Single-line tanpa bahasa (sering dipakai AI untuk nama file/URL) → tampil sebagai inline-block agar tidak memecah kalimat
         return (
           <code
-            className="block px-3 py-1.5 my-1.5 bg-bg-4 rounded-lg text-ink-2 text-[13px] font-mono border border-border break-all"
+            className="inline-block px-1.5 py-0.5 mx-1 bg-bg-4 rounded text-ink-2 text-[13px] font-mono border border-border break-words align-middle"
             {...props}
           >{codeText}</code>
         )
@@ -1564,7 +1564,7 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
                   />
                 </div>
               ) : hasThinking ? (
-                <div className="mt-3 border border-border-2 rounded-lg overflow-hidden">
+                <div className="mt-3 border border-border rounded-lg overflow-hidden">
                   <button
                     onClick={() => setShowThinking(!showThinking)}
                     className="w-full flex items-center justify-between px-3 py-2 bg-bg-3 hover:bg-bg-5 transition-colors text-xs text-ink-3"
@@ -1775,7 +1775,7 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
 // ── Komponen FileChip ────────────────────────────────────────────────────────
 function FileChip({ file, onRemove }) {
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-4 border border-border-2 text-[11px] animate-fade">
+    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-4 border border-border text-[11px] animate-fade">
       <span className="flex-shrink-0">{file.meta?.icon || '📄'}</span>
       <span className="truncate max-w-[120px] text-ink">{file.name}</span>
       <span className="text-ink-3 text-[9px]">({(file.size / 1024).toFixed(1)} KB)</span>
@@ -1793,7 +1793,7 @@ function FileChip({ file, onRemove }) {
 function DragOverlay({ isVisible }) {
   if (!isVisible) return null;
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm border-2 border-dashed border-accent m-4 rounded-2xl animate-fade">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm border border-dashed border-accent m-4 rounded-2xl animate-fade">
       <div className="flex flex-col items-center p-6 bg-bg-3 border border-accent/20 rounded-xl shadow-2xl">
         <div className="text-4xl mb-2 animate-bounce">📂</div>
         <p className="text-sm font-semibold text-ink">Lepaskan file di sini</p>
@@ -1910,7 +1910,8 @@ export default function Chat() {
   }, [speakingId])
 
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
-  const [pendingPlan, setPendingPlan] = useState(null)  // Interactive planning
+  // pendingPlan removed — orchestrator now auto-executes without user confirmation
+  const [implPlan, setImplPlan] = useState(null)  // Implementation plan (VS Code-style, informational)
 
   const [sidebarOpen, setSidebarOpen] = useState(false)
   // Artifacts Panel state
@@ -1993,6 +1994,7 @@ export default function Chat() {
     // LANGKAH 1: Bersihkan messages sekarang juga — jangan tampilkan cache stale
     // Ini yang menyebabkan pesan lama terlihat meski panel kiri kosong.
     useChatStore.getState().clearMessages()
+    useChatStore.getState().setCurrentSession(null)
 
     // LANGKAH 2: Ambil daftar sesi dari server
     api.listSessions().then(async (serverSessions) => {
@@ -2010,11 +2012,15 @@ export default function Chat() {
         useChatStore.getState().setCurrentSession(found)
         try {
           const msgs = await api.getMessages(currentUrlId)
-          // Jika pesan berhasil dimuat, berarti sesi valid, update title jika belum ada
-          if (!found.title && msgs.length > 0) {
-             found.title = msgs[0].content.substring(0, 50)
+          // Mencegah race condition: hanya set messages jika user belum pindah chat
+          const latestUrlId = window.location.pathname.split('/chat/')[1]?.split('/')[0]
+          if (latestUrlId === currentUrlId) {
+            // Jika pesan berhasil dimuat, berarti sesi valid, update title jika belum ada
+            if (!found.title && msgs.length > 0) {
+               found.title = msgs[0].content.substring(0, 50)
+            }
+            useChatStore.getState().setMessages(msgs || [])
           }
-          useChatStore.getState().setMessages(msgs || [])
         } catch {
           console.info('[Chat] Session ID di URL tidak ada atau tidak dapat diakses. Redirect ke /chat.')
           useChatStore.getState().setCurrentSession(null)
@@ -2069,17 +2075,34 @@ export default function Chat() {
   }, [urlSessionId, sessionsLoaded])
 
   async function loadSession(session) {
-    // Guard: jangan ganggu saat streaming aktif
-    if (useChatStore.getState().streaming) return
+    // Jika sedang streaming, batalkan request aktif sebelum pindah sesi
+    if (useChatStore.getState().streaming) {
+      const abortFn = useChatStore.getState().abortRequest
+      if (typeof abortFn === 'function') {
+        try { abortFn() } catch (err) { console.warn('[Chat] Failed to abort on session switch:', err) }
+      }
+      // Reset streaming state secara manual agar transisi bersih
+      setStreaming(false)
+      clearStreaming()
+      useChatStore.getState().setAbortRequest(null)
+    }
+
     setCurrentSession(session)
     // Always fetch fresh messages from API — never trust stale localStorage cache
     clearMessages()
     setLoadingMsgs(true)
     try {
       const msgs = await api.getMessages(session.id)
-      setMessages(msgs || [])
-    } catch { toast.error('Gagal memuat pesan') }
-    finally { setLoadingMsgs(false) }
+      // Mencegah race condition saat user pindah chat dengan cepat
+      const latestUrlId = window.location.pathname.split('/chat/')[1]?.split('/')[0]
+      if (latestUrlId === session.id) {
+        setMessages(msgs || [])
+      }
+    } catch { 
+      toast.error('Gagal memuat pesan') 
+    } finally { 
+      setLoadingMsgs(false) 
+    }
   }
 
   // ── Real-time sync: poll for new messages every 5s ───────
@@ -2500,7 +2523,9 @@ export default function Chat() {
         async (done) => {
           const fullText = useChatStore.getState().streamingText
           clearStreaming()
+          setImplPlan(null)  // dismiss plan card when execution completes
           useChatStore.getState().setStatusText('')
+
 
           if (done.drive_prompt) {
             setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
@@ -2633,16 +2658,25 @@ export default function Chat() {
         },
         (status) => useChatStore.getState().setStatusText(status),
         (procData) => handleAddProcessStep(procData),
-        // onPlan — Interactive planning confirmation
-        (planData) => {
-          setPendingPlan(planData)
-          useChatStore.getState().setStatusText('⏸️ Menunggu persetujuan rencana...')
+        // onPlan — plan now shown as status by orchestrator, no user confirmation needed
+        (_planData) => {
+          // Intentionally no-op: plan is displayed via status events
         },
-        (reqProjData) => {
+        // onRequireProject — orchestrator now asks for path ONLY for new project creations
+        (_reqProjData) => {
           clearStreaming()
           useChatStore.getState().setStatusText('')
           setPendingResend({ text: combinedText, image: imageToSend })
           openProjectLocationPopup(sessionId)
+        },
+        // onImplPlan — Implementation plan (VS Code Copilot style)
+        (planData) => {
+          setImplPlan({
+            text: planData.content,
+            intent: planData.intent,
+            complexity: planData.complexity,
+            ts: Date.now(),
+          })
         }
       )
       useChatStore.getState().setAbortRequest(abortFn)
@@ -2854,7 +2888,7 @@ export default function Chat() {
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center shadow-2xl shadow-accent/30">
                   <span className="text-4xl">🧠</span>
                 </div>
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-success border-2 border-bg flex items-center justify-center">
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-success border border-bg flex items-center justify-center">
                   <span className="w-2 h-2 rounded-full bg-white animate-pulse2" />
                 </div>
               </div>
@@ -2976,7 +3010,7 @@ export default function Chat() {
           {/* Real-time Routing Badge / Capability Indicator (HIDDEN) */}
           {false && (activeModel || activeCapability) && !streaming && !pendingConfirmation && (
             <div className="flex justify-center my-4 animate-fade">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-bg-2 border border-border-2 rounded-full shadow-sm">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-bg-2 border border-border rounded-full shadow-sm">
                 <Sparkles size={12} className="text-accent-2" />
                 <span className="text-[10px] text-ink-3">Dirutekan ke:</span>
                 {activeModel && (
@@ -2989,6 +3023,89 @@ export default function Chat() {
                     {activeCapability}
                   </span>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Implementation Plan Card (VS Code Copilot Style) ─────────── */}
+          {implPlan && streaming && (
+            <div className="flex justify-start mb-4 w-full max-w-3xl pr-4 animate-fade-in-up">
+              <div className="flex gap-3 w-full">
+                {/* Icon */}
+                <div className="w-7 h-7 mt-0.5 flex-shrink-0 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 border border-violet-500/40 flex items-center justify-center shadow-lg shadow-violet-500/10">
+                  <span className="text-sm">📋</span>
+                </div>
+                {/* Card body */}
+                <div className="flex-1 min-w-0 rounded-2xl rounded-tl-sm border border-violet-500/25 bg-gradient-to-br from-bg-2 to-bg-3 shadow-lg overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center gap-2 px-4 py-2.5 border-b border-violet-500/20 bg-violet-500/5">
+                    <span className="text-[11px] font-semibold text-violet-300 tracking-wide uppercase">Rencana Implementasi</span>
+                    <span className="ml-auto flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+                      <span className="text-[10px] text-violet-400/70">Eksekusi berjalan otomatis</span>
+                    </span>
+                  </div>
+                  {/* Plan content */}
+                  <div className="px-4 py-3">
+                    <div className="text-[12.5px] text-ink-2 leading-relaxed whitespace-pre-wrap font-mono plan-content">
+                      {/* Render plan text with basic markdown highlights */}
+                      {implPlan.text.split('\n').map((line, i) => {
+                        if (line.startsWith('## ')) {
+                          return <div key={i} className="text-[13px] font-bold text-ink mb-1.5 mt-0.5 font-sans">{line.replace('## ', '')}</div>
+                        }
+                        if (line.startsWith('**') && line.endsWith('**')) {
+                          return <div key={i} className="text-[11px] font-semibold text-ink-2 mb-0.5 font-sans">{line.replace(/\*\*/g, '')}</div>
+                        }
+                        if (/^\d+\./.test(line)) {
+                          const num = line.match(/^(\d+)\.\s*/)[1]
+                          const rest = line.replace(/^\d+\.\s*/, '')
+                          return (
+                            <div key={i} className="flex gap-2 mb-0.5 items-baseline">
+                              <span className="text-[10px] font-bold text-violet-400 tabular-nums w-4 flex-shrink-0">{num}.</span>
+                              <span className="text-[12px] text-ink-2">{rest}</span>
+                            </div>
+                          )
+                        }
+                        if (line.startsWith('- `') || line.startsWith('- ')) {
+                          const content = line.replace(/^- /, '')
+                          return (
+                            <div key={i} className="flex gap-1.5 mb-0.5 items-baseline">
+                              <span className="text-violet-400/60 text-[10px] flex-shrink-0">▸</span>
+                              <span className="text-[12px] text-ink-3">
+                                {content.includes('`') 
+                                  ? content.split('`').map((part, pi) =>
+                                      pi % 2 === 1
+                                        ? <code key={pi} className="text-emerald-400 bg-bg-4 px-1 rounded text-[11px]">{part}</code>
+                                        : <span key={pi}>{part}</span>
+                                    )
+                                  : content
+                                }
+                              </span>
+                            </div>
+                          )
+                        }
+                        if (line.startsWith('**')) {
+                          return <div key={i} className="text-[11px] font-semibold text-accent-2 mb-0.5 font-sans mt-1">{line.replace(/\*\*/g, '')}</div>
+                        }
+                        if (!line.trim()) return <div key={i} className="h-1.5" />
+                        return <div key={i} className="text-[12px] text-ink-3 mb-0.5">{line}</div>
+                      })}
+                    </div>
+                  </div>
+                  {/* Footer */}
+                  <div className="flex items-center gap-2 px-4 py-2 border-t border-border/50 bg-bg-4/50">
+                    <div className="flex gap-1">
+                      {[0,1,2,3,4].map(i => (
+                        <div key={i} className="w-1 h-1 rounded-full bg-violet-400/40 animate-pulse" style={{animationDelay: i * 0.15 + 's'}} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-ink-3">Mengeksekusi rencana di atas...</span>
+                    <button
+                      onClick={() => setImplPlan(null)}
+                      className="ml-auto text-[10px] text-ink-3/50 hover:text-ink-3 transition-colors"
+                    >sembunyikan</button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -3007,8 +3124,8 @@ export default function Chat() {
                    <div className="text-xs text-ink-2 mb-3">
                      <p>Pilih metadata berikut untuk di-upload:</p>
                    </div>
-                   <div className="bg-bg-3 p-2.5 rounded border border-border-2 font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap max-h-32">
-                     {drivePromptTitle && <div className="font-semibold border-b border-border-2 pb-1 mb-1">{drivePromptTitle}</div>}
+                   <div className="bg-bg-3 p-2.5 rounded border border-border font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap max-h-32">
+                     {drivePromptTitle && <div className="font-semibold border-b border-border pb-1 mb-1">{drivePromptTitle}</div>}
                      {drivePromptContent}
                    </div>
                    <div className="flex gap-3">
@@ -3038,59 +3155,6 @@ export default function Chat() {
                  </div>
                </div>
              </div>
-          )}
-
-          {/* ── Interactive Plan Confirmation UI ──────────────────── */}
-          {pendingPlan && (
-            <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
-              <div className="flex gap-4 w-full">
-                <div className="w-8 h-8 flex-shrink-0 bg-amber-500/20 border border-amber-500/50 rounded-lg flex items-center justify-center">
-                  <span className="text-lg">📋</span>
-                </div>
-                <div className="flex-1 min-w-0 bg-bg-2 border border-amber-500/30 rounded-2xl rounded-tl-sm px-5 py-4 shadow-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm font-semibold text-ink">Rencana Eksekusi</span>
-                    <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">
-                      {pendingPlan.subtask_count} sub-task
-                    </span>
-                  </div>
-                  <div className="text-xs text-ink-2 whitespace-pre-wrap leading-relaxed mb-4 font-mono bg-bg-3 p-3 rounded-lg border border-border-2 max-h-64 overflow-y-auto">
-                    {pendingPlan.plan}
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={async () => {
-                        const sid = pendingPlan.session_id
-                        setPendingPlan(null)
-                        useChatStore.getState().setStatusText('✅ Rencana disetujui, mengeksekusi...')
-                        try {
-                          await api.confirmPlan(sid)
-                        } catch (e) {
-                          console.warn('Plan confirm error:', e)
-                        }
-                      }}
-                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
-                    >
-                      ▶️ Lanjutkan Eksekusi
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPendingPlan(null)
-                        // Abort the stream — orchestrator will timeout and auto-proceed
-                        const abortFn = useChatStore.getState().abortRequest
-                        if (abortFn && typeof abortFn === 'function') abortFn()
-                        clearStreaming()
-                        useChatStore.getState().setStatusText('')
-                        useChatStore.getState().finalizeProcessSteps()
-                      }}
-                      className="flex-1 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink font-medium py-2.5 border border-border rounded-lg text-xs transition-all"
-                    >
-                      Batalkan
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           )}
 
           <div ref={messagesEndRef} className="h-4" />
@@ -3124,7 +3188,7 @@ export default function Chat() {
                   <img
                     src={pendingImage.preview}
                     alt="Preview gambar"
-                    className="h-14 w-14 object-cover rounded-lg border border-border-2"
+                    className="h-14 w-14 object-cover rounded-lg border border-border"
                   />
                   <button
                     onClick={() => setPendingImage(null)}
@@ -3185,7 +3249,7 @@ export default function Chat() {
                 {/* Toggle Button for Mobile */}
                 <button
                   onClick={() => setShowMobileAttachMenu(!showMobileAttachMenu)}
-                  className="md:hidden w-11 h-11 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
+                  className="md:hidden w-11 h-11 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
                   disabled={streaming}
                 >
                   <Plus size={18} className={clsx("transition-transform duration-200", showMobileAttachMenu && "rotate-45")} />
@@ -3203,7 +3267,7 @@ export default function Chat() {
                   <button
                     onClick={() => { chatContextFileRef.current?.click(); setShowMobileAttachMenu(false); }}
                     disabled={streaming}
-                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
+                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
                     title="Lampirkan file (PDF, Excel, Word) ke chat"
                   >
                     <FilePlus size={16} className="md:w-[15px] md:h-[15px]" />
@@ -3212,7 +3276,7 @@ export default function Chat() {
                   <button
                     onClick={() => { fileInputRef.current?.click(); setShowMobileAttachMenu(false); }}
                     disabled={streaming}
-                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
+                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
                     title="Upload file ke Knowledge Base"
                   >
                     <Paperclip size={16} className="md:w-[15px] md:h-[15px]" />
@@ -3226,7 +3290,7 @@ export default function Chat() {
                       'w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border transition-all disabled:opacity-40',
                       pendingImage
                         ? 'border-accent bg-accent/20 text-accent'
-                        : 'border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
+                        : 'border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
                     )}
                     title="Kirim gambar ke AI"
                   >
@@ -3245,7 +3309,7 @@ export default function Chat() {
                     ? 'border-danger bg-danger/20 text-danger animate-pulse'
                     : isTranscribing
                       ? 'border-warn bg-warn/20 text-warn'
-                      : 'border-border-2 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
+                      : 'border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
                 )}
                 title={isRecording ? 'Berhenti merekam' : isTranscribing ? 'Mentranskripsi...' : 'Rekam suara'}
               >

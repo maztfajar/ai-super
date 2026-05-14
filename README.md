@@ -1,5 +1,5 @@
-# 🧠 AI ORCHESTRATOR v3.9
-### *Multi-Agent Autonomous Orchestration with Dynamic Model Routing, Self-Learning & AI Core Generator*
+# 🧠 AI ORCHESTRATOR v4.0
+### *Autonomous Execution, 5-Step Deep Reasoning & Pre-Execution Planning*
 
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge" alt="Status">
@@ -15,6 +15,30 @@
 ## 📖 Overview
 
 **AI ORCHESTRATOR** adalah platform orkestrasi AI mandiri (Self-Hosted) yang dirancang untuk mengeksekusi tugas-tugas kompleks melalui sistem multi-agent yang terkoordinasi. Berbeda dengan chat UI standar, sistem ini berfokus pada **Execution & Autonomy**, didukung oleh lapisan memori prosedural dan **Dynamic Model Routing** yang memungkinkannya memilih model AI terbaik secara otomatis untuk setiap jenis tugas — tanpa perlu menyentuh kode.
+
+---
+
+## 🆕 What's New in v4.0 — Full Autonomy, Enhanced Reasoning & Pre-Execution Planning
+
+### 1. 🧠 Penalaran (Reasoning) 5-Tahap yang Jauh Lebih Kuat
+AI Orchestrator kini dilengkapi dengan alur penalaran (*Reasoning Flow*) 5 tahap yang memaksa agen untuk berpikir lebih dalam sebelum mengeksekusi. Ini memungkinkannya memahami niat pengguna (*intent*) bahkan dari kalimat yang sangat pendek atau ambigu.
+
+*   **Tahap 1 (Intent Inference):** Menebak maksud tersembunyi (contoh: *"perbaiki login"* → debug auth flow, cek token; *"lambat banget"* → profiling, optimize).
+*   **Tahap 2 (Context Exploration):** Agen proaktif menggunakan tool `find_files`, `list_directory`, atau `read_file` jika konteks belum lengkap, tanpa perlu bertanya ke pengguna.
+*   **Tahap 3 & 4 (Plan & Execute):** Menyusun tool calls secara sekuensial.
+*   **Tahap 5 (Verify):** Mengevaluasi output tool untuk memastikan masalah benar-benar selesai.
+
+### 2. 📋 Generator Rencana Implementasi (VS Code Copilot Style)
+Untuk tugas yang dinilai kompleks (skor kompleksitas ≥ 0.45, seperti pembuatan aplikasi atau *refactoring* besar), sistem kini secara otomatis menyusun **Rencana Implementasi**.
+*   **Plan Card UI:** Rencana ini ditampilkan di frontend dalam bentuk kartu (*card*) elegan ala *VS Code Copilot* lengkap dengan *syntax highlighting* dan indikator progres.
+*   **Informational Only:** Rencana ini bersifat informasi; pengguna tidak perlu mengklik "Setuju". Orchestrator langsung mengeksekusi langkah-langkah tersebut secara otomatis.
+*   **Auto-Dismiss:** Kartu rencana akan otomatis hilang dari layar setelah eksekusi selesai agar riwayat percakapan tetap bersih.
+
+### 3. ⚡ Full Autonomy & Smart Project Location
+Botol leher (*bottleneck*) interaksi manusia telah dihapus. AI Orchestrator kini adalah **Executor Mandiri 100%**:
+*   **Zero-Interaction Execution:** Tidak ada lagi jeda untuk meminta persetujuan manual (sebelumnya menunggu 5 menit). AI langsung bertindak.
+*   **Smart Popup:** Sistem hanya akan menjeda dan memunculkan *popup* lokasi penyimpanan **jika dan hanya jika** pengguna meminta membuat aplikasi/proyek baru (contoh: *"buatkan website"* atau *"bikin aplikasi"*) dan direktori belum ditentukan.
+*   **Self-Resolving Paths:** Untuk tugas perbaikan atau pencarian, agen menggunakan tool `get_project_path` dan `find_files` untuk mencari lokasi secara otomatis.
 
 ---
 
@@ -301,5 +325,5 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 
 <p align="center">
   <i>Focus on Execution. Built for Engineers.</i><br>
-  <b>AI ORCHESTRATOR v3.9 — Zero-Hardcode, Self-Learning, Transparent Routing, AI Core Generator.</b>
+  <b>AI ORCHESTRATOR v4.0 — Full Autonomy, 5-Step Reasoning, Pre-Execution Planning.</b>
 </p>

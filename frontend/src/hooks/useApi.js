@@ -285,23 +285,17 @@ export const api = {
   deleteAllMedia: () => req('DELETE', '/media/delete-all'),
 
   // ── Streaming chat multimodal (gambar/suara + teks) ────────
-  chatStreamMultimodal: function(payload, imageData, onChunk, onDone, onSession, onStatus, onProcess, onRequireProject) {
-    /**
-     * payload: { session_id, message, model, use_rag }
-     * imageData: { base64, mime_type } | null
-     * Kirim message teks biasa, tapi inject context visual di depan message jika ada gambar.
-     */
-    // Jika ada gambar, tambahkan sebagai metadata ke payload
+  chatStreamMultimodal: function(payload, imageData, onChunk, onDone, onSession, onStatus, onProcess, onRequireProject, onImplPlan) {
     const enriched = Object.assign({}, payload)
     if (imageData) {
       enriched.image_b64  = imageData.base64
       enriched.image_mime = imageData.mime_type
     }
-    return api.chatStream(enriched, onChunk, onDone, onSession, undefined, onStatus, onProcess, undefined, onRequireProject)
+    return api.chatStream(enriched, onChunk, onDone, onSession, undefined, onStatus, onProcess, undefined, onRequireProject, onImplPlan)
   },
 
   // ── Streaming chat via SSE ────────────────────────────────
-  chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess, onPlan, onRequireProject) {
+  chatStream: function(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess, onPlan, onRequireProject, onImplPlan) {
     const token      = getToken()
     const controller = new AbortController()
     let doneReceived = false
@@ -343,6 +337,7 @@ export const api = {
               else if (data.type === 'session') onSession && onSession(data)
               else if (data.type === 'pending_confirmation') { doneReceived = true; onPending && onPending(data) }
               else if (data.type === 'pending_plan')  { onPlan && onPlan(data) }
+              else if (data.type === 'impl_plan')     { onImplPlan && onImplPlan(data) }  // Implementation plan
               else if (data.type === 'status')  onStatus && onStatus(data.content)
               else if (data.type === 'require_project_location') { doneReceived = true; onRequireProject && onRequireProject(data) }
               else if (data.type === 'error')   { onChunk && onChunk(data.content || '⚠️ Error'); }

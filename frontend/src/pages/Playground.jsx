@@ -46,7 +46,7 @@ export default function Playground() {
           <div>
             <label className="text-xs text-ink-3 mb-1 block">Model</label>
             <select value={model} onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-bg-3 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink outline-none">
+              className="w-full bg-bg-3 border border-border rounded-lg px-3 py-2 text-sm text-ink outline-none">
               {models.map((m) => <option key={m.id} value={m.id}>{m.display}</option>)}
               {models.length === 0 && <option value="">{t('no_active_models')}</option>}
             </select>
@@ -55,14 +55,14 @@ export default function Playground() {
           <div>
             <label className="text-xs text-ink-3 mb-1 block">{t('system_prompt')}</label>
             <textarea value={system} onChange={(e) => setSystem(e.target.value)} rows={3}
-              className="w-full bg-bg-3 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-accent resize-none font-mono text-xs" />
+              className="w-full bg-bg-3 border border-border rounded-lg px-3 py-2 text-sm text-ink outline-none focus:border-accent resize-none font-mono text-xs" />
           </div>
 
           <div>
             <label className="text-xs text-ink-3 mb-1 block">{t('user_message')} *</label>
             <textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} rows={5}
               placeholder={t('user_message_placeholder')}
-              className="w-full bg-bg-3 border border-border-2 rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent resize-none" />
+              className="w-full bg-bg-3 border border-border rounded-lg px-3 py-2 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent resize-none" />
           </div>
 
           {/* Params */}

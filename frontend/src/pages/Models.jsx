@@ -46,13 +46,13 @@ export default function Models() {
           <h1 className="text-2xl font-semibold text-ink">Model Manager</h1>
           <p className="text-sm text-ink-3 mt-0.5 font-medium">{models.length} {t('models_detected')}</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 px-4 py-2 border border-border-2 rounded-lg text-sm text-ink-2 hover:text-ink hover:bg-bg-4 transition-all font-semibold shadow-sm">
+        <button onClick={load} className="flex items-center gap-1.5 px-4 py-2 border border-border rounded-lg text-sm text-ink-2 hover:text-ink hover:bg-bg-4 transition-all font-semibold shadow-sm">
           <RefreshCw size={14} /> {t('refresh')}
         </button>
       </div>
 
       {models.length === 0 ? (
-        <div className="bg-bg-3 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center p-12 text-center hover:border-accent/40 transition-all cursor-pointer group" onClick={() => navigate('/integrations')}>
+        <div className="bg-bg-3 border border-dashed border-border rounded-xl flex flex-col items-center justify-center p-12 text-center hover:border-accent/40 transition-all cursor-pointer group" onClick={() => navigate('/integrations')}>
           <span className="text-5xl mb-4">🤖</span>
           <h2 className="text-lg font-semibold text-ink mb-2">{t('no_models_title')}</h2>
           <p className="text-sm text-ink-3 max-w-md font-medium">
@@ -62,7 +62,7 @@ export default function Models() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {models.map((m) => (
-            <div key={m.id} className="bg-bg-3 border border-border rounded-xl p-4 hover:border-border-2 transition-colors">
+            <div key={m.id} className="bg-bg-3 border border-border rounded-xl p-4 hover:border-border transition-colors">
               <div className="flex items-start gap-3 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-bg-4 flex items-center justify-center text-xl flex-shrink-0">
                   {PROVIDER_ICON[m.provider] || '🤖'}
@@ -95,7 +95,7 @@ export default function Models() {
 
           {/* Add hint card */}
           <div
-            className="bg-bg-3 border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center p-6 text-center hover:border-accent/40 transition-all cursor-pointer group"
+            className="bg-bg-3 border border-dashed border-border rounded-xl flex flex-col items-center justify-center p-6 text-center hover:border-accent/40 transition-all cursor-pointer group"
             onClick={() => navigate('/integrations')}
           >
             <span className="text-3xl mb-2">➕</span>

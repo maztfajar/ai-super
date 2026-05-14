@@ -548,7 +548,7 @@ export default function Dashboard() {
           <h1 className="text-6xl font-bold tracking-tighter text-ink lg:text-8xl bg-clip-text text-transparent bg-gradient-to-r from-ink via-ink-2 to-ink-3 uppercase">Dashboard</h1>
         </div>
         <div className="flex items-center gap-4">
-          <button className="flex items-center gap-3 px-6 py-4 bg-bg-3 border-2 border-border rounded-2xl text-sm font-bold text-ink hover:bg-bg-4 transition-all shadow-xl backdrop-blur-md uppercase tracking-widest">
+          <button className="flex items-center gap-3 px-6 py-4 bg-bg-3 border border-border rounded-2xl text-sm font-bold text-ink hover:bg-bg-4 transition-all shadow-xl backdrop-blur-md uppercase tracking-widest">
             <Calendar size={18} className="text-accent" /> Mar 20, 2026 - Mar 28, 2026
           </button>
           <button onClick={downloadReport} className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-accent to-accent-2 text-white rounded-2xl text-sm font-bold shadow-[0_10px_40px_rgba(var(--accent-rgb),0.4)] active:scale-95 transition-all uppercase tracking-widest">
@@ -569,13 +569,13 @@ export default function Dashboard() {
         
         {/* Left Column Stack */}
         <div className="lg:col-span-8 flex flex-col gap-8">
-          <Card className="p-8 bg-gradient-to-br from-bg-3 to-bg-4 border-2 border-border/50 h-[320px] flex flex-col shadow-2xl">
+          <Card className="p-8 bg-gradient-to-br from-bg-3 to-bg-4 border border-border/50 h-[320px] flex flex-col shadow-2xl">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
               <div className="space-y-1">
                 <h2 className="text-3xl font-bold text-ink tracking-tighter uppercase">{t('activity_overview')}</h2>
                 <p className="text-[10px] font-bold text-ink-3 uppercase tracking-[0.4em] opacity-50">{t('daily_stats')}</p>
               </div>
-              <div className="flex p-1.5 bg-bg/40 rounded-2xl backdrop-blur-xl border-2 border-border/10 shadow-inner">
+              <div className="flex p-1.5 bg-bg/40 rounded-2xl backdrop-blur-xl border border-border/10 shadow-inner">
                 {['messages', 'tokens', 'avg_latency', 'error_rate'].map(tKey => (
                   <button key={tKey} onClick={() => setMetric(tKey)} className={clsx("px-6 py-2.5 text-[10px] font-bold tracking-[0.2em] transition-all rounded-xl uppercase", metric === tKey ? "bg-accent text-white shadow-xl" : "text-ink-3 hover:text-ink")}>
                     {t(tKey)}
@@ -691,7 +691,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Live Event Feed ───────────────────────────────────── */}
-      <Card className="p-10 bg-bg-4/50 backdrop-blur-3xl border-2 border-border/50 relative z-10 transition-all hover:bg-bg-4/70 group shadow-2xl">
+      <Card className="p-10 bg-bg-4/50 backdrop-blur-3xl border border-border/50 relative z-10 transition-all hover:bg-bg-4/70 group shadow-2xl">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
              <div className="p-3 rounded-2xl bg-accent/20 text-accent shadow-lg"><Activity size={20} /></div>

@@ -119,7 +119,7 @@ export default function Knowledge() {
           <h1 className="text-3xl font-bold text-ink uppercase tracking-tight">{t('kb_title')}</h1>
           <p className="text-sm text-ink-3 font-semibold uppercase tracking-widest opacity-60">{docs.length} {t('indexing_desc')}</p>
         </div>
-        <button onClick={loadDocs} className="flex items-center gap-2 px-6 py-3 bg-bg-3 border-2 border-border rounded-xl text-xs font-bold text-ink uppercase tracking-widest hover:bg-bg-4 transition-all shadow-md active:scale-95">
+        <button onClick={loadDocs} className="flex items-center gap-2 px-6 py-3 bg-bg-3 border border-border rounded-xl text-xs font-bold text-ink uppercase tracking-widest hover:bg-bg-4 transition-all shadow-md active:scale-95">
           <RefreshCw size={18} className={clsx(loading && 'animate-spin')} /> Refresh
         </button>
       </div>
@@ -129,7 +129,7 @@ export default function Knowledge() {
         <div className="lg:col-span-2 space-y-4">
           {/* Upload zone */}
           <div {...getRootProps()} className={clsx(
-            'border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all shadow-inner',
+            'border border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all shadow-inner',
             isDragActive ? 'border-accent bg-accent/10' : 'border-border hover:border-accent/40 hover:bg-bg-3'
           )}>
             <input {...getInputProps()} />
@@ -144,13 +144,13 @@ export default function Knowledge() {
           <div className="space-y-3">
             {loading && <div className="text-sm font-bold text-ink-3 py-6 flex items-center justify-center gap-3 uppercase tracking-widest opacity-60"><RefreshCw size={20} className="animate-spin" /> {t('loading') || 'Loading...'}</div>}
             {!loading && docs.length === 0 && (
-              <div className="bg-bg-3 border-2 border-border rounded-2xl p-10 text-center shadow-inner">
+              <div className="bg-bg-3 border border-border rounded-2xl p-10 text-center shadow-inner">
                 <FileText size={40} className="text-ink-3 mx-auto mb-4 opacity-30" />
                 <p className="text-sm font-bold text-ink-3 uppercase tracking-widest opacity-60">{t('no_documents')}</p>
               </div>
             )}
             {docs.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-5 p-4 bg-bg-3 border-2 border-border rounded-2xl hover:border-accent/40 transition-all group shadow-sm">
+              <div key={doc.id} className="flex items-center gap-5 p-4 bg-bg-3 border border-border rounded-2xl hover:border-accent/40 transition-all group shadow-sm">
                 <div className="text-2xl flex-shrink-0 bg-bg-4 w-12 h-12 rounded-xl flex items-center justify-center shadow-inner border border-border/20">{DOC_ICON[doc.doc_type] || '📄'}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-lg font-bold text-ink truncate tracking-tight uppercase leading-tight">{doc.original_name}</div>
@@ -178,7 +178,7 @@ export default function Knowledge() {
         {/* Right: Search + Scrape */}
         <div className="space-y-4">
           {/* Search */}
-          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+          <div className="bg-bg-3 border border-border rounded-2xl p-5 shadow-lg">
             <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">🔍 Test RAG Search</h3>
             <div className="flex gap-3 mb-4">
               <input
@@ -186,7 +186,7 @@ export default function Knowledge() {
                 onChange={(e) => setSearchQ(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && searchKB()}
                 placeholder="Cari pengetahuan..."
-                className="flex-1 bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent transition-all shadow-inner"
+                className="flex-1 bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent transition-all shadow-inner"
               />
               <button onClick={searchKB} className="p-3.5 bg-accent hover:bg-accent/80 rounded-xl transition-all shadow-xl shadow-accent/25 active:scale-95">
                 <Search size={20} className="text-white" />
@@ -195,7 +195,7 @@ export default function Knowledge() {
             {searchResults.length > 0 && (
               <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                 {searchResults.map((r, i) => (
-                  <div key={i} className="p-4 bg-bg-4 rounded-xl border-2 border-border/50 text-[11px] shadow-sm">
+                  <div key={i} className="p-4 bg-bg-4 rounded-xl border border-border/50 text-[11px] shadow-sm">
                     <div className="font-bold text-accent-2 mb-2 uppercase tracking-tight truncate border-b border-border/40 pb-2">📄 {r.source}</div>
                     <div className="text-ink-2 line-clamp-5 leading-relaxed font-semibold opacity-80">{r.content}</div>
                     <div className="text-[10px] text-ink-3 mt-3 font-bold uppercase tracking-widest flex items-center justify-between">
@@ -209,31 +209,31 @@ export default function Knowledge() {
           </div>
 
           {/* Scrape */}
-          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+          <div className="bg-bg-3 border border-border rounded-2xl p-5 shadow-lg">
             <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">🌐 {t('scrape_title')}</h3>
             <input
               value={scrapeUrl}
               onChange={(e) => setScrapeUrl(e.target.value)}
               placeholder="https://example.com/page"
-              className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent mb-4 transition-all shadow-inner"
+              className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent mb-4 transition-all shadow-inner"
             />
             <button
               onClick={scrapeWebsite}
               disabled={scraping || !scrapeUrl.trim()}
-              className="w-full flex items-center justify-center gap-3 py-4 bg-bg-4 hover:bg-info/10 border-2 border-info/30 text-info rounded-xl text-xs font-bold uppercase tracking-widest disabled:opacity-40 transition-all shadow-md active:scale-95"
+              className="w-full flex items-center justify-center gap-3 py-4 bg-bg-4 hover:bg-info/10 border border-info/30 text-info rounded-xl text-xs font-bold uppercase tracking-widest disabled:opacity-40 transition-all shadow-md active:scale-95"
             >
               <Globe size={18} className={clsx(scraping && 'animate-spin')} /> {scraping ? 'Scraping...' : 'Scrape & Index'}
             </button>
           </div>
 
           {/* GDrive Import */}
-          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-lg">
+          <div className="bg-bg-3 border border-border rounded-2xl p-5 shadow-lg">
             <h3 className="text-xs font-bold text-ink-3 mb-4 uppercase tracking-widest opacity-60">☁️ {t('gdrive_title')}</h3>
             
             {folders.length === 0 && !loadingFolders ? (
               <button
                 onClick={loadFolders}
-                className="w-full flex items-center justify-center gap-3 py-4 bg-bg-4 hover:bg-success/10 border-2 border-success/30 text-success rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-md active:scale-95"
+                className="w-full flex items-center justify-center gap-3 py-4 bg-bg-4 hover:bg-success/10 border border-success/30 text-success rounded-xl text-xs font-bold uppercase tracking-widest transition-all shadow-md active:scale-95"
               >
                 <File size={18} /> Pilih Folder Drive
               </button>
@@ -250,7 +250,7 @@ export default function Knowledge() {
                 <select
                   value={selectedFolder}
                   onChange={(e) => setSelectedFolder(e.target.value)}
-                  className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent transition-all shadow-inner"
+                  className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent transition-all shadow-inner"
                 >
                   <option value="">-- Pilih Folder --</option>
                   {folders.map(f => (
@@ -258,11 +258,11 @@ export default function Knowledge() {
                   ))}
                 </select>
                 <div className="flex gap-3">
-                  <button onClick={() => setFolders([])} className="flex-1 py-3 bg-bg-4 border-2 border-border rounded-xl text-[10px] font-bold text-ink-3 uppercase tracking-widest transition-all hover:bg-bg-5 active:scale-95">Batal</button>
+                  <button onClick={() => setFolders([])} className="flex-1 py-3 bg-bg-4 border border-border rounded-xl text-[10px] font-bold text-ink-3 uppercase tracking-widest transition-all hover:bg-bg-5 active:scale-95">Batal</button>
                   <button
                     onClick={syncGDrive}
                     disabled={syncingDrive || !selectedFolder}
-                    className="flex-[2] flex items-center justify-center gap-3 py-3 bg-bg-4 hover:bg-success/10 border-2 border-success/30 text-success rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 transition-all shadow-md active:scale-95"
+                    className="flex-[2] flex items-center justify-center gap-3 py-3 bg-bg-4 hover:bg-success/10 border border-success/30 text-success rounded-xl text-[10px] font-bold uppercase tracking-widest disabled:opacity-40 transition-all shadow-md active:scale-95"
                   >
                     {syncingDrive ? 'Sinkronisasi...' : 'Sync ke RAG'}
                   </button>
@@ -272,7 +272,7 @@ export default function Knowledge() {
           </div>
 
           {/* Tips */}
-          <div className="bg-bg-3 border-2 border-border rounded-2xl p-5 shadow-inner">
+          <div className="bg-bg-3 border border-border rounded-2xl p-5 shadow-inner">
             <h3 className="text-xs font-bold text-ink mb-4 uppercase tracking-widest opacity-60">💡 {t('rag_tips_title')}</h3>
             <ul className="text-xs text-ink-3 space-y-3 font-semibold leading-relaxed opacity-80 uppercase tracking-tight">
               <li className="flex gap-2"><span className="text-accent-2">•</span> <span>Upload PDF laporan → AI bisa menjawab dari laporan</span></li>

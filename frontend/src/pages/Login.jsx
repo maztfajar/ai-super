@@ -69,7 +69,7 @@ function OtpBoxes({ value, onChange, onEnter }) {
           onFocus={e => e.target.select()}
           onPaste={handlePaste}
           className={clsx(
-            "w-11 text-center text-xl font-semibold font-mono rounded-xl outline-none transition-all border-2",
+            "w-11 text-center text-xl font-semibold font-mono rounded-xl outline-none transition-all border",
             d ? "bg-accent/10 border-accent text-accent-2" : "bg-bg-3 border-transparent text-ink focus:border-accent"
           )}
           style={{ height: "3rem" }}
@@ -183,7 +183,7 @@ function RecoveryPanel({ onBack }) {
   // ── Sukses ────────────────────────────────────────────────
   if (done) return (
     <div className="p-6 text-center space-y-5">
-      <div className="w-16 h-16 rounded-full bg-success/15 border-2 border-success/30 flex items-center justify-center mx-auto">
+      <div className="w-16 h-16 rounded-full bg-success/15 border border-success/30 flex items-center justify-center mx-auto">
         <CheckCircle2 size={28} className="text-success"/>
       </div>
       <div>

@@ -122,7 +122,7 @@ function OtpInput({ value, onChange, length = 6 }) {
           onFocus={e => e.target.select()}
           onPaste={handlePaste}
           className={clsx(
-            "w-11 h-14 text-center text-2xl font-semibold font-mono rounded-xl outline-none transition-all border-2",
+            "w-11 h-14 text-center text-2xl font-semibold font-mono rounded-xl outline-none transition-all border",
             digit
               ? "bg-accent/10 border-accent text-accent-2"
               : "bg-bg-2 border-transparent text-ink focus:border-accent focus:bg-bg-3"

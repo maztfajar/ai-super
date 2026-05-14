@@ -22,7 +22,7 @@ function TextInp({ value, onChange, placeholder, disabled, maxLength, label }) {
         type="text" value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled} maxLength={maxLength}
-        className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 transition-all shadow-inner"
+        className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 transition-all shadow-inner"
       />
     </div>
   )
@@ -39,7 +39,7 @@ function PassInp({ value, onChange, placeholder, label, onKeyDown }) {
           onChange={e => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           placeholder={placeholder} autoComplete="new-password"
-          className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-all font-mono shadow-inner font-bold"
+          className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-all font-mono shadow-inner font-bold"
         />
         <button type="button" onClick={() => setShow(!show)}
           className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-all">
@@ -120,7 +120,7 @@ function LogoUploader({ current, onFileSelected }) {
         onDragOver={e => { e.preventDefault(); setDrag(true) }}
         onDragLeave={() => setDrag(false)}
         onDrop={e => { e.preventDefault(); setDrag(false); process(e.dataTransfer.files?.[0]) }}
-        className={clsx('border-2 border-dashed rounded-xl p-4 cursor-pointer transition-all',
+        className={clsx('border border-dashed rounded-xl p-4 cursor-pointer transition-all',
           drag ? 'border-accent bg-accent/8' : 'border-border hover:border-accent/50 hover:bg-bg-4')}>
         <input ref={ref} type="file" accept="image/*" className="hidden"
           onChange={e => process(e.target.files?.[0])}/>
@@ -164,14 +164,14 @@ function LogoUploader({ current, onFileSelected }) {
         </div>
       </div>
 
-      <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 shadow-inner">
+      <div className="bg-bg-4 border border-border/40 rounded-2xl p-4 shadow-inner">
         <div className="flex items-center gap-2 mb-3">
           <Maximize2 size={16} className="text-accent-2"/>
           <span className="text-sm font-bold text-ink-2 uppercase tracking-widest opacity-80">Panduan Ukuran (Pixel)</span>
         </div>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {[{px:32,label:'Sidebar'},{px:64,label:'Min'},{px:128,label:'⭐ Ideal'},{px:256,label:'Optimal'}].map(s => (
-            <div key={s.px} className={clsx('rounded-xl p-2.5 border-2 text-center transition-all',
+            <div key={s.px} className={clsx('rounded-xl p-2.5 border text-center transition-all',
               s.px === 128 ? 'border-accent/40 bg-accent/10' : 'border-border bg-bg-3')}>
               <div className={clsx('text-sm font-bold font-mono tracking-tighter', s.px===128?'text-accent-2':'text-ink-2')}>{s.px}</div>
               <div className="text-[10px] text-ink-3 font-bold uppercase tracking-tight opacity-60">{s.label}</div>
@@ -322,7 +322,7 @@ export default function Profile() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
 
         {/* ── Kartu Akun ── */}
-        <div className="bg-bg-3 border-2 border-border rounded-2xl overflow-hidden shadow-lg">
+        <div className="bg-bg-3 border border-border rounded-2xl overflow-hidden shadow-lg">
           <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-border">
             <User size={18} className="text-accent-2"/>
             <span className="text-base font-bold text-ink uppercase tracking-tight">{t('account_profile')}</span>
@@ -384,7 +384,7 @@ export default function Profile() {
               {savingP ? t('saving') : t('save_account_changes')}
             </button>
 
-            <div className="bg-bg-4 border-2 border-border/40 rounded-2xl p-4 text-xs text-ink-3 space-y-2 font-semibold shadow-inner">
+            <div className="bg-bg-4 border border-border/40 rounded-2xl p-4 text-xs text-ink-3 space-y-2 font-semibold shadow-inner">
               <div className="text-ink-2 font-bold uppercase tracking-widest mb-2 opacity-80">💡 {t('security_tips')}:</div>
               <div>• Gunakan password minimal 8 karakter + angka + simbol</div>
               <div>• Aktifkan <span className="text-accent-2 font-bold">2FA & Login</span> untuk perlindungan ekstra</div>
@@ -393,7 +393,7 @@ export default function Profile() {
         </div>
 
         {/* ── Kartu App ── */}
-        <div className="bg-bg-3 border-2 border-border rounded-2xl overflow-hidden shadow-lg">
+        <div className="bg-bg-3 border border-border rounded-2xl overflow-hidden shadow-lg">
           <div className="flex items-center gap-3 px-5 py-4 border-b-2 border-border">
             <LayoutDashboard size={18} className="text-success"/>
             <span className="text-base font-bold text-ink uppercase tracking-tight">
@@ -418,9 +418,9 @@ export default function Profile() {
                 </div>
 
                 {savedOk && (
-                  <div className="flex items-center gap-3 p-4 bg-success/10 border-2 border-success/30 rounded-2xl text-sm text-success font-bold uppercase tracking-tight shadow-inner">
+                  <div className="flex items-center gap-3 p-4 bg-success/10 border border-success/30 rounded-2xl text-sm text-success font-bold uppercase tracking-tight shadow-inner">
                     <CheckCircle2 size={16}/>
-                    Tersimpan! Tekan <kbd className="mx-1 bg-bg-2 border-2 border-border px-2 py-1 rounded-lg text-[10px] text-ink font-mono font-bold shadow-sm">F5</kbd> untuk refresh sidebar.
+                    Tersimpan! Tekan <kbd className="mx-1 bg-bg-2 border border-border px-2 py-1 rounded-lg text-[10px] text-ink font-mono font-bold shadow-sm">F5</kbd> untuk refresh sidebar.
                   </div>
                 )}
 
@@ -432,8 +432,8 @@ export default function Profile() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-bg-4 border-2 border-border rounded-2xl shadow-inner">
-                  <div className="w-14 h-14 rounded-xl border-2 border-border bg-bg-5 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
+                <div className="flex items-center gap-4 p-4 bg-bg-4 border border-border rounded-2xl shadow-inner">
+                  <div className="w-14 h-14 rounded-xl border border-border bg-bg-5 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm">
                     {logoSrc ? <img src={logoSrc} className="w-full h-full object-contain" alt="logo"/> : <span className="text-3xl">🧠</span>}
                   </div>
                   <div>
@@ -441,7 +441,7 @@ export default function Profile() {
                     <div className="text-xs text-ink-3 font-bold uppercase tracking-widest opacity-60">AI Orchestrator Platform</div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-4 bg-bg-4 border-2 border-border rounded-2xl text-xs text-ink-3 font-semibold leading-relaxed shadow-sm">
+                <div className="flex items-start gap-3 p-4 bg-bg-4 border border-border rounded-2xl text-xs text-ink-3 font-semibold leading-relaxed shadow-sm">
                   <Info size={16} className="text-accent-2 flex-shrink-0 mt-0.5"/>
                   <span className="opacity-80">Logo dan nama aplikasi adalah identitas sistem yang hanya dapat diubah oleh Administrator melalui pengaturan ini.</span>
                 </div>

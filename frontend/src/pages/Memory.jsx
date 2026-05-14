@@ -13,7 +13,7 @@ import clsx from 'clsx'
 // ── Komponen kecil ────────────────────────────────────────────
 function InfoCard({ icon: Icon, title, value, sub, color = 'text-accent-2', bg = 'bg-accent/10' }) {
   return (
-    <div className="bg-bg-3 border border-border-2 rounded-xl p-5 shadow-sm">
+    <div className="bg-bg-3 border border-border rounded-xl p-5 shadow-sm">
       <div className={clsx('w-9 h-9 rounded-lg flex items-center justify-center mb-3', bg)}>
         <Icon size={16} className={color}/>
       </div>
@@ -27,7 +27,7 @@ function InfoCard({ icon: Icon, title, value, sub, color = 'text-accent-2', bg =
 function LayerCard({ icon, title, color, bgColor, badge, items, children }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className={clsx('rounded-2xl border-2 overflow-hidden shadow-lg', bgColor)}>
+    <div className={clsx('rounded-2xl border overflow-hidden shadow-lg', bgColor)}>
       <button onClick={() => setOpen(!open)}
         className="w-full flex items-center gap-4 px-5 py-4 hover:bg-black/5 transition-all">
         <span className="text-2xl flex-shrink-0">{icon}</span>
@@ -185,7 +185,7 @@ export default function Memory() {
       </div>
 
       {/* ── Status realtime ── */}
-      <div className="bg-bg-3 border border-border-2 rounded-2xl p-6 shadow-md">
+      <div className="bg-bg-3 border border-border rounded-2xl p-6 shadow-md">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-xl font-bold text-ink flex items-center gap-3 uppercase tracking-tight">
             <Database size={20} className="text-accent-2"/>{t('memory_status')}
@@ -193,7 +193,7 @@ export default function Memory() {
           <div className="flex items-center gap-3">
             {selSession && (
               <select value={selSession} onChange={e => setSelSession(e.target.value)}
-                className="bg-bg-2 border border-border-2 rounded-xl px-4 py-2 text-sm text-ink outline-none max-w-64 truncate font-bold shadow-sm">
+                className="bg-bg-2 border border-border rounded-xl px-4 py-2 text-sm text-ink outline-none max-w-64 truncate font-bold shadow-sm">
                 {sessions.map(s => (
                   <option key={s.id} value={s.id}>{s.title?.slice(0, 40) || 'Chat'}</option>
                 ))}
@@ -203,7 +203,7 @@ export default function Memory() {
               if (sessions.length > 0 && !selSession) setSelSession(sessions[0]?.id)
               else setSelSession(null)
             }}
-              className="text-xs text-ink-3 hover:text-accent-2 px-4 py-2 rounded-xl bg-bg-4 border border-border-2 font-bold uppercase tracking-wider transition-all shadow-sm">
+              className="text-xs text-ink-3 hover:text-accent-2 px-4 py-2 rounded-xl bg-bg-4 border border-border font-bold uppercase tracking-wider transition-all shadow-sm">
               {selSession ? t('hide_session') : t('select_session')}
             </button>
           </div>
@@ -267,7 +267,7 @@ export default function Memory() {
               ok: true,
             },
           ].map((item, i) => (
-            <div key={i} className="border border-border-2 rounded-2xl overflow-hidden shadow-sm">
+            <div key={i} className="border border-border rounded-2xl overflow-hidden shadow-sm">
               <div className="flex items-start gap-4 p-4 bg-bg-4">
                 {item.ok === true && <CheckCircle2 size={18} className="text-success flex-shrink-0 mt-0.5"/>}
                 {item.ok === false && <XCircle size={18} className="text-warn flex-shrink-0 mt-0.5"/>}
@@ -296,7 +296,7 @@ export default function Memory() {
           <input value={newMem} onChange={e => setNewMem(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && add()}
             placeholder={t('add_memory_placeholder')}
-            className="flex-1 bg-bg-2 border border-border-2 rounded-xl px-5 py-4 text-base text-ink placeholder-ink-3 outline-none focus:border-accent font-semibold shadow-inner"/>
+            className="flex-1 bg-bg-2 border border-border rounded-xl px-5 py-4 text-base text-ink placeholder-ink-3 outline-none focus:border-accent font-semibold shadow-inner"/>
           <button onClick={add} disabled={!newMem.trim() || adding}
             className="px-6 py-4 bg-accent hover:bg-accent/80 text-white rounded-xl text-base font-bold disabled:opacity-50 flex items-center gap-3 transition-all shadow-lg shadow-accent/20 active:scale-95">
             {adding ? <RefreshCw size={18} className="animate-spin"/> : <Plus size={18}/>}
@@ -321,7 +321,7 @@ export default function Memory() {
                   try { await api.addMemory(preset); toast.success('Ditambahkan!'); load() }
                   catch { toast.error('Gagal') }
                 }}
-                className="text-xs px-4 py-2 bg-bg-4 hover:bg-accent/10 hover:text-accent-2 border-2 border-border/40 hover:border-accent/40 rounded-xl text-ink-3 font-bold uppercase tracking-tight transition-all shadow-sm">
+                className="text-xs px-4 py-2 bg-bg-4 hover:bg-accent/10 hover:text-accent-2 border border-border/40 hover:border-accent/40 rounded-xl text-ink-3 font-bold uppercase tracking-tight transition-all shadow-sm">
                 {preset}
               </button>
             ))}
@@ -334,7 +334,7 @@ export default function Memory() {
             <RefreshCw size={20} className="animate-spin"/>{t('loading_behavioral')}
           </div>
         ) : memories.length === 0 ? (
-          <div className="text-center py-12 bg-bg-4/50 rounded-2xl border-2 border-dashed border-border/50">
+          <div className="text-center py-12 bg-bg-4/50 rounded-2xl border border-dashed border-border/50">
             <Brain size={48} className="mx-auto mb-4 opacity-20"/>
             <p className="text-lg font-bold text-ink-2 uppercase tracking-tight">Belum ada behavioral memory</p>
             <p className="text-sm text-ink-3 font-semibold opacity-70">Tambahkan preferensi agar AI makin personal</p>
@@ -342,11 +342,11 @@ export default function Memory() {
         ) : (
           <div className="space-y-3">
             {memories.map(m => (
-              <div key={m.id} className="flex items-start gap-4 p-5 bg-bg-4 border border-border-2 rounded-2xl group hover:border-accent/30 transition-all shadow-sm">
+              <div key={m.id} className="flex items-start gap-4 p-5 bg-bg-4 border border-border rounded-2xl group hover:border-accent/30 transition-all shadow-sm">
                 <div className="flex-1 min-w-0">
                   <div className="text-base text-ink leading-relaxed font-semibold">{m.content}</div>
                   <div className="flex items-center gap-4 mt-3 flex-wrap">
-                    <span className={clsx('text-xs px-3 py-1 rounded-lg border-2 font-bold uppercase tracking-wider', TYPE_COLOR[m.memory_type] || 'bg-bg-5 text-ink-3 border-border')}>
+                    <span className={clsx('text-xs px-3 py-1 rounded-lg border font-bold uppercase tracking-wider', TYPE_COLOR[m.memory_type] || 'bg-bg-5 text-ink-3 border-border')}>
                       {m.memory_type}
                     </span>
                     <span className="text-xs text-ink-3 font-bold uppercase tracking-widest opacity-60">

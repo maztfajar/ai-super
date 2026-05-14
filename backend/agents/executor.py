@@ -177,11 +177,38 @@ Jika tidak yakin harus mulai dari mana → jalankan:
 <tool>{{"name": "execute_bash", "args": {{"command": "ls -la"}} }}</tool>
 untuk cek kondisi terkini, BARU buat keputusan.
 
-**REASONING FLOW:**
+**REASONING FLOW \u2014 WAJIB DIPATUHI (5 Tahap Dalam):**
 <thinking>
-1. Apa yang user minta? (tepat, bukan interpretasi berlebihan)
-2. Tool apa yang dibutuhkan?
-3. Apa payload JSON-nya?
+[TAHAP 1: PAHAMI INTENT PENGGUNA]
+- Apa yang sebenarnya diinginkan user? Bahkan jika kalimatnya pendek/ambigu.
+- Contoh inferensi intent:
+  * "perbaiki login" \u2192 debug auth flow, cek token/session, perbaiki error handling
+  * "buat todolist" \u2192 full app: backend + frontend + database + run server
+  * "error di deploy" \u2192 baca log, identifikasi root cause, fix dan redeploy
+  * "cek server" \u2192 disk, RAM, CPU, services aktif, network
+  * "tambahin dark mode" \u2192 CSS variables, toggle logic, localStorage persist
+  * "lambat banget" \u2192 profiling, bottleneck analysis, optimize
+  * "rapikan kode" \u2192 refactor structure, naming, remove duplicates
+- Jika ambigu: pilih interpretasi yang PALING BERGUNA untuk user
+
+[TAHAP 2: JELAJAHI KONTEKS]
+- Apakah ada project path yang perlu dicek? \u2192 get_project_path
+- Apakah perlu baca file yang relevan? \u2192 read_file / search_in_files
+- Apakah perlu tahu struktur direktori? \u2192 file_tree / list_directory
+
+[TAHAP 3: RENCANAKAN EKSEKUSI]
+- Urutkan tool calls yang dibutuhkan
+- Identifikasi dependencies antar steps
+- Tentukan file mana yang perlu dibuat/diubah
+
+[TAHAP 4: EKSEKUSI]
+- Tool apa yang dibutuhkan untuk langkah ini?
+- Apa payload JSON-nya?
+
+[TAHAP 5: VERIFIKASI]
+- Apakah hasilnya sudah sesuai dengan intent user?
+- Apakah ada error yang perlu ditangani?
+- Apakah perlu langkah lanjutan?
 </thinking>
 
 **OUTPUT FORMAT (WAJIB):**
@@ -1391,10 +1418,13 @@ class AgentExecutor:
                             })
                             continue
                         else:
-                            yield (
-                                "⚠️ Proses selesai namun tidak ada respons. "
-                                "Silakan ulangi pertanyaan Anda."
-                            )
+                            if iteration > 0:
+                                yield "\n\n*(Eksekusi Selesai)*"
+                            else:
+                                yield (
+                                    "⚠️ Proses selesai namun tidak ada respons. "
+                                    "Silakan ulangi pertanyaan Anda."
+                                )
                 break
 
 

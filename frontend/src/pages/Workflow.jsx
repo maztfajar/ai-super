@@ -29,7 +29,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, availableModels, mod
   return (
     <div className="relative">
       {/* Step card */}
-      <div className="bg-bg-2 border-2 border-border rounded-2xl overflow-hidden transition-all hover:border-accent/40 hover:shadow-2xl hover:shadow-accent/5 group">
+      <div className="bg-bg-2 border border-border rounded-2xl overflow-hidden transition-all hover:border-accent/40 hover:shadow-2xl hover:shadow-accent/5 group">
         {/* Step header */}
         <div className="flex items-center gap-4 px-5 py-4 border-b-2 border-border bg-bg-3/50">
           <div className="flex items-center gap-3">
@@ -66,7 +66,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, availableModels, mod
             <div className="relative">
               {modelsEmpty ? (
                 /* Empty state — no models available */
-                <div className="w-full bg-bg-4 border-2 border-warn/30 rounded-xl px-4 py-3 text-sm text-warn/80 flex items-center gap-3 shadow-inner">
+                <div className="w-full bg-bg-4 border border-warn/30 rounded-xl px-4 py-3 text-sm text-warn/80 flex items-center gap-3 shadow-inner">
                   <AlertTriangle size={16} className="flex-shrink-0 text-warn" />
                   <span className="font-semibold">⚠️ Pilih model di menu Integrasi terlebih dahulu</span>
                 </div>
@@ -75,7 +75,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, availableModels, mod
                   <select
                     value={step.modelId}
                     onChange={(e) => onUpdate(step.id, 'modelId', e.target.value)}
-                    className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none appearance-none cursor-pointer hover:border-accent/40 focus:border-accent transition-all shadow-inner"
+                    className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none appearance-none cursor-pointer hover:border-accent/40 focus:border-accent transition-all shadow-inner"
                   >
                     <option value="" disabled>Pilih model AI...</option>
                     {availableModels.map((m) => (
@@ -99,7 +99,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, availableModels, mod
               onChange={(e) => onUpdate(step.id, 'systemPrompt', e.target.value)}
               placeholder="Tuliskan instruksi yang jelas untuk AI di langkah ini. Contoh: 'Kamu adalah analis data. Analisa data input dan berikan ringkasan dalam format tabel...'"
               rows={4}
-              className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none resize-none hover:border-accent/40 focus:border-accent transition-all leading-relaxed shadow-inner"
+              className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none resize-none hover:border-accent/40 focus:border-accent transition-all leading-relaxed shadow-inner"
             />
           </div>
         </div>
@@ -109,7 +109,7 @@ function StepCard({ step, index, total, onUpdate, onDelete, availableModels, mod
       {!isLast && (
         <div className="flex flex-col items-center py-2">
           <div className="w-0.5 h-6 bg-gradient-to-b from-accent/60 to-accent/20" />
-          <div className="w-10 h-10 rounded-full bg-bg-3 border-2 border-border-2 flex items-center justify-center shadow-lg">
+          <div className="w-10 h-10 rounded-full bg-bg-3 border border-border flex items-center justify-center shadow-lg">
             <ArrowDown size={18} className="text-accent-2" />
           </div>
           <div className="w-0.5 h-6 bg-gradient-to-b from-accent/20 to-accent/10" />
@@ -199,7 +199,7 @@ export default function Workflow() {
 
       {/* ═══ Empty models warning banner ═══ */}
       {modelsEmpty && (
-        <div className="mb-8 bg-warn/10 border-2 border-warn/20 rounded-2xl p-6 flex items-start gap-5 shadow-inner">
+        <div className="mb-8 bg-warn/10 border border-warn/20 rounded-2xl p-6 flex items-start gap-5 shadow-inner">
           <AlertTriangle size={32} className="text-warn flex-shrink-0 mt-1" />
           <div className="flex-1">
             <h3 className="text-lg font-bold text-warn mb-1 uppercase tracking-tight">{t('no_active_models')}</h3>
@@ -218,7 +218,7 @@ export default function Workflow() {
       )}
 
       {/* ═══ Header Section — Name & Description ═══ */}
-      <div className="bg-bg-3 border-2 border-border rounded-2xl p-6 mb-8 shadow-lg">
+      <div className="bg-bg-3 border border-border rounded-2xl p-6 mb-8 shadow-lg">
         <div className="grid grid-cols-1 gap-6">
           {/* Workflow Name */}
           <div>
@@ -231,7 +231,7 @@ export default function Workflow() {
               value={workflowName}
               onChange={(e) => setWorkflowName(e.target.value)}
               placeholder="Masukkan nama workflow..."
-              className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none hover:border-accent/40 focus:border-accent transition-all shadow-inner"
+              className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none hover:border-accent/40 focus:border-accent transition-all shadow-inner"
             />
           </div>
 
@@ -246,7 +246,7 @@ export default function Workflow() {
               onChange={(e) => setWorkflowDescription(e.target.value)}
               placeholder="Jelaskan kapan Auto-Orchestrator harus memicu workflow ini..."
               rows={3}
-              className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none resize-none hover:border-accent/40 focus:border-accent transition-all leading-relaxed shadow-inner"
+              className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none resize-none hover:border-accent/40 focus:border-accent transition-all leading-relaxed shadow-inner"
             />
           </div>
         </div>
@@ -259,7 +259,7 @@ export default function Workflow() {
           <h2 className="text-lg font-bold text-ink uppercase tracking-tight">{t('pipeline_steps')}</h2>
         </div>
         <div className="flex-1 h-[2px] bg-border" />
-        <span className="text-[10px] text-ink-3 font-bold bg-bg-3 border-2 border-border rounded-full px-4 py-1.5 uppercase tracking-widest shadow-sm">
+        <span className="text-[10px] text-ink-3 font-bold bg-bg-3 border border-border rounded-full px-4 py-1.5 uppercase tracking-widest shadow-sm">
           {steps.length} {t('step_label')}
         </span>
       </div>
@@ -287,10 +287,10 @@ export default function Workflow() {
           onClick={addStep}
           disabled={modelsEmpty}
           className={clsx(
-            'flex items-center gap-3 px-6 py-4 rounded-2xl border-2 border-dashed text-sm font-bold uppercase tracking-widest transition-all shadow-md active:scale-95',
+            'flex items-center gap-3 px-6 py-4 rounded-2xl border border-dashed text-sm font-bold uppercase tracking-widest transition-all shadow-md active:scale-95',
             modelsEmpty
               ? 'border-border text-ink-3 opacity-40 cursor-not-allowed'
-              : 'border-border-2 text-ink-2 hover:text-accent-2 hover:border-accent/60 hover:bg-accent/8 hover:shadow-xl'
+              : 'border-border text-ink-2 hover:text-accent-2 hover:border-accent/60 hover:bg-accent/8 hover:shadow-xl'
           )}
           title={modelsEmpty ? 'Tambahkan model AI di Integrasi terlebih dahulu' : 'Tambah langkah baru'}
         >
@@ -315,7 +315,7 @@ export default function Workflow() {
       </div>
 
       {/* ═══ Helper Info ═══ */}
-      <div className="mt-12 bg-bg-3 border-2 border-border rounded-2xl p-6 shadow-inner">
+      <div className="mt-12 bg-bg-3 border border-border rounded-2xl p-6 shadow-inner">
         <h3 className="text-sm font-bold text-ink mb-4 flex items-center gap-3 uppercase tracking-widest opacity-80">
           <Sparkles size={18} className="text-accent-2" />
           {t('how_pipeline_works')}

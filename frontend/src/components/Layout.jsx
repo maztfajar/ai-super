@@ -43,7 +43,7 @@ function TopbarNewChatButton() {
       onClick={handleClick}
       disabled={isCurrentSessionEmpty}
       title={isCurrentSessionEmpty ? t('session_empty_hint') : t('new_chat_desc')}
-      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent/80 text-white text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed border-2 border-accent-2/20"
+      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent hover:bg-accent/80 text-white text-[10px] font-bold uppercase tracking-widest transition-all shadow-lg shadow-accent/20 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed border border-accent-2/20"
     >
       <MessageSquare size={16}/>{t('new_chat')}
     </button>

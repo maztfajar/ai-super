@@ -61,7 +61,7 @@ export default function ChannelSelector() {
         onClick={() => setOpen(!open)}
         className={clsx(
           'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold transition-all border shadow-sm',
-          'bg-bg-4 border-border-2 text-ink hover:bg-bg-5 hover:border-accent/40',
+          'bg-bg-4 border-border text-ink hover:bg-bg-5 hover:border-accent/40',
           open && 'border-accent/60 bg-bg-5 ring-1 ring-accent/20'
         )}
       >
@@ -77,7 +77,7 @@ export default function ChannelSelector() {
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-56 bg-bg-2 border border-border-2 rounded-xl shadow-2xl shadow-black/20 z-[100] overflow-hidden animate-fade">
+        <div className="absolute right-0 top-full mt-1.5 w-56 bg-bg-2 border border-border rounded-xl shadow-2xl shadow-black/20 z-[100] overflow-hidden animate-fade">
           {/* Header */}
           <div className="px-3 pt-3 pb-2 border-b border-border/20 mb-1">
             <div className="text-xs font-bold tracking-widest uppercase text-ink-3 flex items-center gap-2">

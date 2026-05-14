@@ -42,14 +42,14 @@ function Label({ children }) {
 }
 function Inp({ value, onChange, placeholder, mono, disabled, type="text" }) {
   return <input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
-    className={clsx('w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-all disabled:opacity-50 shadow-inner', mono&&'font-mono font-bold')}/>
+    className={clsx('w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent transition-all disabled:opacity-50 shadow-inner', mono&&'font-mono font-bold')}/>
 }
 function SecretInp({ value, onChange, placeholder }) {
   const [show, setShow] = useState(false)
   return (
     <div className="relative">
       <input type={show?'text':'password'} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono shadow-inner"/>
+        className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 pr-10 text-sm text-ink placeholder-ink-3 outline-none focus:border-accent font-mono shadow-inner"/>
       <button type="button" onClick={()=>setShow(!show)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink transition-all">
         {show?<EyeOff size={16}/>:<Eye size={16}/>}
       </button>
@@ -58,14 +58,14 @@ function SecretInp({ value, onChange, placeholder }) {
 }
 function Sel({ value, onChange, options }) {
   return <select value={value} onChange={e=>onChange(e.target.value)}
-    className="w-full bg-bg-2 border-2 border-border-2 rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent cursor-pointer appearance-none shadow-inner">
+    className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent cursor-pointer appearance-none shadow-inner">
     {options.map(([v,l])=><option key={v} value={v}>{l}</option>)}
   </select>
 }
 function Toggle({ value, onChange, label }) {
   return (
     <label className="flex items-center gap-3 cursor-pointer select-none">
-      <div onClick={()=>onChange(!value)} className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border-2',value?'bg-accent border-accent/30':'bg-bg-4 border-border-2')}>
+      <div onClick={()=>onChange(!value)} className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border',value?'bg-accent border-accent/30':'bg-bg-4 border-border')}>
         <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-lg transition-transform',value?'translate-x-4.5':'translate-x-0.5')}/>
       </div>
       <span className="text-sm text-ink-2 font-bold uppercase tracking-tight opacity-80">{label}</span>
@@ -78,10 +78,10 @@ function Btn({ label, onClick, loading, variant='default', icon:Icon, full, smal
       className={clsx('flex items-center justify-center gap-2 rounded-xl font-bold uppercase tracking-widest transition-all disabled:opacity-50 active:scale-95 shadow-md',
         full?'w-full':'', small?'px-3 py-2 text-[10px]':'px-5 py-3 text-sm',
         variant==='primary'&&'bg-accent hover:bg-accent/80 text-white',
-        variant==='success'&&'bg-success/10 hover:bg-success/20 border-2 border-success/30 text-success',
-        variant==='danger' &&'bg-danger/10  hover:bg-danger/20  border-2 border-danger/30  text-danger',
-        variant==='warn'   &&'bg-warn/10    hover:bg-warn/20    border-2 border-warn/30    text-warn',
-        variant==='default'&&'bg-bg-4 hover:bg-bg-5 border-2 border-border text-ink-2 hover:text-ink',
+        variant==='success'&&'bg-success/10 hover:bg-success/20 border border-success/30 text-success',
+        variant==='danger' &&'bg-danger/10  hover:bg-danger/20  border border-danger/30  text-danger',
+        variant==='warn'   &&'bg-warn/10    hover:bg-warn/20    border border-warn/30    text-warn',
+        variant==='default'&&'bg-bg-4 hover:bg-bg-5 border border-border text-ink-2 hover:text-ink',
       )}>
       {loading?<RefreshCw size={small?12:16} className="animate-spin"/>:Icon&&<Icon size={small?12:16}/>}
       {label}
@@ -91,7 +91,7 @@ function Btn({ label, onClick, loading, variant='default', icon:Icon, full, smal
 function Section({ title, icon, children, defaultOpen=false, badge, className }) {
   const [open, setOpen] = useState(defaultOpen)
   return (
-    <div className={clsx("bg-bg-3 border-2 border-border rounded-2xl overflow-hidden shadow-lg", className)}>
+    <div className={clsx("bg-bg-3 border border-border rounded-2xl overflow-hidden shadow-lg", className)}>
       <div className="flex items-center gap-3 px-5 py-4 cursor-pointer hover:bg-bg-4 transition-all border-b-2 border-border" onClick={()=>setOpen(!open)}>
         <span className="text-2xl">{icon}</span>
         <span className="text-lg font-bold text-ink uppercase tracking-tight flex-1">{title}</span>
@@ -121,7 +121,7 @@ function Alert({ type='info', children }) {
   const icons = { info: Info, warn: AlertTriangle, error: XCircle, ok: CheckCircle2 }
   const Icon = icons[type]
   return (
-    <div className={clsx('flex items-start gap-3 p-4 rounded-2xl border-2 text-sm font-semibold shadow-inner', styles[type])}>
+    <div className={clsx('flex items-start gap-3 p-4 rounded-2xl border text-sm font-semibold shadow-inner', styles[type])}>
       <Icon size={16} className="flex-shrink-0 mt-0.5"/>
       <div className="leading-relaxed">{children}</div>
     </div>
@@ -323,7 +323,7 @@ function DomainManager() {
       ) : (
         <div className="space-y-2">
           {domains.map(d => (
-            <div key={d.id} className={clsx('rounded-xl border p-3 transition-all', d.is_active ? 'bg-success/5 border-success/30' : 'bg-bg-4 border-border hover:border-border-2')}>
+            <div key={d.id} className={clsx('rounded-xl border p-3 transition-all', d.is_active ? 'bg-success/5 border-success/30' : 'bg-bg-4 border-border hover:border-border')}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -838,7 +838,7 @@ function AiCoreSection({ systemPrompt, setSystemPrompt, saving, onSave }) {
                   onChange={e => setDescription(e.target.value)}
                   placeholder={'Contoh:\n"ARIA adalah AI asisten untuk customer service. Ramah, bilingual Indonesia & Inggris,\nresponsif dan langsung ke inti masalah. Fokus di e-commerce dan teknis produk."'}
                   rows={3}
-                  className="w-full bg-bg-2 border border-border-2 rounded-xl px-3 py-2.5 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none leading-relaxed"
+                  className="w-full bg-bg-2 border border-border rounded-xl px-3 py-2.5 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none leading-relaxed"
                 />
               </div>
 
@@ -946,7 +946,7 @@ function AiCoreSection({ systemPrompt, setSystemPrompt, saving, onSave }) {
           value={systemPrompt}
           onChange={e => setSystemPrompt(e.target.value)}
           placeholder="Masukkan System Prompt Global di sini, atau gunakan Generate Otomatis di atas..."
-          className="w-full h-72 bg-bg-2 border border-border-2 rounded-xl px-4 py-3 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono leading-relaxed transition-colors"
+          className="w-full h-72 bg-bg-2 border border-border rounded-xl px-4 py-3 text-xs text-ink placeholder-ink-3 outline-none focus:border-accent font-mono leading-relaxed transition-colors"
         />
       </div>
       <div className="flex items-center justify-between p-3 bg-accent/5 border border-accent/20 rounded-xl">

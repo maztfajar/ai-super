@@ -128,7 +128,7 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
           <div className="flex gap-4 mt-auto pt-4">
             <button 
               onClick={() => setShowBrowser(false)} 
-              className="flex-1 px-6 py-3 border border-border-2 rounded-xl text-sm font-semibold text-ink-2 hover:bg-bg-4 transition-all"
+              className="flex-1 px-6 py-3 border border-border rounded-xl text-sm font-semibold text-ink-2 hover:bg-bg-4 transition-all"
             >
               Batal
             </button>
@@ -149,7 +149,7 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-bg-2 border border-border-2 rounded-2xl p-8 w-full max-w-lg mx-4 shadow-2xl">
+      <div className="bg-bg-2 border border-border rounded-2xl p-8 w-full max-w-lg mx-4 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-xl font-bold text-ink uppercase tracking-tight">
@@ -175,11 +175,11 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
                 value={projectPath}
                 onChange={(e) => setProjectPath(e.target.value)}
                 placeholder={getDefaultPath()}
-                className="flex-1 px-4 py-3 border border-border-2 rounded-xl bg-bg-3 text-sm text-ink font-mono placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
+                className="flex-1 px-4 py-3 border border-border rounded-xl bg-bg-3 text-sm text-ink font-mono placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all"
               />
               <button
                 onClick={() => handleBrowse('')}
-                className="px-4 py-3 bg-bg-4 hover:bg-bg-5 border border-border-2 rounded-xl text-ink-2 transition-all shadow-sm"
+                className="px-4 py-3 bg-bg-4 hover:bg-bg-5 border border-border rounded-xl text-ink-2 transition-all shadow-sm"
                 title="Pilih folder dari server"
               >
                 <FolderOpen size={20} />
@@ -194,19 +194,19 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
           <div className="flex gap-3">
             <button
               onClick={() => setProjectPath(getDefaultPath())}
-              className="flex-1 px-3 py-2.5 bg-bg-4 hover:bg-bg-5 border border-border-2 rounded-xl text-ink-2 transition-all text-xs font-bold uppercase tracking-tight"
+              className="flex-1 px-3 py-2.5 bg-bg-4 hover:bg-bg-5 border border-border rounded-xl text-ink-2 transition-all text-xs font-bold uppercase tracking-tight"
             >
               🏠 Home
             </button>
             <button
               onClick={() => setProjectPath(getDefaultPath() + '/Desktop')}
-              className="flex-1 px-3 py-2.5 bg-bg-4 hover:bg-bg-5 border border-border-2 rounded-xl text-ink-2 transition-all text-xs font-bold uppercase tracking-tight"
+              className="flex-1 px-3 py-2.5 bg-bg-4 hover:bg-bg-5 border border-border rounded-xl text-ink-2 transition-all text-xs font-bold uppercase tracking-tight"
             >
               🖥️ Desktop
             </button>
             <button
               onClick={() => setProjectPath('/tmp')}
-              className="flex-1 px-3 py-2.5 bg-bg-4 hover:bg-bg-5 border border-border-2 rounded-xl text-ink-2 transition-all text-xs font-bold uppercase tracking-tight"
+              className="flex-1 px-3 py-2.5 bg-bg-4 hover:bg-bg-5 border border-border rounded-xl text-ink-2 transition-all text-xs font-bold uppercase tracking-tight"
             >
               📂 Temp
             </button>
@@ -217,7 +217,7 @@ export default function ProjectLocationPopup({ isOpen, onClose, sessionId, onLoc
         <div className="flex gap-4 mt-8">
           <button
             onClick={onClose}
-            className="flex-1 px-6 py-3 border border-border-2 rounded-xl text-sm font-semibold text-ink-2 hover:bg-bg-4 transition-all"
+            className="flex-1 px-6 py-3 border border-border rounded-xl text-sm font-semibold text-ink-2 hover:bg-bg-4 transition-all"
           >
             Batal
           </button>

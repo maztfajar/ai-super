@@ -200,10 +200,19 @@ class Orchestrator:
                 is_simple=spec.is_simple,
                 complexity=spec.complexity_score)
 
-        if primary in ("coding", "web_development", "file_operation") and spec.action_type == "execute" and not project_path:
+        # ─── PROJECT LOCATION POPUP (ONLY FOR NEW PROJECTS) ───────
+        # Jika user meminta membuat aplikasi/project baru dan project_path kosong,
+        # kita hentikan sementara dan minta user menentukan foldernya (muncul popup).
+        import re
+        CREATE_PROJECT_PATTERN = r"\b(buat|bikin|create|build|buatkan|bikinkan|bangun)\s+(aplikasi|web|website|project|program|sistem|bot|script)\b"
+        is_create_project = bool(re.search(CREATE_PROJECT_PATTERN, message.lower()))
+        
+        if is_create_project and not project_path and primary in ["coding", "web_development", "system"]:
+            yield OrchestratorEvent("status", "📂 Membutuhkan lokasi penyimpanan project...")
             yield OrchestratorEvent("require_project_location", "")
             return
 
+        # Auto-continue without explicit project_path for other normal tasks (executor will use get_project_path tool)
         if primary == "image_generation":
             async for event in self._handle_image_gen(spec, system_prompt, history):
                 yield event
@@ -293,6 +302,40 @@ class Orchestrator:
                 
                 yield OrchestratorEvent("status", "🔄 Melanjutkan task sebelumnya...")
 
+        # ─── PLAN GENERATION (Informational) ───────────────────
+        # Untuk task kompleks (buat aplikasi, perbaiki, dsb), tampilkan
+        # implementation plan sebelum eksekusi — seperti VS Code Copilot.
+        # Eksekusi langsung berjalan tanpa menunggu konfirmasi.
+        try:
+            from core.plan_generator import should_generate_plan, generate_plan
+            if (
+                should_generate_plan(message, spec.primary_intent, spec.action_type)
+                and spec.complexity_score >= 0.45
+                and not spec.is_simple
+            ):
+                yield OrchestratorEvent("status", "📋 Menyusun rencana implementasi...")
+                # Ambil context dari history terakhir
+                recent_ctx = ""
+                if history:
+                    recent_ctx = " | ".join(
+                        h["content"][:80]
+                        for h in history[-3:]
+                        if h["role"] == "user"
+                    )
+                plan_text = await generate_plan(
+                    message=message,
+                    intent=spec.primary_intent,
+                    context=recent_ctx,
+                    timeout=12.0,
+                )
+                if plan_text:
+                    yield OrchestratorEvent("impl_plan", plan_text, {
+                        "intent": spec.primary_intent,
+                        "complexity": round(spec.complexity_score, 2),
+                    })
+        except Exception as _pe:
+            log.debug("Plan generation skipped", error=str(_pe)[:80])
+
         # ─── FAST PATH: Simple messages ──────────────────────────
         if spec.is_simple:
             # Create a lightweight TaskExecution for monitoring
@@ -381,48 +424,25 @@ class Orchestrator:
             for st in assigned_subtasks
         ])
 
-        # Skip confirmation if:
-        # 1. auto_execute is True (Telegram/API)
-        # 2. It's a technical execution task (coding, system, file_operation)
-        is_technical_exec = spec.primary_intent in ("coding", "system", "file_operation", "web_development") and spec.action_type == "execute"
-        
-        if not auto_execute and len(assigned_subtasks) > 1 and not is_technical_exec:
-            # Build plan detail for user review
-            plan_detail = "📋 **Rencana Eksekusi:**\n\n"
-            for i, st in enumerate(assigned_subtasks):
-                agent_info = agent_registry.get_agent(st.assigned_agent)
-                agent_name = agent_info.display_name if agent_info else st.assigned_agent
-                model_short = (st.assigned_model or "default").split("/")[-1]
-                deps = f" (setelah: {', '.join(st.dependencies)})" if st.dependencies else ""
-                plan_detail += f"{i+1}. **[{st.task_type}]** {st.description[:100]}\n"
-                plan_detail += f"   🤖 Agent: {agent_name} | Model: `{model_short}`{deps}\n\n"
+        # Auto-execute always — never pause for user confirmation.
+        # Plan is shown as an informational status only.
+        plan_detail = "📋 **Rencana Eksekusi (Otomatis):**\n\n"
+        for i, st in enumerate(assigned_subtasks):
+            agent_info = agent_registry.get_agent(st.assigned_agent)
+            agent_name = agent_info.display_name if agent_info else st.assigned_agent
+            model_short = (st.assigned_model or "default").split("/")[-1]
+            deps = f" (setelah: {', '.join(st.dependencies)})" if st.dependencies else ""
+            plan_detail += f"{i+1}. **[{st.task_type}]** {st.description[:100]}\n"
+            plan_detail += f"   🤖 Agent: {agent_name} | Model: `{model_short}`{deps}\n\n"
 
-            plan_detail += f"⏱️ Estimasi: {len(assigned_subtasks)} sub-task"
-            parallel_groups = len(dag.execution_order)
-            if parallel_groups < len(assigned_subtasks):
-                plan_detail += f" ({parallel_groups} batch, sebagian paralel)"
-            plan_detail += "\n"
+        parallel_groups = len(dag.execution_order)
+        plan_detail += f"⏱️ Estimasi: {len(assigned_subtasks)} sub-task"
+        if parallel_groups < len(assigned_subtasks):
+            plan_detail += f" ({parallel_groups} batch, sebagian paralel)"
+        plan_detail += "\n"
 
-            # Emit the plan to frontend for review
-            yield OrchestratorEvent("pending_plan", "", {
-                "plan": plan_detail,
-                "subtask_count": len(assigned_subtasks),
-                "session_id": session_id,
-                "assignment_summary": assignment_summary,
-            })
-
-            # Wait for confirmation (max 5 minutes)
-            confirm_event = asyncio.Event()
-            _pending_plans[session_id] = confirm_event
-            try:
-                await asyncio.wait_for(confirm_event.wait(), timeout=300.0)
-                log.info("Plan confirmed by user", session_id=session_id)
-                yield OrchestratorEvent("status", "✅ Rencana disetujui! Memulai eksekusi...")
-            except asyncio.TimeoutError:
-                log.warning("Plan confirmation timeout", session_id=session_id)
-                yield OrchestratorEvent("status", "⏱️ Timeout menunggu konfirmasi. Melanjutkan eksekusi otomatis...")
-            finally:
-                _pending_plans.pop(session_id, None)
+        yield OrchestratorEvent("status", plan_detail)
+        yield OrchestratorEvent("status", "⚡ Memulai eksekusi otomatis...")
 
         # ─── PHASE 5: EXECUTE ─────────────────────────────────────
         yield OrchestratorEvent.proc("Worked", f"{len(subtasks)} sub-tasks", count=len(subtasks), extra={
