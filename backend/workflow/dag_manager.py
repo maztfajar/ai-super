@@ -190,7 +190,8 @@ class DAGManager:
                         checkpoint_data_json=json.dumps(checkpoint_data),
                     )
                 db.add(cp)
-                await db.commit()
+                # ── Fix Point #1: Shield DB commit from cancellation ────────────
+                await asyncio.shield(db.commit())
             log.debug("DAG checkpoint saved", task_id=self.task_id,
                       progress=self.get_progress())
         except Exception as e:

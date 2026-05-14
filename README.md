@@ -22,16 +22,30 @@
 
 ### 1. 🛡️ Resilience Layer (Anti-Crash & Circuit Breakers)
 Sistem kini dilengkapi dengan lapisan perlindungan berlapis untuk menangani kegagalan eksekusi secara cerdas:
-*   **Tool Circuit Breaker:** Jika sebuah tool (misal: `execute_bash`) gagal 3x berturut-turut, sistem otomatis men-suspend tool tersebut sementara (60 detik) dan beralih ke strategi fallback.
+*   **Per-Session Tool Circuit Breaker:** Jika sebuah tool (misal: `execute_bash`) gagal 3x berturut-turut dalam satu sesi, sistem otomatis men-suspend tool tersebut untuk sesi tersebut saja (60 detik). Ini mencegah kegagalan satu sesi memblokir sesi pengguna lain.
 *   **Actionable Error Translator:** Mengonversi error teknis mentah (seperti `EADDRINUSE` atau `ENOENT`) menjadi instruksi yang langsung bisa ditindaklanjuti oleh user atau AI (misal: saran untuk melakukan `kill` proses pada port tertentu).
 *   **Exponential Backoff:** Implementasi retry otomatis dengan jeda waktu yang meningkat (`1s → 2s → 4s → ...`) untuk menangani gangguan jaringan atau rate limit API.
-*   **Watchdog Timer:** Setiap sub-task dipantau oleh timer independen. Jika proses macet (*hang*), watchdog akan menghentikannya secara paksa tanpa mengganggu stabilitas orchestrator utama.
+*   **Watchdog Timer:** Setiap sub-task dipantau oleh timer independen. Jika proses macet (*hang*), watchdog akan menghentikannya secara paksa. **Update v4.1:** Watchdog kini dilindungi dengan *atomic write-lock* (async shield) untuk memastikan state checkpoint tetap konsisten saat interupsi terjadi.
 
 ### 2. 🔄 Execution Continuity (Checkpointing & DLQ)
 Menjamin tugas yang panjang tidak pernah hilang meskipun terjadi interupsi:
 *   **State Checkpointing:** Status eksekusi DAG (Directed Acyclic Graph) disimpan secara persisten ke database setiap kali sebuah langkah selesai. Memungkinkan *resume* dari titik terakhir jika sistem terhenti.
-*   **Dead Letter Queue (DLQ):** Tugas yang gagal setelah semua upaya pemulihan (*recovery*) habis akan dipindahkan ke DLQ dengan alasan kegagalan yang detail, memungkinkan inspeksi manual atau perbaikan terarah nanti.
-*   **Cascade Skip:** Jika tugas utama gagal, tugas turunannya akan otomatis ditandai sebagai *skipped* untuk menghindari *cascade failure* dan menjaga kejelasan status workflow.
+*   **Dead Letter Queue (DLQ):** Tugas yang gagal setelah semua upaya pemulihan (*recovery*) habis akan dipindahkan ke DLQ dengan alasan kegagalan yang detail. **Update v4.1 SLA:** Data di DLQ disimpan selama **14 hari** untuk inspeksi manual sebelum dihapus otomatis.
+*   **Cascade Skip:** Jika tugas utama gagal, tugas turunannya akan otomatis ditandai sebagai *skipped*. Saat ini mekanisme override manual untuk me-resume tugas yang di-skip sedang dalam pengembangan.
+
+---
+
+## 💻 Hardware Requirements
+
+Untuk performa optimal terutama saat menjalankan 15+ agent secara paralel:
+
+| Komponen | Minimum | Rekomendasi |
+|----------|---------|-------------|
+| **RAM**  | 4 GB    | 8 GB+       |
+| **CPU**  | 2 Cores | 4 Cores+    |
+| **Disk** | 20 GB   | 50 GB (SSD) |
+
+*Estimasi penggunaan RAM: ~512MB per active agent instance.*
 
 ### 3. 📊 Real-Time Progress Streaming
 Indikator progres visual kini lebih akurat:
@@ -81,14 +95,19 @@ Botol leher (*bottleneck*) interaksi manusia telah diminimalkan secara drastis. 
 |---------------------------|-------------------|-----------------|
 | Task perbaikan/debugging  | ❌ Tidak          | Self-resolving, agent mencari konteks sendiri  |
 | Buat proyek baru/lokasi   | ✅ Ya (1x popup)  | Path target belum didefinisikan secara eksplisit |
+| Overwrite file existing   | ❌ Tidak          | Otomatis jika dalam konteks perbaikan/refactor |
+| Akses credential/secret   | ✅ Ya (MANDATORY) | Restricted via security filter, perlu konfirmasi manual |
 | Akses file di luar sandbox| ❌ Tidak diizinkan| Menjaga security boundary dan isolasi sistem |
 
 **Apa yang Otomatis:**
 *   **Zero-Interaction Execution:** Untuk sebagian besar tugas (edit file, jalankan perintah, analisis), tidak ada lagi jeda untuk meminta persetujuan manual. AI langsung bertindak.
 *   **Self-Resolving Paths:** Untuk tugas perbaikan atau pencarian, agen otomatis menggunakan tool `get_project_path` dan `find_files` untuk mencari lokasi.
+*   **Dynamic Model Routing:** Sistem memilih model terbaik berdasarkan metadata performa. *Catatan: Akurasi baseline >85% tercapai setelah 10+ sesi sukses. Sebelum baseline tercapai, sistem menggunakan kombinasi capability-matching dan model priority 4-7.*
 
 **Apa yang Masih Butuh Manusia:**
 *   **Smart Popup Approval:** Sistem hanya akan menjeda dan memunculkan *popup* lokasi penyimpanan **jika dan hanya jika** pengguna meminta membuat aplikasi/proyek baru dari awal dan direktori belum ditentukan.
+*   **Audit Log Review (Admin Only):** Privacy Layer Level 3 mencatat kebocoran nama model ke Audit Log. Audit Log ini bersifat internal dan hanya dapat diakses oleh user dengan role **Admin**.
+*   **Data Export Security:** Export data (JSON/PDF/DOCX) dilakukan secara lokal. **Penting:** File export saat ini tidak terenkripsi; hindari menyimpan file export di media yang tidak aman jika mengandung informasi sensitif.
 
 ---
 
@@ -435,5 +454,5 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 
 <p align="center">
   <i>Focus on Execution. Built for Engineers.</i><br>
-  <b>AI ORCHESTRATOR v4.0 — High-Autonomy Execution, 5-Step Reasoning, Pre-Execution Planning.</b>
+  <b>AI ORCHESTRATOR v4.1 — High-Autonomy Execution, 5-Step Reasoning, Pre-Execution Planning.</b>
 </p>

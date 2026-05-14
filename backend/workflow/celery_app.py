@@ -20,5 +20,9 @@ celery_app.conf.update(
             "task": "workflow.tasks.check_scheduled_workflows",
             "schedule": 60.0,
         },
+        "cleanup-dlq-daily": {
+            "task": "workflow.tasks.cleanup_dlq_tasks",
+            "schedule": crontab(hour=3, minute=0),  # Setiap jam 3 pagi
+        },
     },
 )

@@ -351,26 +351,28 @@ class ErrorRecoveryEngine:
 
     # ── Tool Circuit breaker API ─────────────────────────────────────────────
 
-    def get_tool_breaker(self, tool_name: str) -> ToolCircuitBreaker:
-        if tool_name not in self._tool_breakers:
-            self._tool_breakers[tool_name] = ToolCircuitBreaker(tool_name=tool_name)
-        return self._tool_breakers[tool_name]
+    def get_tool_breaker(self, tool_name: str, session_id: str = "global") -> ToolCircuitBreaker:
+        if session_id not in self._tool_breakers:
+            self._tool_breakers[session_id] = {}
+        if tool_name not in self._tool_breakers[session_id]:
+            self._tool_breakers[session_id][tool_name] = ToolCircuitBreaker(tool_name=tool_name)
+        return self._tool_breakers[session_id][tool_name]
 
-    def is_tool_available(self, tool_name: str) -> bool:
-        return self.get_tool_breaker(tool_name).should_allow()
+    def is_tool_available(self, tool_name: str, session_id: str = "global") -> bool:
+        return self.get_tool_breaker(tool_name, session_id).should_allow()
 
-    def record_tool_success(self, tool_name: str):
-        self.get_tool_breaker(tool_name).record_success()
+    def record_tool_success(self, tool_name: str, session_id: str = "global"):
+        self.get_tool_breaker(tool_name, session_id).record_success()
 
-    def record_tool_failure(self, tool_name: str, error: str = ""):
-        tb = self.get_tool_breaker(tool_name)
+    def record_tool_failure(self, tool_name: str, error: str = "", session_id: str = "global"):
+        tb = self.get_tool_breaker(tool_name, session_id)
         tb.record_failure(error)
 
-    def get_tool_fallback_message(self, tool_name: str) -> str:
+    def get_tool_fallback_message(self, tool_name: str, session_id: str = "global") -> str:
         """Pesan untuk user ketika tool di-suspend."""
-        tb = self.get_tool_breaker(tool_name)
+        tb = self.get_tool_breaker(tool_name, session_id)
         return (
-            f"⚠️ Tool `{tool_name}` di-suspend sementara "
+            f"⚠️ Tool `{tool_name}` di-suspend sementara di sesi ini "
             f"({tb.failure_count} kegagalan beruntun). "
             f"Akan dicoba lagi dalam {tb.remaining_suspend:.0f} detik. "
             f"Sistem beralih ke strategi alternatif."

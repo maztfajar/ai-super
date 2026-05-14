@@ -6,6 +6,36 @@ log = structlog.get_logger()
 
 
 @celery_app.task
+def cleanup_dlq_tasks(retention_days: int = 14):
+    """
+    Clean up tasks in Dead Letter Queue (DLQ) older than retention_days.
+    Fix Point #2: SLA Retensi DLQ ditetapkan 14 hari.
+    """
+    from db.database import SessionLocal
+    from db.models import TaskExecution
+    from datetime import datetime, timedelta
+    from sqlmodel import select, delete
+    
+    cutoff = datetime.utcnow() - timedelta(days=retention_days)
+    log.info("Cleaning up old DLQ tasks", cutoff=cutoff)
+    
+    with SessionLocal() as db:
+        try:
+            # SQLModel/SQLAlchemy delete statement
+            from sqlalchemy import text
+            # Use raw SQL for simplicity across dialects if needed, or stick to delete()
+            statement = delete(TaskExecution).where(
+                TaskExecution.status == "dlq",
+                TaskExecution.created_at < cutoff
+            )
+            result = db.execute(statement)
+            db.commit()
+            log.info("DLQ cleanup finished", deleted_count=result.rowcount)
+        except Exception as e:
+            log.error("DLQ cleanup failed", error=str(e))
+
+
+@celery_app.task
 def check_scheduled_workflows():
     """Check and trigger scheduled workflows"""
     log.info("Checking scheduled workflows...")

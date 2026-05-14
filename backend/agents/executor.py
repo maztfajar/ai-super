@@ -1353,8 +1353,9 @@ User Request: {user_msg}
 
                     # ── FASE 7: Tool Circuit Breaker Check ─────────────────
                     from core.error_recovery import error_recovery
-                    if not error_recovery.is_tool_available(cmd):
-                        fallback_msg = error_recovery.get_tool_fallback_message(cmd)
+                    sid = session_id or "global"
+                    if not error_recovery.is_tool_available(cmd, sid):
+                        fallback_msg = error_recovery.get_tool_fallback_message(cmd, sid)
                         res = fallback_msg
                         yield process_emitter.to_sentinel("Skipped", f"{cmd} suspended")
                     else:
@@ -1391,9 +1392,9 @@ User Request: {user_msg}
                         # Update Tool Circuit Breaker status
                         res_str_test = str(res)
                         if "error" in res_str_test.lower() or "failed" in res_str_test.lower():
-                            error_recovery.record_tool_failure(cmd, res_str_test[:200])
+                            error_recovery.record_tool_failure(cmd, res_str_test[:200], sid)
                         else:
-                            error_recovery.record_tool_success(cmd)
+                            error_recovery.record_tool_success(cmd, sid)
 
                     if cmd == "write_file" and not str(res).startswith("Error"):
                         fp = args.get("path", "")
