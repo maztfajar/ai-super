@@ -79,6 +79,9 @@ RUN echo "=== Removing .py source files ===" && \
 # Copy frontend build from Stage 1
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
+# Copy VERSION file (baked into image — tidak bisa ditimpa host .env)
+COPY VERSION /app/VERSION
+
 # Copy other necessary files
 COPY .env.example .env
 

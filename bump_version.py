@@ -1,49 +1,61 @@
 import os
 import re
 import argparse
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent
+ENV_FILE = ROOT / ".env"
+VERSION_FILE = ROOT / "VERSION"
+
 
 def bump_version(part="patch"):
-    env_file = os.path.join(os.path.dirname(__file__), ".env")
-    if not os.path.exists(env_file):
-        print(f"Error: {env_file} tidak ditemukan.")
-        return
+    # ── Baca versi saat ini dari VERSION file (sumber kebenaran) ──────────
+    if VERSION_FILE.exists():
+        current = VERSION_FILE.read_text(encoding="utf-8").strip()
+    elif ENV_FILE.exists():
+        m = re.search(r'APP_VERSION\s*=\s*["\']?(\d+\.\d+\.\d+)["\']?', ENV_FILE.read_text())
+        current = m.group(1) if m else "1.0.0"
+    else:
+        current = "1.0.0"
 
-    with open(env_file, "r") as f:
-        content = f.read()
-
-    # Cari baris APP_VERSION
-    match = re.search(r'APP_VERSION\s*=\s*["\']?(\d+)\.(\d+)\.(\d+)["\']?', content)
+    match = re.match(r'^(\d+)\.(\d+)\.(\d+)$', current)
     if not match:
-        print("Error: Format APP_VERSION tidak ditemukan di .env.")
+        print(f"Error: Format versi tidak valid: '{current}'")
         return
 
     major, minor, patch = int(match.group(1)), int(match.group(2)), int(match.group(3))
     old_version = f"{major}.{minor}.{patch}"
 
     if part == "major":
-        major += 1
-        minor = 0
-        patch = 0
+        major += 1; minor = 0; patch = 0
     elif part == "minor":
-        minor += 1
-        patch = 0
-    else:  # patch
+        minor += 1; patch = 0
+    else:
         patch += 1
 
     new_version = f"{major}.{minor}.{patch}"
-    new_content = re.sub(
-        r'(APP_VERSION\s*=\s*["\']?)\d+\.\d+\.\d+(["\']?)',
-        rf'\g<1>{new_version}\g<2>',
-        content
-    )
 
-    with open(env_file, "w") as f:
-        f.write(new_content)
+    # ── Update VERSION file (dibaca oleh Docker image) ────────────────────
+    VERSION_FILE.write_text(new_version + "\n", encoding="utf-8")
 
-    print(f"Versi berhasil diupdate: {old_version} -> {new_version}")
+    # ── Sync ke .env agar konsisten di lingkungan lokal ───────────────────
+    if ENV_FILE.exists():
+        content = ENV_FILE.read_text(encoding="utf-8")
+        new_content = re.sub(
+            r'(APP_VERSION\s*=\s*["\']?)\d+\.\d+\.\d+(["\']?)',
+            rf'\g<1>{new_version}\g<2>',
+            content
+        )
+        ENV_FILE.write_text(new_content, encoding="utf-8")
+
+    print(f"✅ Versi diupdate: {old_version} → {new_version}")
+    print(f"   VERSION file : {VERSION_FILE}")
+    if ENV_FILE.exists():
+        print(f"   .env synced  : {ENV_FILE}")
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Bump APP_VERSION di .env")
-    parser.add_argument("part", choices=["major", "minor", "patch"], nargs="?", default="patch", help="Bagian versi yang ingin dinaikkan (default: patch)")
+    parser = argparse.ArgumentParser(description="Bump APP_VERSION di VERSION file dan .env")
+    parser.add_argument("part", choices=["major", "minor", "patch"], nargs="?", default="patch")
     args = parser.parse_args()
     bump_version(args.part)

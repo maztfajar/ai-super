@@ -6,6 +6,24 @@ import os
 # Resolve path ke .env di root project
 _ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".env"
 
+# ── Baca versi dari file VERSION yang di-bake ke Docker image ───────────
+# File ini prioritasnya lebih tinggi dari .env yang di-mount dari host VPS
+# sehingga Watchtower pull image baru = versi langsung update otomatis.
+def _read_image_version() -> str:
+    """Baca versi dari /app/VERSION (baked in Docker image)."""
+    candidates = [
+        Path("/app/VERSION"),                                     # Docker container
+        Path(__file__).resolve().parent.parent.parent / "VERSION", # Local dev
+    ]
+    for path in candidates:
+        if path.exists():
+            v = path.read_text(encoding="utf-8").strip()
+            if v:
+                return v
+    return "1.0.0"  # fallback jika file tidak ada
+
+_IMAGE_VERSION = _read_image_version()
+
 
 def _load_env_file(override: bool = False):
     """Load .env values into os.environ with optional override."""
@@ -42,7 +60,8 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str = "AI ORCHESTRATOR"
-    APP_VERSION: str = "1.0.0"
+    APP_VERSION: str = _IMAGE_VERSION
+
     APP_BUILD: int = 1009
     UPDATE_SERVER_URL: str = "https://eai-orchestrator.kapanewonpengasih.my.id"
     SECRET_KEY: str = "change-me-in-production"
