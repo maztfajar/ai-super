@@ -144,6 +144,13 @@ log "Update dari Git dinonaktifkan sementara untuk melindungi perubahan lokal An
 # git reset --hard origin/main
 # log "Kode berhasil diperbarui ke versi terbaru"
 
+# ── Auto Bump Version ─────────────────────────────────────────
+step "4.5. Auto Update Version"
+if [ -f "$APP_DIR/bump_version.py" ]; then
+    python3 "$APP_DIR/bump_version.py" patch
+    log "Versi di .env otomatis dinaikkan mengikuti pembaruan terbaru."
+fi
+
 # ── Update Python dependencies ────────────────────────────────
 step "5. Update Python Dependencies"
 
