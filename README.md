@@ -326,39 +326,46 @@ graph TD
     User([User Request]) --> Gateway[API Gateway / Frontend]
     Gateway --> Preprocessor[Request Preprocessor: Intent & Complexity]
 
-    subgraph "Orchestration Engine"
+    subgraph Orchestration["Orchestration Engine"]
         Preprocessor --> Decomposer[Task Decomposer]
         Decomposer --> DAG[DAG Builder: Dependency Graph]
         DAG --> Scorer[Agent Scorer & Router]
     end
 
-    subgraph "Dynamic Model Routing (Zero Hardcode)"
+    subgraph Routing["Dynamic Model Routing (Zero Hardcode)"]
         Scorer --> P2[Priority 2: Manual Role Mapping]
         Scorer --> P3[Priority 3: Performance Cache]
         Scorer --> P5[Priority 5: Capability Engine]
-        P2 & P3 & P5 --> ModelSelect[Best Model Selected]
+        
+        P2 --> ModelSelect[Best Model Selected]
+        P3 --> ModelSelect
+        P5 --> ModelSelect
+        
         ModelSelect --> AutoFill[Auto-Fill UI Badge Robot/Pencil]
     end
 
-    subgraph "Execution Layer (Parallel)"
+    subgraph Execution["Execution Layer (Parallel)"]
         ModelSelect --> Agent1[Coding Agent]
         ModelSelect --> Agent2[Research Agent]
         ModelSelect --> Agent3[System Agent]
-        Agent1 & Agent2 & Agent3 --> Sandbox[Restricted Execution Sandbox]
+        
+        Agent1 --> Sandbox[Restricted Execution Sandbox]
+        Agent2 --> Sandbox
+        Agent3 --> Sandbox
     end
 
-    subgraph "AI Core Layer (NEW v3.9)"
+    subgraph CoreLayer["AI Core Layer (NEW v3.9)"]
         UserDesc[User Description] --> CoreGen[AI Core Generator]
         RoleMap[Resolved Roles Snapshot] --> CoreGen
         CoreGen --> LLM[LLM: Reasoning Agent]
-        LLM --> AiCore[Generated AI Core: Identitas + Stack + Rules]
+        LLM --> AiCore["Generated AI Core: Identitas + Stack + Rules"]
         AiCore --> Sandbox
     end
 
     Sandbox --> Quality[Quality Engine: Validation & Refinement]
     Quality --> Aggregator[Result Aggregator]
 
-    subgraph "Intelligence & Memory"
+    subgraph Intelligence["Intelligence & Memory"]
         Aggregator --> PM[Procedural Memory: Save Recipe]
         PM --> SE[Skill Evolution Engine: Pattern Crystallization]
         SE -- Matched Skill --> Preprocessor
