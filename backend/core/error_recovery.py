@@ -1,15 +1,13 @@
 """
-Error Recovery Engine (v2.1 — Performance Optimized)
-=====================================================
-Perbaikan dari v1:
-  1. _find_alternative_model(): pilih berdasarkan task_type + MODEL_CAPABILITY_MAP
-     (bukan random model pertama yang tersedia)
-  2. execute_with_recovery(): backoff lebih cerdas — immediate retry untuk transient,
-     slow retry untuk recoverable
-  3. CircuitBreakerState: half_open_after dikurangi 300s → 120s (lebih cepat recover)
-  4. Tambah _classify_error() untuk bedakan transient vs fatal di level recovery
-  5. get_health_status() return info yang lebih berguna untuk monitoring
-  6. Tambah reset_circuit_breaker() untuk manual reset via API
+Error Recovery Engine (v3.0 — Per-Tool Circuit Breaker + Actionable Errors)
+===========================================================================
+Perbaikan dari v2.1:
+  1. ToolCircuitBreaker: circuit breaker per-tool (bukan hanya per-model).
+     Jika tool gagal 3x beruntun, auto-suspend sementara + fallback.
+  2. ActionableErrorTranslator: terjemahkan error mentah menjadi pesan
+     yang bisa langsung ditindaklanjuti user.
+  3. ExponentialBackoff terpisah: delay 1s → 2s → 4s → 8s (max 30s)
+  4. Dead Letter Queue helper: tandai task ke DLQ jika semua recovery gagal.
 """
 
 import time
@@ -29,13 +27,17 @@ class RecoveryStrategy(Enum):
     SKIP                  = "skip"
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Circuit Breaker — Per Model
+# ═══════════════════════════════════════════════════════════════════════════════
+
 @dataclass
 class CircuitBreakerState:
     model_id: str
     failure_count: int = 0
     last_failure_time: float = 0.0
     is_open: bool = False
-    half_open_after: float = 120.0   # PERBAIKAN: 300s → 120s (2 menit)
+    half_open_after: float = 120.0   # 2 menit cooldown
     failure_threshold: int = 3
 
     def record_failure(self):
@@ -65,6 +67,189 @@ class CircuitBreakerState:
             return 0.0
         elapsed = time.time() - self.last_failure_time
         return max(0.0, self.half_open_after - elapsed)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Circuit Breaker — Per Tool
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class ToolCircuitBreaker:
+    """
+    Melacak kegagalan per-tool (execute_bash, write_file, dll).
+    Jika tool gagal 3x beruntun, tool disuspend sementara.
+    """
+    tool_name: str
+    failure_count: int = 0
+    last_failure_time: float = 0.0
+    is_suspended: bool = False
+    suspend_duration: float = 60.0    # suspend selama 60 detik
+    failure_threshold: int = 3
+    total_failures: int = 0           # lifetime counter
+
+    def record_failure(self, error: str = ""):
+        self.failure_count += 1
+        self.total_failures += 1
+        self.last_failure_time = time.time()
+        if self.failure_count >= self.failure_threshold:
+            self.is_suspended = True
+            log.warning("Tool circuit breaker SUSPENDED",
+                        tool=self.tool_name,
+                        failures=self.failure_count,
+                        suspend_sec=self.suspend_duration)
+
+    def record_success(self):
+        self.failure_count = 0
+        self.is_suspended = False
+
+    def should_allow(self) -> bool:
+        if not self.is_suspended:
+            return True
+        elapsed = time.time() - self.last_failure_time
+        if elapsed > self.suspend_duration:
+            log.info("Tool circuit breaker RESUMED", tool=self.tool_name)
+            self.is_suspended = False
+            self.failure_count = 0
+            return True
+        return False
+
+    @property
+    def remaining_suspend(self) -> float:
+        if not self.is_suspended:
+            return 0.0
+        elapsed = time.time() - self.last_failure_time
+        return max(0.0, self.suspend_duration - elapsed)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Actionable Error Translator
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ActionableErrorTranslator:
+    """
+    Terjemahkan error mentah (FileNotFoundError, ENOENT, dsb)
+    menjadi pesan yang langsung actionable untuk user.
+    """
+
+    _TRANSLATION_MAP = [
+        # (pattern_in_error, actionable_message, suggested_command)
+        (
+            "FileNotFoundError",
+            "File tidak ditemukan.",
+            "Pastikan path benar. Gunakan `find_files` untuk mencari.",
+        ),
+        (
+            "No such file or directory",
+            "File atau direktori tidak ada.",
+            "Buat dulu dengan `mkdir -p /path/to/dir` atau `write_file`.",
+        ),
+        (
+            "ENOENT",
+            "Path target tidak ada di filesystem.",
+            "Buat direktori dulu: `mkdir -p /path/to/dir`.",
+        ),
+        (
+            "EADDRINUSE",
+            "Port sudah dipakai oleh proses lain.",
+            "Kill proses lama: `kill $(lsof -t -i:PORT)` atau gunakan `find_safe_port`.",
+        ),
+        (
+            "address already in use",
+            "Port sudah dipakai oleh proses lain.",
+            "Jalankan: `lsof -i :PORT` untuk lihat proses, lalu `kill PID`.",
+        ),
+        (
+            "ModuleNotFoundError",
+            "Python module belum terinstall.",
+            "Jalankan: `pip install NAMA_MODULE`.",
+        ),
+        (
+            "MODULE_NOT_FOUND",
+            "Node.js package belum terinstall.",
+            "Jalankan: `cd PROJECT && npm install`.",
+        ),
+        (
+            "Cannot find module",
+            "Node.js dependency tidak ditemukan.",
+            "Jalankan: `npm install` di direktori project.",
+        ),
+        (
+            "Permission denied",
+            "Tidak punya izin akses.",
+            "Gunakan `chmod` untuk ubah permission, atau `sudo` jika diperlukan.",
+        ),
+        (
+            "SyntaxError",
+            "Ada kesalahan sintaksis di file.",
+            "Baca file dengan `read_file`, temukan dan perbaiki baris yang error.",
+        ),
+        (
+            "connection refused",
+            "Server belum berjalan atau port salah.",
+            "Cek status server: `tail -30 app.log` atau `ps aux | grep server`.",
+        ),
+        (
+            "missing script",
+            "Script tidak terdaftar di package.json.",
+            "Periksa `package.json` → bagian `scripts`. Gunakan nama script yang benar.",
+        ),
+        (
+            "EACCES",
+            "Akses file ditolak oleh sistem.",
+            "Ubah permission: `chmod 755 /path/to/file`.",
+        ),
+        (
+            "disk quota",
+            "Ruang disk penuh.",
+            "Bersihkan file tidak terpakai: `du -sh /* | sort -rh | head`.",
+        ),
+        (
+            "timeout",
+            "Operasi melebihi batas waktu.",
+            "Coba lagi, atau pecah task menjadi bagian lebih kecil.",
+        ),
+        (
+            "rate limit",
+            "API rate limit tercapai.",
+            "Tunggu sebentar lalu coba lagi (sistem auto-backoff aktif).",
+        ),
+        (
+            "429",
+            "Terlalu banyak permintaan ke API.",
+            "Sistem akan retry otomatis dengan exponential backoff.",
+        ),
+        (
+            "config.yaml tidak ditemukan",
+            "File konfigurasi belum ada.",
+            "Salin dari template: `cp config.example.yaml config.yaml`.",
+        ),
+    ]
+
+    @classmethod
+    def translate(cls, raw_error: str) -> str:
+        """
+        Terjemahkan error mentah ke pesan actionable.
+        Returns: pesan actionable, atau raw_error jika tidak cocok pattern apapun.
+        """
+        err_lower = raw_error.lower()
+        for pattern, description, suggestion in cls._TRANSLATION_MAP:
+            if pattern.lower() in err_lower:
+                return (
+                    f"❌ **{description}**\n"
+                    f"💡 **Solusi:** {suggestion}\n"
+                    f"📋 Detail: `{raw_error[:200]}`"
+                )
+        # Tidak cocok pattern — kembalikan versi yang sedikit lebih rapi
+        return f"❌ Error: {raw_error[:300]}"
+
+    @classmethod
+    def get_hint(cls, raw_error: str) -> str:
+        """Returns just the suggestion hint, or empty string."""
+        err_lower = raw_error.lower()
+        for pattern, _, suggestion in cls._TRANSLATION_MAP:
+            if pattern.lower() in err_lower:
+                return f"\n[HINT: {suggestion}]"
+        return ""
 
 
 @dataclass
@@ -127,14 +312,19 @@ _TASK_CAPABILITY_NEEDS: Dict[str, List[str]] = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Main Engine
+# ═══════════════════════════════════════════════════════════════════════════════
+
 class ErrorRecoveryEngine:
 
     def __init__(self):
         self._circuit_breakers: Dict[str, CircuitBreakerState] = {}
+        self._tool_breakers: Dict[str, ToolCircuitBreaker] = {}
         self._recovery_history: List[RecoveryAttempt] = []
         self._max_history = 500
 
-    # ── Circuit breaker API ──────────────────────────────────────────────────
+    # ── Model Circuit breaker API ────────────────────────────────────────────
 
     def get_circuit_breaker(self, model_id: str) -> CircuitBreakerState:
         if model_id not in self._circuit_breakers:
@@ -159,6 +349,54 @@ class ErrorRecoveryEngine:
             self._circuit_breakers[model_id].record_success()
             log.info("Circuit breaker manually reset", model=model_id)
 
+    # ── Tool Circuit breaker API ─────────────────────────────────────────────
+
+    def get_tool_breaker(self, tool_name: str) -> ToolCircuitBreaker:
+        if tool_name not in self._tool_breakers:
+            self._tool_breakers[tool_name] = ToolCircuitBreaker(tool_name=tool_name)
+        return self._tool_breakers[tool_name]
+
+    def is_tool_available(self, tool_name: str) -> bool:
+        return self.get_tool_breaker(tool_name).should_allow()
+
+    def record_tool_success(self, tool_name: str):
+        self.get_tool_breaker(tool_name).record_success()
+
+    def record_tool_failure(self, tool_name: str, error: str = ""):
+        tb = self.get_tool_breaker(tool_name)
+        tb.record_failure(error)
+
+    def get_tool_fallback_message(self, tool_name: str) -> str:
+        """Pesan untuk user ketika tool di-suspend."""
+        tb = self.get_tool_breaker(tool_name)
+        return (
+            f"⚠️ Tool `{tool_name}` di-suspend sementara "
+            f"({tb.failure_count} kegagalan beruntun). "
+            f"Akan dicoba lagi dalam {tb.remaining_suspend:.0f} detik. "
+            f"Sistem beralih ke strategi alternatif."
+        )
+
+    # ── Dead Letter Queue helper ─────────────────────────────────────────────
+
+    async def send_to_dlq(self, task_exec_id: str, reason: str):
+        """Tandai task execution sebagai DLQ entry di database."""
+        if not task_exec_id:
+            return
+        try:
+            from db.database import AsyncSessionLocal
+            from db.models import TaskExecution
+            async with AsyncSessionLocal() as db:
+                task = await db.get(TaskExecution, task_exec_id)
+                if task:
+                    task.status = "dlq"
+                    task.dlq_reason = reason[:500]
+                    db.add(task)
+                    await db.commit()
+                    log.warning("Task sent to DLQ",
+                                task_id=task_exec_id, reason=reason[:100])
+        except Exception as e:
+            log.debug("DLQ write failed", error=str(e)[:80])
+
     # ── Main recovery loop ──────────────────────────────────────────────────
 
     async def execute_with_recovery(
@@ -170,13 +408,13 @@ class ErrorRecoveryEngine:
         **kwargs,
     ) -> Tuple[Optional[str], List[RecoveryAttempt]]:
         """
-        Eksekusi fungsi dengan auto-recovery.
+        Eksekusi fungsi dengan auto-recovery + exponential backoff.
         Returns (result, attempts_list).
 
         Recovery order:
-          0 → retry same (immediate, backoff kecil)
-          1 → retry dengan params berbeda (temperature↓, tokens↑)
-          2 → coba model alternatif yang sesuai task_type
+          0 → retry same (backoff 1s)
+          1 → retry dengan params berbeda (backoff 2s)
+          2 → coba model alternatif (backoff 4s)
         """
         attempts: List[RecoveryAttempt] = []
 
@@ -211,15 +449,15 @@ class ErrorRecoveryEngine:
                     log.error("No available model found", original=model_id)
                     continue
 
-            # Backoff delay
+            # Exponential backoff delay: 1s → 2s → 4s → 8s (max 30s)
             if attempt_num > 0:
                 err_type = _classify_recovery_error(
                     attempts[-1].error or "" if attempts else ""
                 )
                 if err_type == "transient":
-                    delay = 1.0   # transient → retry cepat
+                    delay = min(30, 2 ** attempt_num)    # 2, 4, 8...
                 else:
-                    delay = min(30, 2 ** attempt_num)   # recoverable → exponential
+                    delay = min(30, 2 ** (attempt_num + 1))  # 4, 8, 16...
                 log.info(f"Retry {attempt_num + 1}/{max_retries}",
                          model=current_model, delay=delay, strategy=strategy.value)
                 await asyncio.sleep(delay)
@@ -284,13 +522,11 @@ class ErrorRecoveryEngine:
         task_type: str = "",
     ) -> Optional[str]:
         """
-        PERBAIKAN: pilih model alternatif berdasarkan task_type + capability,
-        bukan random model pertama yang tersedia.
+        Pilih model alternatif berdasarkan task_type + capability.
         """
         from core.model_manager import model_manager
         from agents.agent_registry import MODEL_CAPABILITY_MAP
 
-        # Capability yang dibutuhkan untuk task_type ini
         required_caps = set(_TASK_CAPABILITY_NEEDS.get(task_type, ["text"]))
 
         available = model_manager.available_models
@@ -303,9 +539,7 @@ class ErrorRecoveryEngine:
                 continue
 
             model_caps = set(MODEL_CAPABILITY_MAP.get(model_id, []))
-            # Score: berapa required caps yang dipenuhi
             overlap = len(required_caps & model_caps) if model_caps else 0
-            # Bonus jika punya "speed" (fallback model biasanya lebih stabil)
             bonus = 0.5 if "speed" in model_caps else 0.0
             score = overlap + bonus
             scored.append((score, model_id))
@@ -313,7 +547,6 @@ class ErrorRecoveryEngine:
         if not scored:
             return None
 
-        # Pilih yang paling cocok
         scored.sort(key=lambda x: x[0], reverse=True)
         best_score, best_model = scored[0]
 
@@ -332,19 +565,30 @@ class ErrorRecoveryEngine:
             self._recovery_history = self._recovery_history[-self._max_history:]
 
     def get_health_status(self) -> Dict:
-        """Health status semua model — untuk monitoring dashboard."""
+        """Health status semua model + tools — untuk monitoring dashboard."""
         from core.model_manager import model_manager
 
-        status = {}
+        models = {}
         for model_id in model_manager.available_models:
             cb = self.get_circuit_breaker(model_id)
-            status[model_id] = {
+            models[model_id] = {
                 "available":         cb.should_allow(),
                 "circuit_open":      cb.is_open,
                 "failure_count":     cb.failure_count,
                 "cooldown_remaining": round(cb.remaining_cooldown, 1),
             }
-        return status
+
+        tools = {}
+        for tool_name, tb in self._tool_breakers.items():
+            tools[tool_name] = {
+                "available":         tb.should_allow(),
+                "suspended":         tb.is_suspended,
+                "failure_count":     tb.failure_count,
+                "total_failures":    tb.total_failures,
+                "suspend_remaining": round(tb.remaining_suspend, 1),
+            }
+
+        return {"models": models, "tools": tools}
 
     def get_recovery_stats(self) -> Dict:
         if not self._recovery_history:

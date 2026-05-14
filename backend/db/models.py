@@ -191,13 +191,14 @@ class TaskExecution(SQLModel, table=True):
     subtasks_json: Optional[str] = None       # JSON of decomposed subtasks
     dag_json: Optional[str] = None            # JSON of dependency graph
     assignments_json: Optional[str] = None    # JSON of agent assignments
-    status: str = "preprocessing"             # preprocessing | decomposing | executing | validating | aggregating | completed | failed
+    status: str = "preprocessing"             # preprocessing | decomposing | executing | validating | aggregating | completed | failed | dlq
     result_summary: Optional[str] = None
     total_time_ms: int = 0
     total_tokens: int = 0
     total_cost_usd: float = 0.0
     agents_used: Optional[str] = None         # JSON list of agent/model combos used
     error_message: Optional[str] = None
+    dlq_reason: Optional[str] = None          # Reason why this task was moved to Dead Letter Queue
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     completed_at: Optional[datetime] = None
     vps_deployment_at: Optional[datetime] = None  # Track VPS deployment timing

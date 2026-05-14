@@ -445,6 +445,9 @@ class Orchestrator:
         yield OrchestratorEvent("status", "⚡ Memulai eksekusi otomatis...")
 
         # ─── PHASE 5: EXECUTE ─────────────────────────────────────
+        from workflow.dag_manager import DAGManager
+        dag_manager = DAGManager(dag.to_json(), task_id=task_exec_id)
+        
         yield OrchestratorEvent.proc("Worked", f"{len(subtasks)} sub-tasks", count=len(subtasks), extra={
             "result": f"Agent assignments:\n{assignment_summary}"
         })
@@ -452,12 +455,15 @@ class Orchestrator:
 
         results: List[SubTaskResult] = []
         phase5_streamed = False
-        for group in dag.execution_order:
+        total_subtasks = len(assigned_subtasks)
+        completed_subtask_count = 0
+        SINGLE_TASK_TIMEOUT = 600.0  # 10 menit watchdog per single-task
+
+        for group_idx, group in enumerate(dag.execution_order):
             group_tasks = [dag.subtasks[tid] for tid in group.task_ids if tid in dag.subtasks]
 
             if len(group_tasks) == 1:
-                # Single task — execute directly
-                # Mark agent as active for monitoring
+                # Single task — execute directly with watchdog timer
                 agent_type = group_tasks[0].assigned_agent or "general"
                 agent_registry.mark_busy(agent_type, group_tasks[0].id)
                 
@@ -467,31 +473,57 @@ class Orchestrator:
                     group_tasks[0], system_prompt, history, spec, event_queue, stream_chunks=True, project_path=project_path
                 ))
                 
+                # Watchdog: track elapsed time
+                elapsed = 0.0
+                watchdog_triggered = False
                 while not exec_task.done():
                     try:
                         event = await asyncio.wait_for(event_queue.get(), timeout=0.2)
                         yield event
                     except asyncio.TimeoutError:
+                        elapsed += 0.2
+                        if elapsed >= SINGLE_TASK_TIMEOUT:
+                            exec_task.cancel()
+                            try:
+                                await exec_task
+                            except asyncio.CancelledError:
+                                pass
+                            watchdog_triggered = True
+                            break
                         continue
                 
-                result = exec_task.result()
+                if watchdog_triggered:
+                    result = SubTaskResult(
+                        task_id=group_tasks[0].id,
+                        description=group_tasks[0].description[:100],
+                        agent_type=agent_type,
+                        model_used=group_tasks[0].assigned_model or "unknown",
+                        response="",
+                        success=False,
+                        error=f"Watchdog timeout: task melebihi batas {int(SINGLE_TASK_TIMEOUT)} detik",
+                    )
+                else:
+                    result = exec_task.result()
                 
                 agent_registry.mark_idle(agent_type, group_tasks[0].id)
                 results.append(result)
-                # Stream progress
+                completed_subtask_count += 1
+
+                # Stream progress with [X/Y] format
                 if result.success:
                     yield OrchestratorEvent("status",
-                        f"  ✅ {result.task_id}: selesai (confidence: {result.confidence:.0%})")
+                        f"  ✅ [{completed_subtask_count}/{total_subtasks}] "
+                        f"{result.task_id}: selesai (confidence: {result.confidence:.0%})")
                 else:
                     yield OrchestratorEvent("status",
-                        f"  ❌ {result.task_id}: gagal — {result.error}")
+                        f"  ❌ [{completed_subtask_count}/{total_subtasks}] "
+                        f"{result.task_id}: gagal — {result.error}")
             else:
                 # Multiple tasks — execute in parallel via Command Center
                 from core.command_center import command_center
                 
                 event_queue = asyncio.Queue()
                 
-                # Buat task coordinate_team
                 coord_task = asyncio.create_task(command_center.coordinate_team(
                     group_tasks=group_tasks,
                     execute_fn=self._execute_subtask,
@@ -502,7 +534,6 @@ class Orchestrator:
                     ui_event_queue=event_queue
                 ))
                 
-                # Stream events while waiting
                 while not coord_task.done():
                     try:
                         event = await asyncio.wait_for(event_queue.get(), timeout=0.2)
@@ -510,7 +541,6 @@ class Orchestrator:
                     except asyncio.TimeoutError:
                         continue
                 
-                # Flush remaining events
                 while not event_queue.empty():
                     try:
                         yield event_queue.get_nowait()
@@ -521,6 +551,7 @@ class Orchestrator:
                 
                 for pr in parallel_results:
                     results.append(pr)
+                    completed_subtask_count += 1
 
             # Inject successful results into context for next group
             for r in results:
@@ -528,6 +559,29 @@ class Orchestrator:
                     history = history + [
                         {"role": "assistant", "content": f"[Sub-task Result: {r.description}]\n{r.response[:500]}"}
                     ]
+            
+            # Update DAG Manager state and Save Checkpoint
+            for r in results:
+                if r.success:
+                    dag_manager.mark_completed(r.task_id, r.response)
+                else:
+                    dag_manager.mark_failed(r.task_id, r.error)
+            
+            await dag_manager.save_checkpoint()
+
+        # ─── PHASE 5.5: DLQ — Kirim ke Dead Letter Queue jika SEMUA gagal ────
+        all_failed = all(not r.success for r in results) if results else False
+        if all_failed and task_exec_id:
+            try:
+                from core.error_recovery import error_recovery
+                dlq_reason = "; ".join(
+                    f"{r.task_id}: {r.error[:80]}" for r in results if r.error
+                )[:500]
+                await error_recovery.send_to_dlq(task_exec_id, dlq_reason)
+                yield OrchestratorEvent("status",
+                    "📪 Semua sub-task gagal — task disimpan ke Dead Letter Queue untuk review manual.")
+            except Exception as _dlq_err:
+                log.debug("DLQ send failed", error=str(_dlq_err)[:80])
 
         # ─── PHASE 6: VALIDATE ────────────────────────────────────
         yield OrchestratorEvent("status", "🔎 Memvalidasi kualitas hasil...")

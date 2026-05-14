@@ -95,6 +95,13 @@ def _safe_migrate(conn):
             conn.execute(sa.text("ALTER TABLE chat_sessions ADD COLUMN platform TEXT DEFAULT 'web'"))
             print("  ✓ Migrasi: kolom platform ditambahkan ke tabel chat_sessions")
 
+    # Migrasi tabel task_executions
+    if inspector.has_table("task_executions"):
+        existing = [c["name"] for c in inspector.get_columns("task_executions")]
+        if "dlq_reason" not in existing:
+            conn.execute(sa.text("ALTER TABLE task_executions ADD COLUMN dlq_reason TEXT"))
+            print("  ✓ Migrasi: kolom dlq_reason ditambahkan ke tabel task_executions")
+
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:

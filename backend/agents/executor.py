@@ -18,7 +18,7 @@ Perbaikan dari v2.1:
 import re
 import hashlib
 import asyncio
-import datetime
+from datetime import datetime
 import subprocess
 from typing import AsyncGenerator, Optional
 from functools import lru_cache
@@ -362,24 +362,8 @@ def _classify_error(err_str: str) -> str:
 
 
 def _get_error_hint(output: str) -> str:
-    hints = {
-        "ENOENT": "[HINT: File/direktori tidak ada. Buat dulu dengan mkdir -p atau write_file]",
-        "No such file": "[HINT: Path salah. Periksa dan buat direktori dulu]",
-        "EADDRINUSE": "[HINT: Port busy. Gunakan find_safe_port]",
-        "address already in use": "[HINT: Port busy. kill $(lsof -t -i:PORT) atau pakai port lain]",
-        "MODULE_NOT_FOUND": "[HINT: npm package belum terinstall. cd PROJECT && npm install]",
-        "ModuleNotFoundError": "[HINT: pip package belum ada. pip install PACKAGE]",
-        "SyntaxError": "[HINT: Syntax error. Baca file lalu perbaiki]",
-        "Permission denied": "[HINT: Permission error. chmod atau sudo]",
-        "connection refused": "[HINT: Server belum ready. tail -30 app.log]",
-        "Cannot find module": "[HINT: npm install di project directory]",
-        "missing script": "[HINT: Script tidak ada di package.json. Periksa scripts section]",
-        "package.json": "[HINT: Pastikan package.json ada dan lengkap di direktori project]",
-    }
-    for signal, hint in hints.items():
-        if signal in output:
-            return f"\n{hint}"
-    return ""
+    from core.error_recovery import ActionableErrorTranslator
+    return ActionableErrorTranslator.get_hint(output)
 
 
 class ResponseFilter:
@@ -1367,35 +1351,49 @@ User Request: {user_msg}
                                 "get_project_path, set_project_path, list_all_projects, get_file_info"
                             )
 
-                    tool_task = asyncio.create_task(_exec_tool())
-                    elapsed_secs = 0.0
+                    # ── FASE 7: Tool Circuit Breaker Check ─────────────────
+                    from core.error_recovery import error_recovery
+                    if not error_recovery.is_tool_available(cmd):
+                        fallback_msg = error_recovery.get_tool_fallback_message(cmd)
+                        res = fallback_msg
+                        yield process_emitter.to_sentinel("Skipped", f"{cmd} suspended")
+                    else:
+                        tool_task = asyncio.create_task(_exec_tool())
+                        elapsed_secs = 0.0
 
-                    while not tool_task.done():
-                        try:
-                            res = await asyncio.wait_for(
-                                asyncio.shield(tool_task),
-                                timeout=HEARTBEAT_INTERVAL
-                            )
-                            break
-                        except asyncio.TimeoutError:
-                            elapsed_secs += HEARTBEAT_INTERVAL
-                            if elapsed_secs >= MAX_TOOL_TIME:
-                                tool_task.cancel()
-                                try:
-                                    await tool_task
-                                except asyncio.CancelledError:
-                                    pass
-                                res = "Tool '" + cmd + "' timeout setelah " + str(int(MAX_TOOL_TIME // 60)) + " menit."
-                                yield process_emitter.to_sentinel(
-                                    "Error", cmd + " timeout"
+                        while not tool_task.done():
+                            try:
+                                res = await asyncio.wait_for(
+                                    asyncio.shield(tool_task),
+                                    timeout=HEARTBEAT_INTERVAL
                                 )
                                 break
-                            yield process_emitter.to_sentinel(
-                                "Ran", _detail[:40] + " (" + str(int(elapsed_secs)) + "s)..."
-                            )
-
-                    if res is None:
-                        res = "Tool '" + cmd + "' tidak menghasilkan output."
+                            except asyncio.TimeoutError:
+                                elapsed_secs += HEARTBEAT_INTERVAL
+                                if elapsed_secs >= MAX_TOOL_TIME:
+                                    tool_task.cancel()
+                                    try:
+                                        await tool_task
+                                    except asyncio.CancelledError:
+                                        pass
+                                    res = "Tool '" + cmd + "' timeout setelah " + str(int(MAX_TOOL_TIME // 60)) + " menit."
+                                    yield process_emitter.to_sentinel(
+                                        "Error", cmd + " timeout"
+                                    )
+                                    break
+                                yield process_emitter.to_sentinel(
+                                    "Ran", _detail[:40] + " (" + str(int(elapsed_secs)) + "s)..."
+                                )
+                        
+                        if res is None:
+                            res = "Tool '" + cmd + "' tidak menghasilkan output."
+                            
+                        # Update Tool Circuit Breaker status
+                        res_str_test = str(res)
+                        if "error" in res_str_test.lower() or "failed" in res_str_test.lower():
+                            error_recovery.record_tool_failure(cmd, res_str_test[:200])
+                        else:
+                            error_recovery.record_tool_success(cmd)
 
                     if cmd == "write_file" and not str(res).startswith("Error"):
                         fp = args.get("path", "")
