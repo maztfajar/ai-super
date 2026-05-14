@@ -278,3 +278,25 @@ class LearnedSkill(SQLModel, table=True):
     updated_at:        datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
     )
+
+
+class ArtifactRegistry(SQLModel, table=True):
+    """Registry untuk melacak file yang dibuat/diubah dan hash-nya."""
+    __tablename__ = "artifact_registry"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    session_id: str = Field(index=True)
+    task_id: Optional[str] = Field(index=True)
+    file_path: str = Field(index=True)
+    file_hash: str
+    last_modified: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
+class ExecutionCheckpoint(SQLModel, table=True):
+    """Checkpoint untuk menyimpan state eksekusi agar bisa resume."""
+    __tablename__ = "execution_checkpoints"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    task_id: str = Field(index=True)
+    checkpoint_data_json: str  # task_id, files_completed, files_in_progress, dependencies_resolved, next_step
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+

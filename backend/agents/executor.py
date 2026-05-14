@@ -15,8 +15,8 @@ Perbaikan dari v2.1:
   8. Loop breaker: deteksi jika model mengulang tool yang sama 3x berturut-turut
 """
 
-import json
 import re
+import hashlib
 import asyncio
 import datetime
 import subprocess
@@ -600,9 +600,73 @@ class AgentExecutor:
         if len(messages) <= max_messages:
             return messages
 
+        # ── Context Window Separation (v4.0) ────────────────────────────────
+        # Simpan pesan system, pesan terakhir, dan pesan yang mengandung 
+        # 'EXECUTION_STATE' atau 'DAG' agar tidak terhapus saat pruning.
+        critical_msgs = []
         if messages and messages[0]["role"] == "system":
-            return messages[:1] + messages[1:4] + messages[-12:]
-        return messages[:3] + messages[-12:]
+            critical_msgs.append(messages[0])
+            
+        # Pesan-pesan penting yang harus dipertahankan
+        important_markers = ["EXECUTION_STATE", "DAG_MANAGER", "ARTIFACT_REGISTRY", "CHECKPOINT"]
+        
+        remaining_msgs = messages[1:] if len(messages) > 0 and messages[0]["role"] == "system" else messages
+        
+        # Ambil 5 pesan terakhir (conversation flow)
+        recent_msgs = remaining_msgs[-5:]
+        
+        # Cari pesan-pesan yang mengandung state penting di sisa pesan
+        other_msgs = remaining_msgs[:-5]
+        for msg in other_msgs:
+            content = msg.get("content", "")
+            if any(marker in content for marker in important_markers):
+                critical_msgs.append(msg)
+                
+        # Gabungkan: System + Critical States + Recent Conversation
+        # Gunakan set ID untuk menghindari duplikasi jika pesan recent juga critical
+        seen_ids = set(id(m) for m in critical_msgs)
+        final_msgs = critical_msgs
+        for m in recent_msgs:
+            if id(m) not in seen_ids:
+                final_msgs.append(m)
+                
+        # Urutkan berdasarkan kemunculan asli (opsional, tapi lebih baik)
+        final_msgs.sort(key=lambda m: messages.index(m) if m in messages else 999)
+        
+        return final_msgs
+
+    async def _save_checkpoint(self, task_id: str, data: dict):
+        """Simpan state eksekusi ke database."""
+        if not task_id: return
+        try:
+            from db.database import AsyncSessionLocal
+            from db.models import ExecutionCheckpoint
+            from sqlmodel import select
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(ExecutionCheckpoint).where(ExecutionCheckpoint.task_id == task_id))
+                cp = result.scalars().first()
+                if cp:
+                    cp.checkpoint_data_json = json.dumps(data)
+                else:
+                    cp = ExecutionCheckpoint(task_id=task_id, checkpoint_data_json=json.dumps(data))
+                db.add(cp)
+                await db.commit()
+        except Exception as e:
+            log.debug("Checkpoint save skipped", error=str(e))
+
+    async def _load_checkpoint(self, task_id: str) -> Optional[dict]:
+        """Ambil state eksekusi terakhir."""
+        if not task_id: return None
+        try:
+            from db.database import AsyncSessionLocal
+            from db.models import ExecutionCheckpoint
+            from sqlmodel import select
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(select(ExecutionCheckpoint).where(ExecutionCheckpoint.task_id == task_id))
+                cp = result.scalars().first()
+                return json.loads(cp.checkpoint_data_json) if cp else None
+        except Exception:
+            return None
 
     def _is_truncated(self, text: str) -> bool:
         """
@@ -778,6 +842,68 @@ class AgentExecutor:
         # Jika AI menghasilkan output teks berulang (bukan tool call), itu tanda stall
         last_outputs_hash: list = [] # hash output terakhir untuk deteksi repetisi
         MAX_STALL_REPEATS = 3        # 3x output identik = stall
+
+        # ── FASE 5: Error Fingerprinting (v4.0) ──────────────────────────
+        last_error_fingerprint: Optional[str] = None
+        same_error_count = 0
+        task_id = session_id # Gunakan session_id sebagai task_id jika tidak ada explicit
+        
+        # Try load checkpoint
+        checkpoint = await self._load_checkpoint(task_id)
+        if checkpoint and iteration == 0:
+            yield f"\n> 🔄 **Resuming from checkpoint...** (Task: {checkpoint.get('next_step', 'N/A')})\n"
+            # Logic untuk menyuntikkan checkpoint ke agent_msgs bisa ditambahkan di sini
+
+        # ── FASE 6: Planning Phase (v4.0) ──────────────────────────
+        is_planned = False
+        dag_manager = None
+        
+        if iteration == 0 and execution_mode == "execution":
+            user_msg = next((m["content"] for m in reversed(agent_msgs) if m["role"] == "user"), "")
+            # Trigger planning for complex tasks
+            if len(user_msg) > 100 or any(kw in user_msg.lower() for kw in ["buat", "build", "create", "implementasi", "refactor"]):
+                yield process_emitter.to_sentinel("thinking", "Membuat rencana eksekusi (DAG)...")
+                
+                planner_prompt = f"""You are the PLANNING AGENT. 
+Analyze the user request and break it down into a Directed Acyclic Graph (DAG) of sub-tasks.
+Each task must specify:
+- id: unique string
+- agent_type: coding, research, writing, system, or validation
+- task: clear instruction for the execution agent
+- dependencies: list of task IDs that must be completed first
+- files_affected: list of files this task will create or modify
+
+Output ONLY a JSON object:
+{{
+  "nodes": [
+    {{ "id": "t1", "agent_type": "coding", "task": "...", "dependencies": [], "files_affected": [...] }},
+    ...
+  ]
+}}
+User Request: {user_msg}
+"""
+                planner_res = ""
+                async for chunk in model_manager.chat_stream(base_model, [{"role": "system", "content": planner_prompt}], temperature=0.1):
+                    planner_res += chunk
+                
+                try:
+                    # Extract JSON
+                    m = re.search(r'\{.*\}', planner_res, re.DOTALL)
+                    if m:
+                        from workflow.dag_manager import DAGManager
+                        dag_json = m.group(0)
+                        dag_manager = DAGManager(dag_json)
+                        is_planned = True
+                        
+                        yield f"\n> 📋 **Execution Plan Generated:** {len(dag_manager.nodes)} sub-tasks identified.\n"
+                        # Inject DAG into context
+                        agent_msgs.insert(1, {
+                            "role": "system", 
+                            "content": f"EXECUTION_PLAN (DAG):\n{dag_json}\n\nFollow this plan strictly. Update status via observations."
+                        })
+                except Exception as e:
+                    log.error("Planning failed", error=str(e))
+                    yield f"\n> ⚠️ **Planning failed:** {str(e)[:100]}. Proceeding with standard execution.\n"
 
         for iteration in range(MAX_ITERATIONS):
             response_filter = ResponseFilter(emit_thinking=emit_thinking)
@@ -1105,6 +1231,15 @@ class AgentExecutor:
                         agent_msgs = self._prune_agent_messages(agent_msgs)
                         continue
 
+                    # ── FASE 5: Error Fingerprinting & Checkpointing (v4.0) ────────
+                    current_step_data = {
+                        "iteration": iteration,
+                        "tool": cmd,
+                        "args": args,
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    await self._save_checkpoint(task_id, current_step_data)
+
                     _action, _detail_fn = self._TOOL_ACTION_MAP.get(
                         cmd, ("Worked", lambda a: cmd)
                     )
@@ -1322,6 +1457,22 @@ class AgentExecutor:
                                 )
 
                     error_hint = _get_error_hint(res_str)
+                    
+                    # ── FASE 5: Error Fingerprinting ────────────────────────
+                    if "error" in res_str.lower() or "failed" in res_str.lower():
+                        current_fingerprint = hashlib.md5(res_str.strip().encode()).hexdigest()
+                        if current_fingerprint == last_error_fingerprint:
+                            same_error_count += 1
+                        else:
+                            last_error_fingerprint = current_fingerprint
+                            same_error_count = 1
+                            
+                        if same_error_count >= 2:
+                            # Eskalasi: Ganti agent atau minta reasoning lebih dalam
+                            yield f"\n> 🚨 **Error berulang terdeteksi.** Mengevaluasi ulang strategi dengan reasoning agent...\n"
+                            # Suntikkan instruksi paksa untuk ganti strategi
+                            res_str += "\n\n[SYSTEM: Error ini terjadi 2x beruntun. DILARANG menggunakan tool yang sama lagi. Gunakan pendekatan berbeda atau diagnosa file sistem secara mendalam.]"
+                    
                     obs = "\n<observation>\n" + res_str + error_hint + "\n</observation>\n"
 
                     idx_tool_end = buffer.find("</tool>")

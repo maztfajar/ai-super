@@ -5,6 +5,8 @@ import re
 import re as _re
 import socket
 import structlog
+import hashlib
+from datetime import datetime
 
 log = structlog.get_logger()
 
@@ -391,8 +393,39 @@ async def read_file(path: str, session_id: str = None) -> str:
 
     except asyncio.TimeoutError:
         return f"Error: Reading file {path} timed out after 30 seconds."
+async def _update_artifact_registry(session_id: str, abs_path: str, content: str):
+    """Helper to track file changes and their hashes."""
+    if not session_id:
+        return
+    try:
+        from db.database import AsyncSessionLocal
+        from db.models import ArtifactRegistry
+        from sqlmodel import select
+        
+        file_hash = hashlib.sha256(content.encode()).hexdigest()
+        
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(ArtifactRegistry).where(
+                    ArtifactRegistry.session_id == session_id,
+                    ArtifactRegistry.file_path == abs_path
+                )
+            )
+            existing = result.scalars().first()
+            if existing:
+                existing.file_hash = file_hash
+                existing.last_modified = datetime.now().replace(tzinfo=None)
+                db.add(existing)
+            else:
+                new_entry = ArtifactRegistry(
+                    session_id=session_id,
+                    file_path=abs_path,
+                    file_hash=file_hash
+                )
+                db.add(new_entry)
+            await db.commit()
     except Exception as e:
-        return "Error reading file " + path + ": " + str(e)
+        log.debug("Artifact Registry update skipped", error=str(e))
 
 
 async def write_file(path: str, content: str, session_id: str = None) -> str:
@@ -434,6 +467,9 @@ async def write_file(path: str, content: str, session_id: str = None) -> str:
                 await f.write(content)
 
         await asyncio.wait_for(_write(), timeout=30.0)
+
+        # Update Artifact Registry
+        await _update_artifact_registry(session_id, abs_path, content)
 
         display_path = os.path.relpath(abs_path, project_base_path) if project_base_path else path
         result = "Successfully wrote to " + display_path
@@ -505,6 +541,8 @@ async def write_multiple_files(files_data: list, session_id: str = None) -> str:
                     await f.write(content)
                 display_path = os.path.relpath(abs_path, project_base_path) if project_base_path else path
                 results.append("OK: " + display_path)
+                # Update Artifact Registry
+                await _update_artifact_registry(session_id, abs_path, content)
             except Exception as e:
                 results.append("Error writing " + path + ": " + str(e))
 
@@ -520,6 +558,63 @@ async def write_multiple_files(files_data: list, session_id: str = None) -> str:
 
     except Exception as e:
         return "Fatal error in write_multiple_files: " + str(e)
+
+
+async def write_file_chunk(path: str, content: str, chunk_index: int, total_chunks: int, session_id: str = None) -> str:
+    """
+    Write file in chunks for large files or truncation recovery.
+    Appends content if chunk_index > 0.
+    """
+    try:
+        import aiofiles
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.project_metadata:
+                        meta = session.project_metadata
+                        if isinstance(meta, str):
+                            try:
+                                import json as _json
+                                meta = _json.loads(meta)
+                            except:
+                                meta = {}
+                        project_base_path = meta.get("project_path") if isinstance(meta, dict) else None
+            except Exception:
+                pass
+
+        if not project_base_path and not os.path.isabs(path):
+            safe_folder = session_id[:8] if session_id else "agent"
+            project_base_path = os.path.expanduser(f"~/projects/{safe_folder}")
+
+        if project_base_path and not os.path.isabs(path):
+            path = os.path.join(project_base_path, path)
+
+        abs_path = os.path.abspath(path)
+        os.makedirs(os.path.dirname(abs_path), exist_ok=True)
+
+        mode = "w" if chunk_index == 0 else "a"
+        async with aiofiles.open(abs_path, mode, encoding="utf-8") as f:
+            await f.write(content)
+
+        if chunk_index + 1 == total_chunks:
+            # Final chunk, update registry
+            with open(abs_path, 'r', encoding='utf-8') as f:
+                full_content = f.read()
+            await _update_artifact_registry(session_id, abs_path, full_content)
+            
+            try:
+                from core.project_indexer import project_indexer
+                asyncio.create_task(project_indexer.scan_project(session_id or "", project_base_path or os.path.dirname(abs_path)))
+            except Exception:
+                pass
+
+        return f"Successfully wrote chunk {chunk_index + 1}/{total_chunks} to {os.path.basename(abs_path)}"
+    except Exception as e:
+        return f"Error writing chunk: {str(e)}"
 
 
 async def ask_model(model_id: str, prompt: str) -> str:
