@@ -24,6 +24,23 @@ log = structlog.get_logger()
 
 ENV_FILE = Path(__file__).parent.parent.parent / ".env"
 
+
+def _get_app_version() -> str:
+    """
+    Baca versi dari /app/VERSION yang di-bake ke Docker image.
+    Ini memastikan versi selalu mengikuti image terbaru meskipun host VPS
+    me-mount .env lama yang berisi versi usang.
+    Fallback ke .env jika VERSION file tidak ada (mode development lokal).
+    """
+    for path in [Path("/app/VERSION"), Path(__file__).resolve().parent.parent.parent / "VERSION"]:
+        if path.exists():
+            v = path.read_text(encoding="utf-8").strip()
+            if v:
+                return v
+    # Fallback ke .env
+    env = read_env() if callable(read_env) else {}
+    return env.get("APP_VERSION", "1.0.0")
+
 # ── Global tunnel state ───────────────────────────────────────
 _tunnel_proc: Optional[subprocess.Popen] = None
 _tunnel_url: str = ""
@@ -127,7 +144,7 @@ async def get_settings(user: User = Depends(get_current_user)):
     return {
         "app": {
             "name":      env.get("APP_NAME", "AI ORCHESTRATOR"),
-            "version":   env.get("APP_VERSION", "1.0.0"),
+            "version":   _get_app_version(),
             "build":     env.get("APP_BUILD", "1001"),
             "host":      env.get("HOST", "0.0.0.0"),
             "port":      env.get("PORT", "7860"),
@@ -927,7 +944,7 @@ async def get_client_update():
     Endpoint publik untuk mengecek pembaruan aplikasi client (desktop/mobile).
     """
     env = read_env()
-    version = env.get("APP_VERSION", "1.0.0")
+    version = _get_app_version()
     domain = env.get("TUNNEL_DOMAIN", "eai-orchestrator.kapanewonpengasih.my.id")
     dl_url = env.get("CLIENT_DOWNLOAD_URL", f"https://{domain}")
     
