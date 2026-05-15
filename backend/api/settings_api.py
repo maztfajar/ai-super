@@ -189,11 +189,34 @@ def _get_ai_core_prompt(env: dict) -> str:
             pass
     return env.get("AI_CORE_SYSTEM_PROMPT", "")
 
+def get_cloudflared_path() -> Optional[str]:
+    cf = shutil.which("cloudflared")
+    if cf:
+        return cf
+    for p in ["/usr/local/bin/cloudflared", "/usr/bin/cloudflared", "/opt/homebrew/bin/cloudflared"]:
+        if os.path.exists(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
 def _get_tunnel_status_dict() -> dict:
     global _tunnel_url, _tunnel_log_lines
     running = _is_running()
     env = read_env()
-    cf_path = shutil.which("cloudflared")
+    cf_path = get_cloudflared_path()
+    
+    # Otomatis baca token dari system service jika belum ada di .env (untuk manual install)
+    token = env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()
+    if not token and cf_path:
+        try:
+            out = subprocess.check_output(["systemctl", "show", "cloudflared", "-p", "ExecStart"], text=True, stderr=subprocess.DEVNULL)
+            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', out)
+            if m:
+                token = m.group(1)
+                write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
+                os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
+        except Exception:
+            pass
+            
     with _tunnel_lock:
         logs = list(_tunnel_log_lines[-20:])
         url  = _tunnel_url
@@ -204,7 +227,7 @@ def _get_tunnel_status_dict() -> dict:
         "cloudflared_path":      cf_path or "",
         "quick_url":             url if running else "",
         "domain":                env.get("TUNNEL_DOMAIN", ""),
-        "has_token":             bool(env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()),
+        "has_token":             bool(token),
         "recent_logs":           logs,
     }
 
@@ -280,7 +303,7 @@ async def start_tunnel(user: User = Depends(get_current_user)):
     if _is_running():
         return {"status": "already_running", "message": "Tunnel sudah berjalan", "pid": _tunnel_proc.pid}
 
-    cf_path = shutil.which("cloudflared")
+    cf_path = get_cloudflared_path()
     if not cf_path:
         raise HTTPException(400, detail={
             "code": "cloudflared_not_installed",
@@ -395,9 +418,10 @@ async def get_tunnel_logs(user: User = Depends(get_current_user)):
 # ── POST: install cloudflared ─────────────────────────────────
 @router.post("/install-cloudflared")
 async def install_cloudflared(user: User = Depends(get_current_user)):
-    if shutil.which("cloudflared"):
+    cf_path = get_cloudflared_path()
+    if cf_path:
         import subprocess as sp
-        ver = sp.run(["cloudflared", "--version"], capture_output=True, text=True).stdout.strip()
+        ver = sp.run([cf_path, "--version"], capture_output=True, text=True).stdout.strip()
         return {"status": "already_installed", "version": ver, "message": f"cloudflared sudah terinstall: {ver}"}
     return {
         "status": "manual_required",
@@ -416,7 +440,7 @@ async def setup_cloudflared_service(user: User = Depends(get_current_user)):
             "code": "no_token",
             "message": "Token Cloudflare belum diset. Simpan token terlebih dahulu.",
         })
-    cf_path = shutil.which("cloudflared")
+    cf_path = get_cloudflared_path()
     if not cf_path:
         raise HTTPException(400, detail={
             "code": "cloudflared_not_installed",

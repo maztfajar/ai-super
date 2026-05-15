@@ -55,6 +55,16 @@ def write_env_key(key: str, value: str):
     ENV_FILE.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
 
 
+def get_cloudflared_path() -> Optional[str]:
+    cf = shutil.which("cloudflared")
+    if cf:
+        return cf
+    for p in ["/usr/local/bin/cloudflared", "/usr/bin/cloudflared", "/opt/homebrew/bin/cloudflared"]:
+        if os.path.exists(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+
 def cf_err(msg: str, hint: str = "", code: str = "cf_error"):
     """Buat HTTPException dengan format detail yang konsisten."""
     raise HTTPException(400, detail={"code": code, "message": msg, "hint": hint})
@@ -123,7 +133,7 @@ async def _run_cmd(cmd: List[str], timeout: int = 30) -> tuple[int, str, str]:
 @router.get("/wizard/status")
 async def wizard_status(user: User = Depends(get_current_user)):
     env = read_env()
-    cf_path = shutil.which("cloudflared")
+    cf_path = get_cloudflared_path()
 
     # Cek service aktif via systemctl
     is_service_active = False
@@ -140,6 +150,20 @@ async def wizard_status(user: User = Depends(get_current_user)):
 
     has_api_token    = bool(env.get("CLOUDFLARE_API_TOKEN", "").strip())
     has_tunnel_token = bool(env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip())
+    
+    # Otomatis baca token dari system service jika belum ada di .env (untuk manual install)
+    if not has_tunnel_token and cf_path:
+        try:
+            out = subprocess.check_output(["systemctl", "show", "cloudflared", "-p", "ExecStart"], text=True, stderr=subprocess.DEVNULL)
+            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', out)
+            if m:
+                token = m.group(1)
+                write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
+                os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
+                has_tunnel_token = True
+        except Exception:
+            pass
+
     has_tunnel_id    = bool(env.get("CLOUDFLARE_TUNNEL_ID", "").strip())
     tunnel_domain    = env.get("TUNNEL_DOMAIN", "").strip()
 
@@ -461,7 +485,7 @@ async def deploy_service(user: User = Depends(get_current_user)):
     has_sudo = await _check_sudo()
 
     # ── 1. Cek / Install cloudflared ──────────────────────────
-    cf_path = shutil.which("cloudflared")
+    cf_path = get_cloudflared_path()
     if not cf_path:
         steps.append({"step": "install", "status": "running", "msg": "Menginstall cloudflared..."})
         installed = False
@@ -470,7 +494,7 @@ async def deploy_service(user: User = Depends(get_current_user)):
         script = Path(__file__).parent.parent.parent / "scripts" / "install-cloudflare.sh"
         if script.exists():
             rc, out, err = await _run_cmd(["bash", str(script)], timeout=120)
-            cf_path = shutil.which("cloudflared")
+            cf_path = get_cloudflared_path()
             if cf_path:
                 installed = True
                 steps[-1].update({"status": "ok", "msg": f"cloudflared terinstall: {cf_path}"})
@@ -485,7 +509,7 @@ async def deploy_service(user: User = Depends(get_current_user)):
                     ["sudo", "curl", "-fsSL", url, "-o", "/usr/local/bin/cloudflared"], timeout=90)
                 if rc == 0:
                     await _run_cmd(["sudo", "chmod", "+x", "/usr/local/bin/cloudflared"], timeout=5)
-                    cf_path = shutil.which("cloudflared") or "/usr/local/bin/cloudflared"
+                    cf_path = get_cloudflared_path() or "/usr/local/bin/cloudflared"
                     steps[-1].update({"status": "ok", "msg": f"cloudflared terinstall: {cf_path}"})
                 else:
                     steps[-1].update({"status": "error", "msg": f"Download gagal: {err[:200]}",
@@ -676,7 +700,7 @@ async def reset_cloudflare(req: ResetRequest, user: User = Depends(get_current_u
     # ── 1. Stop & uninstall cloudflared service ───────────────
     if req.stop_service:
         steps.append({"step": "service", "status": "running", "msg": "Menghentikan cloudflared service..."})
-        cf_path = shutil.which("cloudflared") or "/usr/local/bin/cloudflared"
+        cf_path = get_cloudflared_path() or "/usr/local/bin/cloudflared"
 
         for cmd in [["sudo", "-n", "systemctl", "stop",    "cloudflared"],
                     ["sudo", "-n", "systemctl", "disable", "cloudflared"]]:
