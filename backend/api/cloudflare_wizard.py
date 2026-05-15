@@ -159,6 +159,17 @@ async def wizard_status(user: User = Depends(get_current_user)):
 
     has_api_token    = bool(env.get("CLOUDFLARE_API_TOKEN", "").strip())
     has_tunnel_token = bool(env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip())
+    has_tunnel_id    = bool(env.get("CLOUDFLARE_TUNNEL_ID", "").strip())
+    account_id       = env.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+
+    # Cek via API Cloudflare jika tidak terdeteksi di lokal (misal karena running di Docker terpisah)
+    if not is_service_active and has_api_token and account_id and has_tunnel_id:
+        try:
+            tun_info = await cf_request("GET", f"/accounts/{account_id}/cfd_tunnel/{env.get('CLOUDFLARE_TUNNEL_ID')}", env.get("CLOUDFLARE_API_TOKEN"))
+            if tun_info and tun_info.get("status") in ["healthy", "active"]:
+                is_service_active = True
+        except Exception:
+            pass
     
     # Otomatis baca token dari system service jika belum ada di .env (untuk manual install)
     if not has_tunnel_token and cf_path:
@@ -225,6 +236,7 @@ async def wizard_status(user: User = Depends(get_current_user)):
         "setup_complete":        setup_complete,
         # Flag khusus: tunnel jalan via terminal (bukan via wizard)
         "installed_via_terminal": is_service_active and not has_api_token,
+        "is_docker":             os.path.exists("/.dockerenv"),
     }
 
 
@@ -492,6 +504,19 @@ async def deploy_service(user: User = Depends(get_current_user)):
 
     steps = []
     has_sudo = await _check_sudo()
+    is_docker = os.path.exists("/.dockerenv")
+
+    # Jika berjalan di Docker, jangan install service systemd
+    if is_docker:
+        steps.append({"step": "docker_deploy", "status": "ok", "msg": "Docker Environment Terdeteksi", "hint": "Anda menjalankan AI Orchestrator menggunakan Docker."})
+        steps.append({"step": "docker_restart", "status": "warn", "msg": "Restart Container Dibutuhkan", "hint": "Token telah disimpan ke .env. Silakan jalankan perintah `docker compose up -d` atau `docker-compose up -d` di terminal server Anda untuk mengaktifkan Cloudflare Tunnel."})
+        domain = env.get("TUNNEL_DOMAIN", "")
+        return {
+            "success": False,
+            "steps": steps,
+            "tunnel_domain": domain,
+            "message": "Silakan restart Docker untuk mengaktifkan tunnel."
+        }
 
     # ── 1. Cek / Install cloudflared ──────────────────────────
     cf_path = get_cloudflared_path()
