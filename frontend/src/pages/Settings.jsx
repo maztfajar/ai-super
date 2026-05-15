@@ -18,6 +18,7 @@ const sApi = {
   saveApp:       (d) => api.post('/settings/app', d),
   saveTunnel:    (d) => api.post('/settings/tunnel', d),
   tunnelStatus:  () => api.get('/settings/tunnel/status'),
+  autoDetect:    () => api.get('/settings/tunnel/auto-detect'),
   startTunnel:   () => api.post('/settings/tunnel/start'),
   stopTunnel:    () => api.post('/settings/tunnel/stop'),
   tunnelUrl:     () => api.get('/settings/tunnel/url'),
@@ -643,13 +644,37 @@ function TunnelPanel() {
 
 // ── Tunnel Tabbed (Wizard + Manual) ──────────────────────────
 function TunnelTabbed({ settings }) {
-  const [tab, setTab] = useState(() => {
-    // Jika belum ada tunnel_token, tampilkan wizard dulu
-    const env = settings?.tunnel
-    return (!env?.has_token) ? 'wizard' : 'manual'
-  })
+  const [tab, setTab] = useState('wizard')
+  const [detectStatus, setDetectStatus] = useState(null)
+  
+  useEffect(() => {
+    // Run auto-detect on mount
+    sApi.autoDetect().then(res => {
+      setDetectStatus(res)
+      // Switch to manual if tunnel is already active or installed manually
+      if (res.overall === 'active' || (res.overall === 'installed' && res.service_exists)) {
+        setTab('manual')
+      } else if (res.has_token) {
+        setTab('manual')
+      }
+    }).catch(()=>{})
+  }, [])
+
   return (
     <div className="space-y-3">
+      {/* Auto-detect Banner */}
+      {detectStatus && detectStatus.overall !== 'not_setup' && (
+        <div className={clsx("flex items-center gap-2 p-2.5 rounded-xl border text-[11px]",
+          detectStatus.overall === 'active' ? "bg-success/10 border-success/30 text-success" : "bg-bg-4 border-border text-ink-2"
+        )}>
+          {detectStatus.overall === 'active' ? <Zap size={14} className="flex-shrink-0" /> : <Terminal size={14} className="flex-shrink-0" />}
+          <div className="flex-1">
+            <span className="font-semibold">{detectStatus.overall === 'active' ? "Tunnel Terdeteksi Aktif!" : "Cloudflared Terpasang"}</span>
+            <span className="opacity-80 ml-1">— {detectStatus.summary}</span>
+          </div>
+        </div>
+      )}
+
       {/* Tab switcher */}
       <div className="flex gap-1 bg-bg-4 rounded-xl p-1 border border-border">
         <button onClick={()=>setTab('wizard')}
@@ -657,7 +682,7 @@ function TunnelTabbed({ settings }) {
             tab==='wizard' ? 'bg-accent text-white shadow' : 'text-ink-3 hover:text-ink')}>
           <Wand2 size={12}/>
           Setup Wizard
-          {!settings?.tunnel?.has_token && (
+          {!settings?.tunnel?.has_token && detectStatus?.overall === 'not_setup' && (
             <span className="ml-1 text-[11px] bg-white/20 px-1.5 py-0.5 rounded-full font-semibold">Mulai di sini</span>
           )}
         </button>
@@ -997,6 +1022,7 @@ export default function SettingsPage() {
 
   const load = async () => {
     try {
+      // First get basic settings
       const s = await sApi.get()
       setSettings(s)
       setAppName(s.app?.name||'AI ORCHESTRATOR')
@@ -1004,6 +1030,11 @@ export default function SettingsPage() {
       setLogLevel(s.app?.log_level||'INFO')
       setDebug(s.app?.debug==='true')
       setSystemPrompt(s.ai_core?.system_prompt || '')
+      
+      // Run auto-detect in background to get accurate status
+      sApi.autoDetect().then(res => {
+        setSettings(prev => ({...prev, tunnel_status: res}))
+      }).catch(()=>{})
     } catch {}
     finally { setLoading(false) }
   }
@@ -1058,9 +1089,9 @@ export default function SettingsPage() {
         </Section>
 
         <Section title="Cloudflare Tunnel" icon="☁" className="xl:col-span-2" defaultOpen={false}
-          badge={settings?.tunnel_status?.running
+          badge={settings?.tunnel_status?.overall === 'active'
             ? {text:'Aktif', color:'bg-success/10 text-success'}
-            : settings?.tunnel_status?.cloudflared_installed
+            : settings?.tunnel_status?.overall === 'installed' || settings?.tunnel_status?.cloudflared_installed
               ? {text:'Terpasang', color:'bg-bg-5 text-ink-3'}
               : {text:'Belum Setup', color:'bg-warn/10 text-warn'}}>
           <TunnelTabbed settings={settings}/>

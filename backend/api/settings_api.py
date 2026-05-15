@@ -137,10 +137,218 @@ def _start_reader_thread(proc: subprocess.Popen):
     t.start()
 
 
+# ── Async helpers for systemd/docker check ────────────────────
+async def _async_run_cmd(cmd, timeout=5):
+    """Run command asynchronously, return (returncode, stdout, stderr)."""
+    try:
+        p = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(p.communicate(), timeout=timeout)
+        return p.returncode, stdout.decode(errors="replace"), stderr.decode(errors="replace")
+    except asyncio.TimeoutError:
+        return -1, "", "timeout"
+    except Exception as e:
+        return -1, "", str(e)
+
+
+async def _check_docker_cloudflared_simple() -> dict:
+    """Quick check for Docker cloudflared container."""
+    result = {"running": False, "exists": False, "name": "", "status": ""}
+    socket_path = "/var/run/docker.sock"
+    if not os.path.exists(socket_path):
+        return result
+    try:
+        import httpx
+        transport = httpx.AsyncHTTPTransport(uds=socket_path)
+        async with httpx.AsyncClient(transport=transport, base_url="http://docker", timeout=5) as c:
+            r = await c.get("/containers/json?all=true")
+            containers = r.json()
+            for ct in containers:
+                names = [n.lstrip("/") for n in ct.get("Names", [])]
+                image = ct.get("Image", "")
+                if "cloudflared" in image or any("cloudflared" in n for n in names):
+                    result["exists"] = True
+                    result["name"]   = names[0] if names else ""
+                    result["running"] = ct.get("State", "") == "running"
+                    result["status"]  = ct.get("Status", "")
+                    result["id"]      = ct.get("Id", "")[:12]
+                    break
+    except Exception:
+        pass
+    return result
+
+
+async def _get_tunnel_status_async() -> dict:
+    """
+    Comprehensive async tunnel status detection.
+    Checks: in-process tunnel, systemd service, pgrep, Docker container.
+    """
+    global _tunnel_url, _tunnel_log_lines
+    running = _is_running()
+    env = read_env()
+    cf_path = get_cloudflared_path()
+
+    pid = _tunnel_proc.pid if running else None
+    service_active = False
+    service_enabled = False
+    service_exists = False
+    is_docker = os.path.exists("/.dockerenv")
+    docker_cf = {"running": False, "exists": False}
+    detected_source = "none"  # none | api_process | systemd | pgrep | docker
+
+    # ── 1. Check systemd service ──────────────────────────────
+    try:
+        rc, out, _ = await _async_run_cmd(["systemctl", "is-active", "cloudflared"], timeout=3)
+        service_active = out.strip() == "active"
+        if service_active:
+            running = True
+            detected_source = "systemd"
+    except Exception:
+        pass
+
+    try:
+        rc, out, _ = await _async_run_cmd(["systemctl", "is-enabled", "cloudflared"], timeout=3)
+        service_enabled = out.strip() == "enabled"
+        service_exists = service_enabled or service_active
+    except Exception:
+        pass
+
+    # Check if service unit exists (even if not active)
+    if not service_exists:
+        try:
+            rc, out, err = await _async_run_cmd(["systemctl", "status", "cloudflared"], timeout=3)
+            combined = out + err
+            if "could not be found" not in combined.lower() and "no such" not in combined.lower():
+                service_exists = True
+        except Exception:
+            pass
+
+    # ── 2. Check running process via pgrep ────────────────────
+    if not running:
+        try:
+            pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True, timeout=3).strip().split()
+            if pids:
+                running = True
+                pid = int(pids[0])
+                if not cf_path:
+                    exe = os.path.realpath(f"/proc/{pid}/exe")
+                    if os.path.exists(exe):
+                        cf_path = exe
+                if detected_source == "none":
+                    detected_source = "pgrep"
+        except Exception:
+            pass
+
+    # ── 3. Check Docker container ─────────────────────────────
+    docker_cf = await _check_docker_cloudflared_simple()
+    if docker_cf["running"]:
+        running = True
+        if detected_source == "none":
+            detected_source = "docker"
+
+    # ── 4. In-process tunnel started via API ──────────────────
+    if _is_running() and detected_source == "none":
+        detected_source = "api_process"
+
+    # ── 5. Auto-extract token from systemd/process if missing ─
+    token = env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()
+    if not token and cf_path:
+        # Try systemd ExecStart
+        try:
+            out = subprocess.check_output(
+                ["systemctl", "show", "cloudflared", "-p", "ExecStart"],
+                text=True, stderr=subprocess.DEVNULL, timeout=3
+            )
+            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', out)
+            if m:
+                token = m.group(1)
+                write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
+                os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
+        except Exception:
+            pass
+
+    if not token and running and pid:
+        try:
+            cmdline = Path(f"/proc/{pid}/cmdline").read_text(errors="replace").replace('\x00', ' ')
+            m2 = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', cmdline)
+            if m2:
+                token = m2.group(1)
+                write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
+                os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
+        except Exception:
+            pass
+
+    with _tunnel_lock:
+        logs = list(_tunnel_log_lines[-20:])
+        url  = _tunnel_url
+
+    return {
+        "running":               running,
+        "pid":                   pid,
+        "cloudflared_installed": cf_path is not None,
+        "cloudflared_path":      cf_path or "",
+        "quick_url":             url if running else "",
+        "domain":                env.get("TUNNEL_DOMAIN", ""),
+        "has_token":             bool(token),
+        "recent_logs":           logs,
+        # New fields for accurate UI badge
+        "service_active":        service_active,
+        "service_enabled":       service_enabled,
+        "service_exists":        service_exists,
+        "detected_source":       detected_source,
+        "is_docker":             is_docker,
+        "docker_cf_running":     docker_cf["running"],
+        "docker_cf_exists":      docker_cf["exists"],
+        "docker_cf_status":      docker_cf.get("status", ""),
+    }
+
+
+# Keep sync version for backward-compat (limited detection)
+def _get_tunnel_status_dict() -> dict:
+    """Sync fallback — only checks in-process tunnel + basic pgrep."""
+    global _tunnel_url, _tunnel_log_lines
+    running = _is_running()
+    env = read_env()
+    cf_path = get_cloudflared_path()
+    pid = _tunnel_proc.pid if running else None
+
+    if not running:
+        try:
+            pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True, timeout=3).strip().split()
+            if pids:
+                running = True
+                pid = int(pids[0])
+        except Exception:
+            pass
+
+    token = env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()
+    with _tunnel_lock:
+        logs = list(_tunnel_log_lines[-20:])
+        url  = _tunnel_url
+    return {
+        "running":               running,
+        "pid":                   pid,
+        "cloudflared_installed": cf_path is not None,
+        "cloudflared_path":      cf_path or "",
+        "quick_url":             url if running else "",
+        "domain":                env.get("TUNNEL_DOMAIN", ""),
+        "has_token":             bool(token),
+        "recent_logs":           logs,
+        "service_active":        False,
+        "service_enabled":       False,
+        "service_exists":        False,
+        "detected_source":       "unknown",
+    }
+
+
 # ── GET: semua settings ───────────────────────────────────────
 @router.get("/")
 async def get_settings(user: User = Depends(get_current_user)):
     env = read_env()
+    tunnel_status = await _get_tunnel_status_async()
     return {
         "app": {
             "name":      env.get("APP_NAME", "AI ORCHESTRATOR"),
@@ -156,7 +364,7 @@ async def get_settings(user: User = Depends(get_current_user)):
             "provider":         env.get("TUNNEL_PROVIDER", "cloudflare"),
             "domain":           env.get("TUNNEL_DOMAIN", ""),
             "cloudflare_token": "••••••••" if env.get("CLOUDFLARE_TUNNEL_TOKEN") else "",
-            "has_token":        bool(env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()),
+            "has_token":        tunnel_status["has_token"],
             "tunnel_id":        env.get("CLOUDFLARE_TUNNEL_ID", ""),
             "auto_start":       env.get("TUNNEL_AUTO_START", "false"),
         },
@@ -177,7 +385,7 @@ async def get_settings(user: User = Depends(get_current_user)):
                 ]
             }
         },
-        "tunnel_status": _get_tunnel_status_dict(),
+        "tunnel_status": tunnel_status,
     }
 
 def _get_ai_core_prompt(env: dict) -> str:
@@ -189,94 +397,54 @@ def _get_ai_core_prompt(env: dict) -> str:
             pass
     return env.get("AI_CORE_SYSTEM_PROMPT", "")
 
-def get_cloudflared_path() -> Optional[str]:
-    cf = shutil.which("cloudflared")
-    if cf:
-        return cf
-    for p in ["/usr/local/bin/cloudflared", "/usr/bin/cloudflared", "/opt/homebrew/bin/cloudflared", "/snap/bin/cloudflared"]:
-        if os.path.exists(p) and os.access(p, os.X_OK):
-            return p
-    # Try finding it from running processes
-    try:
-        import subprocess
-        pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True).strip().split()
-        if pids:
-            exe_path = os.path.realpath(f"/proc/{pids[0]}/exe")
-            if os.path.exists(exe_path):
-                return exe_path
-    except Exception:
-        pass
-    return None
-
-def _get_tunnel_status_dict() -> dict:
-    global _tunnel_url, _tunnel_log_lines
-    running = _is_running()
-    env = read_env()
-    cf_path = get_cloudflared_path()
-    
-    pid = _tunnel_proc.pid if running else None
-    
-    # Check if running manually
-    if not running:
-        try:
-            import subprocess
-            pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True).strip().split()
-            if pids:
-                running = True
-                pid = int(pids[0])
-                if not cf_path:
-                    cf_path = os.path.realpath(f"/proc/{pid}/exe")
-                # Try to extract quick url or token from cmdline
-                cmdline = Path(f"/proc/{pid}/cmdline").read_text(errors="replace").replace('\x00', ' ')
-                import re
-                url_m = re.search(r'--url\s+(http\S+)', cmdline)
-                if url_m and not _tunnel_url:
-                    pass # We can't know the exact trycloudflare URL just from cmdline easily unless we check logs
-        except Exception:
-            pass
-
-    # Otomatis baca token dari system service jika belum ada di .env (untuk manual install)
-    token = env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()
-    if not token and cf_path:
-        try:
-            import subprocess
-            out = subprocess.check_output(["systemctl", "show", "cloudflared", "-p", "ExecStart"], text=True, stderr=subprocess.DEVNULL)
-            import re
-            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', out)
-            if m:
-                token = m.group(1)
-                write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
-                os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
-            elif running and pid:
-                # Coba cari dari arguments proses
-                cmdline = Path(f"/proc/{pid}/cmdline").read_text(errors="replace").replace('\x00', ' ')
-                m2 = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', cmdline)
-                if m2:
-                    token = m2.group(1)
-                    write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
-                    os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
-        except Exception:
-            pass
-            
-    with _tunnel_lock:
-        logs = list(_tunnel_log_lines[-20:])
-        url  = _tunnel_url
-    return {
-        "running":               running,
-        "pid":                   pid,
-        "cloudflared_installed": cf_path is not None,
-        "cloudflared_path":      cf_path or "",
-        "quick_url":             url if running else "",
-        "domain":                env.get("TUNNEL_DOMAIN", ""),
-        "has_token":             bool(token),
-        "recent_logs":           logs,
-    }
-
-
 # ── GET: tunnel status ────────────────────────────────────────
 @router.get("/tunnel/status")
 async def tunnel_status(user: User = Depends(get_current_user)):
-    return _get_tunnel_status_dict()
+    return await _get_tunnel_status_async()
+
+
+# ── GET: comprehensive auto-detect ────────────────────────────
+@router.get("/tunnel/auto-detect")
+async def tunnel_auto_detect(user: User = Depends(get_current_user)):
+    """
+    Full auto-detection of cloudflare tunnel state.
+    Used by frontend to show accurate badge and status.
+    Also auto-populates .env with detected token if found.
+    """
+    status = await _get_tunnel_status_async()
+    env = read_env()
+
+    # Build a summary for UI
+    summary_parts = []
+    if status["service_active"]:
+        summary_parts.append("Systemd service aktif")
+    elif status.get("docker_cf_running"):
+        summary_parts.append("Docker container aktif")
+    elif status["running"]:
+        summary_parts.append("Proses cloudflared terdeteksi")
+
+    if status["has_token"]:
+        summary_parts.append("Token tersimpan")
+    if status["cloudflared_installed"]:
+        summary_parts.append(f"Binary: {status['cloudflared_path']}")
+    if env.get("TUNNEL_DOMAIN", "").strip():
+        summary_parts.append(f"Domain: {env['TUNNEL_DOMAIN']}")
+
+    # Overall status level for badge
+    if status["running"] or status["service_active"] or status.get("docker_cf_running"):
+        overall = "active"
+    elif status["cloudflared_installed"] or status["has_token"]:
+        overall = "installed"
+    else:
+        overall = "not_setup"
+
+    return {
+        **status,
+        "overall":         overall,
+        "summary":         " · ".join(summary_parts) if summary_parts else "Cloudflare belum dikonfigurasi",
+        "tunnel_domain":   env.get("TUNNEL_DOMAIN", ""),
+        "tunnel_id":       env.get("CLOUDFLARE_TUNNEL_ID", ""),
+    }
 
 
 # ── POST: simpan app settings ─────────────────────────────────
