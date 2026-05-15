@@ -111,11 +111,11 @@ Untuk performa optimal terutama saat menjalankan 15+ agent secara paralel:
 
 | Komponen | Minimum | Rekomendasi |
 |----------|---------|-------------|
-| **RAM**  | 4 GB    | 8 GB+       |
-| **CPU**  | 2 Cores | 4 Cores+    |
-| **Disk** | 20 GB   | 50 GB (SSD) |
+| **RAM**  | 4 GB*   | 16 GB+      |
+| **CPU**  | 2 Cores | 8 Cores+    |
+| **Disk** | 20 GB   | 100 GB (SSD)|
 
-*Estimasi penggunaan RAM: ~512MB per active agent instance.*
+*\*Catatan: Minimum 4GB hanya disarankan untuk load terbatas (~5-8 agent). Untuk full 15-agent concurrent load, dibutuhkan RAM minimal 8GB (estimasi ~512MB per instance).*
 
 ### 3. 📊 Real-Time Progress Streaming
 Indikator progres visual kini lebih akurat:
@@ -165,7 +165,7 @@ Botol leher (*bottleneck*) interaksi manusia telah diminimalkan secara drastis. 
 |---------------------------|-------------------|-----------------|
 | Task perbaikan/debugging  | ❌ Tidak          | Self-resolving, agent mencari konteks sendiri  |
 | Buat proyek baru/lokasi   | ✅ Ya (1x popup)  | Path target belum didefinisikan secara eksplisit |
-| Overwrite file existing   | ❌ Tidak          | Otomatis jika dalam konteks perbaikan/refactor |
+| Overwrite file existing   | ✅ Ya (Destruktif)| Perlu konfirmasi jika file di luar workspace atau size >100KB |
 | Akses credential/secret   | ✅ Ya (MANDATORY) | Restricted via security filter, perlu konfirmasi manual |
 | Akses file di luar sandbox| ❌ Tidak diizinkan| Menjaga security boundary dan isolasi sistem |
 
@@ -177,7 +177,12 @@ Botol leher (*bottleneck*) interaksi manusia telah diminimalkan secara drastis. 
 **Apa yang Masih Butuh Manusia:**
 *   **Smart Popup Approval:** Sistem hanya akan menjeda dan memunculkan *popup* lokasi penyimpanan **jika dan hanya jika** pengguna meminta membuat aplikasi/proyek baru dari awal dan direktori belum ditentukan.
 *   **Audit Log Review (Admin Only):** Privacy Layer Level 3 mencatat kebocoran nama model ke Audit Log. Audit Log ini bersifat internal dan hanya dapat diakses oleh user dengan role **Admin**.
-*   **Data Export Security:** Export data (JSON/PDF/DOCX) dilakukan secara lokal. **Penting:** File export saat ini tidak terenkripsi; hindari menyimpan file export di media yang tidak aman jika mengandung informasi sensitif.
+*   **Data Export Security:** Export data (**TXT/PDF/DOCX/XLSX**) dilakukan secara lokal. **Penting:** File export saat ini tidak terenkripsi; hindari menyimpan file export di media yang tidak aman jika mengandung informasi sensitif.
+*   **Cascade Skip Workaround:** Fitur override manual sedang dalam pengembangan. **Workaround:** Jika tugas ter-skip secara otomatis, Anda dapat menghapus entri dari DLQ (jika ada) dan mengirimkan instruksi re-submit secara independen melalui chat baru.
+
+### 4. 🗄️ Task Retention (Skipped & DLQ)
+*   **DLQ Tasks:** Disimpan selama 14 hari untuk review manual (Fix Review v4.1).
+*   **Skipped Tasks:** Status *skipped* dicatat permanen dalam riwayat eksekusi sesi. Retensi status ini mengikuti kebijakan retensi riwayat chat/analytics (default: mengikuti umur sesi).
 
 ---
 
@@ -476,7 +481,7 @@ Bukan sekadar menyimpan chat, sistem mengekstraksi **Execution Graphs** yang ber
 
 *   **Cara Wipe Procedural Memory:** Kontrol pengguna mutlak. Memori sistem dapat di-reset (wipe) penuh baik dengan 1-klik di menu antarmuka UI maupun lewat *CLI Command* (`CLEAR_MEMORY()`).
 *   **Retensi Data:** *Episodic Memory* (riwayat log chat) akan disimpan dan terakumulasi hingga **30 hari** sebelum dipangkas, sedangkan *Learned Skills* disimpan secara permanen hingga divalidasi hapus oleh pengguna.
-*   **Export Data:** Kemudahan portabilitas difasilitasi penuh (Ekspor AI Core profil, riwayat chat, set memori) dalam satu file JSON lokal tunggal.
+*   **Export Data:** Kemudahan portabilitas difasilitasi penuh (Ekspor AI Core profil, riwayat chat, set memori) dalam format **TXT, PDF, DOCX, dan XLSX**.
 
 ---
 

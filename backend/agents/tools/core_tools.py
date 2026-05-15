@@ -428,8 +428,8 @@ async def _update_artifact_registry(session_id: str, abs_path: str, content: str
         log.debug("Artifact Registry update skipped", error=str(e))
 
 
-async def write_file(path: str, content: str, session_id: str = None) -> str:
-    """Write content to a file."""
+async def write_file(path: str, content: str, session_id: str = None, confirm: bool = False) -> str:
+    """Write content to a file with safety checks for overwrites."""
     try:
         import aiofiles
 
@@ -460,6 +460,21 @@ async def write_file(path: str, content: str, session_id: str = None) -> str:
             path = os.path.join(project_base_path, path)
 
         abs_path = os.path.abspath(path)
+
+        # ── Safety Checks ──────────────────────────────────────────────────
+        projects_base = os.path.expanduser("~/projects")
+        is_outside = not abs_path.startswith(projects_base)
+        
+        if os.path.exists(abs_path):
+            size = os.path.getsize(abs_path)
+            # Require confirmation for large overwrites or writing outside projects
+            if (size > 100 * 1024 or is_outside) and not confirm:
+                return (
+                    f"⚠️ File '{abs_path}' sudah ada "
+                    f"({size/1024:.1f}KB" + (" dan di luar workspace" if is_outside else "") + ").\n"
+                    f"   Gunakan confirm=True untuk menimpa file ini secara paksa."
+                )
+
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
 
         async def _write():
@@ -536,6 +551,20 @@ async def write_multiple_files(files_data: list, session_id: str = None) -> str:
 
             try:
                 abs_path = os.path.abspath(path)
+                
+                # ── Safety Checks ──────────────────────────────────────────
+                projects_base = os.path.expanduser("~/projects")
+                is_outside = not abs_path.startswith(projects_base)
+                
+                if os.path.exists(abs_path):
+                    size = os.path.getsize(abs_path)
+                    if (size > 100 * 1024 or is_outside) and not confirm:
+                        results.append(
+                            f"Skipped {path}: File exists ({size/1024:.1f}KB" +
+                            (" and outside workspace" if is_outside else "") + "). Needs confirm=True."
+                        )
+                        continue
+
                 os.makedirs(os.path.dirname(abs_path), exist_ok=True)
                 async with aiofiles.open(abs_path, "w", encoding="utf-8") as f:
                     await f.write(content)

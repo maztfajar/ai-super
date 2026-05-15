@@ -127,23 +127,28 @@ class MetricsEngine:
             "avg_tokens": sum(m.tokens_input + m.tokens_output for m in filtered) / len(filtered),
             "total_cost": sum(m.cost_usd for m in filtered),
         }
+def get_model_score(self, model_id: str, task_type: str) -> float:
+    """
+    Get historical performance score for a model on a specific task type.
+    Returns 0.0-1.0 (higher is better). Used by AgentScorer.
+    Fix Point: Implementation of "10+ sessions" accuracy baseline.
+    """
+    relevant = [
+        m for m in self._hot_metrics
+        if m.model_used == model_id and m.task_type == task_type
+        and m.timestamp > time.time() - 604800  # last 7 days
+    ]
 
-    def get_model_score(self, model_id: str, task_type: str) -> float:
-        """
-        Get historical performance score for a model on a specific task type.
-        Returns 0.0-1.0 (higher is better). Used by AgentScorer.
-        """
-        relevant = [
-            m for m in self._hot_metrics
-            if m.model_used == model_id and m.task_type == task_type
-            and m.timestamp > time.time() - 604800  # last 7 days
-        ]
+    # ── Fix: Accuracy Baseline Check ─────────────────────────────────────
+    # Jika data kurang dari 10 sesi, kembalikan skor netral (0.5) 
+    # agar Scorer bergantung pada Capability Matching & Priority 4-7
+    if len(relevant) < 10:
+        return 0.5
 
-        if not relevant:
-            return 0.5  # neutral score if no history
+    # Weighted recent performance
+    scores = []
+...
 
-        # Weighted recent performance
-        scores = []
         now = time.time()
         for m in relevant:
             age_hours = (now - m.timestamp) / 3600

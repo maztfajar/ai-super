@@ -79,10 +79,11 @@ class CommandCenter:
         # Track completion count for progress
         completed_count = 0
 
-        # Buat task wrapper dengan watchdog timer individual
+        # Buat task wrapper dengan watchdog timer individual dan limit konkurensi
         async def _run_task_with_watchdog(st: SubTask, task_index: int) -> SubTaskResult:
-            nonlocal completed_count
-            agent_type = st.assigned_agent or "general"
+            async with self._semaphore:
+                nonlocal completed_count
+                agent_type = st.assigned_agent or "general"
             timeout = _AGENT_TIMEOUT_MAP.get(agent_type, DEFAULT_SUBTASK_TIMEOUT)
 
             agent_queue = asyncio.Queue()
@@ -218,6 +219,14 @@ class CommandCenter:
         fail_count = total - success_count
         ui_event_queue.put_nowait(OrchestratorEvent("status",
             f"🏛️ **Command Center**: Selesai — "
+            f"{success_count} berhasil, {fail_count} gagal dari {total} tugas"
+        ))
+
+        return final_results
+
+
+command_center = CommandCenter()
+r**: Selesai — "
             f"{success_count} berhasil, {fail_count} gagal dari {total} tugas"
         ))
 

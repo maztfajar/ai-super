@@ -1250,7 +1250,13 @@ User Request: {user_msg}
                             return await read_file(args.get("path", ""), session_id)
                         elif cmd == "write_file":
                             return await write_file(
-                                args.get("path", ""), args.get("content", ""), session_id
+                                args.get("path", ""), args.get("content", ""), session_id,
+                                args.get("confirm", False)
+                            )
+                        elif cmd == "write_multiple_files":
+                            return await write_multiple_files(
+                                args.get("files", []), session_id,
+                                args.get("confirm", False)
                             )
                         elif cmd == "ask_model":
                             raw_model = args.get("model_id", "")
