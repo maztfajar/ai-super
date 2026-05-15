@@ -226,11 +226,3 @@ class CommandCenter:
 
 
 command_center = CommandCenter()
-r**: Selesai — "
-            f"{success_count} berhasil, {fail_count} gagal dari {total} tugas"
-        ))
-
-        return final_results
-
-
-command_center = CommandCenter()
