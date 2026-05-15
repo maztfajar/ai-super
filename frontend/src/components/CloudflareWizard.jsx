@@ -458,10 +458,30 @@ function Step3({ accountId, tunnelId, savedDomain, onDone }) {
 }
 
 // ── Step 4: Deploy ────────────────────────────────────────────
-function Step4({ hasSudo, onDone }) {
-  const [loading, setLoad]   = useState(false)
-  const [result, setResult]  = useState(null)
-  const [error, setError]    = useState(null)
+function Step4({ hasSudo, isDocker, hasDockerSocket, onDone, onReloadStatus }) {
+  const [loading, setLoad]    = useState(false)
+  const [polling, setPolling] = useState(false)
+  const [result, setResult]   = useState(null)
+  const [error, setError]     = useState(null)
+  const [pollCount, setPoll]  = useState(0)
+
+  const startPolling = () => {
+    setPolling(true); setPoll(0)
+    let count = 0
+    const id = setInterval(async () => {
+      count++; setPoll(count)
+      try {
+        const s = await wApi.status()
+        if (s.service_active || s.cf_tunnel_status === 'healthy' || s.docker_cf_running) {
+          clearInterval(id); setPolling(false)
+          toast.success('🎉 Tunnel Cloudflare aktif!')
+          onDone()
+          if (onReloadStatus) onReloadStatus(s)
+        }
+      } catch (_) {}
+      if (count >= 12) { clearInterval(id); setPolling(false) }
+    }, 5000)
+  }
 
   const handleDeploy = async () => {
     setLoad(true); setError(null)
@@ -469,10 +489,9 @@ function Step4({ hasSudo, onDone }) {
       const r = await wApi.deploy()
       setResult(r)
       if (r.success) { toast.success(r.message); onDone() }
+      else if (r.is_docker) { toast('Token tersimpan. Menunggu tunnel aktif...', { icon: '🐳' }); startPolling() }
       else toast(r.message, { icon: '⚠' })
-    } catch (e) {
-      setError(parseError(e))
-    }
+    } catch (e) { setError(parseError(e)) }
     finally { setLoad(false) }
   }
 
@@ -497,12 +516,41 @@ function Step4({ hasSudo, onDone }) {
         {(result.steps || []).map((s, i) => <DeployStepItem key={i} step={s} />)}
       </div>
 
-      {!result.success && (
+      {!result.success && result.is_docker && (
+        polling ? (
+          <div className="bg-accent/8 border border-accent/25 rounded-xl p-3 flex items-center gap-3 text-xs text-accent-2">
+            <RefreshCw size={14} className="animate-spin flex-shrink-0" />
+            <div>
+              <div className="font-semibold">Menunggu tunnel aktif... ({pollCount * 5}s / 60s)</div>
+              <div className="text-[10px] opacity-70 mt-0.5">Cek status tiap 5 detik via Cloudflare API</div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {!result.has_docker_socket && (
+              <div className="bg-accent/8 border border-accent/25 rounded-xl p-3 text-[10px] space-y-2">
+                <div className="font-semibold text-accent-2 text-xs flex items-center gap-1.5">
+                  <Terminal size={12}/> Jalankan di terminal VPS:
+                </div>
+                <div className="bg-bg-2 rounded-lg p-2 font-mono text-accent-2 text-[11px] flex items-center justify-between gap-2">
+                  <span>docker compose up -d cloudflared</span>
+                  <CopyBtn text="docker compose up -d cloudflared" />
+                </div>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Btn label="Restart Lagi" onClick={() => setResult(null)} variant="warn" icon={RotateCcw} />
+              <Btn label="Cek Status" onClick={startPolling} variant="default" icon={RefreshCw} />
+            </div>
+          </div>
+        )
+      )}
+
+      {!result.success && !result.is_docker && (
         <div className="space-y-2">
           <div className="text-[10px] text-ink-3 p-2.5 bg-bg-4 rounded-xl border border-border">
             <div className="font-semibold text-ink-2 mb-1">Coba install manual:</div>
             <code className="font-mono text-accent-2">sudo bash scripts/setup-cloudflare-service.sh</code>
-            <div className="mt-1">Atau cek log: <code className="font-mono text-accent-2">sudo journalctl -u cloudflared -n 30</code></div>
           </div>
           <Btn label="Coba Lagi" onClick={() => setResult(null)} variant="warn" icon={RotateCcw} />
         </div>
@@ -510,6 +558,57 @@ function Step4({ hasSudo, onDone }) {
     </div>
   )
 
+  // ── Docker mode UI ────────────────────────────────────────────
+  if (isDocker) return (
+    <div className="space-y-3">
+      <div className="bg-bg-4 border border-accent/25 rounded-xl p-3 text-[10px] space-y-2">
+        <div className="flex items-center gap-2 text-accent-2 font-semibold text-xs">
+          <Terminal size={13}/> Mode Docker Terdeteksi
+        </div>
+        {hasDockerSocket ? (
+          <>
+            <p className="text-ink-2">Docker socket tersedia. AI Orchestrator akan <strong className="text-success">otomatis merestart</strong> container <code className="font-mono bg-bg-2 px-1 rounded">cloudflared</code> dengan token baru, lalu menunggu hingga aktif.</p>
+            <div className="flex items-center gap-2 text-success text-[10px]">
+              <CheckCircle2 size={11}/> Auto-restart tersedia
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-ink-2">Token tersimpan ke <code className="font-mono bg-bg-2 px-1 rounded">.env</code>. Jalankan perintah ini di VPS untuk mengaktifkan tunnel:</p>
+            <div className="bg-bg-2 rounded-lg p-2 font-mono text-accent-2 text-[11px] flex items-center justify-between gap-2">
+              <span>docker compose up -d cloudflared</span>
+              <CopyBtn text="docker compose up -d cloudflared" />
+            </div>
+            <div className="text-warn/80 flex items-start gap-1.5">
+              <Info size={10} className="flex-shrink-0 mt-0.5"/>
+              Update docker-compose.yml di VPS (mount Docker socket) agar wizard bisa restart otomatis.
+            </div>
+          </>
+        )}
+      </div>
+
+      {polling && (
+        <div className="bg-accent/8 border border-accent/25 rounded-xl p-3 flex items-center gap-3 text-xs text-accent-2">
+          <RefreshCw size={14} className="animate-spin flex-shrink-0" />
+          <div>
+            <div className="font-semibold">Menunggu tunnel aktif... ({pollCount * 5}s / 60s)</div>
+            <div className="text-[10px] opacity-70 mt-0.5">Cek status tiap 5 detik via Cloudflare API</div>
+          </div>
+        </div>
+      )}
+
+      <ErrorBox error={error} onRetry={() => setError(null)} />
+
+      <Btn
+        label={loading
+          ? (hasDockerSocket ? 'Merestart container... (~10 detik)' : 'Menyimpan token...')
+          : (hasDockerSocket ? '🐳 Simpan & Restart Cloudflared' : '💾 Simpan Token ke .env')}
+        onClick={handleDeploy} loading={loading || polling} variant="primary" full
+      />
+    </div>
+  )
+
+  // ── Non-Docker mode UI ────────────────────────────────────────
   return (
     <div className="space-y-3">
       <div className="bg-accent/8 border border-accent/20 rounded-xl p-2.5 text-[10px] text-ink-2 flex items-start gap-2">
@@ -522,7 +621,7 @@ function Step4({ hasSudo, onDone }) {
           <AlertTriangle size={12} className="flex-shrink-0 mt-0.5" />
           <div>
             <div className="font-semibold">sudo memerlukan password</div>
-            <div className="opacity-80 mt-0.5">Deploy mungkin memerlukan izin. Jika gagal, jalankan manual di terminal:<br/>
+            <div className="opacity-80 mt-0.5">Jika gagal, jalankan manual:<br/>
               <code className="font-mono text-warn">sudo bash scripts/setup-cloudflare-service.sh</code>
             </div>
           </div>
@@ -531,9 +630,7 @@ function Step4({ hasSudo, onDone }) {
 
       <div className="bg-bg-4 border border-border rounded-xl p-3 space-y-1.5 text-[10px] text-ink-3">
         <div className="font-semibold text-ink-2 text-xs mb-2">Yang akan dilakukan:</div>
-        {[
-          'Install cloudflared (jika belum ada)',
-          'Install cloudflared sebagai systemd service',
+        {['Install cloudflared (jika belum ada)', 'Install cloudflared sebagai systemd service',
           'Enable auto-start saat server boot',
           'Start tunnel sekarang',
           'Verifikasi koneksi',
@@ -677,17 +774,6 @@ function ResetDialog({ onClose, onConfirm }) {
           )}
         </div>
       </div>
-      {showReset && (
-        <ResetDialog
-          onClose={() => setShowReset(false)}
-          onConfirm={() => {
-            setStatus(null); setStep(1); setFinished(false)
-            setAccounts([]); setAccountId(''); setTunnelId('')
-            // reload wizard status
-            wApi.status().then(setStatus).catch(() => {})
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -777,8 +863,8 @@ export default function CloudflareWizard({ onClose }) {
       {/* Status grid */}
       <div className="grid grid-cols-2 gap-2 text-[10px] text-left">
         {[
-          ['cloudflared', status?.cloudflared_installed],
-          ['Service', status?.service_active],
+          ['cloudflared', status?.cloudflared_installed || status?.docker_cf_running],
+          ['Tunnel', status?.service_active],
           ['API Token', status?.has_api_token],
           ['Domain', status?.has_domain],
         ].map(([l, ok]) => (
@@ -843,11 +929,19 @@ export default function CloudflareWizard({ onClose }) {
             }} />
         )}
         {step === 4 && (
-          <Step4 hasSudo={status?.has_sudo !== false}
+          <Step4
+            hasSudo={status?.has_sudo !== false}
+            isDocker={status?.is_docker}
+            hasDockerSocket={status?.docker_socket}
             onDone={() => {
               setStatus(s => ({ ...s, service_active: true }))
               setFinished(true)
-            }} />
+            }}
+            onReloadStatus={(s) => {
+              setStatus(s)
+              setFinished(true)
+            }}
+          />
         )}
       </div>
 

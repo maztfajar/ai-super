@@ -138,44 +138,117 @@ async def _run_cmd(cmd: List[str], timeout: int = 30) -> tuple[int, str, str]:
         return -1, "", str(e)
 
 
+# ── Cek Docker container status via Docker socket ─────────────
+async def _check_docker_cloudflared() -> dict:
+    """Cek status container cloudflared via Docker socket (jika tersedia)."""
+    result = {"running": False, "exists": False, "name": ""}
+    socket_path = "/var/run/docker.sock"
+    if not os.path.exists(socket_path):
+        return result
+    try:
+        import httpx
+        transport = httpx.AsyncHTTPTransport(uds=socket_path)
+        async with httpx.AsyncClient(transport=transport, base_url="http://docker", timeout=5) as c:
+            r = await c.get("/containers/json?all=true")
+            containers = r.json()
+            for ct in containers:
+                names = [n.lstrip("/") for n in ct.get("Names", [])]
+                image = ct.get("Image", "")
+                if "cloudflared" in image or any("cloudflared" in n for n in names):
+                    result["exists"] = True
+                    result["name"]   = names[0] if names else ""
+                    result["running"] = ct.get("State", "") == "running"
+                    result["status"]  = ct.get("Status", "")
+                    result["id"]      = ct.get("Id", "")[:12]
+                    break
+    except Exception:
+        pass
+    return result
+
+
+async def _restart_docker_cloudflared() -> tuple[bool, str]:
+    """Restart container cloudflared via Docker socket. Return (success, message)."""
+    socket_path = "/var/run/docker.sock"
+    if not os.path.exists(socket_path):
+        return False, "Docker socket tidak tersedia di container ini."
+    try:
+        import httpx
+        transport = httpx.AsyncHTTPTransport(uds=socket_path)
+        async with httpx.AsyncClient(transport=transport, base_url="http://docker", timeout=30) as c:
+            # Cari container cloudflared
+            r = await c.get("/containers/json?all=true")
+            containers = r.json()
+            container_id = None
+            for ct in containers:
+                names  = [n.lstrip("/") for n in ct.get("Names", [])]
+                image  = ct.get("Image", "")
+                if "cloudflared" in image or any("cloudflared" in n for n in names):
+                    container_id = ct["Id"]
+                    break
+            if not container_id:
+                return False, "Container cloudflared tidak ditemukan."
+            # Restart
+            r2 = await c.post(f"/containers/{container_id}/restart?t=5")
+            if r2.status_code in (204, 200):
+                return True, "Container cloudflared berhasil di-restart!"
+            return False, f"Gagal restart: HTTP {r2.status_code}"
+    except Exception as e:
+        return False, str(e)[:200]
+
+
 # ── GET: wizard status ────────────────────────────────────────
 @router.get("/wizard/status")
 async def wizard_status(user: User = Depends(get_current_user)):
-    env = read_env()
-    cf_path = get_cloudflared_path()
+    env      = read_env()
+    cf_path  = get_cloudflared_path()
+    is_docker = os.path.exists("/.dockerenv")
 
-    # Cek service aktif via systemctl
+    # Cek service aktif via systemctl (untuk install non-Docker)
     is_service_active = False
     _, out, _ = await _run_cmd(["systemctl", "is-active", "cloudflared"], timeout=5)
     is_service_active = out.strip() == "active"
 
-    # Jika tidak aktif via systemctl, cek apakah ada proses cloudflared berjalan
+    # Jika tidak aktif, cek proses lokal
     if not is_service_active:
         _, ps_out, _ = await _run_cmd(["pgrep", "-x", "cloudflared"], timeout=3)
         is_service_active = bool(ps_out.strip())
 
-    # Cek sudo
-    has_sudo = await _check_sudo()
+    # Cek Docker container (jika Docker socket tersedia)
+    docker_info = await _check_docker_cloudflared()
+    if docker_info["running"]:
+        is_service_active = True
 
+    has_sudo         = await _check_sudo()
     has_api_token    = bool(env.get("CLOUDFLARE_API_TOKEN", "").strip())
     has_tunnel_token = bool(env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip())
-    has_tunnel_id    = bool(env.get("CLOUDFLARE_TUNNEL_ID", "").strip())
+    tunnel_id_val    = env.get("CLOUDFLARE_TUNNEL_ID", "").strip()
+    has_tunnel_id    = bool(tunnel_id_val)
     account_id       = env.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    api_token        = env.get("CLOUDFLARE_API_TOKEN", "").strip()
 
-    # Cek via API Cloudflare jika tidak terdeteksi di lokal (misal karena running di Docker terpisah)
-    if not is_service_active and has_api_token and account_id and has_tunnel_id:
+    # Cek via Cloudflare API sebagai sumber kebenaran (paling akurat untuk Docker)
+    cf_tunnel_status = ""
+    if has_api_token and account_id and has_tunnel_id:
         try:
-            tun_info = await cf_request("GET", f"/accounts/{account_id}/cfd_tunnel/{env.get('CLOUDFLARE_TUNNEL_ID')}", env.get("CLOUDFLARE_API_TOKEN"))
-            if tun_info and tun_info.get("status") in ["healthy", "active"]:
-                is_service_active = True
+            tun_info = await cf_request("GET",
+                f"/accounts/{account_id}/cfd_tunnel/{tunnel_id_val}",
+                api_token
+            )
+            if tun_info:
+                cf_tunnel_status = tun_info.get("status", "")
+                if cf_tunnel_status in ["healthy", "active", "degraded"]:
+                    is_service_active = True
         except Exception:
             pass
-    
-    # Otomatis baca token dari system service jika belum ada di .env (untuk manual install)
+
+    # Otomatis baca token dari system service jika belum ada di .env (manual install)
     if not has_tunnel_token and cf_path:
         try:
-            out = subprocess.check_output(["systemctl", "show", "cloudflared", "-p", "ExecStart"], text=True, stderr=subprocess.DEVNULL)
-            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', out)
+            svc_out = subprocess.check_output(
+                ["systemctl", "show", "cloudflared", "-p", "ExecStart"],
+                text=True, stderr=subprocess.DEVNULL
+            )
+            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', svc_out)
             if m:
                 token = m.group(1)
                 write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
@@ -184,25 +257,21 @@ async def wizard_status(user: User = Depends(get_current_user)):
         except Exception:
             pass
 
-    has_tunnel_id    = bool(env.get("CLOUDFLARE_TUNNEL_ID", "").strip())
-    tunnel_domain    = env.get("TUNNEL_DOMAIN", "").strip()
+    has_tunnel_id = bool(env.get("CLOUDFLARE_TUNNEL_ID", "").strip())
+    tunnel_domain = env.get("TUNNEL_DOMAIN", "").strip()
 
-    # Jika tunnel aktif tapi TUNNEL_DOMAIN belum diisi di .env,
-    # coba ambil domain dari log cloudflared (untuk pengguna yang install via terminal)
+    # Coba ambil domain dari log cloudflared jika belum ada
     if is_service_active and not tunnel_domain:
         _, log_out, _ = await _run_cmd(
             ["journalctl", "-u", "cloudflared", "-n", "50", "--no-pager", "--output=cat"],
             timeout=5
         )
-        # Cari pola domain dari log cloudflared
         import re as _re
-        # Pola: *.trycloudflare.com atau domain custom di log
-        patterns = [
+        for pat in [
             r'https?://([a-zA-Z0-9\-\.]+\.trycloudflare\.com)',
             r'registered tunnel connection.*?([a-zA-Z0-9\-]+\.trycloudflare\.com)',
             r'https://([a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,})',
-        ]
-        for pat in patterns:
+        ]:
             m = _re.search(pat, log_out)
             if m:
                 tunnel_domain = m.group(1)
@@ -217,26 +286,29 @@ async def wizard_status(user: User = Depends(get_current_user)):
     if cf_path:            steps_completed.append("cloudflared_installed")
     if is_service_active:  steps_completed.append("service_running")
 
-    # Setup dianggap selesai jika service aktif (terlepas dari API Token)
     setup_complete = is_service_active
 
     return {
-        "has_api_token":         has_api_token,
-        "has_tunnel_token":      has_tunnel_token,
-        "has_tunnel_id":         has_tunnel_id,
-        "has_domain":            has_domain,
-        "tunnel_domain":         tunnel_domain,
-        "tunnel_id":             env.get("CLOUDFLARE_TUNNEL_ID", ""),
-        "account_id":            env.get("CLOUDFLARE_ACCOUNT_ID", ""),
-        "cloudflared_installed": cf_path is not None,
-        "cloudflared_path":      cf_path or "",
-        "service_active":        is_service_active,
-        "has_sudo":              has_sudo,
-        "steps_completed":       steps_completed,
-        "setup_complete":        setup_complete,
-        # Flag khusus: tunnel jalan via terminal (bukan via wizard)
+        "has_api_token":          has_api_token,
+        "has_tunnel_token":       has_tunnel_token,
+        "has_tunnel_id":          has_tunnel_id,
+        "has_domain":             has_domain,
+        "tunnel_domain":          tunnel_domain,
+        "tunnel_id":              env.get("CLOUDFLARE_TUNNEL_ID", ""),
+        "account_id":             env.get("CLOUDFLARE_ACCOUNT_ID", ""),
+        "cloudflared_installed":  cf_path is not None,
+        "cloudflared_path":       cf_path or "",
+        "service_active":         is_service_active,
+        "has_sudo":               has_sudo,
+        "steps_completed":        steps_completed,
+        "setup_complete":         setup_complete,
         "installed_via_terminal": is_service_active and not has_api_token,
-        "is_docker":             os.path.exists("/.dockerenv"),
+        "is_docker":              is_docker,
+        "docker_socket":          os.path.exists("/var/run/docker.sock"),
+        "docker_cf_running":      docker_info["running"],
+        "docker_cf_exists":       docker_info["exists"],
+        "docker_cf_status":       docker_info.get("status", ""),
+        "cf_tunnel_status":       cf_tunnel_status,
     }
 
 
@@ -505,17 +577,54 @@ async def deploy_service(user: User = Depends(get_current_user)):
     steps = []
     has_sudo = await _check_sudo()
     is_docker = os.path.exists("/.dockerenv")
+    has_docker_socket = os.path.exists("/var/run/docker.sock")
 
-    # Jika berjalan di Docker, jangan install service systemd
+    # Jika berjalan di Docker
     if is_docker:
-        steps.append({"step": "docker_deploy", "status": "ok", "msg": "Docker Environment Terdeteksi", "hint": "Anda menjalankan AI Orchestrator menggunakan Docker."})
-        steps.append({"step": "docker_restart", "status": "warn", "msg": "Restart Container Dibutuhkan", "hint": "Token telah disimpan ke .env. Silakan jalankan perintah `docker compose up -d` atau `docker-compose up -d` di terminal server Anda untuk mengaktifkan Cloudflare Tunnel."})
+        steps.append({
+            "step": "docker_detect",
+            "status": "ok",
+            "msg": "Docker Environment Terdeteksi",
+            "hint": "Token Cloudflare Tunnel sudah tersimpan di .env."
+        })
+
         domain = env.get("TUNNEL_DOMAIN", "")
+
+        # Coba restart via Docker socket
+        if has_docker_socket:
+            steps.append({"step": "docker_restart", "status": "running", "msg": "Merestart container cloudflared..."})
+            ok, msg = await _restart_docker_cloudflared()
+            if ok:
+                await asyncio.sleep(4)  # tunggu container up
+                docker_info = await _check_docker_cloudflared()
+                if docker_info["running"]:
+                    steps[-1].update({"status": "ok", "msg": f"Container cloudflared berhasil direstart dan aktif! ({docker_info.get('status','')})"})
+                    return {
+                        "success": True,
+                        "steps": steps,
+                        "tunnel_domain": domain,
+                        "message": f"🎉 Tunnel aktif!" + (f" Akses: https://{domain}" if domain else ""),
+                    }
+                else:
+                    steps[-1].update({"status": "warn", "msg": "Container direstart tapi belum aktif, mungkin token belum valid.", "hint": "Cek log: docker logs cloudflared"})
+            else:
+                steps[-1].update({"status": "warn", "msg": msg,
+                                   "hint": "Jalankan manual di VPS: docker compose up -d cloudflared"})
+        else:
+            steps.append({
+                "step": "docker_manual",
+                "status": "warn",
+                "msg": "Docker socket tidak tersedia — restart manual diperlukan",
+                "hint": "Jalankan di terminal VPS: docker compose up -d cloudflared"
+            })
+
         return {
             "success": False,
             "steps": steps,
             "tunnel_domain": domain,
-            "message": "Silakan restart Docker untuk mengaktifkan tunnel."
+            "is_docker": True,
+            "has_docker_socket": has_docker_socket,
+            "message": "Token tersimpan. Jalankan: docker compose up -d cloudflared"
         }
 
     # ── 1. Cek / Install cloudflared ──────────────────────────
