@@ -59,9 +59,18 @@ def get_cloudflared_path() -> Optional[str]:
     cf = shutil.which("cloudflared")
     if cf:
         return cf
-    for p in ["/usr/local/bin/cloudflared", "/usr/bin/cloudflared", "/opt/homebrew/bin/cloudflared"]:
+    for p in ["/usr/local/bin/cloudflared", "/usr/bin/cloudflared", "/opt/homebrew/bin/cloudflared", "/snap/bin/cloudflared"]:
         if os.path.exists(p) and os.access(p, os.X_OK):
             return p
+    try:
+        import subprocess
+        pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True).strip().split()
+        if pids:
+            exe_path = os.path.realpath(f"/proc/{pids[0]}/exe")
+            if os.path.exists(exe_path):
+                return exe_path
+    except Exception:
+        pass
     return None
 
 

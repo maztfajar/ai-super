@@ -193,9 +193,19 @@ def get_cloudflared_path() -> Optional[str]:
     cf = shutil.which("cloudflared")
     if cf:
         return cf
-    for p in ["/usr/local/bin/cloudflared", "/usr/bin/cloudflared", "/opt/homebrew/bin/cloudflared"]:
+    for p in ["/usr/local/bin/cloudflared", "/usr/bin/cloudflared", "/opt/homebrew/bin/cloudflared", "/snap/bin/cloudflared"]:
         if os.path.exists(p) and os.access(p, os.X_OK):
             return p
+    # Try finding it from running processes
+    try:
+        import subprocess
+        pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True).strip().split()
+        if pids:
+            exe_path = os.path.realpath(f"/proc/{pids[0]}/exe")
+            if os.path.exists(exe_path):
+                return exe_path
+    except Exception:
+        pass
     return None
 
 def _get_tunnel_status_dict() -> dict:
@@ -204,16 +214,47 @@ def _get_tunnel_status_dict() -> dict:
     env = read_env()
     cf_path = get_cloudflared_path()
     
+    pid = _tunnel_proc.pid if running else None
+    
+    # Check if running manually
+    if not running:
+        try:
+            import subprocess
+            pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True).strip().split()
+            if pids:
+                running = True
+                pid = int(pids[0])
+                if not cf_path:
+                    cf_path = os.path.realpath(f"/proc/{pid}/exe")
+                # Try to extract quick url or token from cmdline
+                cmdline = Path(f"/proc/{pid}/cmdline").read_text(errors="replace").replace('\x00', ' ')
+                import re
+                url_m = re.search(r'--url\s+(http\S+)', cmdline)
+                if url_m and not _tunnel_url:
+                    pass # We can't know the exact trycloudflare URL just from cmdline easily unless we check logs
+        except Exception:
+            pass
+
     # Otomatis baca token dari system service jika belum ada di .env (untuk manual install)
     token = env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()
     if not token and cf_path:
         try:
+            import subprocess
             out = subprocess.check_output(["systemctl", "show", "cloudflared", "-p", "ExecStart"], text=True, stderr=subprocess.DEVNULL)
+            import re
             m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', out)
             if m:
                 token = m.group(1)
                 write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
                 os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
+            elif running and pid:
+                # Coba cari dari arguments proses
+                cmdline = Path(f"/proc/{pid}/cmdline").read_text(errors="replace").replace('\x00', ' ')
+                m2 = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', cmdline)
+                if m2:
+                    token = m2.group(1)
+                    write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
+                    os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
         except Exception:
             pass
             
@@ -222,7 +263,7 @@ def _get_tunnel_status_dict() -> dict:
         url  = _tunnel_url
     return {
         "running":               running,
-        "pid":                   _tunnel_proc.pid if running else None,
+        "pid":                   pid,
         "cloudflared_installed": cf_path is not None,
         "cloudflared_path":      cf_path or "",
         "quick_url":             url if running else "",
