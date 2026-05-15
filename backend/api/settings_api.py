@@ -229,16 +229,31 @@ async def _get_tunnel_status_async() -> dict:
     # ── 2. Check running process via pgrep ────────────────────
     if not running:
         try:
-            pids = subprocess.check_output(["pgrep", "-x", "cloudflared"], text=True, timeout=3).strip().split()
-            if pids:
+            # Use pgrep -a to get PID and full command line
+            rc, out, _ = await _async_run_cmd(["pgrep", "-a", "cloudflared"], timeout=3)
+            if out.strip():
+                lines = out.strip().splitlines()
+                first_line = lines[0]
                 running = True
-                pid = int(pids[0])
+                pid_str = first_line.split()[0]
+                pid = int(pid_str)
+                
+                # If we don't have cf_path, try to get it from the process
                 if not cf_path:
                     exe = os.path.realpath(f"/proc/{pid}/exe")
                     if os.path.exists(exe):
                         cf_path = exe
+                
                 if detected_source == "none":
                     detected_source = "pgrep"
+                
+                # Also check for token in this output if missing from env
+                if not token:
+                    m = re.search(r'--token\s+([A-Za-z0-9\-\_\.\+\/\=]+)', first_line)
+                    if m:
+                        token = m.group(1)
+                        write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
+                        os.environ["CLOUDFLARE_TUNNEL_TOKEN"] = token
         except Exception:
             pass
 
@@ -253,16 +268,12 @@ async def _get_tunnel_status_async() -> dict:
     if _is_running() and detected_source == "none":
         detected_source = "api_process"
 
-    # ── 5. Auto-extract token from systemd/process if missing ─
-    token = env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()
+    # ── 5. Auto-extract token from systemd if still missing ──
     if not token and cf_path:
         # Try systemd ExecStart
         try:
-            out = subprocess.check_output(
-                ["systemctl", "show", "cloudflared", "-p", "ExecStart"],
-                text=True, stderr=subprocess.DEVNULL, timeout=3
-            )
-            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', out)
+            rc, out, _ = await _async_run_cmd(["systemctl", "show", "cloudflared", "-p", "ExecStart"], timeout=3)
+            m = re.search(r'--token\s+([A-Za-z0-9\-\_\.\+\/\=]+)', out)
             if m:
                 token = m.group(1)
                 write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
@@ -270,10 +281,11 @@ async def _get_tunnel_status_async() -> dict:
         except Exception:
             pass
 
+    # Final attempt: read from /proc/PID/cmdline if we have a PID
     if not token and running and pid:
         try:
             cmdline = Path(f"/proc/{pid}/cmdline").read_text(errors="replace").replace('\x00', ' ')
-            m2 = re.search(r'--token\s+([A-Za-z0-9\-\_\.]+)', cmdline)
+            m2 = re.search(r'--token\s+([A-Za-z0-9\-\_\.\+\/\=]+)', cmdline)
             if m2:
                 token = m2.group(1)
                 write_env_key("CLOUDFLARE_TUNNEL_TOKEN", token)
