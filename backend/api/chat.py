@@ -301,6 +301,11 @@ async def chat_send(
         text = _re.sub(r'<invoke[\s\S]*?</invoke>', '', text)
         text = _re.sub(r'<parameter[\s\S]*?</parameter>', '', text)
         text = _re.sub(r'<[a-z_]+\s+name="[^"]*"\s*/>', '', text)
+        
+        # Strip AI thinking process tags that leak into the final output
+        text = _re.sub(r'<(?:thinking|think|thought|thought_process)>[\s\S]*?</(?:thinking|think|thought|thought_process)>', '', text)
+        text = _re.sub(r'<(?:plan|task|action)>[\s\S]*?</(?:plan|task|action)>', '', text)
+        
         text = _re.sub(r'\n{3,}', '\n\n', text)
         return text
 

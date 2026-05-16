@@ -953,6 +953,9 @@ function stripInternalTags(content) {
     .replace(/<parameter[\s\S]*?<\/parameter>/g, '')
     // Hapus tag self-closing yang tersisa seperti <parameter name="x"/>
     .replace(/<[a-z_]+\s+name="[^"]*"\s*\/>/g, '')
+    // Hapus AI thinking process tags
+    .replace(/<(?:thinking|think|thought|thought_process)>[\s\S]*?<\/(?:thinking|think|thought|thought_process)>/g, '')
+    .replace(/<(?:plan|task|action)>[\s\S]*?<\/(?:plan|task|action)>/g, '')
     // Bersihkan baris kosong berlebih setelah penghapusan
     .replace(/\n{3,}/g, '\n\n')
     .trim()

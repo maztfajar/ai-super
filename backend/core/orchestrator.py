@@ -469,8 +469,13 @@ class Orchestrator:
                 
                 event_queue = asyncio.Queue()
                 phase5_streamed = True
+                dag_context_str = "Total tasks: {}\\n".format(len(assigned_subtasks))
+                for i, st in enumerate(assigned_subtasks):
+                    marker = ">> (SAAT INI) <<" if st.id == group_tasks[0].id else ""
+                    dag_context_str += f"{i+1}. [{st.task_type}] {st.description[:100]} {marker}\\n"
+                    
                 exec_task = asyncio.create_task(self._execute_subtask(
-                    group_tasks[0], system_prompt, history, spec, event_queue, stream_chunks=True, project_path=project_path
+                    group_tasks[0], system_prompt, history, spec, event_queue, stream_chunks=True, project_path=project_path, dag_context=dag_context_str
                 ))
                 
                 # Watchdog: track elapsed time
@@ -524,6 +529,11 @@ class Orchestrator:
                 
                 event_queue = asyncio.Queue()
                 
+                dag_context_str = "Total tasks: {}\\n".format(len(assigned_subtasks))
+                for i, st in enumerate(assigned_subtasks):
+                    marker = ">> (SEDANG PARALEL) <<" if st.id in [gt.id for gt in group_tasks] else ""
+                    dag_context_str += f"{i+1}. [{st.task_type}] {st.description[:100]} {marker}\\n"
+                    
                 coord_task = asyncio.create_task(command_center.coordinate_team(
                     group_tasks=group_tasks,
                     execute_fn=self._execute_subtask,
@@ -531,7 +541,8 @@ class Orchestrator:
                     history=history,
                     spec=spec,
                     project_path=project_path,
-                    ui_event_queue=event_queue
+                    ui_event_queue=event_queue,
+                    dag_context=dag_context_str
                 ))
                 
                 while not coord_task.done():
@@ -1252,6 +1263,7 @@ class Orchestrator:
         event_queue: Optional[asyncio.Queue] = None,
         stream_chunks: bool = False,
         project_path: str = None,
+        dag_context: str = "",
     ) -> SubTaskResult:
         """Execute a single subtask using its assigned agent and model."""
         start = time.time()

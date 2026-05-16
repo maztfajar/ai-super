@@ -232,11 +232,9 @@ Panggil find_safe_port SEBELUM start server apapun.
 6. Jika berhasil: output %%APP_PREVIEW%%\\nhttp://localhost:PORT\\n%%END_PREVIEW%%
 
 **WORKFLOW MANAGEMENT (DAG):**
-Jika dalam pesan sistem terdapat `EXECUTION_PLAN (DAG)`, Anda WAJIB mengikuti rencana tersebut:
-1. Selesaikan task secara berurutan sesuai `dependencies`.
-2. Setelah SETIAP task selesai (atau gagal), Anda WAJIB memanggil `update_task_status`.
-3. JANGAN memberikan `<response>` akhir sebelum SEMUA task dalam DAG berstatus 'completed'.
-4. Jika task gagal, coba perbaiki. Jika tetap gagal setelah 2x percobaan, panggil `update_task_status` dengan status 'failed' dan jelaskan alasannya.
+Jika dalam pesan sistem terdapat `[DAG_MANAGER] KESELURUHAN RENCANA (DAG)`, Anda WAJIB memperhatikan rencana tersebut untuk memahami konteks gambar besar.
+Namun, PENTING: Anda TIDAK PERLU memanggil `update_task_status`. Orchestrator akan otomatis mendeteksi penyelesaian tugas Anda ketika Anda memberikan output.
+Fokuslah menyelesaikan sub-task yang ditugaskan kepada Anda secara maksimal.
 
 **PROJECT MEMORY — WAJIB DIBACA:**
 Orchestrator memiliki memori permanen untuk lokasi project.
@@ -253,7 +251,6 @@ Available tools (gunakan DALAM <thinking> saja):
 5. ask_model — tanya AI lain. Args: model_id (string), prompt (string).
 6. web_search — cari internet. Args: query (string).
 7. find_safe_port — cari port aman. Args: preferred (int, optional).
-8. update_task_status — update status sub-task dalam DAG. Args: task_id (string), status (string: 'completed'|'failed'), result (string, optional).
 
 **FILESYSTEM TOOLS (BARU — gunakan ini, jangan tebak lokasi file):**
 8.  list_directory   — tampilkan isi folder dengan metadata.
@@ -1313,17 +1310,6 @@ User Request: {user_msg}
                                 args.get("path", ""), args.get("content", ""), session_id,
                                 args.get("confirm", False)
                             )
-                        elif cmd == "update_task_status":
-                            tid = args.get("task_id", "")
-                            stat = args.get("status", "")
-                            rem = args.get("result", "")
-                            if is_planned and dag_manager:
-                                if stat == "completed":
-                                    dag_manager.mark_completed(tid, rem)
-                                elif stat == "failed":
-                                    dag_manager.mark_failed(tid, rem)
-                                await dag_manager.save_checkpoint()
-                            return f"Status task '{tid}' berhasil diupdate ke '{stat}'."
                         elif cmd == "write_multiple_files":
                             return await write_multiple_files(
                                 args.get("files", []), session_id,
@@ -1697,7 +1683,7 @@ User Request: {user_msg}
                     if self._dag_stall_count >= 5:
                         stall_warning = (
                             "\n\n⚠️ DAG STALL WATCHDOG: Progress rencana kerja terhenti selama 5 turn. "
-                            "Anda WAJIB segera menyelesaikan task berikutnya atau panggil update_task_status jika sudah selesai."
+                            "Anda WAJIB segera menyelesaikan task berikutnya."
                         )
 
                     agent_msgs.append({"role": "assistant", "content": buffer})
