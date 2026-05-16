@@ -338,7 +338,8 @@ class ModelManager:
             if self._anthropic_client is None:
                 import anthropic
                 self._anthropic_client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
-            system = next((m["content"] for m in messages if m["role"] == "system"), "You are AI ORCHESTRATOR, a helpful AI assistant.")
+            system_parts = [m["content"] for m in messages if m["role"] == "system"]
+            system = "\n\n".join(system_parts) if system_parts else "You are AI ORCHESTRATOR, a helpful AI assistant."
             chat_msgs = [m for m in messages if m["role"] != "system"]
             async with self._anthropic_client.messages.stream(
                 model=model, messages=chat_msgs, system=system,

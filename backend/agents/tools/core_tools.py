@@ -201,12 +201,22 @@ async def execute_bash(command: str, session_id: str = None) -> str:
             (r'curl\s+.*\|\s*(bash|sh)', "Remote code execution via curl pipe"),
             (r'wget\s+.*\|\s*(bash|sh)', "Remote code execution via wget pipe"),
             (r'\bchmod\s+[0-7]*[67][0-7]\s+/(etc|bin|usr)', "Privilege escalation via chmod"),
+            (r'lsof\s+.*:7860', "Querying Orchestrator port 7860"),
+            (r'fuser\s+.*7860', "Killing Orchestrator port 7860"),
+            (r'\b(pkill|killall)\s+.*(uvicorn|python|orchestrator|main\.py)', "Killing Orchestrator process by name"),
         ]
 
         for pattern, reason in RESTRICTED_PATTERNS:
             if re.search(pattern, normalized_cmd):
                 log.warning("Blocked dangerous command", reason=reason, cmd=command[:80])
                 return f"Security Exception: Command blocked — {reason}."
+
+        # Protect Orchestrator PIDs dynamically to prevent suicide
+        my_pid = str(os.getpid())
+        parent_pid = str(os.getppid())
+        if "kill" in normalized_cmd and (my_pid in normalized_cmd or parent_pid in normalized_cmd):
+            log.warning("Blocked attempt to kill Orchestrator PID", cmd=command[:80])
+            return "Security Exception: Attempting to kill the Orchestrator process is strictly blocked."
 
         PROTECTED_PATHS = ["/etc/passwd", "/etc/shadow", "/.ssh/id_", "ai-orchestrator.db"]
         cmd_lower = command.lower()
