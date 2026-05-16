@@ -13,7 +13,7 @@ import os
 import httpx
 import json
 import urllib.parse
-import datetime
+from datetime import datetime
 import structlog
 
 log = structlog.get_logger()
@@ -79,7 +79,7 @@ async def _tavily_search(query: str, max_results: int, api_key: str) -> str:
                 f"   (relevance: {score:.2f})\n"
             )
 
-        now = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
+        now = datetime.now().strftime("%d %B %Y, %H:%M")
         lines.append(f"\n_Data diambil: {now} WIB_")
         return "\n".join(lines)
 
@@ -181,7 +181,7 @@ async def _duckduckgo_fallback(query: str, max_results: int) -> str:
                 f"Coba query yang lebih spesifik atau cek koneksi internet."
             )
 
-        now = datetime.datetime.now().strftime("%d %B %Y, %H:%M")
+        now = datetime.now().strftime("%d %B %Y, %H:%M")
         lines.append(f"\n_Data diambil: {now} WIB_")
         return "\n".join(lines)
 

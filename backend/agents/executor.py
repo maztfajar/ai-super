@@ -833,6 +833,9 @@ class AgentExecutor:
         same_error_count = 0
         task_id = session_id # Gunakan session_id sebagai task_id jika tidak ada explicit
         
+        # ── FASE 0: Pre-initialization ──────────────────────────────────────
+        iteration = 0  # FIX: Prevent UnboundLocalError in exception handlers
+        
         # Try load checkpoint
         checkpoint = await self._load_checkpoint(task_id)
         if checkpoint:

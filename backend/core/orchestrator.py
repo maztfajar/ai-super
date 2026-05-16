@@ -890,8 +890,14 @@ class Orchestrator:
                     except asyncio.CancelledError:
                         pass
                     except Exception as e:
-                        log.error("Agent executor stream error", error=str(e))
-                        await q.put(f"\n\n❌ **Error Executor:** {str(e)}")
+                        import traceback
+                        tb = traceback.format_exc()
+                        log.error("Agent executor stream error", 
+                                  error=str(e), 
+                                  session_id=session_id,
+                                  intent=spec.primary_intent,
+                                  traceback=tb[:1000])
+                        await q.put(f"\n\n❌ **Error Executor:** {str(e)}\n\n*Informasi debug telah dicatat di log sistem.*")
                     finally:
                         await q.put(None)  # sentinel
 

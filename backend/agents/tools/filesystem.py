@@ -24,6 +24,7 @@ import fnmatch
 from pathlib import Path
 from typing import Optional
 import structlog
+from datetime import datetime
 
 log = structlog.get_logger()
 
@@ -111,8 +112,7 @@ async def list_directory(path: str = ".", session_id: Optional[str] = None) -> s
                 else:
                     size_str = f"{size/1024/1024:.1f}MB"
 
-                import datetime
-                mtime = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
+                mtime = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M")
 
                 icon = "📁" if is_dir else _get_file_icon(entry.name)
                 entries.append(f"  {icon} {'[DIR]' if is_dir else '     '} {entry.name:<40} {size_str:>8}  {mtime}")
@@ -633,9 +633,8 @@ async def get_file_info(path: str, session_id: Optional[str] = None) -> str:
             return f"❌ Path tidak ditemukan: {resolved}"
 
         stat = os.stat(resolved)
-        import datetime
-        mtime = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-        ctime = datetime.datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
+        mtime = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+        ctime = datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
 
         is_dir = os.path.isdir(resolved)
         size = stat.st_size
