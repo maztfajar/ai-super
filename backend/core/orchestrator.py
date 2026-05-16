@@ -151,6 +151,20 @@ class Orchestrator:
             )
         })
 
+        # ─── HUMAN LOGIC ENGINE: Injeksi Konteks Emosi ───────────────
+        emotional_hint = ""
+        if hasattr(spec, "emotional_state"):
+            if spec.emotional_state.needs_acknowledgment:
+                emotional_hint += f"\n[CATATAN INTERNAL: Pengguna terlihat {spec.emotional_state.dominant_emotion}. "
+                emotional_hint += f"Akui kondisi mereka dulu sebelum menjawab. "
+                emotional_hint += f"Gunakan nada: {spec.tone_hint}]\n"
+
+            if spec.emotional_state.has_time_pressure:
+                emotional_hint += "[CATATAN INTERNAL: Pengguna sedang terburu-buru. Berikan jawaban ringkas dan langsung ke solusi.]\n"
+
+            if emotional_hint:
+                system_prompt += f"\n{emotional_hint}"
+
         # ─── PHASE 1.5: PROCEDURAL MEMORY RECALL ─────────────────
         # Injeksi "Buku Resep" dari tugas sukses sebelumnya ke system prompt
         try:
@@ -207,10 +221,18 @@ class Orchestrator:
         CREATE_PROJECT_PATTERN = r"\b(buat|bikin|create|build|buatkan|bikinkan|bangun)\s+(aplikasi|web|website|project|program|sistem|bot|script)\b"
         is_create_project = bool(re.search(CREATE_PROJECT_PATTERN, message.lower()))
         
-        if is_create_project and not project_path and primary in ["coding", "web_development", "system"]:
-            yield OrchestratorEvent("status", "📂 Membutuhkan lokasi penyimpanan project...")
-            yield OrchestratorEvent("require_project_location", "")
-            return
+        # Kesadaran mirip manusia (Human-like awareness):
+        # Jangan minta project path jika user sedang melakukan analisa file, research, 
+        # atau vision/image processing, KECUALI mereka benar-benar ingin membangun aplikasi (requires_multi_agent = True).
+        is_document_processing = primary in ["analysis", "research", "writing", "vision", "general"] or image_b64 is not None
+        
+        if is_create_project and not project_path:
+            if is_document_processing and not spec.requires_multi_agent:
+                log.info("Orchestrator bypassed project location popup due to document processing intent.")
+            else:
+                yield OrchestratorEvent("status", "📂 Membutuhkan lokasi penyimpanan project...")
+                yield OrchestratorEvent("require_project_location", "")
+                return
 
         # Auto-continue without explicit project_path for other normal tasks (executor will use get_project_path tool)
         if primary == "image_generation":
