@@ -1517,9 +1517,15 @@ User Request: {user_msg}
                     
                     obs = "\n<observation>\n" + res_str + error_hint + "\n</observation>\n"
 
+                    idx_tool_start = buffer.find("<tool>")
                     idx_tool_end = buffer.find("</tool>")
-                    if idx_tool_end != -1:
-                        buffer_to_save = buffer[:idx_tool_end + 7]
+                    if idx_tool_start != -1 and idx_tool_end != -1:
+                        idx_think_start = buffer.find("<thinking>")
+                        idx_think_end = buffer.find("</thinking>")
+                        think_block = ""
+                        if idx_think_start != -1 and idx_think_end != -1 and idx_think_end < idx_tool_start:
+                            think_block = buffer[idx_think_start:idx_think_end + 11] + "\n"
+                        buffer_to_save = think_block + buffer[idx_tool_start:idx_tool_end + 7]
                     else:
                         buffer_to_save = "<tool>" + tool_content + "</tool>"
 
@@ -1618,6 +1624,25 @@ User Request: {user_msg}
                                     "⚠️ Proses selesai namun tidak ada respons. "
                                     "Silakan ulangi pertanyaan Anda."
                                 )
+
+                # --- DAG Continuation Enforcement ---
+                if is_planned and dag_manager and not dag_manager.is_finished() and not stream_error and iteration < MAX_ITERATIONS - 1:
+                    agent_msgs.append({"role": "assistant", "content": buffer})
+                    agent_msgs.append({
+                        "role": "user",
+                        "content": (
+                            "<observation>\n"
+                            "SYSTEM: Rencana eksekusi (DAG) BELUM SELESAI. "
+                            f"Progress saat ini: {dag_manager.get_progress_str()}.\n"
+                            "Anda DILARANG berhenti atau memberikan kesimpulan sebelum semua task selesai. "
+                            "Langsung jalankan <tool> untuk mengeksekusi task berikutnya yang berstatus 'pending'.\n"
+                            "</observation>"
+                        )
+                    })
+                    agent_msgs = self._prune_agent_messages(agent_msgs)
+                    continue
+                # ------------------------------------
+
                 break
 
 
