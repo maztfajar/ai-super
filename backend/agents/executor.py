@@ -223,7 +223,6 @@ Hentikan generate segera setelah <tool>. Hasil masuk di turn berikutnya dalam <o
 
 **PORT SAFETY:** Reserved: 7860, 6379, 5432, 3306, 11434. Gunakan 8100-8999.
 Panggil find_safe_port SEBELUM start server apapun.
-
 **APP CREATION WORKFLOW:**
 1. find_safe_port → port aman
 2. write_file → Tulis file SATU PER SATU (sekuensial). JANGAN PERNAH menggunakan execute_bash + cat untuk membuat file. JANGAN PERNAH mencoba menggabungkan banyak file dalam satu output karena akan merusak struktur JSON!
@@ -231,6 +230,13 @@ Panggil find_safe_port SEBELUM start server apapun.
 4. execute_bash: start server background (nohup ... > app.log 2>&1 &)
 5. execute_bash: verifikasi (sleep 3 && curl -s http://localhost:PORT)
 6. Jika berhasil: output %%APP_PREVIEW%%\\nhttp://localhost:PORT\\n%%END_PREVIEW%%
+
+**WORKFLOW MANAGEMENT (DAG):**
+Jika dalam pesan sistem terdapat `EXECUTION_PLAN (DAG)`, Anda WAJIB mengikuti rencana tersebut:
+1. Selesaikan task secara berurutan sesuai `dependencies`.
+2. Setelah SETIAP task selesai (atau gagal), Anda WAJIB memanggil `update_task_status`.
+3. JANGAN memberikan `<response>` akhir sebelum SEMUA task dalam DAG berstatus 'completed'.
+4. Jika task gagal, coba perbaiki. Jika tetap gagal setelah 2x percobaan, panggil `update_task_status` dengan status 'failed' dan jelaskan alasannya.
 
 **PROJECT MEMORY — WAJIB DIBACA:**
 Orchestrator memiliki memori permanen untuk lokasi project.
@@ -247,6 +253,7 @@ Available tools (gunakan DALAM <thinking> saja):
 5. ask_model — tanya AI lain. Args: model_id (string), prompt (string).
 6. web_search — cari internet. Args: query (string).
 7. find_safe_port — cari port aman. Args: preferred (int, optional).
+8. update_task_status — update status sub-task dalam DAG. Args: task_id (string), status (string: 'completed'|'failed'), result (string, optional).
 
 **FILESYSTEM TOOLS (BARU — gunakan ini, jangan tebak lokasi file):**
 8.  list_directory   — tampilkan isi folder dengan metadata.
@@ -1251,6 +1258,19 @@ User Request: {user_msg}
                                 f"</observation>"
                             )
                         })
+                        
+                        # HARDENING: Jika ini sudah loop ke-3, paksa 'Reasoning' turn
+                        if recent_same >= 3:
+                            agent_msgs.append({
+                                "role": "user",
+                                "content": (
+                                    "⚠️ CRITICAL RECOVERY: Anda terjebak dalam loop. "
+                                    "DILARANG menjalankan tool apa pun di turn ini. "
+                                    "Tuliskan analisa mendalam (Maks 1 paragraf) tentang APA yang salah dan MENGAPA strategi sebelumnya gagal. "
+                                    "Setelah itu, baru tentukan langkah berbeda yang akan diambil di turn berikutnya."
+                                )
+                            })
+
                         last_tool_calls.clear()
                         agent_msgs = self._prune_agent_messages(agent_msgs)
                         continue
@@ -1293,6 +1313,17 @@ User Request: {user_msg}
                                 args.get("path", ""), args.get("content", ""), session_id,
                                 args.get("confirm", False)
                             )
+                        elif cmd == "update_task_status":
+                            tid = args.get("task_id", "")
+                            stat = args.get("status", "")
+                            rem = args.get("result", "")
+                            if is_planned and dag_manager:
+                                if stat == "completed":
+                                    dag_manager.mark_completed(tid, rem)
+                                elif stat == "failed":
+                                    dag_manager.mark_failed(tid, rem)
+                                await dag_manager.save_checkpoint()
+                            return f"Status task '{tid}' berhasil diupdate ke '{stat}'."
                         elif cmd == "write_multiple_files":
                             return await write_multiple_files(
                                 args.get("files", []), session_id,
@@ -1620,16 +1651,55 @@ User Request: {user_msg}
                             })
                             continue
                         else:
-                            if iteration > 0:
-                                yield "\n\n*(Eksekusi Selesai)*"
+                            # ── HARDENING: Proactive Response Recovery (v4.1) ──────────
+                            has_sent_response = any("<response>" in m.get("content", "") for m in agent_msgs if m["role"] == "assistant")
+                            
+                            if not has_sent_response:
+                                # Paksa satu turn terakhir untuk ringkasan jika agen lupa
+                                yield "\n> 📝 **Menyiapkan ringkasan akhir...**\n"
+                                try:
+                                    summary_msgs = agent_msgs + [{
+                                        "role": "user", 
+                                        "content": "Berikan ringkasan akhir yang sangat singkat (1-2 kalimat) tentang apa yang sudah Anda selesaikan atau masalah apa yang menghalangi Anda."
+                                    }]
+                                    async for chunk in model_manager.chat_stream(base_model, summary_msgs):
+                                        yield chunk
+                                except Exception:
+                                    yield "\n\n*(Eksekusi Selesai tanpa respon eksplisit)*"
                             else:
-                                yield (
-                                    "⚠️ Proses selesai namun tidak ada respons. "
-                                    "Silakan ulangi pertanyaan Anda."
-                                )
+                                if iteration > 0:
+                                    # Jika ada DAG yang belum selesai, beri peringatan satu kali lagi
+                                    if is_planned and dag_manager and not dag_manager.is_finished():
+                                        yield "\n\n⚠️ **Perhatian:** Beberapa sub-task dalam rencana belum ditandai selesai. Mohon verifikasi apakah pekerjaan sudah benar-benar tuntas."
+                                    yield "\n\n*(Eksekusi Selesai)*"
+                                else:
+                                    yield (
+                                        "⚠️ Proses selesai namun tidak ada respons. "
+                                        "Silakan ulangi pertanyaan Anda."
+                                    )
 
                 # --- DAG Continuation Enforcement ---
                 if is_planned and dag_manager and not dag_manager.is_finished() and not stream_error and iteration < MAX_ITERATIONS - 1:
+                    # ── DAG WATCHDOG (v4.1) ──────────────────────────────────
+                    # Jika progress stagnan selama 5 iteration, beri peringatan keras
+                    dag_progress_key = dag_manager.to_json()
+                    if not hasattr(self, "_last_dag_json"):
+                        self._last_dag_json = dag_progress_key
+                        self._dag_stall_count = 0
+                    
+                    if self._last_dag_json == dag_progress_key:
+                        self._dag_stall_count += 1
+                    else:
+                        self._last_dag_json = dag_progress_key
+                        self._dag_stall_count = 0
+                        
+                    stall_warning = ""
+                    if self._dag_stall_count >= 5:
+                        stall_warning = (
+                            "\n\n⚠️ DAG STALL WATCHDOG: Progress rencana kerja terhenti selama 5 turn. "
+                            "Anda WAJIB segera menyelesaikan task berikutnya atau panggil update_task_status jika sudah selesai."
+                        )
+
                     agent_msgs.append({"role": "assistant", "content": buffer})
                     agent_msgs.append({
                         "role": "user",
@@ -1638,7 +1708,9 @@ User Request: {user_msg}
                             "SYSTEM: Rencana eksekusi (DAG) BELUM SELESAI. "
                             f"Progress saat ini: {dag_manager.get_progress_str()}.\n"
                             "Anda DILARANG berhenti atau memberikan kesimpulan sebelum semua task selesai. "
-                            "Langsung jalankan <tool> untuk mengeksekusi task berikutnya yang berstatus 'pending'.\n"
+                            "Langsung jalankan <tool> untuk mengeksekusi task berikutnya yang berstatus 'pending'. "
+                            "Gunakan update_task_status untuk memajukan rencana."
+                            f"{stall_warning}\n"
                             "</observation>"
                         )
                     })

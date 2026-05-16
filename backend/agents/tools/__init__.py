@@ -20,6 +20,7 @@ except ImportError:
     search_files = None
 
 from .web_search import web_search
+from .workflow import update_task_status
 
 # ── Filesystem tools baru ────────────────────────────────────────────────────
 from .filesystem import (
@@ -91,6 +92,9 @@ TOOLS = {
     "browser_type":          browser_type,
     "browser_extract_text":  browser_extract_text,
     "browser_screenshot":    browser_screenshot,
+
+    # ── Workflow tools ────────────────────────────────────────
+    "update_task_status":    update_task_status,
 }
 
 # Inject Google tools jika library tersedia
