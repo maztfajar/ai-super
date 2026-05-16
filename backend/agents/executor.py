@@ -1058,6 +1058,17 @@ User Request: {user_msg}
                             buffer = buffer.replace(m_raw.group(1), f"<tool>{m_raw.group(1)}</tool>")
                         except Exception:
                             pass
+                    if not has_tool:
+                        m_func = re.search(r'(\w+)\s*\(\s*(\{.*?\})\s*\)', buffer, re.DOTALL)
+                        if m_func:
+                            func_name = m_func.group(1)
+                            try:
+                                parsed_args = json.loads(m_func.group(2))
+                                tool_str = json.dumps({"name": func_name, "args": parsed_args})
+                                has_tool = True
+                                buffer = buffer.replace(m_func.group(0), f"<tool>{tool_str}</tool>")
+                            except Exception:
+                                pass
 
             if has_tool and "</tool>" not in buffer:
                 if not stream_error and iteration < MAX_ITERATIONS - 1:
@@ -1270,7 +1281,7 @@ User Request: {user_msg}
                         elif cmd == "list_directory":
                             from agents.tools.filesystem import list_directory
                             return await list_directory(
-                                args.get("path", "."), session_id
+                                args.get("path", args.get("directory", ".")), session_id
                             )
 
                         elif cmd == "file_tree":
