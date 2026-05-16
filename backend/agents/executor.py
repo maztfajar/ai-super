@@ -193,9 +193,9 @@ untuk cek kondisi terkini, BARU buat keputusan.
 - Jika ambigu: pilih interpretasi yang PALING BERGUNA untuk user
 
 [TAHAP 2: JELAJAHI KONTEKS]
-- Apakah ada project path yang perlu dicek? \u2192 get_project_path
-- Apakah perlu baca file yang relevan? \u2192 read_file / search_in_files
-- Apakah perlu tahu struktur direktori? \u2192 file_tree / list_directory
+- Apakah ada project path yang perlu dicek? \u2192 execute_bash dengan command "pwd"
+- Apakah perlu baca file yang relevan? \u2192 read_file / search_files
+- Apakah perlu tahu struktur direktori? \u2192 list_dir
 
 [TAHAP 3: RENCANAKAN EKSEKUSI]
 - Urutkan tool calls yang dibutuhkan
@@ -849,6 +849,9 @@ class AgentExecutor:
             if len(user_msg) > 100 or any(kw in user_msg.lower() for kw in ["buat", "build", "create", "implementasi", "refactor"]):
                 yield process_emitter.to_sentinel("thinking", "Membuat rencana eksekusi (DAG)...")
                 
+                # Context history agar planner paham aplikasi apa yang sedang dibahas
+                history_context = "\n".join([f"[{m['role'].upper()}]: {m['content'][:300]}..." for m in agent_msgs[-6:-1] if m['role'] != 'system'])
+                
                 planner_prompt = f"""You are the PLANNING AGENT. 
 Analyze the user request and break it down into a Directed Acyclic Graph (DAG) of sub-tasks.
 Each task must specify:
@@ -865,6 +868,10 @@ Output ONLY a JSON object:
     ...
   ]
 }}
+
+Context from recent history:
+{history_context}
+
 User Request: {user_msg}
 """
                 planner_res = ""
@@ -1067,6 +1074,24 @@ User Request: {user_msg}
                                 tool_str = json.dumps({"name": func_name, "args": parsed_args})
                                 has_tool = True
                                 buffer = buffer.replace(m_func.group(0), f"<tool>{tool_str}</tool>")
+                            except Exception:
+                                pass
+                    if not has_tool:
+                        m_xml = re.search(r'<invoke\s+name="([^"]+)">\s*(.*?)\s*</invoke>', buffer, re.DOTALL)
+                        if m_xml:
+                            func_name = m_xml.group(1)
+                            params_str = m_xml.group(2)
+                            parsed_args = {}
+                            for p in re.finditer(r'<parameter\s+name="([^"]+)">\s*(.*?)\s*</parameter>', params_str, re.DOTALL):
+                                parsed_args[p.group(1)] = p.group(2)
+                            try:
+                                tool_str = json.dumps({"name": func_name, "args": parsed_args})
+                                has_tool = True
+                                block_to_replace = m_xml.group(0)
+                                m_outer = re.search(r'<function_calls>\s*' + re.escape(block_to_replace) + r'\s*</function_calls>', buffer, re.DOTALL)
+                                if m_outer:
+                                    block_to_replace = m_outer.group(0)
+                                buffer = buffer.replace(block_to_replace, f"<tool>{tool_str}</tool>")
                             except Exception:
                                 pass
 
