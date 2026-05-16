@@ -16,6 +16,7 @@ Perbaikan dari v2.1:
 """
 
 import re
+import json
 import hashlib
 import asyncio
 from datetime import datetime
@@ -61,7 +62,7 @@ async def build_agent_system_prompt_async(
 
     models = list(model_manager.available_models.keys())
     model_list_str = ", ".join(models)
-    now = datetime.datetime.now()
+    now = datetime.now()
     hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
     bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
     nama_hari = hari[now.weekday()]
@@ -834,7 +835,7 @@ class AgentExecutor:
         
         # Try load checkpoint
         checkpoint = await self._load_checkpoint(task_id)
-        if checkpoint and iteration == 0:
+        if checkpoint:
             yield f"\n> 🔄 **Resuming from checkpoint...** (Task: {checkpoint.get('next_step', 'N/A')})\n"
             # Logic untuk menyuntikkan checkpoint ke agent_msgs bisa ditambahkan di sini
 
@@ -842,7 +843,7 @@ class AgentExecutor:
         is_planned = False
         dag_manager = None
         
-        if iteration == 0 and execution_mode == "execution":
+        if execution_mode == "execution":
             user_msg = next((m["content"] for m in reversed(agent_msgs) if m["role"] == "user"), "")
             # Trigger planning for complex tasks
             if len(user_msg) > 100 or any(kw in user_msg.lower() for kw in ["buat", "build", "create", "implementasi", "refactor"]):
