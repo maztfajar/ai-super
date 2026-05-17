@@ -880,7 +880,12 @@ User Request: {user_msg}
                         }
                         # Fake it internally for backwards compatibility of loop tracking
                         tool_str = json.dumps(tool_req)
-                        chunk = f"<tool>{tool_str}</tool>"
+                        buffer += f"<tool>{tool_str}</tool>"
+                        has_tool_started = True
+                        response_filter.flush()
+                        response_filter.state = "WAITING"
+                        response_filter.pending = ""
+                        break
                         
                     buffer += chunk
 
