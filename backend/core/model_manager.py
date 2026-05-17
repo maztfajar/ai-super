@@ -226,25 +226,98 @@ class ModelManager:
             full.append(chunk)
         return "".join(full)
 
+    async def test_model_tool_support(self, model: str) -> dict:
+        """Test if a given model supports native tool calling."""
+        provider = self._get_provider(model)
+        clean_model = model.replace("sumopod/", "").replace("ollama/", "")
+        
+        messages = [{"role": "user", "content": "Ping."}]
+        dummy_tools = [{
+            "type": "function",
+            "function": {
+                "name": "ping_tool",
+                "description": "Dummy tool.",
+                "parameters": {"type": "object", "properties": {}}
+            }
+        }]
+        
+        try:
+            if provider == "openai":
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                await client.chat.completions.create(
+                    model=clean_model, messages=messages, max_tokens=10, tools=dummy_tools, stream=False
+                )
+            elif provider == "anthropic":
+                import anthropic
+                client = anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
+                dummy_tools_anthropic = [{
+                    "name": "ping_tool",
+                    "description": "Dummy tool.",
+                    "input_schema": {"type": "object", "properties": {}}
+                }]
+                await client.messages.create(
+                    model=clean_model, messages=messages, max_tokens=10, tools=dummy_tools_anthropic
+                )
+            elif provider == "google":
+                import google.generativeai as genai
+                genai.configure(api_key=settings.GOOGLE_API_KEY)
+                gmodel = genai.GenerativeModel(
+                    clean_model,
+                    tools=[{"function_declarations": [{"name": "ping_tool", "description": "dummy"}]}]
+                )
+                import asyncio
+                await asyncio.get_event_loop().run_in_executor(None, lambda: gmodel.generate_content("Ping."))
+            elif provider in ("sumopod", "custom"):
+                info = self.available_models.get(model, {})
+                base_url = info.get("base_url", settings.SUMOPOD_HOST)
+                api_key = info.get("api_key", settings.SUMOPOD_API_KEY)
+                actual_model = info.get("model_id", clean_model)
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+                await client.chat.completions.create(
+                    model=actual_model, messages=messages, max_tokens=10, tools=dummy_tools, stream=False
+                )
+            elif provider == "ollama":
+                import httpx
+                async with httpx.AsyncClient(timeout=10) as client:
+                    resp = await client.post(
+                        f"{settings.OLLAMA_HOST}/api/chat",
+                        json={"model": clean_model, "messages": messages, "stream": False, "tools": dummy_tools}
+                    )
+                    if resp.status_code >= 400:
+                        raise Exception(resp.text)
+            else:
+                return {"supported": False, "message": "Provider tidak didukung untuk pengujian tool."}
+                
+            return {"supported": True, "message": "Model ini mendukung Native Tools!"}
+            
+        except Exception as e:
+            err_str = str(e).lower()
+            if "tool" in err_str or "function" in err_str or "400" in err_str:
+                return {"supported": False, "message": f"Model TIDAK mendukung Native Tools: {e}"}
+            return {"supported": False, "message": f"Tidak dapat memverifikasi dukungan tools (Error: {e})"}
+
     async def chat_stream(
         self,
         model: str,
         messages: list,
         temperature: float = 0.7,
         max_tokens: int = 4096,
-    ) -> AsyncGenerator[str, None]:
+        tools: list = None,
+    ) -> AsyncGenerator[str | dict, None]:
         """Stream chat completion — route ke provider yang tepat"""
         provider = self._get_provider(model)
         clean_model = model.replace("sumopod/", "").replace("ollama/", "")
 
         if provider == "openai":
-            async for chunk in self._stream_openai(clean_model, messages, temperature, max_tokens):
+            async for chunk in self._stream_openai(clean_model, messages, temperature, max_tokens, tools):
                 yield chunk
         elif provider == "anthropic":
-            async for chunk in self._stream_anthropic(clean_model, messages, temperature, max_tokens):
+            async for chunk in self._stream_anthropic(clean_model, messages, temperature, max_tokens, tools):
                 yield chunk
         elif provider == "google":
-            async for chunk in self._stream_google(clean_model, messages, temperature, max_tokens):
+            async for chunk in self._stream_google(clean_model, messages, temperature, max_tokens, tools):
                 yield chunk
         elif provider == "sumopod":
             async for chunk in self._stream_openai_compatible(
@@ -252,10 +325,11 @@ class ModelManager:
                 base_url=settings.SUMOPOD_HOST,
                 api_key=settings.SUMOPOD_API_KEY,
                 provider_name="Sumopod",
+                tools=tools,
             ):
                 yield chunk
         elif provider == "ollama":
-            async for chunk in self._stream_ollama(clean_model, messages, temperature, max_tokens):
+            async for chunk in self._stream_ollama(clean_model, messages, temperature, max_tokens, tools):
                 yield chunk
         elif provider == "custom":
             info = self.available_models.get(model, {})
@@ -298,20 +372,50 @@ class ModelManager:
         return "unknown"
 
     # ── OpenAI ───────────────────────────────────────────────
-    async def _stream_openai(self, model, messages, temperature, max_tokens):
+    async def _stream_openai(self, model, messages, temperature, max_tokens, tools=None):
         try:
             # Gunakan singleton client — bukan dibuat ulang tiap request
             if self._openai_client is None:
                 from openai import AsyncOpenAI
                 self._openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                
+            kwargs = {}
+            if tools:
+                kwargs["tools"] = tools
+                
             stream = await self._openai_client.chat.completions.create(
                 model=model, messages=messages,
                 temperature=temperature, max_tokens=max_tokens, stream=True,
+                **kwargs
             )
+            
+            tool_calls_buffer = {}
+            
             async for chunk in stream:
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield delta
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    yield delta.content
+                if hasattr(delta, "tool_calls") and delta.tool_calls:
+                    for tc in delta.tool_calls:
+                        idx = tc.index
+                        if idx not in tool_calls_buffer:
+                            tool_calls_buffer[idx] = {"name": tc.function.name or "", "args": tc.function.arguments or ""}
+                        else:
+                            if tc.function.name:
+                                tool_calls_buffer[idx]["name"] += tc.function.name
+                            if tc.function.arguments:
+                                tool_calls_buffer[idx]["args"] += tc.function.arguments
+                                
+            for idx, tc in tool_calls_buffer.items():
+                try:
+                    import json
+                    args_dict = json.loads(tc["args"])
+                except:
+                    args_dict = tc["args"]
+                yield {"type": "tool_call", "name": tc["name"], "args": args_dict}
+                
         except Exception as e:
             err_str = str(e)
             if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
@@ -332,7 +436,7 @@ class ModelManager:
                 yield f"\n❌ **Gagal menghubungi OpenAI:** {clean_err}"
 
     # ── Anthropic ─────────────────────────────────────────────
-    async def _stream_anthropic(self, model, messages, temperature, max_tokens):
+    async def _stream_anthropic(self, model, messages, temperature, max_tokens, tools=None):
         try:
             # Gunakan singleton client
             if self._anthropic_client is None:
@@ -341,12 +445,32 @@ class ModelManager:
             system_parts = [m["content"] for m in messages if m["role"] == "system"]
             system = "\n\n".join(system_parts) if system_parts else "You are AI ORCHESTRATOR, a helpful AI assistant."
             chat_msgs = [m for m in messages if m["role"] != "system"]
+            
+            kwargs = {}
+            if tools:
+                from core.tool_converter import openai_to_anthropic_tools
+                kwargs["tools"] = openai_to_anthropic_tools(tools)
+                
             async with self._anthropic_client.messages.stream(
                 model=model, messages=chat_msgs, system=system,
                 temperature=temperature, max_tokens=max_tokens,
+                **kwargs
             ) as stream:
-                async for text in stream.text_stream:
-                    yield text
+                tool_calls_buffer = {}
+                async for event in stream:
+                    if event.type == "text_delta":
+                        yield event.delta.text
+                    elif event.type == "tool_use":
+                        # Not streamed delta, tool_use gives the whole JSON usually, 
+                        # but anthropic's stream actually sends tool_use block and delta
+                        pass
+                
+                # In Anthropic's messages.stream, tool use blocks are collected automatically
+                message = await stream.get_final_message()
+                for block in message.content:
+                    if block.type == "tool_use":
+                        yield {"type": "tool_call", "name": block.name, "args": block.input}
+                        
         except Exception as e:
             err_str = str(e)
             if "credit balance is too low" in err_str.lower() or "insufficient_quota" in err_str.lower():
@@ -359,7 +483,7 @@ class ModelManager:
                  yield f"\n❌ **Gagal menghubungi Anthropic:** {clean_err}"
 
     # ── Google ────────────────────────────────────────────────
-    async def _stream_google(self, model, messages, temperature, max_tokens):
+    async def _stream_google(self, model, messages, temperature, max_tokens, tools=None):
         """
         Google Gemini streaming dengan format prompt yang benar.
         Dijalankan di thread pool agar tidak memblokir event loop (SDK sync).
@@ -372,6 +496,13 @@ class ModelManager:
             # Pisahkan system prompt dari history percakapan
             system_parts = [m["content"] for m in messages if m["role"] == "system"]
             system_instruction = "\n\n".join(system_parts) if system_parts else None
+            
+            kwargs = {}
+            if tools:
+                from core.tool_converter import openai_to_gemini_tools
+                gemini_tools = openai_to_gemini_tools(tools)
+                if gemini_tools:
+                    kwargs["tools"] = gemini_tools
 
             # Buat model dengan system instruction
             gmodel = genai.GenerativeModel(
@@ -381,6 +512,7 @@ class ModelManager:
                     "temperature": temperature,
                     "max_output_tokens": max_tokens,
                 },
+                **kwargs
             )
 
             # Konversi history ke format Gemini (hanya role user/model)
@@ -401,7 +533,18 @@ class ModelManager:
                 return chat.send_message(last_msg, stream=False)
 
             response = await loop.run_in_executor(None, _generate_sync)
-            yield response.text or ""
+            
+            if response.parts:
+                for part in response.parts:
+                    if getattr(part, 'function_call', None):
+                        # Convert protobuf struct to dict
+                        fn = part.function_call
+                        args = {k: v for k, v in type(fn.args).items(fn.args)}
+                        yield {"type": "tool_call", "name": fn.name, "args": args}
+                    elif part.text:
+                        yield part.text
+            else:
+                yield response.text or ""
 
         except Exception as e:
             err_str = str(e)
@@ -414,10 +557,10 @@ class ModelManager:
             else:
                 yield f"\n❌ **Gagal menghubungi Google Gemini:** {str(e)[:200]}"
 
-    # ── OpenAI-compatible (Sumopod, dll) ─────────────────────
     async def _stream_openai_compatible(
         self, model, messages, temperature, max_tokens,
-        base_url: str, api_key: str, provider_name: str = "Custom"
+        base_url: str, api_key: str, provider_name: str = "Custom",
+        tools: list = None
     ):
         """
         Generic streaming untuk API yang kompatibel dengan OpenAI format.
@@ -442,23 +585,47 @@ class ModelManager:
                 api_key=api_key,
                 base_url=base_url,
             )
+            
+            kwargs = {}
+            if tools:
+                kwargs["tools"] = tools
+
             stream = await client.chat.completions.create(
                 model=model,
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,
+                **kwargs
             )
             html_buffer = ""
             is_buffering = True
+            tool_calls_buffer = {}
+
             async for chunk in stream:
-                delta = chunk.choices[0].delta.content
-                if not delta:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                
+                # Check for tool calls first
+                if hasattr(delta, "tool_calls") and delta.tool_calls:
+                    for tc in delta.tool_calls:
+                        idx = tc.index
+                        if idx not in tool_calls_buffer:
+                            tool_calls_buffer[idx] = {"name": tc.function.name or "", "args": tc.function.arguments or ""}
+                        else:
+                            if tc.function.name:
+                                tool_calls_buffer[idx]["name"] += tc.function.name
+                            if tc.function.arguments:
+                                tool_calls_buffer[idx]["args"] += tc.function.arguments
+                
+                content_chunk = delta.content
+                if not content_chunk:
                     continue
 
                 # Safety: buffer early chunks to detect if provider returned an HTML error page
                 if is_buffering:
-                    html_buffer += delta
+                    html_buffer += content_chunk
                     if len(html_buffer) >= 64 or chunk.choices[0].finish_reason:
                         if _is_html_content(html_buffer):
                             log.warning(f"HTML error page detected from {provider_name}, suppressing")
@@ -471,7 +638,7 @@ class ModelManager:
                             html_buffer = None
                 else:
                     # Past buffering phase — stream directly
-                    yield delta
+                    yield content_chunk
 
             # Flush remaining buffer if stream ended before threshold
             if is_buffering and html_buffer:
@@ -479,6 +646,14 @@ class ModelManager:
                     yield html_buffer
                 else:
                     yield f"\n❌ **Gagal menghubungi API ({provider_name}):** Layanan tidak dapat dijangkau (server mengembalikan halaman error). Coba lagi nanti atau ganti model."
+
+            for idx, tc in tool_calls_buffer.items():
+                try:
+                    import json
+                    args_dict = json.loads(tc["args"])
+                except:
+                    args_dict = tc["args"]
+                yield {"type": "tool_call", "name": tc["name"], "args": args_dict}
 
         except Exception as e:
             err_str = str(e)
@@ -555,25 +730,38 @@ class ModelManager:
                 yield f"\n❌ **Gagal menghubungi API ({provider_name}):** {clean_err}"
 
     # ── Ollama ────────────────────────────────────────────────
-    async def _stream_ollama(self, model, messages, temperature, max_tokens):
+    async def _stream_ollama(self, model, messages, temperature, max_tokens, tools=None):
         try:
+            payload = {
+                "model": model,
+                "messages": messages,
+                "stream": True,
+                "options": {"temperature": temperature, "num_predict": max_tokens},
+            }
+            if tools:
+                payload["tools"] = tools
+
             async with httpx.AsyncClient(timeout=120) as client:
                 async with client.stream(
                     "POST",
                     f"{settings.OLLAMA_HOST}/api/chat",
-                    json={
-                        "model": model,
-                        "messages": messages,
-                        "stream": True,
-                        "options": {"temperature": temperature, "num_predict": max_tokens},
-                    },
+                    json=payload,
                 ) as resp:
                     async for line in resp.aiter_lines():
                         if line:
                             data = json.loads(line)
-                            content = data.get("message", {}).get("content", "")
+                            msg = data.get("message", {})
+                            content = msg.get("content", "")
                             if content:
                                 yield content
+                            
+                            if "tool_calls" in msg and msg["tool_calls"]:
+                                for tc in msg["tool_calls"]:
+                                    yield {
+                                        "type": "tool_call",
+                                        "name": tc["function"]["name"],
+                                        "args": tc["function"]["arguments"]
+                                    }
         except Exception as e:
             yield f"\n[Error Ollama: {e}. Pastikan Ollama berjalan: ollama serve]"
 

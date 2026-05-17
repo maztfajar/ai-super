@@ -282,6 +282,7 @@ class DAGBuilder:
             required_skills=[task_type],
             dependencies=[],
             estimated_complexity=0.3,
+            timeout_seconds=600,
         )
         return self.build([subtask])
 

@@ -301,7 +301,7 @@ class QueryMessageDistiller:
         self, msg: Dict[str, str], keywords: List[str], max_tokens: int
     ) -> Dict[str, str]:
         """
-        Trim message panjang — pertahankan bagian yang mengandung keyword.
+        Trim message panjang — pertahankan isi tanpa merusak struktur data (JSON/Code).
         """
         content = msg["content"]
         max_chars = int(max_tokens * CHARS_PER_TOKEN)
@@ -309,50 +309,21 @@ class QueryMessageDistiller:
         if len(content) <= max_chars:
             return msg
 
-        # Split ke paragraf/baris
-        paragraphs = content.split("\n")
-        if len(paragraphs) <= 2:
-            # Satu blok besar — potong dari ujung
-            trimmed = content[:max_chars] + "\n...[dipotong oleh QMD]"
-            return {"role": msg["role"], "content": trimmed}
-
-        # Score tiap paragraf
-        scored_paragraphs = []
-        for i, para in enumerate(paragraphs):
-            if not para.strip():
-                continue
-            score = sum(1 for kw in keywords if kw in para.lower())
-            # Boost paragraf awal dan akhir
-            if i < 3 or i >= len(paragraphs) - 2:
-                score += 2
-            scored_paragraphs.append((score, i, para))
-
-        # Sort by relevance, ambil yang muat
-        scored_paragraphs.sort(key=lambda x: (-x[0], x[1]))
-
-        selected = []
-        used_chars = 0
-        for score, idx, para in scored_paragraphs:
-            para_len = len(para) + 1  # +1 for newline
-            if used_chars + para_len > max_chars:
-                continue
-            selected.append((idx, para))
-            used_chars += para_len
-
-        # Re-sort by posisi asli
-        selected.sort(key=lambda x: x[0])
-        trimmed = "\n".join(p for _, p in selected)
-
-        if len(trimmed) < len(content):
-            trimmed += "\n...[dipotong oleh QMD]"
-
+        # Hindari memotong paragraf secara acak karena akan merusak JSON atau Source Code.
+        # Jika konten terlalu panjang, potong karakter dari belakang secara aman.
+        trimmed = content[:max_chars] + "\n\n...[dipotong oleh QMD karena melebihi batas token]"
         return {"role": msg["role"], "content": trimmed}
 
     # ── Text compression ──────────────────────────────────────────────────────
 
     def _compress_text(self, text: str) -> str:
-        """Kompres teks tanpa menghilangkan makna penting."""
+        """Kompres teks tanpa menghilangkan makna penting atau merusak struktur."""
         if not text:
+            return text
+
+        # Jangan mengompres jika teks kemungkinan adalah source code atau JSON
+        # karena akan merusak indentasi yang wajib bagi Python/YAML/JSON.
+        if "```" in text or "{" in text:
             return text
 
         lines = text.split("\n")
@@ -360,10 +331,8 @@ class QueryMessageDistiller:
         prev_empty = False
 
         for line in lines:
-            stripped = line.strip()
-
-            # Skip blank lines berturut-turut
-            if not stripped:
+            # Skip blank lines berturut-turut tanpa menghapus spasi awal (indentasi)
+            if not line.strip():
                 if not prev_empty:
                     compressed.append("")
                     prev_empty = True
@@ -371,13 +340,10 @@ class QueryMessageDistiller:
             prev_empty = False
 
             # Skip komentar/separator dekoratif
-            if re.match(r'^[═─━━─═\-=*#~]+$', stripped):
+            if re.match(r'^[═─━━─═\-=*#~]+$', line.strip()):
                 continue
 
-            # Kompres spasi berlebih
-            stripped = re.sub(r'\s{2,}', ' ', stripped)
-
-            compressed.append(stripped)
+            compressed.append(line)
 
         return "\n".join(compressed)
 

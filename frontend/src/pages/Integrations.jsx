@@ -40,6 +40,7 @@ const intApi = {
   getSettings:          () => api.getSettings(),
   saveAiRoles:          (d) => api.saveAiRoles(d),
   getResolvedRoles:     () => api.getResolvedRoles(),
+  testNativeTools:      (model_id) => api.post('/settings/ai-roles/test-tools', { model_id }),
 }
 
 /**
@@ -731,6 +732,7 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
   // resolved: { role → { model_id, display, source: 'auto'|'manual' } }
   const [resolved, setResolved] = useState({})
   const [loadingResolved, setLoadingResolved] = useState(false)
+  const [testingModel, setTestingModel] = useState({})
 
   useEffect(() => {
     if (settings?.ai_core?.role_mappings) {
@@ -773,6 +775,26 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
       } catch {}
     } catch (e) {
       toast.error(e.message)
+    }
+  }
+
+  const handleTestTools = async (roleKey, modelId) => {
+    if (!modelId) {
+      toast.error('Belum ada model yang dipilih untuk diuji')
+      return
+    }
+    setTestingModel(prev => ({ ...prev, [roleKey]: true }))
+    try {
+      const res = await intApi.testNativeTools(modelId)
+      if (res.supported) {
+        toast.success(res.message || `✅ Model ${modelId} mendukung Native Tools!`)
+      } else {
+        toast.error(`⚠️ Model ${modelId} tidak mendukung Native Tools:\n${res.message}`, { duration: 6000 })
+      }
+    } catch (e) {
+      toast.error(`Gagal menguji tools: ${e.message}`)
+    } finally {
+      setTestingModel(prev => ({ ...prev, [roleKey]: false }))
     }
   }
 
@@ -867,6 +889,19 @@ function AiRoleMappingSection({ settings, onSave, saving }) {
                       <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
                         <ChevronDown size={11}/>
                       </div>
+                    </div>
+                    
+                    {/* Test Native Tools Button */}
+                    <div className="pt-1">
+                      <Btn 
+                        label="Test Native Tools" 
+                        onClick={() => handleTestTools(role.key, activeModel)} 
+                        loading={testingModel[role.key]} 
+                        variant="default" 
+                        small 
+                        full
+                        icon={Zap}
+                      />
                     </div>
                   </div>
                 )

@@ -123,6 +123,12 @@ Untuk performa optimal terutama saat menjalankan 15+ agent secara paralel:
 
 *\*Catatan: Minimum 4GB hanya disarankan untuk load terbatas (~5-8 agent). Untuk full 15-agent concurrent load, dibutuhkan RAM minimal 8GB (estimasi ~512MB per instance).*
 
+### Syarat Model AI (Penting!)
+AI Orchestrator v4.1 dan seterusnya menggunakan **Native Function Calling** untuk eksekusi yang lebih cepat dan bebas dari *error loop*. 
+Oleh karena itu, **pastikan model AI yang Anda gunakan mendukung fitur Tool Calling / Native Function Calling**.
+*   **Model yang Didukung:** GPT-4o, gpt-4o-mini, Claude 3.5 Sonnet, Gemini 1.5/2.5 Pro/Flash, Llama 3/3.1, Qwen 2.5, Mistral-Nemo.
+*   **Model Tidak Didukung:** Llama 2, model kuno (pra-2024), atau model yang tidak memiliki kapabilitas *tool use*. Model ini akan ditolak oleh API saat diuji.
+
 ### 3. 📊 Real-Time Progress Streaming
 Indikator progres visual kini lebih akurat:
 *   **[X/Y] Progress Format:** Pengguna mendapatkan umpan balik real-time berupa format numerik (misal: `[3/5] Coding Agent selesai`) selama proses eksekusi berlangsung.

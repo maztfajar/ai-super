@@ -44,6 +44,9 @@ _AGENT_TIMEOUT_MAP = {
 class CommandCenter:
     """Koordinator eksekusi paralel multi-agent dengan watchdog timer."""
 
+    def __init__(self, max_concurrent: int = 5):
+        self._semaphore = asyncio.Semaphore(max_concurrent)
+
     async def coordinate_team(
         self,
         group_tasks: List[SubTask],

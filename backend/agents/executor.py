@@ -203,8 +203,8 @@ untuk cek kondisi terkini, BARU buat keputusan.
 - Tentukan file mana yang perlu dibuat/diubah
 
 [TAHAP 4: EKSEKUSI]
-- Tool apa yang dibutuhkan untuk langkah ini?
-- Apa payload JSON-nya?
+- Gunakan tool secara native menggunakan schema function calling yang tersedia.
+- Pastikan payload JSON untuk arguments tool sudah valid.
 
 [TAHAP 5: VERIFIKASI]
 - Apakah hasilnya sudah sesuai dengan intent user?
@@ -212,13 +212,6 @@ untuk cek kondisi terkini, BARU buat keputusan.
 - Apakah perlu langkah lanjutan?
 </thinking>
 
-**OUTPUT FORMAT (WAJIB):**
-Pilih SATU:
-- Butuh aksi: <tool>{{"name": "execute_bash", "args": {{"command": "..."}} }}</tool>
-- Selesai sepenuhnya: <response>[laporan hasil ke user]</response>
-
-JANGAN gabungkan <tool> dan <response> dalam satu balasan.
-Hentikan generate segera setelah <tool>. Hasil masuk di turn berikutnya dalam <observation>.
 {project_instruction}
 
 **PORT SAFETY:** Reserved: 7860, 6379, 5432, 3306, 11434. Gunakan 8100-8999.
@@ -233,7 +226,6 @@ Panggil find_safe_port SEBELUM start server apapun.
 
 **WORKFLOW MANAGEMENT (DAG):**
 Jika dalam pesan sistem terdapat `[DAG_MANAGER] KESELURUHAN RENCANA (DAG)`, Anda WAJIB memperhatikan rencana tersebut untuk memahami konteks gambar besar.
-Namun, PENTING: Anda TIDAK PERLU memanggil `update_task_status`. Orchestrator akan otomatis mendeteksi penyelesaian tugas Anda ketika Anda memberikan output.
 Fokuslah menyelesaikan sub-task yang ditugaskan kepada Anda secara maksimal.
 
 **PROJECT MEMORY — WAJIB DIBACA:**
@@ -242,71 +234,12 @@ SELALU panggil `get_project_path` di awal jika tidak yakin dimana project tersim
 SELALU panggil `set_project_path` setelah membuat folder project baru.
 JANGAN pernah menebak lokasi file — gunakan `find_files` atau `list_directory`.
 
-Available tools (gunakan DALAM <thinking> saja):
-
-**CORE TOOLS:**
-1. execute_bash — jalankan bash command. Args: command (string).
-2. read_file — baca isi file. Args: path (string).
-3. write_file — tulis atau timpa SATU file. Args: path (string), content (string). PERINGATAN: Hanya tulis SATU file per pemanggilan tool!
-5. ask_model — tanya AI lain. Args: model_id (string), prompt (string).
-6. web_search — cari internet. Args: query (string).
-7. find_safe_port — cari port aman. Args: preferred (int, optional).
-
-**FILESYSTEM TOOLS (BARU — gunakan ini, jangan tebak lokasi file):**
-8.  list_directory   — tampilkan isi folder dengan metadata.
-                       Args: path (string, default "."), session_id (auto).
-                       Gunakan untuk: lihat isi folder, cek file apa saja yang ada.
-
-9.  file_tree        — tampilkan struktur folder seperti `tree`.
-                       Args: path (string), max_depth (int, default 4).
-                       Gunakan untuk: memahami arsitektur project secara menyeluruh.
-
-10. find_files       — cari file by nama/pattern/ekstensi.
-                       Args: pattern (string, mis "*.py"), search_path (string), file_type ("file"|"dir"|"any").
-                       Gunakan untuk: temukan file yang tidak diketahui lokasinya.
-
-11. search_in_files  — cari teks/keyword di dalam isi file (grep -r).
-                       Args: keyword (string), search_path (string), extensions (string, mis ".py,.js").
-                       Gunakan untuk: cari function, class, variabel, atau bug tertentu.
-
-12. make_directory   — buat direktori baru (mkdir -p).
-                       Args: path (string).
-
-13. move_file        — pindah/rename file atau folder (mv).
-                       Args: source (string), destination (string).
-
-14. copy_file        — salin file atau folder (cp -r).
-                       Args: source (string), destination (string).
-
-15. delete_file      — hapus file atau folder dengan safety check.
-                       Args: path (string), confirm (bool, default False).
-                       ⚠️ Untuk folder atau file >100KB wajib confirm=True.
-
-16. get_project_path — ambil path project aktif dari session ini.
-                       Args: (tidak ada, session_id otomatis).
-                       🔑 WAJIB dipanggil saat tidak tahu lokasi project.
-
-17. set_project_path — simpan path project aktif (permanen, tidak hilang saat restart).
-                       Args: path (string).
-                       🔑 WAJIB dipanggil setelah membuat folder project baru.
-
-18. list_all_projects — lihat semua project yang pernah dibuat di semua session.
-                        Args: (tidak ada).
-                        Gunakan untuk: menemukan project lama.
-
-19. get_file_info    — info detail file/folder (size, modified, permissions).
-                       Args: path (string).
-
 **ATURAN WAJIB FILESYSTEM:**
 - SEBELUM menulis file ke path baru → panggil get_project_path dulu
 - SETELAH membuat folder project baru → panggil set_project_path
 - SAAT tidak tahu file ada di mana → gunakan find_files atau search_in_files
 - JANGAN gunakan execute_bash untuk operasi file sederhana jika ada tool khusus
 - JANGAN tebak path — verifikasi dengan list_directory atau get_file_info
-
-Tool format:
-<tool>{{"name": "tool_name", "args": {{"key": "value"}}}}</tool>
-Hentikan generate segera setelah <tool> block. Hasil ada di <observation>.
 
 **CONTINUATION MANDATE — WAJIB DIIKUTI:**
 JANGAN PERNAH mengirim response yang terpotong atau tidak selesai.
@@ -934,9 +867,21 @@ User Request: {user_msg}
             stream_error = False
 
             try:
+                from agents.tools.schema import NATIVE_TOOLS_SCHEMA
+                
                 async for chunk in model_manager.chat_stream(
-                    base_model, agent_msgs, execution_temperature, max_tokens
+                    base_model, agent_msgs, execution_temperature, max_tokens, tools=NATIVE_TOOLS_SCHEMA
                 ):
+                    if isinstance(chunk, dict) and chunk.get("type") == "tool_call":
+                        # Native function calling mapping
+                        tool_req = {
+                            "name": chunk.get("name"),
+                            "args": chunk.get("args")
+                        }
+                        # Fake it internally for backwards compatibility of loop tracking
+                        tool_str = json.dumps(tool_req)
+                        chunk = f"<tool>{tool_str}</tool>"
+                        
                     buffer += chunk
 
                     if not has_tool_started:
@@ -1058,49 +1003,6 @@ User Request: {user_msg}
                     break
 
             has_tool = "<tool>" in buffer
-            if not has_tool:
-                m_json = re.search(r'```json\s*(\{.*?"name"\s*:\s*".*?".*?"args"\s*:.*?\})\s*```', buffer, re.DOTALL)
-                if m_json:
-                    has_tool = True
-                    buffer = buffer.replace(m_json.group(0), f"<tool>{m_json.group(1)}</tool>")
-                else:
-                    m_raw = re.search(r'(\{.*?"name"\s*:\s*".*?".*?"args"\s*:.*?\})', buffer, re.DOTALL)
-                    if m_raw and '"name"' in m_raw.group(1) and '"args"' in m_raw.group(1):
-                        try:
-                            json.loads(m_raw.group(1))
-                            has_tool = True
-                            buffer = buffer.replace(m_raw.group(1), f"<tool>{m_raw.group(1)}</tool>")
-                        except Exception:
-                            pass
-                    if not has_tool:
-                        m_func = re.search(r'(\w+)\s*\(\s*(\{.*?\})\s*\)', buffer, re.DOTALL)
-                        if m_func:
-                            func_name = m_func.group(1)
-                            try:
-                                parsed_args = json.loads(m_func.group(2))
-                                tool_str = json.dumps({"name": func_name, "args": parsed_args})
-                                has_tool = True
-                                buffer = buffer.replace(m_func.group(0), f"<tool>{tool_str}</tool>")
-                            except Exception:
-                                pass
-                    if not has_tool:
-                        m_xml = re.search(r'<invoke\s+name="([^"]+)">\s*(.*?)\s*</invoke>', buffer, re.DOTALL)
-                        if m_xml:
-                            func_name = m_xml.group(1)
-                            params_str = m_xml.group(2)
-                            parsed_args = {}
-                            for p in re.finditer(r'<parameter\s+name="([^"]+)">\s*(.*?)\s*</parameter>', params_str, re.DOTALL):
-                                parsed_args[p.group(1)] = p.group(2)
-                            try:
-                                tool_str = json.dumps({"name": func_name, "args": parsed_args})
-                                has_tool = True
-                                block_to_replace = m_xml.group(0)
-                                m_outer = re.search(r'<function_calls>\s*' + re.escape(block_to_replace) + r'\s*</function_calls>', buffer, re.DOTALL)
-                                if m_outer:
-                                    block_to_replace = m_outer.group(0)
-                                buffer = buffer.replace(block_to_replace, f"<tool>{tool_str}</tool>")
-                            except Exception:
-                                pass
 
             if has_tool and "</tool>" not in buffer:
                 if not stream_error and iteration < MAX_ITERATIONS - 1:
