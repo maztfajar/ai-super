@@ -18,6 +18,7 @@ from datetime import datetime
 import structlog
 
 from core.model_manager import model_manager
+from core.chain_of_thought import cot_engine, should_use_cot, format_cot_for_ui
 from core.request_preprocessor import request_preprocessor, TaskSpecification
 from core.task_decomposer import task_decomposer
 from core.dag_builder import dag_builder, ExecutionDAG, SubTask, ExecutionGroup
@@ -202,6 +203,33 @@ class Orchestrator:
                 )
         except Exception as e:
             log.debug("Skill lookup skipped", error=str(e)[:80])
+
+        # ─── PHASE 1.7: CHAIN OF THOUGHT ENGINE ──────────────────
+        # Jalankan CoT reasoning sebelum routing & eksekusi utama.
+        # CoT menghasilkan enriched_prompt yang menjadi fondasi jawaban.
+        cot_result_obj = None
+        if should_use_cot(spec):
+            try:
+                async for cot_event in cot_engine.stream_reason(
+                    spec          = spec,
+                    history       = history,
+                    system_prompt = system_prompt,
+                ):
+                    if cot_event.type == "cot_done":
+                        # Ganti system_prompt dengan versi yang diperkaya CoT
+                        system_prompt   = cot_event.data["enriched_prompt"]
+                        cot_result_obj  = cot_event.data["cot_result"]
+                        log.info("CoT enriched prompt applied",
+                                 depth      = cot_event.data["depth"],
+                                 confidence = cot_event.data["confidence"],
+                                 stages_run = cot_event.data["stages_run"],
+                                 ms         = cot_event.data["total_ms"])
+                    else:
+                        # Forward status CoT ke frontend (SSE stream)
+                        yield cot_event
+            except Exception as _cot_err:
+                log.warning("CoT Engine error — skipped", error=str(_cot_err)[:120])
+                # CoT gagal → lanjut dengan system_prompt original, tidak masalah
 
         # ─── PHASE 0: CAPABILITY-AWARE ROUTING ───────────────────
         # Fast-path for special intents before full orchestration
@@ -745,6 +773,7 @@ class Orchestrator:
             "total_time_ms": total_time,
             "synthesis_method": aggregated.synthesis_method,
             "drive_prompt": aggregated.final_response[:2000] if aggregated.final_response else None,
+            "cot": format_cot_for_ui(cot_result_obj) if cot_result_obj else None,
         })
 
     # ─── Simple Message Handler ───────────────────────────────

@@ -103,6 +103,12 @@ Menjamin tugas yang panjang tidak pernah hilang meskipun terjadi interupsi:
 *   **Dead Letter Queue (DLQ):** Tugas yang gagal setelah semua upaya pemulihan (*recovery*) habis akan dipindahkan ke DLQ dengan alasan kegagalan yang detail. **Update v4.1 SLA:** Data di DLQ disimpan selama **14 hari** untuk inspeksi manual sebelum dihapus otomatis.
 *   **Cascade Skip:** Jika tugas utama gagal, tugas turunannya akan otomatis ditandai sebagai *skipped*. Saat ini mekanisme override manual untuk me-resume tugas yang di-skip sedang dalam pengembangan.
 
+### 3. 🧠 Chain of Thought (CoT) Engine Terintegrasi
+Sistem penalaran 7-tahap (DECOMPOSE → CONTEXTUALIZE → ANALYZE → SYNTHESIZE → VALIDATE → CORRECT → REFLECT) yang secara otomatis berjalan untuk tugas-tugas non-trivial.
+*   **Human Logic Engine Aware:** CoT Engine membaca status emosi pengguna dan menghasilkan respon yang empatik sebelum eksekusi teknis.
+*   **Dynamic Depth:** Menentukan kedalaman berpikir secara otomatis (FAST, STANDARD, DEEP, EXPERT) berdasarkan kompleksitas tugas.
+*   **Thinking UI:** Proses berpikir (thinking trace) di-stream secara real-time ke UI untuk transparansi penuh.
+
 ---
 
 ## 💻 Hardware Requirements
