@@ -51,57 +51,47 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 
 ```mermaid
 graph TD
-    User([User Request]) --> Gateway[API Gateway / Frontend]
-    Gateway --> Preprocessor[Request Preprocessor: Intent & Complexity]
+    %% Styling
+    classDef userNode fill:#f39c12,stroke:#e67e22,stroke-width:2px,color:#fff,font-weight:bold;
+    classDef coreEngine fill:#2c3e50,stroke:#34495e,stroke-width:2px,color:#fff;
+    classDef execution fill:#27ae60,stroke:#2ecc71,stroke-width:2px,color:#fff;
+    classDef memory fill:#8e44ad,stroke:#9b59b6,stroke-width:2px,color:#fff;
+    classDef routing fill:#d35400,stroke:#e67e22,stroke-width:2px,color:#fff;
+    
+    User([👤 User Request]):::userNode --> Gateway[🌐 API Gateway / UI]:::coreEngine
+    Gateway --> Preprocessor{⚙️ Request Preprocessor}:::coreEngine
 
-    subgraph Orchestration["Orchestration Engine"]
-        Preprocessor --> Decomposer[Task Decomposer]
-        Decomposer --> DAG[DAG Builder: Dependency Graph]
-        DAG --> Scorer[Agent Scorer & Router]
+    subgraph "🧠 Orchestration & Routing"
+        Preprocessor --> Decomposer[📋 Task Decomposer]
+        Decomposer --> DAG[🕸️ DAG Builder]
+        DAG --> Scorer[⚖️ Agent Scorer]
+        
+        Scorer -.->|Zero-Hardcode| RoutingEngine[🔀 Dynamic Routing Engine]:::routing
+        RoutingEngine --> AutoFill[✨ Auto-Fill UI Badge]
     end
 
-    subgraph Routing["Dynamic Model Routing (Zero Hardcode)"]
-        Scorer --> P2[Priority 2: Manual Role Mapping]
-        Scorer --> P3[Priority 3: Performance Cache]
-        Scorer --> P5[Priority 5: Capability Engine]
+    subgraph "⚙️ Execution Layer (True Parallel)"
+        RoutingEngine --> Agent1[💻 Coding Agent]:::execution
+        RoutingEngine --> Agent2[🔍 Research Agent]:::execution
+        RoutingEngine --> Agent3[🖥️ System Agent]:::execution
         
-        P2 --> ModelSelect[Best Model Selected]
-        P3 --> ModelSelect
-        P5 --> ModelSelect
-        
-        ModelSelect --> AutoFill[Auto-Fill UI Badge Robot/Pencil]
-    end
-
-    subgraph Execution["Execution Layer (Parallel)"]
-        ModelSelect --> Agent1[Coding Agent]
-        ModelSelect --> Agent2[Research Agent]
-        ModelSelect --> Agent3[System Agent]
-        
-        Agent1 --> Sandbox[Restricted Execution Sandbox]
+        Agent1 --> Sandbox[(🛡️ Secure Sandbox)]
         Agent2 --> Sandbox
         Agent3 --> Sandbox
     end
 
-    subgraph CoreLayer["AI Core Layer"]
-        UserDesc[User Description] --> CoreGen[AI Core Generator]
-        RoleMap[Resolved Roles Snapshot] --> CoreGen
-        CoreGen --> LLM[LLM: Reasoning Agent]
-        LLM --> AiCore["Generated AI Core: Identitas + Stack + Rules"]
-        AiCore --> Sandbox
+    subgraph "💾 Intelligence & Memory"
+        Sandbox --> Quality[✅ Quality Engine]:::coreEngine
+        Quality --> Aggregator[📊 Result Aggregator]:::coreEngine
+        
+        Aggregator --> PM[(🧠 Procedural Memory)]:::memory
+        Aggregator --> BR[(📚 Byte Rover Memory)]:::memory
+        
+        PM -.->|Inject Context| Preprocessor
+        BR -.->|Inject Context| Preprocessor
     end
 
-    Sandbox --> Quality[Quality Engine: Validation & Refinement]
-    Quality --> Aggregator[Result Aggregator]
-
-    subgraph Intelligence["Intelligence & Memory"]
-        Aggregator --> PM[Procedural Memory: Save Recipe]
-        PM --> SE[Skill Evolution Engine: Pattern Crystallization]
-        SE -- Matched Skill --> Preprocessor
-        Aggregator --> BR[Byte Rover: Long-term Memory]
-        BR -- Context --> Preprocessor
-    end
-
-    Aggregator --> Response([Final Response])
+    Aggregator --> FinalResponse([🎯 Final Response]):::userNode
 ```
 
 ---
@@ -151,15 +141,19 @@ Sistem menggunakan **Native Function Calling** untuk eksekusi tanpa batas dan to
 ### 1. Prasyarat Sistem
 Pastikan sistem Anda (Linux/VPS) telah memiliki:
 *   **Docker** (versi 24.0+) & **Docker Compose**
-*   Port **3000** (Frontend) dan **8000** (Backend) tidak terblokir oleh Firewall (UFW).
+*   Port **7860** (Web UI & Orchestrator API) tidak terblokir oleh Firewall (UFW).
 
 ### 2. Kloning Repositori & Konfigurasi
 ```bash
 git clone https://github.com/maztfajarwahyudi/ai-super.git
 cd ai-super
 
-# Konfigurasi Environment (Opsional, konfigurasi default sudah cukup untuk berjalan)
+# 1. Salin file environment
 cp .env.example .env
+
+# 2. Buka file .env dan atur kredensial Admin Anda (WAJIB)
+# nano .env
+# Ubah bagian ADMIN_USERNAME dan ADMIN_PASSWORD sesuai keinginan Anda
 ```
 
 ### 3. Build & Jalankan
@@ -175,7 +169,8 @@ Sistem akan mulai merakit *container* backend, frontend, basis data vektor, dan 
 
 Setelah instalasi selesai, ikuti langkah berikut untuk mengoperasikan AI Orchestrator:
 
-1.  **Akses Dashboard:** Buka peramban web dan navigasi ke `http://localhost:3000` (atau IP VPS Anda).
+1.  **Akses Dashboard:** Buka peramban web dan navigasi ke `http://localhost:7860` (atau IP VPS Anda).
+    *   Sistem akan meminta **Login**. Gunakan `ADMIN_USERNAME` dan `ADMIN_PASSWORD` yang telah Anda atur di file `.env` sebelumnya.
 2.  **Konfigurasi Kunci API (Wajib):** 
     *   Buka menu ⚙️ **Integrations**.
     *   Masukkan API Key dari penyedia LLM pilihan Anda (misal: OpenAI, Anthropic, Gemini, Groq, atau endpoint lokal Ollama).
