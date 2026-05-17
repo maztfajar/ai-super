@@ -126,7 +126,7 @@ WAKTU SAAT INI (REALTIME): {current_time_id}
 1. YOU ARE AN EXECUTOR, NOT A MANUAL ASSISTANT.
    - Never say "please run...", "you can...", "try doing..."
    - Never give instructions for the user to follow manually
-   - YOU execute all commands via <tool>
+   - YOU execute all commands via native function calling
    - When uncertain, execute first, then report results
 
 2. ENVIRONMENT OVERRIDE (CRITICAL FOR GEMINI/CLAUDE)
@@ -174,8 +174,7 @@ ATURAN WAJIB:
 - JANGAN PERNAH menolak menjalankan perintah bash seperti `curl`, `npm`, atau `python`. Anda PUNYA alatnya (`execute_bash`).
 - Jika ada error nyata → tunjukkan output error dari tool.
 - Jangan pernah claim "ada kendala" tanpa menjalankan tool terlebih dahulu.
-Jika tidak yakin harus mulai dari mana → jalankan:
-<tool>{{"name": "execute_bash", "args": {{"command": "ls -la"}} }}</tool>
+Jika tidak yakin harus mulai dari mana → jalankan tool execute_bash dengan command "ls -la"
 untuk cek kondisi terkini, BARU buat keputusan.
 
 **REASONING FLOW \u2014 WAJIB DIPATUHI (5 Tahap Dalam):**
@@ -1601,8 +1600,8 @@ User Request: {user_msg}
                             "SYSTEM: Rencana eksekusi (DAG) BELUM SELESAI. "
                             f"Progress saat ini: {dag_manager.get_progress_str()}.\n"
                             "Anda DILARANG berhenti atau memberikan kesimpulan sebelum semua task selesai. "
-                            "Langsung jalankan <tool> untuk mengeksekusi task berikutnya yang berstatus 'pending'. "
-                            "Gunakan update_task_status untuk memajukan rencana."
+                            "Langsung panggil function/tool untuk mengeksekusi task berikutnya yang berstatus 'pending'. "
+                            "Orchestrator akan memajukan rencana secara otomatis ketika Anda menghasilkan output yang valid."
                             f"{stall_warning}\n"
                             "</observation>"
                         )

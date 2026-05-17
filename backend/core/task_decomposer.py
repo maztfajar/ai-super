@@ -137,7 +137,7 @@ Analysis:
 
         # Convert to SubTask objects
         subtasks = []
-        for raw in raw_tasks[:6]:  # cap at 6
+        for raw in raw_tasks:
             st = SubTask(
                 id=raw.get("id", f"task_{len(subtasks)}"),
                 description=raw.get("description", ""),
