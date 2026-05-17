@@ -254,5 +254,35 @@ NATIVE_TOOLS_SCHEMA = [
                 "required": ["path"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_document",
+            "description": "Baca konten dari dokumen Office atau PDF (mendukung .pdf, .docx, .xlsx, .pptx, .csv, .txt).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path file dokumen yang akan dibaca."}
+                },
+                "required": ["path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "replace_in_file",
+            "description": "Lakukan pengeditan surgikal/sebagian pada file dengan mencari teks lama dan menggantinya dengan teks baru.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path file yang akan diedit."},
+                    "old_string": {"type": "string", "description": "Teks persis (literal) yang akan diganti."},
+                    "new_string": {"type": "string", "description": "Teks baru sebagai penggantinya."}
+                },
+                "required": ["path", "old_string", "new_string"]
+            }
+        }
     }
 ]

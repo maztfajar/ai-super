@@ -71,6 +71,8 @@ TOOLS = {
     "ask_model":             ask_model,
     "find_safe_port":        find_safe_port,
     "web_search":            web_search,
+    "read_document":         read_document,
+    "replace_in_file":       replace_in_file,
 
     # ── Filesystem tools ──────────────────────────────────────
     "list_directory":        list_directory,    # ls -la terstruktur

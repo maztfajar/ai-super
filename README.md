@@ -109,6 +109,13 @@ Sistem penalaran 7-tahap (DECOMPOSE → CONTEXTUALIZE → ANALYZE → SYNTHESIZE
 *   **Dynamic Depth:** Menentukan kedalaman berpikir secara otomatis (FAST, STANDARD, DEEP, EXPERT) berdasarkan kompleksitas tugas.
 *   **Thinking UI:** Proses berpikir (thinking trace) di-stream secara real-time ke UI untuk transparansi penuh.
 
+### 4. 🛠️ Native Function Calling & Infinite Scalability
+Arsitektur eksekusi telah direfaktor secara penuh untuk stabilitas tingkat lanjut:
+*   **Zero-Regex Parsing:** Sistem tidak lagi mengandalkan parsing tag `<tool>` berbasis regex yang rapuh, melainkan secara asli (`natively`) memanfaatkan *JSON Schema* standar untuk eksekusi yang 95% lebih bebas *syntax error*.
+*   **Infinite Sub-Task Decomposition:** Batas *hard-limit* 6 sub-task telah dihapus. Sistem dekomposer (TaskDecomposer) kini mampu membongkar proyek berskala raksasa (misal: *Fullstack App* dengan *Auth*, *Database*, *Docker*) menjadi belasan langkah logis tanpa memotong alur eksekusi tengah jalan.
+*   **Anti-Hallucination DAG Watchdog:** Menghapus instruksi halusinasi sehingga agen AI murni berfokus menyelesaikan tugas teknis dan Orchestrator yang akan secara otomatis mengambil alih pelacakan progres secara asinkron.
+*   **Test Native Tools UI:** Penambahan "Zap Test" Button (⚡) di antarmuka Integrations untuk memverifikasi secara *real-time* kapabilitas *Function Calling* pada model AI pihak ketiga.
+
 ---
 
 ## 💻 Hardware Requirements

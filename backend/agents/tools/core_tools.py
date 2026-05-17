@@ -778,3 +778,119 @@ async def search_files(query: str, path: str = ".", session_id: str = None) -> s
     except Exception as e:
         return "Error searching files: " + str(e)
 
+
+
+async def read_document(path: str, session_id: str = None) -> str:
+    """Read a document (PDF, DOCX, XLSX, PPTX, CSV, TXT) seamlessly."""
+    try:
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.project_metadata:
+                        import json as _json
+                        meta = session.project_metadata
+                        if isinstance(meta, str):
+                            try:
+                                meta = _json.loads(meta)
+                            except Exception:
+                                meta = {}
+                        project_base_path = meta.get("project_path") if isinstance(meta, dict) else None
+            except Exception:
+                pass
+
+        if project_base_path and not os.path.isabs(path):
+            abs_path = os.path.join(project_base_path, path)
+        elif not os.path.isabs(path) and session_id:
+            safe_folder = session_id[:8]
+            abs_path = os.path.join(os.path.expanduser(f"~/projects/{safe_folder}"), path)
+        else:
+            abs_path = os.path.abspath(path)
+
+        if not os.path.exists(abs_path):
+            return f"Error: File not found: {abs_path}"
+
+        # Delegate to RAG document processor
+        from rag.document_processor import DocumentProcessor
+        processor = DocumentProcessor()
+        segments = processor.extract_text(abs_path)
+        
+        full_text = "\n\n".join(segments)
+        
+        # Truncate if too long to prevent blowing up the context window
+        if len(full_text) > 20000:
+            full_text = full_text[:20000] + "\n\n...[DOCUMENT TRUNCATED DUE TO LENGTH]..."
+            
+        return f"--- Content of {os.path.basename(abs_path)} ---\n{full_text}"
+
+    except Exception as e:
+        return f"Error reading document: {str(e)}"
+
+
+async def replace_in_file(path: str, old_string: str, new_string: str, session_id: str = None) -> str:
+    """Surgically replace text in a file."""
+    try:
+        import aiofiles
+        
+        project_base_path = None
+        if session_id:
+            try:
+                from db.database import AsyncSessionLocal
+                from db.models import ChatSession
+                async with AsyncSessionLocal() as db:
+                    session = await db.get(ChatSession, session_id)
+                    if session and session.project_metadata:
+                        import json as _json
+                        meta = session.project_metadata
+                        if isinstance(meta, str):
+                            try:
+                                meta = _json.loads(meta)
+                            except Exception:
+                                meta = {}
+                        project_base_path = meta.get("project_path") if isinstance(meta, dict) else None
+            except Exception:
+                pass
+
+        if project_base_path and not os.path.isabs(path):
+            abs_path = os.path.join(project_base_path, path)
+        elif not os.path.isabs(path) and session_id:
+            safe_folder = session_id[:8]
+            abs_path = os.path.join(os.path.expanduser(f"~/projects/{safe_folder}"), path)
+        else:
+            abs_path = os.path.abspath(path)
+
+        if not os.path.exists(abs_path):
+            return f"Error: File not found: {abs_path}"
+
+        async with aiofiles.open(abs_path, "r", encoding="utf-8") as f:
+            content = await f.read()
+
+        if old_string not in content:
+            # Maybe it has different line endings, try to normalize
+            normalized_content = content.replace("\r\n", "\n")
+            normalized_old = old_string.replace("\r\n", "\n")
+            if normalized_old not in normalized_content:
+                return f"Error: The exact old_string was not found in {path}. Make sure to include the exact literal text including spaces and newlines."
+            else:
+                content = normalized_content
+                old_string = normalized_old
+                new_string = new_string.replace("\r\n", "\n")
+
+        count = content.count(old_string)
+        if count > 1:
+            return f"Error: old_string is ambiguous. Found {count} occurrences in {path}. Please provide a larger snippet to uniquely identify the section to replace."
+
+        new_content = content.replace(old_string, new_string)
+
+        async with aiofiles.open(abs_path, "w", encoding="utf-8") as f:
+            await f.write(new_content)
+            
+        await _update_artifact_registry(session_id, abs_path, new_content)
+
+        return f"Successfully replaced {len(old_string)} chars with {len(new_string)} chars in {path}."
+
+    except Exception as e:
+        return f"Error replacing text in file: {str(e)}"
