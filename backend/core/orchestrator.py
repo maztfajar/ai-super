@@ -620,6 +620,20 @@ class Orchestrator:
                 results.append(result)
                 completed_subtask_count += 1
 
+                # ── Checkpoint: commit step ke DB setelah setiap subtask selesai ──
+                if task_exec_id and result.success:
+                    try:
+                        completed_ids = [r.task_id for r in results if r.success]
+                        asyncio.create_task(build_checkpoint.save_state(
+                            task_id=task_exec_id,
+                            step=group_tasks[0].description[:100],
+                            partial_output=result.response[:2000] if result.response else "",
+                            completed_steps=completed_ids,
+                            metadata={"subtask_index": completed_subtask_count, "total": total_subtasks},
+                        ))
+                    except Exception:
+                        pass
+
                 # Stream progress with [X/Y] format
                 if result.success:
                     yield OrchestratorEvent("status",
