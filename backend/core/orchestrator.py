@@ -1041,7 +1041,7 @@ class Orchestrator:
                             temperature=temperature,
                             max_tokens=max_tokens,
                             include_tool_logs=include_tool_logs,
-                            emit_thinking=emit_thinking,
+                            emit_thinking=True, # v4.2: Force emit_thinking for complex paths to show progress in UI
                             session_id=session_id,
                             project_path=project_path,
                         ):

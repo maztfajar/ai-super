@@ -831,7 +831,7 @@ User Request: {user_msg}
                         dag_manager = DAGManager(dag_json)
                         is_planned = True
                         
-                        yield f"\n> 📋 **Execution Plan Generated:** {len(dag_manager.nodes)} sub-tasks identified.\n"
+                        yield process_emitter.to_sentinel("status", f"Execution Plan Generated: {len(dag_manager.nodes)} sub-tasks identified.")
                         # Inject DAG into context
                         agent_msgs.insert(1, {
                             "role": "system", 
@@ -839,7 +839,7 @@ User Request: {user_msg}
                         })
                 except Exception as e:
                     log.error("Planning failed", error=str(e))
-                    yield f"\n> ⚠️ **Planning failed:** {str(e)[:100]}. Proceeding with standard execution.\n"
+                    yield process_emitter.to_sentinel("status", f"Planning failed: {str(e)[:100]}. Proceeding with standard execution.")
 
         for iteration in range(MAX_ITERATIONS):
             response_filter = ResponseFilter(emit_thinking=emit_thinking)
