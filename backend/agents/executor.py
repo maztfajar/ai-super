@@ -745,28 +745,33 @@ class AgentExecutor:
         execution_temperature = min(temperature, 0.3)
 
         # ── FASE 1: MAX_ITERATIONS — cukup ruang untuk diagnosa + recovery ──────
-        MAX_ITERATIONS = 25   # ditingkatkan dari 15 → 25 agar AI punya ruang untuk recovery
+        MAX_ITERATIONS = 35   # ditingkatkan: 25 → 35 agar AI punya ruang untuk multi-file tasks
 
         # ── FASE 2: Loop breaker — deteksi pengulangan tool ─────────────────
         last_tool_calls: list = []   # [tool_name, ...] 5 terakhir
         MAX_SAME_TOOL_REPEAT = 3     # batas pengulangan tool yang sama
 
         consecutive_errors = 0
-        MAX_CONSECUTIVE_ERRORS = 3   # ditingkatkan dari 2 → 3 agar ada ruang untuk recovery
+        MAX_CONSECUTIVE_ERRORS = 4   # ditingkatkan: 3 → 4 agar lebih resilient terhadap transient API errors
 
         # ── FASE 3: Token Budget — mencegah infinite loop memakan token ──────
         # Hard limit: jika total token (estimasi) melebihi budget, paksa berhenti
-        MAX_TOKEN_BUDGET = 50_000    # ~50k token max per sesi eksekusi
+        MAX_TOKEN_BUDGET = 120_000   # ~30k token max per sesi eksekusi (cukup untuk full-stack apps)
         total_chars_produced = 0     # estimasi kasar: 4 chars ≈ 1 token
 
         # ── FASE 4: Stall Detector — deteksi AI yang berputar tanpa kemajuan ──
         # Jika AI menghasilkan output teks berulang (bukan tool call), itu tanda stall
         last_outputs_hash: list = [] # hash output terakhir untuk deteksi repetisi
-        MAX_STALL_REPEATS = 3        # 3x output identik = stall
+        MAX_STALL_REPEATS = 4        # 4x output identik = stall (naik dari 3 untuk kurangi false positive)
 
         # ── FASE 5: Error Fingerprinting (v4.0) ──────────────────────────
         last_error_fingerprint: Optional[str] = None
         same_error_count = 0
+
+        # ── FASE 8: Tool Execution Tracker (v4.2) ────────────────────────
+        # Track apakah tool pernah dieksekusi dalam sesi ini
+        tools_executed_count = 0
+        thinking_only_iterations = 0  # berapa kali model hanya berpikir tanpa bertindak
         task_id = session_id # Gunakan session_id sebagai task_id jika tidak ada explicit
         
         # ── FASE 0: Pre-initialization ──────────────────────────────────────
@@ -987,24 +992,33 @@ User Request: {user_msg}
             total_chars_produced += len(buffer)
 
             # ── Stall detection — deteksi output repetitif tanpa tool call ───
+            # FIX v4.2: Strip thinking blocks SEBELUM hashing agar reasoning
+            # yang mirip tidak dianggap stall
             if buffer.strip() and "<tool>" not in buffer:
-                output_hash = hash(buffer.strip()[:500])
-                last_outputs_hash.append(output_hash)
-                if len(last_outputs_hash) > MAX_STALL_REPEATS + 1:
-                    last_outputs_hash.pop(0)
+                # Hapus thinking blocks agar hanya response content yang di-hash
+                stall_check_text = re.sub(
+                    r'<(?:thinking|think)>.*?</(?:thinking|think)>',
+                    '', buffer, flags=re.DOTALL
+                ).strip()
+                # Hanya hash jika ada konten bermakna di luar thinking
+                if len(stall_check_text) > 20:
+                    output_hash = hash(stall_check_text[:500])
+                    last_outputs_hash.append(output_hash)
+                    if len(last_outputs_hash) > MAX_STALL_REPEATS + 1:
+                        last_outputs_hash.pop(0)
 
-                # Cek apakah N output terakhir identik (AI berputar-putar)
-                if (len(last_outputs_hash) >= MAX_STALL_REPEATS and
-                        len(set(last_outputs_hash[-MAX_STALL_REPEATS:])) == 1):
-                    yield (
-                        "\n\n⚠️ **Stall terdeteksi:** AI menghasilkan output yang sama "
-                        f"{MAX_STALL_REPEATS}x berturut-turut tanpa kemajuan. "
-                        "Eksekusi dihentikan. Coba formulasikan ulang permintaan Anda.\n"
-                    )
-                    log.warning("Stall detected — repetitive output",
-                                iteration=iteration,
-                                hash=output_hash)
-                    break
+                    # Cek apakah N output terakhir identik (AI berputar-putar)
+                    if (len(last_outputs_hash) >= MAX_STALL_REPEATS and
+                            len(set(last_outputs_hash[-MAX_STALL_REPEATS:])) == 1):
+                        yield (
+                            "\n\n⚠️ **Stall terdeteksi:** AI menghasilkan output yang sama "
+                            f"{MAX_STALL_REPEATS}x berturut-turut tanpa kemajuan. "
+                            "Eksekusi dihentikan. Coba formulasikan ulang permintaan Anda.\n"
+                        )
+                        log.warning("Stall detected — repetitive output",
+                                    iteration=iteration,
+                                    hash=output_hash)
+                        break
 
             has_tool = "<tool>" in buffer
 
@@ -1076,6 +1090,7 @@ User Request: {user_msg}
                     args = tool_req.get("args", {})
 
                     consecutive_errors = 0
+                    tools_executed_count += 1  # Track tool execution for break logic
 
                     # ── FASE 2: Loop breaker — cek pengulangan tool secara presisi ──────────
                     tool_signature = json.dumps(tool_req, sort_keys=True)
@@ -1484,10 +1499,48 @@ User Request: {user_msg}
                 if remaining:
                     yield remaining
 
+                # ── FIX v4.2: Thinking-only iteration detection ─────────────
+                # Jika model hanya menghasilkan <thinking> tanpa response/tool,
+                # jangan langsung break — nudge untuk bertindak
+                has_only_thinking = (
+                    ("<thinking>" in buffer or "<think>" in buffer)
+                    and "<tool>" not in buffer
+                    and "<response>" not in buffer
+                )
+                # Strip thinking to check if there's actual content
+                stripped_of_thinking = re.sub(
+                    r'<(?:thinking|think)>.*?</(?:thinking|think)>',
+                    '', buffer, flags=re.DOTALL
+                ).strip()
+                is_thinking_only = has_only_thinking and len(stripped_of_thinking) < 30
+
+                if is_thinking_only and not stream_error and iteration < MAX_ITERATIONS - 1:
+                    thinking_only_iterations += 1
+                    if thinking_only_iterations <= 3:  # Max 3 nudges
+                        agent_msgs.append({"role": "assistant", "content": buffer})
+                        agent_msgs.append({
+                            "role": "user",
+                            "content": (
+                                "<observation>\n"
+                                "SYSTEM: Anda baru saja berpikir tanpa bertindak. "
+                                "WAJIB langsung eksekusi tool atau berikan <response> ke user. "
+                                "Jangan hanya berpikir — LAKUKAN sesuatu sekarang!\n"
+                                "</observation>"
+                            )
+                        })
+                        agent_msgs = self._prune_agent_messages(agent_msgs)
+                        continue
+
                 is_unclosed_response = "<response>" in buffer and "</response>" not in buffer
                 is_unclosed_thought = ("<thinking>" in buffer and "</thinking>" not in buffer) or ("<think>" in buffer and "</think>" not in buffer)
                 odd_backticks = buffer.count("```") % 2 != 0
-                content_truncated = self._is_truncated(buffer)
+
+                # ── FIX v4.2: Smarter truncation detection ──────────────
+                # Only check truncation if we're NOT inside a thinking block
+                # and buffer is substantial enough to be meaningful
+                content_truncated = False
+                if not is_thinking_only and len(buffer.strip()) > 200:
+                    content_truncated = self._is_truncated(buffer)
 
                 # If model stopped generating midway (hit max_tokens), auto-continue seamlessly
                 if (is_unclosed_response or is_unclosed_thought or odd_backticks or content_truncated) and not stream_error and iteration < MAX_ITERATIONS - 1:
@@ -1543,21 +1596,43 @@ User Request: {user_msg}
                             })
                             continue
                         else:
-                            # ── HARDENING: Proactive Response Recovery (v4.1) ──────────
+                            # ── HARDENING v4.2: Force summary if tools were used ──────
+                            # Jika tool pernah dieksekusi tapi tidak ada response,
+                            # paksa model membuat ringkasan sebelum break
                             has_sent_response = any("<response>" in m.get("content", "") for m in agent_msgs if m["role"] == "assistant")
                             
                             if not has_sent_response:
-                                # Paksa satu turn terakhir untuk ringkasan jika agen lupa
-                                yield "\n> 📝 **Menyiapkan ringkasan akhir...**\n"
-                                try:
-                                    summary_msgs = agent_msgs + [{
-                                        "role": "user", 
-                                        "content": "Berikan ringkasan akhir yang sangat singkat (1-2 kalimat) tentang apa yang sudah Anda selesaikan atau masalah apa yang menghalangi Anda."
-                                    }]
-                                    async for chunk in model_manager.chat_stream(base_model, summary_msgs):
-                                        yield chunk
-                                except Exception:
-                                    yield "\n\n*(Eksekusi Selesai tanpa respon eksplisit)*"
+                                if tools_executed_count > 0 and iteration < MAX_ITERATIONS - 1:
+                                    # Tools sudah jalan tapi belum ada response — nudge keras
+                                    yield "\n> 📝 **Menyiapkan ringkasan hasil eksekusi...**\n"
+                                    agent_msgs.append({"role": "assistant", "content": buffer})
+                                    agent_msgs.append({
+                                        "role": "user",
+                                        "content": (
+                                            "<observation>\n"
+                                            f"SYSTEM: Anda telah menjalankan {tools_executed_count} tool tapi BELUM memberikan <response> ke user.\n"
+                                            "WAJIB berikan <response> SEKARANG yang merangkum:\n"
+                                            "1. Apa yang sudah Anda lakukan\n"
+                                            "2. File apa yang sudah dibuat/diubah\n"
+                                            "3. Cara mengakses hasilnya (URL/path)\n"
+                                            "Gunakan format: <response>...isi ringkasan...</response>\n"
+                                            "</observation>"
+                                        )
+                                    })
+                                    agent_msgs = self._prune_agent_messages(agent_msgs)
+                                    continue
+                                else:
+                                    # Tidak ada tools yang jalan — paksa ringkasan akhir
+                                    yield "\n> 📝 **Menyiapkan ringkasan akhir...**\n"
+                                    try:
+                                        summary_msgs = agent_msgs + [{
+                                            "role": "user", 
+                                            "content": "Berikan ringkasan akhir yang sangat singkat (1-2 kalimat) tentang apa yang sudah Anda selesaikan atau masalah apa yang menghalangi Anda."
+                                        }]
+                                        async for chunk in model_manager.chat_stream(base_model, summary_msgs):
+                                            yield chunk
+                                    except Exception:
+                                        yield "\n\n*(Eksekusi Selesai tanpa respon eksplisit)*"
                             else:
                                 if iteration > 0:
                                     # Jika ada DAG yang belum selesai, beri peringatan satu kali lagi

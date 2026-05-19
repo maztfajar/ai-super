@@ -58,5 +58,11 @@
   ],
   "sumopod/gpt-5-mini": [
     "speed"
+  ],
+  "sumopod/gemini/gemini-2.0-flash-lite": [
+    "speed"
+  ],
+  "sumopod/gemini/gemini-2.0-flash": [
+    "speed"
   ]
 }

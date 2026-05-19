@@ -26,5 +26,14 @@
     "speed",
     "coding",
     "vision"
+  ],
+  "sumopod/gemini/gemini-2.0-flash-lite": [
+    "free",
+    "speed",
+    "text"
+  ],
+  "sumopod/gemini/gemini-2.0-flash": [
+    "speed",
+    "text"
   ]
 }

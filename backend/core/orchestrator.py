@@ -1030,6 +1030,7 @@ class Orchestrator:
                 # Watchdog pattern: jika tidak ada chunk selama IDLE_TIMEOUT detik, hentikan
                 IDLE_TIMEOUT = 3600.0  # 60 menit idle = timeout untuk task kompleks
                 timed_out = False
+                heartbeat_counter = 0  # v4.2: Track idle cycles for heartbeat
 
                 async def _producer(q: asyncio.Queue):
                     """Push chunks ke queue, None = selesai."""
@@ -1072,6 +1073,8 @@ class Orchestrator:
                             break
                         if chunk is None:
                             break
+                        # v4.2: Reset heartbeat counter when we get actual data
+                        heartbeat_counter = 0
                         # Detect process-event sentinels from executor
                         if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
                             try:

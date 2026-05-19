@@ -961,6 +961,23 @@ async def get_resolved_roles(user: User = Depends(get_current_user)):
         return {"resolved": {role: {"model_id": "", "display": "", "source": "auto"} for role in _ALL_AGENT_ROLES}}
 
 
+class TestToolsRequest(BaseModel):
+    model_id: str
+
+@router.post("/ai-roles/test-tools")
+async def test_ai_tools(req: TestToolsRequest, user: User = Depends(get_current_user)):
+    """Test apakah model AI mendukung native tools/function calling."""
+    if not user.is_admin:
+        raise HTTPException(403, "Admin only")
+    try:
+        from core.model_manager import model_manager
+        result = await model_manager.test_model_tool_support(req.model_id)
+        return result
+    except Exception as e:
+        log.error("test_ai_tools error", error=str(e)[:200])
+        raise HTTPException(500, f"Gagal menguji tools: {str(e)[:100]}")
+
+
 # ── POST: generate AI Core otomatis ──────────────────────────
 class AiCoreGenerateRequest(BaseModel):
     description: str

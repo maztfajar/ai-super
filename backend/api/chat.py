@@ -418,10 +418,11 @@ async def chat_send(
             try:
                 while True:
                     try:
-                        item = await asyncio.wait_for(q.get(), timeout=8.0)
+                        item = await asyncio.wait_for(q.get(), timeout=5.0)
                     except asyncio.TimeoutError:
                         # Pad keepalive with 4KB of spaces to force proxy (Cloudflare/Nginx) to flush buffer
-                        # This prevents the 100s Cloudflare timeout during long agent tool executions
+                        # v4.2: Interval diturunkan 8s → 5s karena beberapa proxy timeout lebih cepat
+                        # saat tidak ada data di SSE stream (e.g. selama tool execution 10+ detik)
                         yield f": keepalive {' ' * 4096}\n\n"
                         continue
                     
