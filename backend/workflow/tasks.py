@@ -77,3 +77,18 @@ def index_document_task(file_path: str, doc_id: str, metadata: dict):
         return result
     finally:
         loop.close()
+
+
+@celery_app.task(name="workflow.tasks.save_build_checkpoint")
+def save_build_checkpoint(task_id: str, step: str, partial_output: str,
+                           completed_steps: list = None, metadata: dict = None):
+    """Celery task: persist build checkpoint to DB (fire-and-forget)."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        from core.build_checkpoint import build_checkpoint
+        return loop.run_until_complete(
+            build_checkpoint.save_state(task_id, step, partial_output, completed_steps, metadata)
+        )
+    finally:
+        loop.close()

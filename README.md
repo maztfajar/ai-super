@@ -51,13 +51,12 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 
 ```mermaid
 graph TD
-    %% Styling
-    classDef userNode fill:#f39c12,stroke:#e67e22,stroke-width:2px,color:#fff,font-weight:bold;
-    classDef coreEngine fill:#2c3e50,stroke:#34495e,stroke-width:2px,color:#fff;
-    classDef execution fill:#27ae60,stroke:#2ecc71,stroke-width:2px,color:#fff;
-    classDef memory fill:#8e44ad,stroke:#9b59b6,stroke-width:2px,color:#fff;
-    classDef routing fill:#d35400,stroke:#e67e22,stroke-width:2px,color:#fff;
-    
+    classDef userNode  fill:#f39c12,stroke:#e67e22,stroke-width:2px,color:#fff,font-weight:bold
+    classDef coreEngine fill:#2c3e50,stroke:#34495e,stroke-width:2px,color:#fff
+    classDef execution  fill:#27ae60,stroke:#2ecc71,stroke-width:2px,color:#fff
+    classDef memory     fill:#8e44ad,stroke:#9b59b6,stroke-width:2px,color:#fff
+    classDef routing    fill:#d35400,stroke:#e67e22,stroke-width:2px,color:#fff
+
     User([👤 User Request]):::userNode --> Gateway[🌐 API Gateway / UI]:::coreEngine
     Gateway --> Preprocessor{⚙️ Request Preprocessor}:::coreEngine
 
@@ -65,7 +64,6 @@ graph TD
         Preprocessor --> Decomposer[📋 Task Decomposer]
         Decomposer --> DAG[🕸️ DAG Builder]
         DAG --> Scorer[⚖️ Agent Scorer]
-        
         Scorer -.->|Zero-Hardcode| RoutingEngine[🔀 Dynamic Routing Engine]:::routing
         RoutingEngine --> AutoFill[✨ Auto-Fill UI Badge]
     end
@@ -74,7 +72,6 @@ graph TD
         RoutingEngine --> Agent1[💻 Coding Agent]:::execution
         RoutingEngine --> Agent2[🔍 Research Agent]:::execution
         RoutingEngine --> Agent3[🖥️ System Agent]:::execution
-        
         Agent1 --> Sandbox[(🛡️ Secure Sandbox)]
         Agent2 --> Sandbox
         Agent3 --> Sandbox
@@ -83,10 +80,8 @@ graph TD
     subgraph "💾 Intelligence & Memory"
         Sandbox --> Quality[✅ Quality Engine]:::coreEngine
         Quality --> Aggregator[📊 Result Aggregator]:::coreEngine
-        
         Aggregator --> PM[(🧠 Procedural Memory)]:::memory
         Aggregator --> BR[(📚 Byte Rover Memory)]:::memory
-        
         PM -.->|Inject Context| Preprocessor
         BR -.->|Inject Context| Preprocessor
     end

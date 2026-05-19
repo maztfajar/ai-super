@@ -10,6 +10,8 @@ from .core_tools import (
     write_file,
     ask_model,
     find_safe_port,
+    read_document,
+    replace_in_file,
 )
 
 # Legacy aliases (tetap ada agar tidak breaking)

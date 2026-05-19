@@ -30,6 +30,9 @@ from core.error_recovery import error_recovery
 from core.result_aggregator import result_aggregator, SubTaskResult, AggregatedResult
 from core.metrics import metrics_engine, AgentMetric
 from memory.manager import memory_manager
+from core.build_checkpoint import build_checkpoint
+from core.context_manager import context_manager
+from core.project_context_loader import load_project_context
 
 log = structlog.get_logger()
 
@@ -179,6 +182,59 @@ class Orchestrator:
                 yield OrchestratorEvent("status", "📋 Procedural memory: resep sukses sebelumnya ditemukan")
         except Exception as e:
             log.debug("Procedural memory recall skipped", error=str(e)[:80])
+
+        # ─── PHASE 1.5a: CONTEXT COMPRESSION (rolling summary) ───
+        try:
+            if context_manager.should_summarize(history):
+                ctx = await context_manager.get_context(
+                    session_id=session_id,
+                    history=history,
+                    active_task=spec.primary_intent,
+                )
+                ctx_injection = context_manager.build_system_injection(ctx)
+                if ctx_injection:
+                    system_prompt = system_prompt + "\n" + ctx_injection
+                    yield OrchestratorEvent("status", "🗜️ Context dikompresi (rolling summary aktif)")
+        except Exception as e:
+            log.debug("Context compression skipped", error=str(e)[:80])
+
+        # ─── PHASE 1.5b: PROJECT CONTEXT LOADER ──────────────────
+        # Baca file tree + dependencies project sebelum edit apapun
+        try:
+            if project_path:
+                proj_ctx = await load_project_context(
+                    session_id=session_id,
+                    project_path=project_path,
+                )
+                if proj_ctx:
+                    system_prompt = system_prompt + proj_ctx
+                    yield OrchestratorEvent("status", "📂 Project context dimuat (file tree + dependencies)")
+        except Exception as e:
+            log.debug("Project context loader skipped", error=str(e)[:80])
+
+        # ─── PHASE 1.5c: FRONTEND DESIGN SYSTEM INJECTION ────────
+        # Inject design system prompt untuk semua task frontend/web
+        try:
+            _frontend_intents = {"frontend", "web", "ui", "coding", "fullstack"}
+            _frontend_keywords = ["html", "css", "react", "vue", "tailwind", "komponen",
+                                   "component", "landing", "dashboard", "website", "frontend"]
+            _is_frontend_task = (
+                spec.primary_intent in _frontend_intents
+                and any(kw in message.lower() for kw in _frontend_keywords)
+            )
+            if _is_frontend_task:
+                import os as _os
+                _design_path = _os.path.join(
+                    _os.path.dirname(_os.path.dirname(_os.path.dirname(__file__))),
+                    "data", "frontend_design.md"
+                )
+                if _os.path.exists(_design_path):
+                    with open(_design_path, "r", encoding="utf-8") as _f:
+                        _design_prompt = _f.read()
+                    system_prompt = system_prompt + "\n\n" + _design_prompt
+                    yield OrchestratorEvent("status", "🎨 Frontend design system diinjeksi")
+        except Exception as e:
+            log.debug("Frontend design injection skipped", error=str(e)[:80])
 
         # ─── PHASE 1.6: SKILL LOOKUP — cek apakah ada skill permanen ──
         # Skill = kristalisasi dari ProceduralMemory yang sudah terbukti N kali

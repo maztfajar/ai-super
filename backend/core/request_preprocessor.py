@@ -914,3 +914,139 @@ class RequestPreprocessor:
 
 
 request_preprocessor = RequestPreprocessor()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CLARIFICATION LOOP — Deteksi perintah ambigu & ekstraksi intent detail
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Kata-kata yang menandakan scope tidak jelas
+AMBIGUOUS_SIGNALS = [
+    "sederhana", "bagus", "modern", "lengkap", "keren", "simple",
+    "basic", "full", "complete", "nice", "good", "proper",
+    "bikin app", "buat app", "buat website", "bikin website",
+    "buat sistem", "bikin sistem",
+]
+
+# Pertanyaan klarifikasi per kategori
+_CLARIFICATION_QUESTIONS = {
+    "web_app": [
+        "Perlu sistem login/autentikasi?",
+        "Single-user atau multi-user?",
+        "Tech stack preferensi? (React/Vue/plain HTML, Node/Python/PHP)",
+        "Perlu database? Kalau iya, data apa yang disimpan?",
+    ],
+    "mobile_app": [
+        "Android, iOS, atau cross-platform (React Native/Flutter)?",
+        "Perlu backend/API atau offline saja?",
+        "Target pengguna: internal tim atau publik?",
+    ],
+    "api": [
+        "REST atau GraphQL?",
+        "Perlu autentikasi (JWT/API key)?",
+        "Endpoint apa saja yang dibutuhkan?",
+    ],
+    "general": [
+        "Fitur utama apa yang paling penting?",
+        "Ada tech stack atau bahasa pemrograman yang diinginkan?",
+        "Untuk siapa aplikasi ini (target user)?",
+    ],
+}
+
+
+def needs_clarification(prompt: str) -> bool:
+    """
+    Cek apakah prompt mengandung sinyal ambigu yang butuh klarifikasi.
+    Hanya trigger untuk perintah build/create, bukan pertanyaan umum.
+    """
+    prompt_lower = prompt.lower()
+    has_build_intent = any(w in prompt_lower for w in [
+        "buat", "bikin", "build", "create", "buatkan", "bikinin",
+        "develop", "kembangkan", "bangun",
+    ])
+    if not has_build_intent:
+        return False
+    return any(sig in prompt_lower for sig in AMBIGUOUS_SIGNALS)
+
+
+def get_clarifying_questions(prompt: str, max_questions: int = 3) -> list[str]:
+    """
+    Kembalikan list pertanyaan klarifikasi yang relevan untuk prompt ini.
+    Max 3 pertanyaan agar tidak overwhelming.
+    """
+    prompt_lower = prompt.lower()
+
+    # Deteksi kategori
+    if any(w in prompt_lower for w in ["web", "website", "landing", "dashboard", "kasir", "toko"]):
+        category = "web_app"
+    elif any(w in prompt_lower for w in ["mobile", "android", "ios", "flutter", "react native"]):
+        category = "mobile_app"
+    elif any(w in prompt_lower for w in ["api", "endpoint", "rest", "graphql", "backend"]):
+        category = "api"
+    else:
+        category = "general"
+
+    questions = _CLARIFICATION_QUESTIONS.get(category, _CLARIFICATION_QUESTIONS["general"])
+    return questions[:max_questions]
+
+
+def format_clarification_request(prompt: str) -> str:
+    """
+    Format pesan klarifikasi yang akan dikirim ke user sebelum eksekusi.
+    Returns string yang siap ditampilkan ke user.
+    """
+    questions = get_clarifying_questions(prompt)
+    lines = [
+        "Sebelum mulai build, ada beberapa hal yang perlu diperjelas agar hasilnya sesuai:",
+        "",
+    ]
+    for i, q in enumerate(questions, 1):
+        lines.append(f"{i}. {q}")
+    lines.append("")
+    lines.append("Jawab singkat saja, atau ketik **skip** untuk lanjut dengan asumsi default.")
+    return "\n".join(lines)
+
+
+async def preprocess_with_clarification(
+    prompt: str,
+    user_id: str,
+    session_id: str,
+    history: list = None,
+    skip_clarification: bool = False,
+) -> dict:
+    """
+    Entry point untuk preprocessing dengan clarification loop.
+
+    Returns:
+        {
+            "needs_clarification": bool,
+            "clarification_message": str | None,
+            "spec": TaskSpecification | None  (None jika butuh klarifikasi dulu)
+        }
+    """
+    history = history or []
+
+    # Cek apakah user sudah menjawab klarifikasi sebelumnya (ada di history)
+    last_user_msgs = [m.get("content", "") for m in history[-4:] if m.get("role") == "user"]
+    already_clarified = any("skip" in m.lower() or len(m) > 20 for m in last_user_msgs[:-1])
+
+    if not skip_clarification and not already_clarified and needs_clarification(prompt):
+        return {
+            "needs_clarification": True,
+            "clarification_message": format_clarification_request(prompt),
+            "spec": None,
+        }
+
+    # Lanjut ke preprocessing normal
+    spec = await request_preprocessor.process(
+        message=prompt,
+        user_id=user_id,
+        session_id=session_id,
+        history=history,
+    )
+    return {
+        "needs_clarification": False,
+        "clarification_message": None,
+        "spec": spec,
+    }
+
