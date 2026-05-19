@@ -115,6 +115,25 @@ class Orchestrator:
                     image_b64_len=len(image_b64) if image_b64 else 0,
                     message_preview=message[:100])
 
+        # ─── CLARIFICATION LOOP — cek perintah ambigu sebelum eksekusi ──
+        # Hanya untuk task build/create dengan sinyal ambigu, bukan chat biasa
+        if not auto_execute:
+            try:
+                from core.request_preprocessor import needs_clarification, format_clarification_request
+                if needs_clarification(message):
+                    # Cek apakah user sudah menjawab klarifikasi (ada di history)
+                    recent_user = [m.get("content","") for m in history[-4:] if m.get("role")=="user"]
+                    already_answered = len(recent_user) > 1 and any(
+                        len(m) > 15 or "skip" in m.lower() for m in recent_user[:-1]
+                    )
+                    if not already_answered:
+                        clarification_msg = format_clarification_request(message)
+                        yield OrchestratorEvent("chunk", clarification_msg)
+                        yield OrchestratorEvent("done", "", {"clarification_requested": True})
+                        return
+            except Exception as e:
+                log.debug("Clarification check skipped", error=str(e)[:80])
+
         # ─── PHASE 1: PREPROCESSING ──────────────────────────────
         yield OrchestratorEvent.proc("Thinking", "memulai analisis", extra={
             "result": (
@@ -834,6 +853,13 @@ class Orchestrator:
         await self._update_task_execution(
             task_exec_id, aggregated, total_time, results
         )
+
+        # ── Clear checkpoint setelah task selesai ──
+        if task_exec_id:
+            try:
+                await build_checkpoint.clear(task_exec_id)
+            except Exception:
+                pass
 
         yield OrchestratorEvent("done", "", {
             "confidence": round(aggregated.overall_confidence, 2),
