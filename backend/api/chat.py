@@ -202,7 +202,6 @@ async def delete_session(
 @router.post("/send")
 async def chat_send(
     req: ChatRequest,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Chat endpoint — returns streaming response via Orchestrator pipeline"""
@@ -217,42 +216,54 @@ async def chat_send(
                 image_b64_len=len(req.image_b64) if req.image_b64 else 0,
                 message_preview=req.message[:100])
 
-
-    # Get or create session
-    if req.session_id and not req.session_id.startswith("new-"):
-        session = await db.get(ChatSession, req.session_id)
-        if not session:
-            # Sesi tidak ditemukan di DB (mungkin URL custom atau sudah terhapus)
-            # Buat sesi baru dengan ID tersebut agar UI tetap sinkron dengan URL
+    from db.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        # Get or create session
+        if req.session_id and not req.session_id.startswith("new-"):
+            session = await db.get(ChatSession, req.session_id)
+            if not session:
+                # Sesi tidak ditemukan di DB (mungkin URL custom atau sudah terhapus)
+                # Buat sesi baru dengan ID tersebut agar UI tetap sinkron dengan URL
+                platform = req.channel if req.channel in ["web", "telegram", "whatsapp"] else "web"
+                session = ChatSession(id=req.session_id, user_id=user.id, title=req.message[:50], platform=platform)
+                db.add(session)
+                await db.commit()
+                await db.refresh(session)
+        else:
+            # Jika session_id kosong atau dimulai dengan 'new-', buat sesi baru dengan UUID otomatis
             platform = req.channel if req.channel in ["web", "telegram", "whatsapp"] else "web"
-            session = ChatSession(id=req.session_id, user_id=user.id, title=req.message[:50], platform=platform)
+            session = ChatSession(user_id=user.id, title=req.message[:50], platform=platform)
             db.add(session)
             await db.commit()
             await db.refresh(session)
-    else:
-        # Jika session_id kosong atau dimulai dengan 'new-', buat sesi baru dengan UUID otomatis
-        platform = req.channel if req.channel in ["web", "telegram", "whatsapp"] else "web"
-        session = ChatSession(user_id=user.id, title=req.message[:50], platform=platform)
-        db.add(session)
-        await db.commit()
-        await db.refresh(session)
 
-    # ─── Forward Web User Message to Telegram (If applicable) ───
-    is_telegram_sync = (session.platform == "telegram" or req.channel == "telegram")
-    if is_telegram_sync and getattr(user, "telegram_chat_id", None):
-        import os
-        from integrations.telegram_bot import _send
-        telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
-        if telegram_token:
-            try:
-                # Forward user's message to their Telegram App
-                asyncio.create_task(_send(
-                    telegram_token, 
-                    int(user.telegram_chat_id), 
-                    f"💻 *Dari Web:* {req.message}"
-                ))
-            except Exception as e:
-                log.warning("Gagal forward pesan ke Telegram", error=str(e))
+        # ─── Forward Web User Message to Telegram (If applicable) ───
+        is_telegram_sync = (session.platform == "telegram" or req.channel == "telegram")
+        if is_telegram_sync and getattr(user, "telegram_chat_id", None):
+            import os
+            from integrations.telegram_bot import _send
+            telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+            if telegram_token:
+                try:
+                    # Forward user's message to their Telegram App
+                    asyncio.create_task(_send(
+                        telegram_token, 
+                        int(user.telegram_chat_id), 
+                        f"💻 *Dari Web:* {req.message}"
+                    ))
+                except Exception as e:
+                    log.warning("Gagal forward pesan ke Telegram", error=str(e))
+
+        # Save user message to DB immediately so it's not lost on stream abort
+        user_msg = Message(
+            session_id=session.id,
+            user_id=user.id,
+            role="user",
+            content=req.message,
+            model=req.model or "orchestrator",
+        )
+        db.add(user_msg)
+        await db.commit()
 
     # Build system prompt + RAG context
     system_prompt = await memory_manager.build_system_prompt(user.id, session.id)
@@ -279,17 +290,6 @@ async def chat_send(
 
     # Get conversation history from memory
     history = await memory_manager.get_context(session.id, user.id)
-
-    # Save user message to DB immediately so it's not lost on stream abort
-    user_msg = Message(
-        session_id=session.id,
-        user_id=user.id,
-        role="user",
-        content=req.message,
-        model=req.model or "orchestrator",
-    )
-    db.add(user_msg)
-    await db.commit()
 
     import re as _re
 
@@ -654,12 +654,13 @@ class ProjectLocationRequest(BaseModel):
 @router.post("/execute_pending")
 async def execute_pending(
     req: PendingExecutionRequest,
-    db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    session = await db.get(ChatSession, req.session_id)
-    if not session:
-        raise HTTPException(404, "Session not found")
+    from db.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        session = await db.get(ChatSession, req.session_id)
+        if not session:
+            raise HTTPException(404, "Session not found")
         
     system_prompt = await memory_manager.build_system_prompt(user.id, session.id)
     history = await memory_manager.get_context(session.id, user.id)

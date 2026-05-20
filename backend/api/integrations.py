@@ -1152,3 +1152,27 @@ async def test_custom_model(provider_id: str, user: User = Depends(get_current_u
         provider["last_tested"] = __import__("datetime").datetime.utcnow().isoformat()
         _write_custom_models(providers)
         raise HTTPException(500, f"Gagal tersambung: {str(e)[:200]}")
+
+# ── Pollinations AI Integration ───────────────────────────────
+@router.get("/pollinations/status")
+async def get_pollinations_status(user: User = Depends(get_current_user)):
+    env = read_env()
+    return {
+        "enabled": env.get("POLLINATIONS_ENABLED", "false").lower() == "true",
+        "model": env.get("POLLINATIONS_MODEL", "auto")
+    }
+
+class PollinationsPayload(BaseModel):
+    enabled: bool
+    model: str
+
+@router.post("/pollinations/save")
+async def save_pollinations_status(payload: PollinationsPayload, user: User = Depends(get_current_user)):
+    write_env_key("POLLINATIONS_ENABLED", str(payload.enabled).lower())
+    write_env_key("POLLINATIONS_MODEL", payload.model)
+    
+    # Reload model manager to register models immediately
+    from core.model_manager import model_manager
+    await model_manager._detect_models()
+    
+    return {"status": "success", "message": "Pengaturan Pollinations AI berhasil disimpan"}

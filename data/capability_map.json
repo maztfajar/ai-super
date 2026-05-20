@@ -64,5 +64,17 @@
   ],
   "sumopod/gemini/gemini-2.0-flash": [
     "speed"
+  ],
+  "pollinations/auto": [
+    "text"
+  ],
+  "pollinations/flux": [
+    "image_gen"
+  ],
+  "pollinations/turbo": [
+    "text"
+  ],
+  "pollinations/midjourney": [
+    "text"
   ]
 }

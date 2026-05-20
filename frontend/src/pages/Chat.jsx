@@ -1502,6 +1502,44 @@ const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, 
           )}
         </a>
       )
+    },
+    // Custom image renderer: handles proxy images with loading/error states
+    img({ node, src, alt, ...props }) {
+      const [imgState, setImgState] = useState('loading') // 'loading' | 'loaded' | 'error'
+      const [retryCount, setRetryCount] = useState(0)
+      const imgSrc = retryCount > 0 ? `${src}${src.includes('?') ? '&' : '?'}_r=${retryCount}` : src
+
+      return (
+        <div className="my-3 rounded-xl overflow-hidden border border-border bg-bg-3 inline-block max-w-full">
+          {imgState === 'loading' && (
+            <div className="flex items-center gap-2 px-4 py-3 text-ink-3 text-sm">
+              <span className="inline-block w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+              Memuat gambar...
+            </div>
+          )}
+          <img
+            src={imgSrc}
+            alt={alt || 'Generated Image'}
+            className="max-w-full max-h-[500px] object-contain rounded-xl"
+            style={{ display: imgState === 'loaded' ? 'block' : 'none' }}
+            onLoad={() => setImgState('loaded')}
+            onError={() => setImgState('error')}
+            {...props}
+          />
+          {imgState === 'error' && (
+            <div className="flex flex-col items-center gap-2 px-6 py-4 text-center">
+              <span className="text-2xl">🖼️</span>
+              <span className="text-sm text-ink-3">Gagal memuat gambar</span>
+              <button
+                onClick={() => { setImgState('loading'); setRetryCount(c => c + 1) }}
+                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent/10 text-accent-2 border border-accent/20 hover:bg-accent/20 transition-colors"
+              >
+                🔄 Coba Lagi
+              </button>
+            </div>
+          )}
+        </div>
+      )
     }
   }
 

@@ -399,6 +399,10 @@ async def get_settings(user: User = Depends(get_current_user)):
                 ]
             }
         },
+        "voice_reply": {
+            "enabled": env.get("VOICE_REPLY_ENABLED", "true").lower() == "true",
+            "language": env.get("VOICE_REPLY_LANGUAGE", "id"),
+        },
         "tunnel_status": tunnel_status,
     }
 
@@ -480,6 +484,40 @@ async def save_app_settings(req: AppSettingsRequest, user: User = Depends(get_cu
     if req.log_level: data["LOG_LEVEL"] = req.log_level
     write_env_batch(data)
     return {"status": "saved", "message": f"{len(data)} pengaturan disimpan"}
+
+
+# ── POST: simpan voice reply settings ─────────────────────────
+class VoiceReplySettingsRequest(BaseModel):
+    enabled:  Optional[bool] = None
+    language: Optional[str]  = None
+
+
+@router.post("/voice-reply")
+async def save_voice_reply_settings(req: VoiceReplySettingsRequest, user: User = Depends(get_current_user)):
+    if not user.is_admin:
+        raise HTTPException(403, "Admin only")
+    
+    data = {}
+    if req.enabled is not None:
+        data["VOICE_REPLY_ENABLED"] = str(req.enabled).lower()
+    if req.language:
+        # Validasi bahasa yang didukung
+        valid_languages = ["id", "en", "ar", "jp", "jv"]
+        if req.language in valid_languages:
+            data["VOICE_REPLY_LANGUAGE"] = req.language
+        else:
+            raise HTTPException(400, f"Bahasa tidak didukung. Pilih salah satu: {', '.join(valid_languages)}")
+    
+    write_env_batch(data)
+    
+    # Reload settings
+    try:
+        from core.config import settings
+        settings.reload()
+    except Exception:
+        pass
+    
+    return {"status": "saved", "message": "Pengaturan voice reply berhasil diperbarui"}
 
 
 # ── POST: simpan tunnel settings ──────────────────────────────

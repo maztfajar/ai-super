@@ -196,6 +196,10 @@ class Settings(BaseSettings):
     AI_ROLE_CODING: Optional[str] = None
     AI_ROLE_REASONING: Optional[str] = None
     AI_ROLE_CHAT: Optional[str] = None
+    
+    # Voice Reply Settings
+    VOICE_REPLY_ENABLED: bool = True
+    VOICE_REPLY_LANGUAGE: str = "id"  # id, en, ar, jp, jv
 
     @property
     def allowed_extensions_list(self) -> list:

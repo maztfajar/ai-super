@@ -1273,7 +1273,7 @@ class Orchestrator:
                 # Image generated successfully
                 response_text = (
                     f"✅ **Gambar berhasil dibuat!**\n\n"
-                    f"🖼️ [Lihat Gambar]({generated_url})\n\n"
+                    f"![Hasil Gambar]({generated_url})\n\n"
                     f"Model yang digunakan: `{image_model}`\n"
                     f"Prompt: _{spec.original_message[:200]}_"
                 )
@@ -1304,15 +1304,11 @@ class Orchestrator:
 
                 full_response = ""
                 try:
-                    # Wrap dengan timeout 90 detik
-                    async for chunk in asyncio.wait_for(
-                        model_manager.chat_stream(
-                            model=image_model,
-                            messages=messages,
-                            temperature=0.7,
-                            max_tokens=1000,
-                        ),
-                        timeout=90.0
+                    async for chunk in model_manager.chat_stream(
+                        model=image_model,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=1000,
                     ):
                         full_response += chunk
                         yield OrchestratorEvent("chunk", chunk)

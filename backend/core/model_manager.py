@@ -141,6 +141,28 @@ class ModelManager:
         custom_models = self._load_custom_models()
         self.available_models.update(custom_models)
 
+        # ── Pollinations AI (Image Generator) ────────────────────────
+        try:
+            from api.settings_api import read_env
+            env = read_env()
+        except ImportError:
+            try:
+                from backend.api.settings_api import read_env
+                env = read_env()
+            except ImportError:
+                env = {}
+
+        if env.get("POLLINATIONS_ENABLED", "false").lower() == "true":
+            pol_models = ["auto", "flux", "turbo", "midjourney"]
+            for m in pol_models:
+                self.available_models[f"pollinations/{m}"] = {
+                    "provider": "pollinations",
+                    "display": f"{m.capitalize()} (Pollinations AI)",
+                    "status": "online",
+                    "model_id": m,
+                }
+            log.info("Pollinations AI models registered")
+
         log.info(f"Total models detected: {len(self.available_models)}", models=list(self.available_models.keys()))
 
         # ── Rebuild dynamic routing cache (diam-diam di background) ─────────
@@ -346,6 +368,15 @@ class ModelManager:
                     yield chunk
             else:
                 yield f"[Error: Custom provider config tidak lengkap. Cek konfigurasi di Integrasi.]"
+        elif provider == "pollinations":
+            # Route text requests to the free Pollinations AI text endpoint
+            async for chunk in self._stream_openai_compatible(
+                "openai", messages, temperature, max_tokens,
+                base_url="https://gen.pollinations.ai/v1",
+                api_key="keyless",
+                provider_name="Pollinations AI",
+            ):
+                yield chunk
         else:
             yield f"[Error: Model '{model}' tidak dikenali. Cek .env kamu.]"
 
@@ -878,6 +909,34 @@ class ModelManager:
 
         Tries providers in order: OpenAI → Sumopod → Custom endpoints.
         """
+        # 0. Intercept if Pollinations AI is explicitly chosen or globally enabled as override
+        import urllib.parse
+        from api.settings_api import read_env
+        env = read_env() if callable(read_env) else {}
+        is_global_pollinations = env.get("POLLINATIONS_ENABLED", "false").lower() == "true"
+        
+        if (model and model.startswith("pollinations/")) or is_global_pollinations:
+            # Determine which model string to pass to the API
+            pol_model = ""
+            if model and model.startswith("pollinations/"):
+                pol_model = model.split("/", 1)[1]
+            elif is_global_pollinations:
+                pol_model = env.get("POLLINATIONS_MODEL", "auto")
+                
+            if pol_model == "auto":
+                pol_model = ""
+                
+            log.info("generate_image: using Pollinations AI directly", model=pol_model or "auto")
+            try:
+                safe_prompt = urllib.parse.quote(prompt)
+                model_param = f"&model={pol_model}" if pol_model else ""
+                # Free, keyless API that directly returns an image buffer/URL, wrapped in backend proxy to bypass ISP block
+                direct_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?nologo=true{model_param}"
+                return f"/api/media/proxy?url={urllib.parse.quote(direct_url, safe='')}"
+            except Exception as e:
+                log.error("generate_image: Pollinations failed", error=str(e))
+                # Let it fall through if it errors, though urllib quoting rarely fails
+
         # 1. Try OpenAI DALL-E
         if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
             try:
@@ -910,8 +969,18 @@ class ModelManager:
                     "Authorization": f"Bearer {settings.SUMOPOD_API_KEY}",
                     "Content-Type": "application/json",
                 }
+                # Resolusi model image gen untuk Sumopod
+                image_model = model or "flux"
+                if "sumopod/" in image_model:
+                    image_model = image_model.replace("sumopod/", "")
+                
+                # Jika model bukan model image generator yang valid, gunakan "flux" sebagai default
+                model_lower = image_model.lower()
+                if not any(x in model_lower for x in ["flux", "dall", "sdxl", "stable-diffusion", "midjourney"]):
+                    image_model = "flux"
+
                 payload = {
-                    "model": model or "mimo-v2-omni",
+                    "model": image_model,
                     "prompt": prompt,
                     "n": n,
                     "size": size,
@@ -923,33 +992,50 @@ class ModelManager:
                         json=payload,
                         headers=headers,
                     )
+                
+                # Auto fallback to minimal payload if 400 Bad Request
+                if resp.status_code == 400:
+                    log.debug("generate_image: Sumopod returned 400, retrying with minimal payload...")
+                    payload_min = {
+                        "model": image_model,
+                        "prompt": prompt,
+                    }
+                    async with httpx.AsyncClient(timeout=60) as client:
+                        resp = await client.post(
+                            f"{settings.SUMOPOD_HOST}/images/generations",
+                            json=payload_min,
+                            headers=headers,
+                        )
+
                 if resp.status_code == 200:
                     data = resp.json()
                     if data.get("data") and data["data"][0].get("url"):
-                        log.info("generate_image: Sumopod success", model=model)
+                        log.info("generate_image: Sumopod success", model=image_model)
                         return data["data"][0]["url"]
                     elif data.get("data") and data["data"][0].get("b64_json"):
                         # Return as data URI if base64
                         b64 = data["data"][0]["b64_json"]
                         return f"data:image/png;base64,{b64}"
                 else:
-                    log.debug("generate_image: Sumopod returned", status=resp.status_code)
+                    log.debug("generate_image: Sumopod returned non-200", status=resp.status_code, body=resp.text[:300])
             except Exception as e:
                 log.debug("generate_image: Sumopod failed", error=str(e)[:80])
 
-        # 3. Try custom model providers
-        from db.database import AsyncSessionLocal
-        from db.models import CustomModel
-        from sqlmodel import select
+        # 3. Try custom model providers (Safely wrapped)
         try:
+            from db.database import AsyncSessionLocal
+            from db.models import ModelConfig
+            from sqlmodel import select
+            
             async with AsyncSessionLocal() as db:
                 result = await db.execute(
-                    select(CustomModel).where(CustomModel.is_active == True)
+                    select(ModelConfig).where(ModelConfig.is_active == True, ModelConfig.provider == "custom")
                 )
                 custom_models = result.scalars().all()
 
             for cm in custom_models:
-                if not cm.api_key or not cm.base_url:
+                api_url = cm.api_url or ""
+                if not api_url:
                     continue
                 try:
                     import httpx
@@ -960,12 +1046,11 @@ class ModelManager:
                         "size": size,
                     }
                     headers = {
-                        "Authorization": f"Bearer {cm.api_key}",
                         "Content-Type": "application/json",
                     }
                     async with httpx.AsyncClient(timeout=60) as client:
                         resp = await client.post(
-                            f"{cm.base_url.rstrip('/')}/images/generations",
+                            f"{api_url.rstrip('/')}/images/generations",
                             json=payload,
                             headers=headers,
                         )
@@ -974,13 +1059,24 @@ class ModelManager:
                         if data.get("data") and data["data"][0].get("url"):
                             log.info("generate_image: custom model success", model=cm.model_id)
                             return data["data"][0]["url"]
-                except Exception:
+                except Exception as inner_e:
+                    log.debug("generate_image: Custom provider model failed", model=cm.model_id, error=str(inner_e)[:80])
                     continue
-        except Exception:
-            pass
+        except Exception as e:
+            log.debug("generate_image: Custom providers query failed", error=str(e)[:80])
 
-        log.info("generate_image: no provider succeeded, returning None")
+        log.info("generate_image: no provider succeeded, falling back to Pollinations AI")
+        try:
+            import urllib.parse
+            safe_prompt = urllib.parse.quote(prompt)
+            pollinations_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?nologo=true"
+            # Wrap through backend proxy to bypass ISP DNS blocking (same as explicit Pollinations path)
+            return f"/api/media/proxy?url={urllib.parse.quote(pollinations_url, safe='')}"
+        except Exception as e:
+            log.error("generate_image: Pollinations fallback failed", error=str(e))
+
         return None
+
 
 
     async def transcribe_audio(
@@ -989,12 +1085,58 @@ class ModelManager:
         filename: str = "audio.ogg",
     ) -> str:
         """
-        Transkrip audio ke teks menggunakan Whisper API.
-        Auto-fallback: OpenAI Whisper → Sumopod Whisper-compatible.
+        Transkrip audio ke teks. Mendukung:
+        - Gemini (multimodal) via AI Role Mapping
+        - OpenAI Whisper
+        - Sumopod Whisper-compatible
         """
-        import io
+        import io, base64, os
 
-        # 1. Coba OpenAI Whisper
+        # 1. Cek AI Role Mapping untuk 'multimodal'
+        multimodal_model = os.getenv("AI_ROLE_MULTIMODAL", "").strip()
+        
+        # 2. Jika user set Gemini di AI Role Mapping, gunakan Gemini
+        if multimodal_model and "gemini" in multimodal_model.lower():
+            try:
+                import google.generativeai as genai
+                
+                # Configure Gemini
+                genai.configure(api_key=settings.GOOGLE_API_KEY)
+                
+                # Simpan audio ke temporary file
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix=".ogg", delete=False) as tmp:
+                    tmp.write(audio_bytes)
+                    tmp_path = tmp.name
+                
+                try:
+                    # Upload file ke Gemini
+                    audio_file = await asyncio.to_thread(genai.upload_file, tmp_path)
+                    
+                    # Extract model name (remove provider prefix)
+                    model_name = multimodal_model.split("/")[-1] if "/" in multimodal_model else multimodal_model
+                    model = genai.GenerativeModel(model_name)
+                    
+                    # Generate transcription
+                    response = await asyncio.to_thread(
+                        model.generate_content,
+                        [audio_file, "Transkripsi audio ini ke dalam teks. Hanya kembalikan teks transkripsi tanpa penjelasan tambahan."]
+                    )
+                    
+                    transcript = response.text.strip()
+                    log.info("Gemini transcription success", model=model_name, length=len(transcript))
+                    return transcript
+                finally:
+                    # Cleanup temp file
+                    import os
+                    try:
+                        os.unlink(tmp_path)
+                    except:
+                        pass
+            except Exception as e:
+                log.warning("Gemini transcription failed, trying fallback", error=str(e)[:120])
+
+        # 3. Fallback: OpenAI Whisper
         if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
             try:
                 from openai import AsyncOpenAI
@@ -1009,14 +1151,9 @@ class ModelManager:
                 )
                 return str(transcript)
             except Exception as e:
-                log.warning("OpenAI Whisper failed, trying Sumopod", error=str(e)[:80])
+                log.warning("OpenAI Whisper failed", error=str(e)[:80])
 
-        # Cari model audio/tts yang tersedia
-        from core.capability_map import capability_map
-        best_audio_model = capability_map.find_best_model({"audio"})
-        sumopod_model = best_audio_model if best_audio_model else "whisper-1"
-
-        # 2. Coba Sumopod (jika mendukung whisper-compatible endpoint)
+        # 4. Fallback: Sumopod
         if settings.SUMOPOD_API_KEY:
             try:
                 from openai import AsyncOpenAI
@@ -1027,13 +1164,13 @@ class ModelManager:
                     base_url=settings.SUMOPOD_HOST,
                 )
                 transcript = await client.audio.transcriptions.create(
-                    model=sumopod_model,
+                    model="whisper-1",
                     file=audio_file2,
                     response_format="text",
                 )
                 return str(transcript)
             except Exception as e:
-                log.warning("Sumopod Whisper failed", model=sumopod_model, error=str(e)[:80])
+                log.warning("Sumopod Whisper failed", error=str(e)[:80])
 
         return ""
 

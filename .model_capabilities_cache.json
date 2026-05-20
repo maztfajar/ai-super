@@ -35,5 +35,25 @@
   "sumopod/gemini/gemini-2.0-flash": [
     "speed",
     "text"
+  ],
+  "pollinations/turbo": [
+    "speed"
+  ],
+  "pollinations/auto": [
+    "text",
+    "speed"
+  ],
+  "pollinations/flux": [
+    "text",
+    "speed"
+  ],
+  "pollinations/midjourney": [
+    "text",
+    "speed"
+  ],
+  "sumopod/minimax/speech-2.8-hd\"": [
+    "audio",
+    "speed",
+    "tts"
   ]
 }

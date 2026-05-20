@@ -38,8 +38,15 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 *   **Self-Learning Routing (>85% Accuracy):** Sistem menganalisis histori performa agen setiap 5 menit. Jika pengguna tidak menentukan model secara manual, sistem akan mendistribusikan *task* ke model paling kompeten secara dinamis berdasarkan 7-lapis prioritas.
 *   **Transparent UI Auto-Fill:** Antarmuka secara jujur (`Real-time 30s`) menampilkan label `🤖 Auto — [Nama Model]` pada panel *Integrations* sehingga keputusan *routing* AI tidak lagi menjadi *black-box*.
 *   **Absolute Manual Override:** Pilihan model manual dari pengguna adalah prioritas mutlak yang tidak akan pernah ditimpa oleh sistem otomatis (*auto-routing*).
+*   **Built-in Free Image Generation:** Integrasi *native* dengan Pollinations AI yang menjamin pembuatan gambar 100% gratis, super cepat, tanpa perlu registrasi atau memasukkan API key sama sekali.
 
-### 4. 🛡️ Hardened Resilience & Execution Continuity
+### 4. 🎤 Voice-to-Voice Interaction (NEW!)
+*   **Seamless Voice Chat:** Kirim pesan suara di Telegram → Bot mentranskrip dengan Whisper → AI memproses → Jawaban dikembalikan dalam bentuk voice note + caption teks.
+*   **Multi-Language TTS:** Mendukung 5 bahasa (Indonesia, English, Arabic, Japanese, Jawa) dengan edge-tts yang 100% gratis dan unlimited.
+*   **Smart Audio Processing:** Otomatis memotong jawaban panjang, fallback ke teks jika TTS gagal, dan tidak menyimpan file audio di server (privacy-first).
+*   **AI Role Integration:** Terintegrasi penuh dengan AI Role Mapping — Anda bisa set model khusus untuk `multimodal` (Whisper) dan `audio_gen` (TTS) atau biarkan sistem auto-routing.
+
+### 5. 🛡️ Hardened Resilience & Execution Continuity
 *   **State Checkpointing & DAG Watchdog:** Eksekusi tugas diamankan di dalam basis data persisten. Jika sistem macet atau progres stagnan lebih dari 5 giliran, Watchdog otomatis memaksa pemulihan tanpa instruksi halusinasi ke *LLM*.
 *   **Actionable Error Translator & Circuit Breaker:** Sistem akan mengonversi pesan error teknis menjadi langkah taktis (misal: "Port bentrok, kill PID 1234"). Jika alat (*tool*) terus gagal 3x, ia akan dikenai penangguhan (*suspend*) sesi secara sementara agar tidak memblokir antrean.
 *   **Truncation Recovery:** Jika LLM memotong *output* kode akibat limit *max_tokens*, Orchestrator secara otomatis menyuntikkan *prompt* pelanjut dan merekatkan hasilnya di balik layar.
@@ -169,6 +176,7 @@ Setelah instalasi selesai, ikuti langkah berikut untuk mengoperasikan AI Orchest
 2.  **Konfigurasi Kunci API (Wajib):** 
     *   Buka menu ⚙️ **Integrations**.
     *   Masukkan API Key dari penyedia LLM pilihan Anda (misal: OpenAI, Anthropic, Gemini, Groq, atau endpoint lokal Ollama).
+    *   *(Opsional)* Aktifkan **🎨 Pollinations AI** jika Anda ingin menggunakan fitur pembuatan gambar *tanpa batas dan tanpa API key*.
     *   Klik **Simpan**.
 3.  **Verifikasi Native Tools:**
     *   Masih di menu Integrations, klik tombol petir **Zap Test (⚡)** di samping model AI pilihan Anda.

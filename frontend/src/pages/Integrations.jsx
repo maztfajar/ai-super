@@ -706,6 +706,148 @@ function WebhookSection() {
   )
 }
 
+// ── PollinationsCard ──────────────────────────────────────────
+function PollinationsCard() {
+  const [open, setOpen] = useState(false)
+  const [enabled, setEnabled] = useState(false)
+  const [model, setModel] = useState('auto')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const loadStatus = async () => {
+    try {
+      const res = await api.get('/integrations/pollinations/status')
+      setEnabled(res.enabled)
+      setModel(res.model || 'auto')
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadStatus()
+  }, [])
+
+  const handleSave = async (newEnabled, newModel) => {
+    setSaving(true)
+    try {
+      await api.post('/integrations/pollinations/save', {
+        enabled: newEnabled,
+        model: newModel
+      })
+      setEnabled(newEnabled)
+      setModel(newModel)
+      
+      // Tell models store to reload models so it updates globally
+      const r = await intApi.reloadModels()
+      if (r.models) {
+        useModelsStore.setState({ models: r.models })
+        syncModelsToOrchestrator(r.models)
+      }
+      
+      toast.success('Pengaturan Pollinations AI disimpan')
+    } catch (e) {
+      toast.error('Gagal menyimpan: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const modelOptions = [
+    { value: 'auto', label: '🤖 Auto (Rekomendasi)' },
+    { value: 'flux', label: '✨ Flux (Photorealistic)' },
+    { value: 'turbo', label: '⚡ SDXL Turbo (Cepat)' },
+    { value: 'midjourney', label: '🎨 Midjourney Style' },
+  ]
+
+  return (
+    <div className="bg-bg-3 border border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
+        <div className="flex items-center gap-4 text-left">
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🎨</div>
+          <div>
+            <div className="text-lg font-bold text-ink uppercase tracking-tight">Pollinations AI</div>
+            <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Generator Gambar Gratis (Tanpa API Key)</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <StatusBadge ok={enabled} />
+          {open ? <ChevronUp size={18} className="text-ink-3 flex-shrink-0"/> : <ChevronDown size={18} className="text-ink-3 flex-shrink-0"/>}
+        </div>
+      </button>
+
+      <div className={clsx("grid transition-all duration-500 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+        <div className="overflow-hidden">
+          <div className="p-6 space-y-5 border-t-2 border-border/40">
+            {loading ? (
+              <div className="text-xs text-ink-3">Memuat pengaturan...</div>
+            ) : (
+              <div className="flex flex-col md:flex-row gap-6">
+                
+                {/* Left side: Controls */}
+                <div className="flex-1 space-y-4">
+                  {/* Enable Toggle */}
+                  <div className="flex items-center justify-between p-4 bg-bg-4 rounded-xl border border-border shadow-inner">
+                    <div>
+                      <div className="text-sm font-bold text-ink uppercase tracking-tight">Aktifkan Pollinations</div>
+                      <div className="text-xs text-ink-3 font-semibold mt-1">Jadikan pembuat gambar prioritas</div>
+                    </div>
+                    <label className={clsx("flex items-center gap-3", saving ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}>
+                      <span className="text-[10px] font-bold text-ink-3 uppercase tracking-widest">
+                        {saving ? 'Loading' : (enabled ? 'On' : 'Off')}
+                      </span>
+                      <div onClick={() => !saving && handleSave(!enabled, model)}
+                        className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border', enabled ? 'bg-success border-success/30' : 'bg-bg-5 border-border')}>
+                        <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-lg transition-transform', enabled ? 'translate-x-4.5' : 'translate-x-0.5')}/>
+                      </div>
+                    </label>
+                  </div>
+                  
+                  {/* Model Dropdown */}
+                  <div className={clsx("transition-all duration-300", !enabled && "opacity-50 pointer-events-none")}>
+                    <Label>Pilih Model Gambar</Label>
+                    <div className="relative mt-2">
+                      <select
+                        value={model}
+                        onChange={(e) => handleSave(enabled, e.target.value)}
+                        disabled={saving}
+                        className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-10 shadow-inner transition-all"
+                      >
+                        {modelOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
+                        <ChevronDown size={16}/>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right side: Info */}
+                <div className="flex-1 p-4 bg-accent/8 border border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-sm leading-relaxed">
+                  <strong className="text-ink-2 block mb-2 text-sm font-bold uppercase tracking-widest opacity-80">💡 Keuntungan Pollinations:</strong>
+                  <ul className="space-y-2 list-disc pl-4 text-ink-3 opacity-90">
+                    <li><strong className="text-ink-2">100% Gratis:</strong> Tidak memotong token dari layanan lain.</li>
+                    <li><strong className="text-ink-2">Tanpa Registrasi:</strong> Langsung bisa dipakai tanpa API Key.</li>
+                    <li><strong className="text-ink-2">Bypass Filter:</strong> Berguna saat model API utama sedang error atau membatasi pembuatan gambar.</li>
+                  </ul>
+                  <div className="mt-4 pt-3 border-t border-accent/20 text-[10px] text-accent-2 font-bold uppercase tracking-widest">
+                    * Otomatis terdaftar di AI Roles Mapping saat diaktifkan
+                  </div>
+                </div>
+                
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 // ── AiRoleMappingSection ──────────────────────────────────────
 const AI_ROLE_DEFINITIONS = [
@@ -1315,6 +1457,7 @@ export default function Integrations() {
               </div>
             </Card>
           </div>
+          <PollinationsCard />
           <AiRoleMappingSection 
             settings={status} 
             onSave={(roles) => intApi.saveAiRoles(roles)} 

@@ -252,7 +252,7 @@ class CapabilityMapEngine:
             matched.add("vision")
         if any(x in model_lower for x in ["speech", "tts", "voice", "audio"]):
             matched.update({"audio", "tts"})
-        if any(x in model_lower for x in ["image", "dalle", "dall-e", "flux", "sdxl"]):
+        if any(x in model_lower for x in ["image", "dalle", "dall-e", "flux", "sdxl", "pollinations"]):
             matched.add("image_gen")
         if any(x in model_lower for x in ["omni", "multimodal", "mm"]):
             matched.update({"vision", "audio", "text"})

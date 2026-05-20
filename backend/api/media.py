@@ -216,3 +216,59 @@ async def delete_all_media(user: User = Depends(get_current_user)):
     except Exception as e:
         log.error("Failed to delete all media files", error=str(e), user=user.username)
         raise HTTPException(500, f"Gagal menghapus semua file: {str(e)[:100]}")
+
+
+@router.get("/proxy")
+async def proxy_image(url: str):
+    """
+    Proxy image requests to bypass ISP DNS blocking (e.g., for Pollinations AI).
+    No authentication required as it is embedded in public markdown image tags.
+    Includes retry logic for transient failures (Pollinations generates on-demand).
+    """
+    if not url.startswith("https://image.pollinations.ai/") and not url.startswith("https://pollinations.ai/"):
+        raise HTTPException(400, "URL tidak diizinkan untuk di-proxy.")
+
+    import httpx
+    from fastapi.responses import Response
+
+    max_retries = 2
+    last_error = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=120.0) as client:
+                resp = await client.get(url)
+
+                # Retry on transient error codes (rate limit, payment required, server error)
+                if resp.status_code in (402, 429, 500, 502, 503) and attempt < max_retries:
+                    import asyncio
+                    wait_time = 3 * (attempt + 1)
+                    log.warning("Proxy image retrying", url=url, status=resp.status_code, attempt=attempt + 1, wait=wait_time)
+                    await asyncio.sleep(wait_time)
+                    continue
+
+                if resp.status_code != 200:
+                    raise HTTPException(resp.status_code, f"Gagal mengambil gambar: HTTP {resp.status_code}")
+
+                content_type = resp.headers.get("content-type", "image/jpeg")
+                return Response(
+                    content=resp.content,
+                    media_type=content_type,
+                    headers={"Cache-Control": "public, max-age=3600"},
+                )
+        except httpx.TimeoutException:
+            last_error = f"Timeout setelah 120 detik (percobaan {attempt + 1})"
+            if attempt < max_retries:
+                log.warning("Proxy image timeout, retrying", url=url, attempt=attempt + 1)
+                continue
+        except HTTPException:
+            raise
+        except Exception as e:
+            last_error = str(e) or type(e).__name__
+            if attempt < max_retries:
+                log.warning("Proxy image error, retrying", url=url, error=last_error, attempt=attempt + 1)
+                continue
+
+    log.error("Proxy image failed after retries", url=url, error=last_error)
+    raise HTTPException(500, f"Gagal mem-proxy gambar: {last_error}")
+

@@ -196,7 +196,10 @@ async def classify_user_intent(req: IntentRequest):
     Endpoint untuk frontend: klasifikasikan intent user sebelum memutuskan tampilkan popup.
     Frontend memanggil ini setiap kali user kirim pesan.
     """
-    from backend.core.intent_classifier import classify_intent
+    try:
+        from core.intent_classifier import classify_intent
+    except ImportError:
+        from backend.core.intent_classifier import classify_intent
     result = await classify_intent(req.message)
     return result.to_dict()
 

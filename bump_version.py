@@ -13,18 +13,19 @@ def bump_version(part="patch"):
     if VERSION_FILE.exists():
         current = VERSION_FILE.read_text(encoding="utf-8").strip()
     elif ENV_FILE.exists():
-        m = re.search(r'APP_VERSION\s*=\s*["\']?(\d+\.\d+\.\d+)["\']?', ENV_FILE.read_text())
+        m = re.search(r'APP_VERSION\s*=\s*["\']?(\d+\.\d+(?:\.\d+)?)["\']?', ENV_FILE.read_text())
         current = m.group(1) if m else "1.0.0"
     else:
         current = "1.0.0"
 
-    match = re.match(r'^(\d+)\.(\d+)\.(\d+)$', current)
+    match = re.match(r'^(\d+)\.(\d+)(?:\.(\d+))?$', current)
     if not match:
         print(f"Error: Format versi tidak valid: '{current}'")
         return
 
-    major, minor, patch = int(match.group(1)), int(match.group(2)), int(match.group(3))
-    old_version = f"{major}.{minor}.{patch}"
+    major, minor = int(match.group(1)), int(match.group(2))
+    patch = int(match.group(3)) if match.group(3) is not None else 0
+    old_version = current
 
     if part == "major":
         major += 1; minor = 0; patch = 0
@@ -42,7 +43,7 @@ def bump_version(part="patch"):
     if ENV_FILE.exists():
         content = ENV_FILE.read_text(encoding="utf-8")
         new_content = re.sub(
-            r'(APP_VERSION\s*=\s*["\']?)\d+\.\d+\.\d+(["\']?)',
+            r'(APP_VERSION\s*=\s*["\']?)\d+\.\d+(?:\.\d+)?(["\']?)',
             rf'\g<1>{new_version}\g<2>',
             content
         )

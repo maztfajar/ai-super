@@ -960,6 +960,11 @@ def needs_clarification(prompt: str) -> bool:
     Hanya trigger untuk perintah build/create, bukan pertanyaan umum.
     """
     prompt_lower = prompt.lower()
+    
+    # Bypass jika terdeteksi intent generate gambar
+    if any(p in prompt_lower for p in IMAGE_GEN_PATTERNS):
+        return False
+        
     has_build_intent = any(w in prompt_lower for w in [
         "buat", "bikin", "build", "create", "buatkan", "bikinin",
         "develop", "kembangkan", "bangun",

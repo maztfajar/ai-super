@@ -126,19 +126,20 @@ async def generate_plan(
             {"role": "user", "content": prompt},
         ]
 
-        # Collect full response
+        # Collect full response with manual timeout (asyncio.wait_for doesn't work with async generators)
         chunks = []
-        async for chunk in asyncio.wait_for(
-            model_manager.chat_stream(
-                model=model,
-                messages=messages,
-                temperature=0.2,
-                max_tokens=1200,
-            ),
-            timeout=timeout,
+        deadline = asyncio.get_event_loop().time() + timeout
+        async for chunk in model_manager.chat_stream(
+            model=model,
+            messages=messages,
+            temperature=0.2,
+            max_tokens=1200,
         ):
             if chunk:
                 chunks.append(chunk)
+            if asyncio.get_event_loop().time() > deadline:
+                log.warning("plan_generator: timeout during streaming")
+                break
 
         raw = "".join(chunks).strip()
 

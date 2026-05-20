@@ -64,6 +64,82 @@ async def _resolve_web_user(chat_id: int, fallback_user_id: str) -> str:
     return fallback_user_id
 
 
+async def _send_photo(token: str, chat_id: int, photo_url: str, caption: str = ""):
+    """Send photo to Telegram. Downloads via local proxy (bypasses ISP block) and sends as raw bytes."""
+    import httpx
+    import io
+    import urllib.parse
+    from core.config import settings
+
+    # Build the URL to download from:
+    # - If it's already a local proxy URL (/api/media/proxy?url=...), download from localhost
+    # - If it's a direct Pollinations URL, wrap it through the local proxy
+    # - If it's any other relative /api/... URL, build the full local URL
+    download_url = photo_url
+    direct_url = photo_url  # For the Telegram URL fallback
+
+    if photo_url.startswith("/api/"):
+        # Download via localhost proxy — bypasses ISP blocks on Pollinations
+        download_url = f"http://localhost:{getattr(settings, 'PORT', 7860)}{photo_url}"
+        direct_url = download_url
+    elif photo_url.startswith("https://image.pollinations.ai/") or photo_url.startswith("https://pollinations.ai/"):
+        # Direct Pollinations URL — route through local proxy to bypass ISP blocks
+        safe = urllib.parse.quote(photo_url, safe="")
+        proxy_path = f"/api/media/proxy?url={safe}"
+        download_url = f"http://localhost:{getattr(settings, 'PORT', 7860)}{proxy_path}"
+        direct_url = photo_url  # Keep original as Telegram URL fallback
+
+    # Try downloading the image bytes first to send as raw file (most robust)
+    try:
+        async with httpx.AsyncClient(timeout=130, follow_redirects=True) as client:
+            resp = await client.get(download_url)
+            if resp.status_code == 200 and resp.content:
+                image_bytes = resp.content
+
+                async with httpx.AsyncClient(timeout=30) as c:
+                    r = await c.post(
+                        f"https://api.telegram.org/bot{token}/sendPhoto",
+                        data={
+                            'chat_id': str(chat_id),
+                            'caption': caption[:1024],
+                            'parse_mode': 'HTML'
+                        },
+                        files={'photo': ('photo.png', image_bytes, 'image/png')}
+                    )
+                    if r.status_code == 200:
+                        log.info("Photo sent successfully to Telegram as raw bytes", chat_id=chat_id)
+                        return True
+                    else:
+                        log.warning("Telegram sendPhoto with bytes failed, falling back to URL",
+                                    status=r.status_code, body=r.text[:200])
+    except Exception as e:
+        log.warning("Failed to download image bytes for Telegram, trying URL fallback", error=str(e))
+
+    # Fallback: send the URL directly to Telegram API (works if not ISP-blocked)
+    try:
+        payload = {
+            "chat_id": chat_id,
+            "photo": direct_url,
+            "caption": caption[:1024],
+            "parse_mode": "HTML"
+        }
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.post(
+                f"https://api.telegram.org/bot{token}/sendPhoto",
+                json=payload
+            )
+            if r.status_code == 200:
+                log.info("Photo sent successfully to Telegram via URL fallback", chat_id=chat_id)
+                return True
+            else:
+                log.error("Telegram sendPhoto URL fallback failed", status=r.status_code, body=r.text[:200])
+    except Exception as e:
+        log.error("Telegram sendPhoto URL fallback error", error=str(e))
+
+    return False
+
+
+
 # ── Helper kirim pesan ────────────────────────────────────────
 async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = False, max_retries: int = 3):
     """Kirim pesan Markdown, auto-split > 4000 char dengan retry mechanism."""
@@ -133,6 +209,54 @@ async def _send_voice(token: str, chat_id: int, text: str):
             )
     except Exception as e:
         log.error("Telegram send_voice error", error=str(e))
+
+
+async def _send_voice_with_tts(token: str, chat_id: int, text: str):
+    """Generate TTS dengan edge-tts dan kirim sebagai voice note ke Telegram."""
+    import httpx, io, edge_tts
+    from core.config import settings
+    
+    try:
+        # Mapping bahasa ke voice edge-tts
+        voice_map = {
+            "id": "id-ID-ArdiNeural",      # Indonesia (Male)
+            "en": "en-US-GuyNeural",        # English (Male)
+            "ar": "ar-SA-HamedNeural",      # Arabic (Male)
+            "jp": "ja-JP-KeitaNeural",      # Japanese (Male)
+            "jv": "id-ID-ArdiNeural",       # Jawa (fallback ke Indonesia)
+        }
+        
+        voice = voice_map.get(settings.VOICE_REPLY_LANGUAGE, "id-ID-ArdiNeural")
+        
+        # Batasi panjang teks (Telegram voice max ~1 menit, ~200 kata)
+        max_chars = 1000
+        if len(text) > max_chars:
+            text = text[:max_chars] + "... Silakan baca caption untuk jawaban lengkap."
+        
+        # Generate audio dengan edge-tts
+        communicate = edge_tts.Communicate(text, voice)
+        audio_data = io.BytesIO()
+        
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data.write(chunk["data"])
+        
+        audio_data.seek(0)
+        
+        # Kirim ke Telegram
+        async with httpx.AsyncClient(timeout=60) as c:
+            await c.post(
+                f"https://api.telegram.org/bot{token}/sendVoice",
+                data={'chat_id': str(chat_id)},
+                files={'voice': ('voice.mp3', audio_data.getvalue(), 'audio/mpeg')}
+            )
+            
+        log.info("Voice reply sent", chat_id=chat_id, text_length=len(text))
+        
+    except Exception as e:
+        log.error("Telegram send_voice_with_tts error", error=str(e))
+        # Fallback: kirim sebagai text jika TTS gagal
+        await _send(token, chat_id, f"⚠️ <i>Gagal generate voice, berikut jawaban teks:</i>\n\n{_format_for_tg(text)}")
 
 async def _send_typing(token: str, chat_id: int):
     import httpx
@@ -392,6 +516,7 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
 
         # Generate using Orchestrator for full monitoring and robustness
         full_response = ""
+        has_image = None
         session_id = "tg_" + str(chat_id)
         status_msg_id = None
         
@@ -479,6 +604,8 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                                                    json={"chat_id": chat_id, "message_id": status_msg_id})
                                 except Exception:
                                     pass
+                            if event.data and "image_url" in event.data:
+                                has_image = event.data["image_url"]
                             log.info("Telegram orchestrator done", chat_id=chat_id, total_chunks=chunk_count, response_length=len(full_response))
                         elif event.type == "pending_confirmation":
                             # Should not happen with auto_execute=True, but handle gracefully
@@ -514,7 +641,17 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
             log.warning("Telegram empty response", chat_id=chat_id, text=text[:50])
             full_response = "⚠️ AI tidak memberikan respons. Ini mungkin karena model sedang sibuk atau pertanyaan terlalu kompleks."
 
-        await _send(token, chat_id, _format_for_tg(full_response), include_drive_btn=True)
+        if has_image:
+            # Clean up the markdown image tag from the text
+            clean_text = re.sub(r'!\[.*?\]\(.*?\)', '', full_response)
+            clean_text = re.sub(r'\n{3,}', '\n\n', clean_text).strip()
+            # Send photo first
+            await _send_photo(token, chat_id, has_image, caption="🎨 Hasil Gambar")
+            # Send description if there is other content
+            if clean_text:
+                await _send(token, chat_id, _format_for_tg(clean_text), include_drive_btn=True)
+        else:
+            await _send(token, chat_id, _format_for_tg(full_response), include_drive_btn=True)
 
         # Save Assistant Message to DB
         async with AsyncSessionLocal() as db:
@@ -625,12 +762,13 @@ async def _handle_photo(chat_id: int, user_id: str, photo_list: list, caption: s
 # ── Handle pesan SUARA/VOICE ──────────────────────────────────
 async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
                         from_name: str, token: str):
-    """Download voice note dari Telegram, transkrip via Whisper, lanjutkan sebagai teks."""
+    """Download voice note dari Telegram, transkrip via Whisper, reply dengan voice."""
     try:
         # Resolve to Web User ID if linked
         user_id = await _resolve_web_user(chat_id, user_id)
         
         import httpx
+        from core.config import settings
         file_id = voice_obj["file_id"]
 
         await _send(token, chat_id, "🎙️ _Mentranskripsi pesan suara..._")
@@ -658,10 +796,78 @@ async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
             await _send(token, chat_id, "Maaf, tidak bisa mentranskrip suara. Kirim pesan teks ya!")
             return
 
-        await _send(token, chat_id, f"🎙️ _Transkripsi:_ \"{transcript}\"")
-
-        # 4. Lanjutkan sebagai pesan teks biasa
-        await _handle_message(chat_id, user_id, transcript, from_name, token)
+        # 4. Process dengan AI (sama seperti _handle_message tapi tanpa kirim response dulu)
+        from core.orchestrator import orchestrator
+        from db.database import AsyncSessionLocal
+        from db.models import ChatSession, Message
+        
+        session_id = f"tg_{chat_id}"
+        full_response = ""
+        history = []
+        
+        # Get or create session
+        async with AsyncSessionLocal() as db:
+            sess = await db.get(ChatSession, session_id)
+            if not sess:
+                sess = ChatSession(id=session_id, user_id=user_id, title=transcript[:50], platform="telegram")
+                db.add(sess)
+                await db.commit()
+            
+            user_msg = Message(session_id=session_id, user_id=user_id, role="user", content=transcript)
+            db.add(user_msg)
+            await db.commit()
+            
+            # Get history
+            from sqlalchemy import select
+            result = await db.execute(
+                select(Message)
+                .filter_by(session_id=session_id)
+                .order_by(Message.created_at)
+                .limit(20)
+            )
+            history_msgs = result.scalars().all()
+            history = [{"role": m.role, "content": m.content} for m in history_msgs]
+        
+        # Process dengan orchestrator
+        await _send_typing(token, chat_id)
+        async for event in orchestrator.process(
+            message=transcript,
+            user_id=user_id,
+            session_id=session_id,
+            history=history,
+            include_tool_logs=False,
+            emit_thinking=False,
+            auto_execute=True,
+        ):
+            if event.type == "chunk":
+                full_response += event.content
+            elif event.type == "error":
+                full_response = f"⚠️ Error: {event.content}"
+                break
+        
+        if not full_response.strip():
+            full_response = "Maaf, saya tidak bisa memproses permintaan Anda."
+        
+        # 5. Reply dengan voice atau text (tergantung setting)
+        if settings.VOICE_REPLY_ENABLED:
+            # Kirim caption dulu
+            caption = f"🎤 <b>Kamu:</b> {_escape(transcript)}\n\n🤖 <b>Jawaban:</b>\n{_format_for_tg(full_response[:500])}"
+            if len(full_response) > 500:
+                caption += "\n\n<i>(Lihat voice note untuk jawaban lengkap)</i>"
+            await _send(token, chat_id, caption)
+            
+            # Generate dan kirim voice
+            await _send_voice_with_tts(token, chat_id, full_response)
+        else:
+            # Fallback ke text reply
+            caption = f"🎤 <b>Kamu:</b> {_escape(transcript)}\n\n🤖 <b>Jawaban:</b>\n{_format_for_tg(full_response)}"
+            await _send(token, chat_id, caption)
+        
+        # Save AI response to DB
+        async with AsyncSessionLocal() as db:
+            ai_msg = Message(session_id=session_id, user_id=user_id, role="assistant", content=full_response)
+            db.add(ai_msg)
+            await db.commit()
 
     except Exception as e:
         log.error("Telegram handle_voice error", error=str(e))
