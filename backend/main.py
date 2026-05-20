@@ -33,6 +33,7 @@ from api.websocket import router as ws_router
 from api.settings_api import router as settings_router
 from api.cloudflare_wizard import router as cf_wizard_router
 from api.update_server import router as update_server_router
+from api.file_manager import router as file_manager_router
 
 from api.export import router as export_router
 from api.monitoring import router as monitoring_router
@@ -342,6 +343,7 @@ app.include_router(capability_router,    prefix="/api/capability",   tags=["Capa
 app.include_router(compliance_router,    prefix="/api/compliance",   tags=["Compliance & Security"])
 app.include_router(evolver_router,       prefix="/api/evolver",      tags=["Evolver"])
 app.include_router(qmd_router,           prefix="/api/qmd",          tags=["QMD Token Killer"])
+app.include_router(file_manager_router,  prefix="/api/file-manager", tags=["File Manager"])
 
 
 @app.get("/api/health")

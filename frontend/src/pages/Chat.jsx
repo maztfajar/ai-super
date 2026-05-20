@@ -8,6 +8,8 @@ import { copyToClipboard } from "../utils/clipboard"
 import { useAuthStore, useChatStore, useModelsStore, useOrchestratorStore } from '../store'
 import ChannelSelector from '../components/ChannelSelector'
 import ProjectLocationPopup from '../components/ProjectLocationPopup'
+import FileManagerPopup from '../components/FileManagerPopup'
+import { useIntentClassifier } from '../hooks/useIntentClassifier'
 import toast from 'react-hot-toast'
 import { useChatFileHandler } from '../hooks/useChatFileHandler'
 import { extractFileContent } from '../utils/fileExtractor'
@@ -1839,6 +1841,17 @@ function SessionItem({ session, active, onClick, onDelete }) {
 
 // ── Main Chat Page ────────────────────────────────────────────
 export default function Chat() {
+  const {
+    classifyAndHandle,
+    confirmAndProceed,
+    closeFileManager,
+    fileManagerState,
+  } = useIntentClassifier()
+
+  const handleFileManagerConfirm = async (selectedPath) => {
+    await confirmAndProceed(selectedPath, sendMessage)
+  }
+
   const { t } = useTranslation()
   const { id: urlSessionId } = useParams()
   const navigate = useNavigate()
@@ -2290,10 +2303,15 @@ export default function Chat() {
   }
 
   // ── SEND message ─────────────────────────────────────────
-  async function sendMessage() {
-    const text = input.trim()
+  async function sendMessage(overrideText) {
+    const text = typeof overrideText === 'string' ? overrideText : input.trim()
     let imageToSend = pendingImage
     if (!text && !imageToSend && attachedFiles.length === 0) return
+
+    if (typeof overrideText !== 'string' && text) {
+      const shouldProceed = await classifyAndHandle(text)
+      if (!shouldProceed) return
+    }
     
     let activeSession = currentSession
     if (!activeSession) { 
@@ -3445,6 +3463,16 @@ export default function Chat() {
           }}
         />
       )}
+
+      {/* File Manager Popup */}
+      <FileManagerPopup
+        isOpen={fileManagerState.isOpen}
+        mode={fileManagerState.mode}
+        intent={fileManagerState.intent}
+        pendingMessage={fileManagerState.pendingMessage}
+        onConfirm={handleFileManagerConfirm}
+        onClose={closeFileManager}
+      />
     </div>
   )
 }
