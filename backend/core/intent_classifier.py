@@ -8,10 +8,9 @@ Integrasi: import dan panggil classify_intent(message) di chat.py endpoint.
 import re
 from enum import Enum
 from typing import Optional
-import anthropic
-
-client = anthropic.Anthropic()  # pakai ANTHROPIC_API_KEY dari .env
-
+import httpx
+import json
+from core.config import settings
 
 # ─────────────────────────────────────────────
 # Intent types
@@ -114,7 +113,7 @@ def _keyword_precheck(message: str) -> Optional[IntentType]:
 
 
 # ─────────────────────────────────────────────
-# LLM Classifier (claude-haiku — cepat, murah)
+# LLM Classifier (gemini-2.0-flash-lite — cepat, murah)
 # ─────────────────────────────────────────────
 
 _CLASSIFIER_SYSTEM = """Kamu adalah classifier intent. Tugasmu HANYA mengklasifikasikan pesan user ke salah satu dari 4 kategori.
@@ -140,15 +139,6 @@ async def classify_intent(message: str) -> ClassifyResult:
     Klasifikasikan intent user. Panggil ini di endpoint chat sebelum proses pesan.
     
     Returns ClassifyResult dengan .needs_popup dan .popup_mode.
-    
-    Contoh:
-        result = await classify_intent("buatkan artikel tentang AI")
-        # result.needs_popup → False
-        # result.intent → "GENERATE"
-        
-        result = await classify_intent("buatkan app kasir")
-        # result.needs_popup → True
-        # result.popup_mode → "save_new"
     """
 
     # 1. Cek keyword dulu (lebih cepat, gratis)
@@ -162,15 +152,39 @@ async def classify_intent(message: str) -> ClassifyResult:
 
     # 2. Kalau tidak yakin → tanya LLM
     try:
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",  # model kecil, cepat, murah
-            max_tokens=100,
-            system=_CLASSIFIER_SYSTEM,
-            messages=[{"role": "user", "content": message}]
-        )
+        headers = {
+            "Authorization": f"Bearer {settings.SUMOPOD_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        # Gunakan model sumopod
+        model = "gemini/gemini-2.0-flash-lite"
+        
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": _CLASSIFIER_SYSTEM},
+                {"role": "user", "content": message}
+            ],
+            "max_tokens": 150,
+            "temperature": 0.1
+        }
 
-        import json
-        text = response.content[0].text.strip()
+        async with httpx.AsyncClient(timeout=10.0) as httpx_client:
+            response = await httpx_client.post(
+                f"{settings.SUMOPOD_HOST}/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()
+            res_data = response.json()
+            text = res_data["choices"][0]["message"]["content"].strip()
+
+        # Parse JSON safely
+        start_idx = text.find('{')
+        end_idx = text.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            text = text[start_idx:end_idx+1]
         data = json.loads(text)
 
         return ClassifyResult(
@@ -195,5 +209,58 @@ async def classify_intent(message: str) -> ClassifyResult:
 
 def classify_intent_sync(message: str) -> ClassifyResult:
     """Versi synchronous dari classify_intent."""
-    import asyncio
-    return asyncio.run(classify_intent(message))
+    keyword_result = _keyword_precheck(message)
+    if keyword_result is not None:
+        return ClassifyResult(
+            intent=keyword_result,
+            confidence=0.95,
+            reason="keyword match"
+        )
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {settings.SUMOPOD_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        model = "gemini/gemini-2.0-flash-lite"
+        
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": _CLASSIFIER_SYSTEM},
+                {"role": "user", "content": message}
+            ],
+            "max_tokens": 150,
+            "temperature": 0.1
+        }
+
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(
+                f"{settings.SUMOPOD_HOST}/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            response.raise_for_status()
+            res_data = response.json()
+            text = res_data["choices"][0]["message"]["content"].strip()
+            
+        # Parse JSON safely
+        start_idx = text.find('{')
+        end_idx = text.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            text = text[start_idx:end_idx+1]
+        data = json.loads(text)
+
+        return ClassifyResult(
+            intent=IntentType(data["intent"]),
+            confidence=float(data.get("confidence", 0.8)),
+            reason=data.get("reason", "LLM classification")
+        )
+    except Exception as e:
+        print(f"[IntentClassifier] Sync Error: {e}, fallback to CONVERSATION")
+        return ClassifyResult(
+            intent=IntentType.CONVERSATION,
+            confidence=0.5,
+            reason=f"fallback: {str(e)}"
+        )

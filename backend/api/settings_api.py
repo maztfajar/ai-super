@@ -18,6 +18,7 @@ import structlog
 
 from db.models import User
 from core.auth import get_current_user
+from api.cloudflare_wizard import get_cloudflared_path
 
 router = APIRouter()
 log = structlog.get_logger()
@@ -190,6 +191,7 @@ async def _get_tunnel_status_async() -> dict:
     running = _is_running()
     env = read_env()
     cf_path = get_cloudflared_path()
+    token = env.get("CLOUDFLARE_TUNNEL_TOKEN", "").strip()
 
     pid = _tunnel_proc.pid if running else None
     service_active = False
