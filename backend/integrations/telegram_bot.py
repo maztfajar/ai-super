@@ -830,6 +830,7 @@ async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
         
         # Process dengan orchestrator
         await _send_typing(token, chat_id)
+        has_image = None
         async for event in orchestrator.process(
             message=transcript,
             user_id=user_id,
@@ -841,6 +842,9 @@ async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
         ):
             if event.type == "chunk":
                 full_response += event.content
+            elif event.type == "done":
+                if event.data and "image_url" in event.data:
+                    has_image = event.data["image_url"]
             elif event.type == "error":
                 full_response = f"⚠️ Error: {event.content}"
                 break
@@ -849,7 +853,14 @@ async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
             full_response = "Maaf, saya tidak bisa memproses permintaan Anda."
         
         # 5. Reply dengan voice atau text (tergantung setting)
-        if settings.VOICE_REPLY_ENABLED:
+        if has_image:
+            # Jika ada gambar, kirim gambar dulu
+            clean_text = re.sub(r'!\[.*?\]\(.*?\)', '', full_response)
+            clean_text = re.sub(r'\n{3,}', '\n\n', clean_text).strip()
+            await _send_photo(token, chat_id, has_image, caption="🎨 Hasil Gambar")
+            if clean_text:
+                await _send(token, chat_id, _format_for_tg(clean_text))
+        elif settings.VOICE_REPLY_ENABLED:
             # Kirim caption dulu
             caption = f"🎤 <b>Kamu:</b> {_escape(transcript)}\n\n🤖 <b>Jawaban:</b>\n{_format_for_tg(full_response[:500])}"
             if len(full_response) > 500:

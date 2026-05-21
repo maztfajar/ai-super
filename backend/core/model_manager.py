@@ -516,66 +516,61 @@ class ModelManager:
     # ── Google ────────────────────────────────────────────────
     async def _stream_google(self, model, messages, temperature, max_tokens, tools=None):
         """
-        Google Gemini streaming dengan format prompt yang benar.
+        Google Gemini streaming menggunakan google.genai SDK (v2+).
         Dijalankan di thread pool agar tidak memblokir event loop (SDK sync).
         """
         try:
             import asyncio
-            import google.generativeai as genai
-            genai.configure(api_key=settings.GOOGLE_API_KEY)
+            import google.genai as genai
+            from google.genai import types as genai_types
+
+            client = genai.Client(api_key=settings.GOOGLE_API_KEY)
+
+            # Strip "gemini/" prefix jika ada
+            clean_model = model.replace("gemini/", "") if model.startswith("gemini/") else model
 
             # Pisahkan system prompt dari history percakapan
             system_parts = [m["content"] for m in messages if m["role"] == "system"]
             system_instruction = "\n\n".join(system_parts) if system_parts else None
-            
-            kwargs = {}
-            if tools:
-                from core.tool_converter import openai_to_gemini_tools
-                gemini_tools = openai_to_gemini_tools(tools)
-                if gemini_tools:
-                    kwargs["tools"] = gemini_tools
 
-            # Buat model dengan system instruction
-            gmodel = genai.GenerativeModel(
-                model,
-                system_instruction=system_instruction,
-                generation_config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_tokens,
-                },
-                **kwargs
-            )
-
-            # Konversi history ke format Gemini (hanya role user/model)
-            history = []
+            # Konversi history ke format Gemini (hanya role user/model, kecuali yang terakhir)
             chat_messages = [m for m in messages if m["role"] != "system"]
-            for i, m in enumerate(chat_messages[:-1]):
+            history = []
+            for m in chat_messages[:-1]:
                 role = "user" if m["role"] == "user" else "model"
-                history.append({"role": role, "parts": [m["content"]]})
+                history.append(genai_types.Content(role=role, parts=[genai_types.Part(text=m["content"])]))
 
             # Pesan terakhir dari user
             last_msg = chat_messages[-1]["content"] if chat_messages else ""
 
-            # Jalankan di thread pool — SDK Gemini bersifat synchronous
+            # Config generasi
+            gen_config = genai_types.GenerateContentConfig(
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+                system_instruction=system_instruction,
+            )
+
+            # Jalankan di thread pool — SDK bersifat synchronous
             loop = asyncio.get_event_loop()
 
             def _generate_sync():
-                chat = gmodel.start_chat(history=history)
-                return chat.send_message(last_msg, stream=False)
+                chat = client.chats.create(model=clean_model, history=history, config=gen_config)
+                return chat.send_message(last_msg)
 
             response = await loop.run_in_executor(None, _generate_sync)
-            
-            if response.parts:
-                for part in response.parts:
-                    if getattr(part, 'function_call', None):
-                        # Convert protobuf struct to dict
+
+            if hasattr(response, "candidates") and response.candidates:
+                for part in response.candidates[0].content.parts:
+                    if hasattr(part, "function_call") and part.function_call:
                         fn = part.function_call
-                        args = {k: v for k, v in type(fn.args).items(fn.args)}
+                        args = dict(fn.args) if fn.args else {}
                         yield {"type": "tool_call", "name": fn.name, "args": args}
-                    elif part.text:
+                    elif hasattr(part, "text") and part.text:
                         yield part.text
+            elif hasattr(response, "text") and response.text:
+                yield response.text
             else:
-                yield response.text or ""
+                yield ""
 
         except Exception as e:
             err_str = str(e)

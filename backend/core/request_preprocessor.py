@@ -425,7 +425,24 @@ IMAGE_GEN_PATTERNS = [
     "generate picture", "buat gambar", "bikin foto", "create image", "create picture",
     "gambarkan", "ilustrasikan", "buatkan foto", "bikin ilustrasi", "make image",
     "draw", "sketch", "render gambar", "lukiskan", "desainkan gambar",
+    # Variasi bahasa alami (dengan kata sisipan seperti "saya", "aku", "tolong", dll.)
+    "buatkan saya gambar", "bikinkan saya gambar", "buatkan aku gambar",
+    "bikinkan aku gambar", "tolong buatkan gambar", "tolong bikinkan gambar",
+    "minta gambar", "saya mau gambar", "aku mau gambar", "saya ingin gambar",
+    "aku ingin gambar", "ingin foto", "mau foto", "minta foto",
+    "hasilkan gambar", "ciptakan gambar", "create a picture", "make a picture",
+    "make a photo", "make a drawing", "make an image",
 ]
+
+# Pola regex untuk deteksi intent image_generation yang lebih luas
+# Menangani kasus seperti "buatkan saya gambar ...", "tolong bikinkan gambar ..."
+import re as _re_img
+IMAGE_GEN_REGEX = _re_img.compile(
+    r'\b(buatkan|bikin|bikinkan|buat|tolong|coba|hasilkan|generate|create|make|draw|bisa)\b.{0,40}\b(gambar|foto|ilustrasi|image|picture|photo|drawing)\b'
+    r'|'
+    r'\b(gambarkan|ilustrasikan|lukiskan)\b',
+    _re_img.IGNORECASE
+)
 
 REAL_TIME_PATTERNS = [
     "harga", "hari ini", "terkini", "terbaru", "sekarang", "berita", "live",
@@ -702,7 +719,7 @@ class RequestPreprocessor:
         # ── Post-processing ──────────────────────────────────────────────────
         spec = self._enrich(spec)
 
-        if any(p in msg_lower for p in IMAGE_GEN_PATTERNS):
+        if any(p in msg_lower for p in IMAGE_GEN_PATTERNS) or bool(IMAGE_GEN_REGEX.search(msg_lower)):
             spec.primary_intent = "image_generation"
             if "image_generation" not in spec.intents:
                 spec.intents.insert(0, "image_generation")

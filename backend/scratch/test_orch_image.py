@@ -5,6 +5,9 @@ from pathlib import Path
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
+from dotenv import load_dotenv
+load_dotenv(backend_path.parent / ".env")
+
 from core.orchestrator import orchestrator
 from core.model_manager import model_manager
 
