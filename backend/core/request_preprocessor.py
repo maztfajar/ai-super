@@ -375,6 +375,10 @@ Panduan kompleksitas:
 - 0.4-0.6: sedang (tugas penulisan, coding tunggal)
 - 0.6-0.8: kompleks (coding multi-langkah, analisis mendalam)
 - 0.8-1.0: sangat kompleks (proyek penuh, multi-domain)
+
+== DETEKSI PERALIHAN TOPIK (TOPIC DRIFT) ==
+- Jika history percakapan sebelumnya membahas tentang pembuatan/koding aplikasi (seperti React, Python, web, dsb), namun permintaan user saat ini adalah menulis berita, cerita, artikel, gambar, atau hal-hal non-teknis lainnya, maka Anda harus mengklasifikasikan intent saat ini sesuai dengan permintaan terbaru tersebut (misal: 'writing', 'research').
+- JANGAN mengaitkan permintaan tersebut sebagai bagian dari pengerjaan aplikasi koding sebelumnya (misal: JANGAN menganggap user ingin membuat halaman/fitur berita di web mereka), kecuali jika user secara eksplisit memintanya (seperti: "buatkan halaman berita di website React saya").
 """
 
 
@@ -732,7 +736,9 @@ class RequestPreprocessor:
         elif any(p in msg_lower for p in REAL_TIME_PATTERNS):
             if "real_time_search" not in spec.intents:
                 spec.intents.append("real_time_search")
-            spec.is_simple = False
+            # Only force is_simple = False if complexity is actually high or requires multi-agent
+            if spec.complexity_score >= 0.45 or spec.requires_multi_agent:
+                spec.is_simple = False
 
         spec.preprocessing_time_ms = int((time.time() - start) * 1000)
         log.info(

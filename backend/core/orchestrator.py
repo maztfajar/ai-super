@@ -404,7 +404,12 @@ class Orchestrator:
         )
 
         # Jika continuation intent + ada history → paksa ke orchestrator
-        if is_continuation and history:
+        # KECUALI jika preprocessor mendeteksi intent non-coding/non-system seperti writing, research, general, dll.
+        _NON_CONTINUATION_INTENTS = {
+            "writing", "creative", "general", "image_generation",
+            "audio_generation", "real_time_search", "research"
+        }
+        if is_continuation and history and spec.primary_intent not in _NON_CONTINUATION_INTENTS:
             # Ambil context dari pesan sebelumnya
             last_assistant = next(
                 (h["content"] for h in reversed(history)
@@ -917,20 +922,35 @@ class Orchestrator:
 
                 # Paksa kompleks jika ada command-like keyword di pesan user
         msg_lower = spec.original_message.lower()
-        # Perluasan keyword untuk mencakup perintah eksekusi langsung
-        TECH_COMMANDS = [
-            "curl", "ping", "ls", "df", "free", "systemctl", "ps", "cat", "grep", 
-            "npm", "node", "python", "pip", "install", "run", "start", "cek", 
-            "status", "periksa", "jalankan", "execute", "buka", "open", "buat", 
-            "create", "perbaiki", "fix", "hapus", "delete", "remove", "tambah", 
-            "add", "ubah", "ganti", "edit", "modify", "update", "setup", 
-            "konfigurasi", "configure", "simpan", "save"
+        
+        # 1. Perintah teknis murni (selalu memicu kompleks)
+        STRICT_TECH_COMMANDS = [
+            "curl", "ping", "systemctl", "npm", "pip", "docker", "nginx", "htop",
+            "df -h", "free -h", "netstat", "ifconfig", "ssh", "git clone", "git pull",
+            "git push", "docker-compose", "apt-get", "apt install", "yarn"
         ]
         
-        has_command_keyword = any(w in msg_lower for w in TECH_COMMANDS)
-        if has_command_keyword:
+        # 2. Kata umum yang sering digunakan dalam editing teks / chat biasa di Indonesia
+        # Hanya memicu kompleks jika intent utama bukan penulisan/percakapan umum
+        COMMON_EDIT_KEYWORDS = [
+            "ls", "df", "free", "ps", "cat", "grep", "node", "python", "install", 
+            "run", "start", "cek", "status", "periksa", "jalankan", "execute", 
+            "buka", "open", "buat", "create", "perbaiki", "fix", "hapus", 
+            "delete", "remove", "tambah", "add", "ubah", "ganti", "edit", 
+            "modify", "update", "setup", "konfigurasi", "configure", "simpan", "save"
+        ]
+        
+        has_strict = any(w in msg_lower for w in STRICT_TECH_COMMANDS)
+        has_common = any(w in msg_lower for w in COMMON_EDIT_KEYWORDS)
+        
+        non_tech_intents = {"writing", "general", "creative", "analysis"}
+        
+        if has_strict:
             is_complex_intent = True
-            log.info("Forced complex intent due to command keyword in message", keywords=has_command_keyword)
+            log.info("Forced complex intent due to strict tech command in message")
+        elif has_common and spec.primary_intent not in non_tech_intents:
+            is_complex_intent = True
+            log.info("Forced complex intent due to common edit keyword in message", primary_intent=spec.primary_intent)
 
         # Paksa kompleks jika history panjang (ada task yang sedang berlangsung)
         if spec.action_type != "explain" and len(history) >= 4 and not is_complex_intent:
@@ -1665,6 +1685,12 @@ def _detect_intent_from_history(text: str) -> str:
     if any(w in text_lower for w in
            ["analisis", "laporan", "data", "tabel", "grafik"]):
         return "analysis"
+    if any(w in text_lower for w in
+           ["tulis", "artikel", "berita", "rangkum", "terjemah", "essay", "cerita"]):
+        return "writing"
+    if any(w in text_lower for w in
+           ["cari", "search", "web", "internet", "google", "ddg"]):
+        return "research"
     return "coding"  # default ke coding untuk task kompleks
 
 orchestrator = Orchestrator()

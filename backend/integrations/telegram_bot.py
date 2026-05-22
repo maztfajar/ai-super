@@ -82,6 +82,17 @@ async def _send_photo(token: str, chat_id: int, photo_url: str, caption: str = "
         # Download via localhost proxy — bypasses ISP blocks on Pollinations
         download_url = f"http://localhost:{getattr(settings, 'PORT', 7860)}{photo_url}"
         direct_url = download_url
+        
+        # If it's a proxy URL, try to extract the original URL as fallback for Telegram's direct fetch
+        if "url=" in photo_url:
+            try:
+                parsed = urllib.parse.urlparse(photo_url)
+                params = urllib.parse.parse_qs(parsed.query)
+                if "url" in params:
+                    direct_url = params["url"][0]
+                    log.debug("Extracted direct URL from proxy for Telegram fallback", url=direct_url)
+            except Exception:
+                pass
     elif photo_url.startswith("https://image.pollinations.ai/") or photo_url.startswith("https://pollinations.ai/"):
         # Direct Pollinations URL — route through local proxy to bypass ISP blocks
         safe = urllib.parse.quote(photo_url, safe="")
@@ -606,6 +617,14 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
                                     pass
                             if event.data and "image_url" in event.data:
                                 has_image = event.data["image_url"]
+                            
+                            # Fallback: if no image_url in data, try to extract from text (for tool-based gen)
+                            if not has_image and full_response:
+                                img_match = re.search(r'!\[.*?\]\((.*?)\)', full_response)
+                                if img_match:
+                                    has_image = img_match.group(1)
+                                    log.info("Telegram image detected from response text", chat_id=chat_id, url=has_image)
+                            
                             log.info("Telegram orchestrator done", chat_id=chat_id, total_chunks=chunk_count, response_length=len(full_response))
                         elif event.type == "pending_confirmation":
                             # Should not happen with auto_execute=True, but handle gracefully
@@ -640,6 +659,13 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         if not full_response.strip():
             log.warning("Telegram empty response", chat_id=chat_id, text=text[:50])
             full_response = "⚠️ AI tidak memberikan respons. Ini mungkin karena model sedang sibuk atau pertanyaan terlalu kompleks."
+
+        # Final check for image URL in response text if not already set
+        if not has_image:
+            img_match = re.search(r'!\[.*?\]\((.*?)\)', full_response)
+            if img_match:
+                has_image = img_match.group(1)
+                log.info("Telegram image detected in final response text", chat_id=chat_id)
 
         if has_image:
             # Clean up the markdown image tag from the text

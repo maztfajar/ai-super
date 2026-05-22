@@ -64,6 +64,11 @@ try:
 except ImportError:
     _GOOGLE_TOOLS_AVAILABLE = False
 
+# ── Media tools ───────────────────────────────────────────────
+from .media import (
+    generate_image,
+)
+
 # ── Tool registry — mapping nama → fungsi ────────────────────────────────────
 TOOLS = {
     # ── Core tools ────────────────────────────────────────────
@@ -75,6 +80,7 @@ TOOLS = {
     "web_search":            web_search,
     "read_document":         read_document,
     "replace_in_file":       replace_in_file,
+    "generate_image":        generate_image,
 
     # ── Filesystem tools ──────────────────────────────────────
     "list_directory":        list_directory,    # ls -la terstruktur

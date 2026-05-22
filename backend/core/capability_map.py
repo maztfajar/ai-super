@@ -216,9 +216,12 @@ class CapabilityMapEngine:
             caps = caps & valid_tags
 
             if caps:
-                self._map[model_id] = caps
-                log.info("CapabilityMap: model interviewed",
-                         model=model_id, caps=sorted(caps))
+                # Merge interview results with static hints to ensure base capabilities 
+                # (like image_gen or vision) are not lost if model fails to report them.
+                hints = self._match_static_hints(model_id)
+                self._map[model_id] = caps | hints
+                log.info("CapabilityMap: model interviewed and merged",
+                         model=model_id, caps=sorted(self._map[model_id]))
                 return True
 
         except asyncio.TimeoutError:
@@ -254,6 +257,9 @@ class CapabilityMapEngine:
             matched.update({"audio", "tts"})
         if any(x in model_lower for x in ["image", "dalle", "dall-e", "flux", "sdxl", "pollinations"]):
             matched.add("image_gen")
+        if model_lower.startswith("pollinations/"):
+            matched.add("image_gen")
+            matched.add("text")
         if any(x in model_lower for x in ["omni", "multimodal", "mm"]):
             matched.update({"vision", "audio", "text"})
         if any(x in model_lower for x in ["flash", "mini", "haiku", "small", "nano"]):

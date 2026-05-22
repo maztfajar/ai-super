@@ -49,6 +49,8 @@ MODEL_ROLE_HINTS: Dict[str, List[str]] = {
     "vision":  ["vision"],
     "embed":   ["embedding"],
     "coder":   ["coding"],
+    "image":   ["image_gen", "vision"],
+    "pollinations": ["image_gen", "text"],
 }
 
 # ── Agent role → required capability tags ─────────────────────────────────────
@@ -64,7 +66,7 @@ ROLE_REQUIREMENTS: Dict[str, List[str]] = {
     "vision":     ["vision"],
     "multimodal": ["vision"],
     "audio_gen":  ["audio", "tts"],
-    "image_gen":  ["vision"],
+    "image_gen":  ["image_gen", "vision"],
 }
 
 # ── In-memory routing cache ────────────────────────────────────────────────────

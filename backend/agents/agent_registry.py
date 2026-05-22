@@ -308,14 +308,15 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
     "image_gen": AgentCapability(
         agent_type="image_gen",
         display_name="🖼️ Image Generation Agent",
-        description="Membuat gambar dari deskripsi teks menggunakan model vision",
+        description="Membuat gambar dari deskripsi teks menggunakan model image generation",
         skills=["image_gen", "vision", "creative", "design"],
-        required_capabilities=["vision"],
+        required_capabilities=["image_gen"],
+        tools_allowed=["generate_image"],
         default_temperature=0.7,
         default_max_tokens=1024,
         system_prompt_addon=(
-            "Anda membantu membuat gambar. Gunakan image generation API jika tersedia. "
-            "Jika tidak, berikan deskripsi gambar yang sangat detail."
+            "Anda membantu membuat gambar. Gunakan tool `generate_image` untuk menghasilkan gambar nyata. "
+            "Berikan prompt yang sangat detail ke tool tersebut untuk hasil terbaik."
         ),
     ),
 

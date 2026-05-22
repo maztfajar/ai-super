@@ -710,6 +710,7 @@ class AgentExecutor:
         execution_mode: str = "execution",
         session_id: Optional[str] = None,
         project_path: Optional[str] = None,
+        agent_type: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
 
         system_prompt = await build_agent_system_prompt_async(
@@ -789,8 +790,14 @@ class AgentExecutor:
         
         if execution_mode == "execution":
             user_msg = next((m["content"] for m in reversed(agent_msgs) if m["role"] == "user"), "")
-            # Trigger planning for complex tasks
-            if len(user_msg) > 100 or any(kw in user_msg.lower() for kw in ["buat", "build", "create", "implementasi", "refactor"]):
+            # Only trigger planning for complex CODING or SYSTEM tasks, and strictly bypass for writing/creative/general tasks
+            is_coding_or_system = agent_type in ("coding", "system") or (
+                agent_type is None and any(kw in user_msg.lower() for kw in ["code", "coding", "program", "app", "aplikasi", "build", "create", "implementasi", "refactor", "server", "port", "bash", "terminal"])
+            )
+            is_writing_or_creative = agent_type in ("writing", "creative", "general", "research", "image_gen", "audio_gen") or (
+                any(w in user_msg.lower() for w in ["berita", "artikel", "tulis", "dongeng", "cerita", "essay", "puisi", "pantun", "laporan", "konten", "gambar", "suara"])
+            )
+            if is_coding_or_system and not is_writing_or_creative and (len(user_msg) > 100 or any(kw in user_msg.lower() for kw in ["buat", "build", "create", "implementasi", "refactor"])):
                 yield process_emitter.to_sentinel("thinking", "Membuat rencana eksekusi (DAG)...")
                 
                 # Context history agar planner paham aplikasi apa yang sedang dibahas
