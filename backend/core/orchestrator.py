@@ -1064,6 +1064,7 @@ class Orchestrator:
                             emit_thinking=True, # v4.2: Force emit_thinking for complex paths to show progress in UI
                             session_id=session_id,
                             project_path=project_path,
+                            agent_type=active_agent,
                         ):
                             await q.put(chunk)
                     except asyncio.CancelledError:
@@ -1490,6 +1491,7 @@ class Orchestrator:
                     emit_thinking=stream_chunks,
                     execution_mode="execution",
                     project_path=project_path,
+                    agent_type=agent_type,
                 ):
                     # Filter out process-event sentinels from subtask responses
                     if isinstance(chunk, str) and chunk.startswith(PROCESS_EVENT_PREFIX):
