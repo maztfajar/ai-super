@@ -708,10 +708,11 @@ class RequestPreprocessor:
                 if "real_time_search" not in spec.intents:
                     spec.intents.append("real_time_search")
 
+            is_non_tech = spec.primary_intent in ("writing", "general", "creative", "analysis")
             spec.is_simple = (
                 spec.complexity_score < 0.45
                 and not spec.requires_multi_agent
-                and len(spec.intents) <= 1
+                and (len(spec.intents) <= 1 or is_non_tech)
             )
 
             self._save_to_cache(cache_key, spec, now)
@@ -870,10 +871,11 @@ class RequestPreprocessor:
         if spec.primary_intent in ("image_generation", "audio_generation"):
             spec.is_simple = True
         else:
+            is_non_tech = spec.primary_intent in ("writing", "general", "creative", "analysis")
             spec.is_simple = (
                 spec.complexity_score < 0.45
                 and not spec.requires_multi_agent
-                and n_intents <= 1
+                and (n_intents <= 1 or is_non_tech)
             )
 
         return spec

@@ -879,9 +879,24 @@ User Request: {user_msg}
 
             try:
                 from agents.tools.schema import NATIVE_TOOLS_SCHEMA
+                from agents.agent_registry import agent_registry
+                
+                agent_def = agent_registry.get_agent(agent_type) if agent_type else None
+                if agent_type in ("coding", "system") or agent_type is None:
+                    allowed_tools = NATIVE_TOOLS_SCHEMA
+                elif agent_def:
+                    allowed_names = set(agent_def.tools_allowed)
+                    allowed_tools = [
+                        t for t in NATIVE_TOOLS_SCHEMA
+                        if t.get("type") == "function" and t.get("function", {}).get("name") in allowed_names
+                    ]
+                else:
+                    allowed_tools = []
+                
+                tools_to_pass = allowed_tools if allowed_tools else None
                 
                 async for chunk in model_manager.chat_stream(
-                    base_model, agent_msgs, execution_temperature, max_tokens, tools=NATIVE_TOOLS_SCHEMA
+                    base_model, agent_msgs, execution_temperature, max_tokens, tools=tools_to_pass
                 ):
                     if isinstance(chunk, dict) and chunk.get("type") == "tool_call":
                         # Native function calling mapping

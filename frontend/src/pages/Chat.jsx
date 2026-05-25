@@ -1923,6 +1923,7 @@ export default function Chat() {
   const input = useChatStore(s => s.draftInput)
   const setInput = useChatStore(s => s.setDraftInput)
   const [useRAG, setUseRAG] = useState(false)
+  const [agentMode, setAgentMode] = useState(true)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [speakingId, setSpeakingId] = useState(null)
   const audioRef = useRef(null)
@@ -2576,6 +2577,7 @@ export default function Chat() {
           model: selectedOrchestrator,
           use_rag: useRAG,
           channel: channelType,
+          agent_mode: agentMode,
         },
         imageToSend,
         (chunk) => handleChunk(chunk),
@@ -2654,6 +2656,7 @@ export default function Chat() {
           model: selectedOrchestrator,
           use_rag: useRAG,
           channel: channelType,
+          agent_mode: agentMode,
         },
         (chunk) => handleChunk(chunk),
         async (done) => {
@@ -2935,6 +2938,21 @@ export default function Chat() {
           >
             📚 RAG
             {useRAG && <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"/>}
+          </button>
+
+          {/* Agent Mode Toggle */}
+          <button
+            onClick={() => setAgentMode(!agentMode)}
+            className={clsx(
+              'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border flex items-center gap-1.5',
+              agentMode
+                ? 'bg-accent/15 border-accent/50 text-accent shadow-[0_0_12px_rgba(168,85,247,0.3)]'
+                : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5'
+            )}
+            title="Toggle Agent / Deep Thinking Mode"
+          >
+            🧠 Agent Mode
+            {agentMode && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"/>}
           </button>
         </div>
 

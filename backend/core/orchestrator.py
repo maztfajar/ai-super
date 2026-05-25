@@ -97,6 +97,7 @@ class Orchestrator:
         emit_thinking: bool = True,
         auto_execute: bool = False,
         project_path: str = None,
+        force_simple: bool = False,
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """
         Main orchestration pipeline. Yields events as the orchestration progresses.
@@ -163,6 +164,11 @@ class Orchestrator:
                 is_simple=True,
                 primary_intent="general",
             )
+
+        if force_simple:
+            spec.is_simple = True
+            if spec.primary_intent in ("system", "file_operation", "coding", "web_development", "research"):
+                spec.primary_intent = "general"
 
         yield OrchestratorEvent.proc("Analyzed", f"intent: {spec.primary_intent} ({spec.action_type})", extra={
             "result": (

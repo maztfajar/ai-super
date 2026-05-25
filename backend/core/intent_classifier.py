@@ -68,9 +68,9 @@ _FILE_KEYWORDS = [
 
 # Kata kunci yang PASTI TIDAK butuh popup
 _NO_POPUP_KEYWORDS = [
-    r"\bbuatkan?\s+(artikel|berita|cerita|puisi|konten|caption|post)\b",
-    r"\bgenerate\s+(gambar|image|foto)\b",
-    r"\bbikin(kan)?\s+(artikel|berita|cerita|puisi|caption)\b",
+    r"\bbuatkan?\b.*\b(artikel|berita|cerita|puisi|konten|caption|post)\b",
+    r"\bgenerate\b.*\b(gambar|image|foto)\b",
+    r"\bbikin(kan)?\b.*\b(artikel|berita|cerita|puisi|caption)\b",
     r"\bringkas(kan)?\b",
     r"\banalisis\b",
     r"\bjelaskan?\b",

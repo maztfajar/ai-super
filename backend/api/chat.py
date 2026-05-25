@@ -82,6 +82,7 @@ class ChatRequest(BaseModel):
     image_b64: Optional[str] = None  # Base64 encoded image
     image_mime: Optional[str] = None  # MIME type (image/png, image/jpeg, etc)
     channel: Optional[str] = None  # Channel source (e.g. 'web', 'telegram')
+    agent_mode: Optional[bool] = None
 
 
 class NewSessionRequest(BaseModel):
@@ -403,6 +404,7 @@ async def chat_send(
                         image_b64=req.image_b64,
                         image_mime=req.image_mime,
                         project_path=project_path,
+                        force_simple=True if req.agent_mode is False else False,
                     ):
                         await q.put(event)
                 except asyncio.CancelledError:

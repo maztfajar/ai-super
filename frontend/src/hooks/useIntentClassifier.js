@@ -43,6 +43,30 @@ export function useIntentClassifier() {
    * @returns {Promise<boolean>} true = lanjut proses normal, false = popup dibuka
    */
   const classifyAndHandle = useCallback(async (message, onProceed) => {
+    // ── Fast-path pre-check on frontend ──
+    const msg = (message || "").toLowerCase().trim();
+    
+    // Kata kunci yang mungkin membutuhkan popup (app building / file operations)
+    const technicalKeywords = [
+      'app', 'aplikasi', 'website', 'web', 'dashboard', 'api', 'backend', 'frontend', 'proyek', 'project',
+      'file', 'folder', 'direktori', 'directory', 'coding', 'setup', 'build', 'create', 'create-vite', 'react', 'nextjs',
+      'edit', 'buka', 'open', 'simpan', 'save', 'modify', 'delete', 'hapus', 'ganti nama', 'rename'
+    ];
+    
+    // Kata kunci yang bersifat deskriptif / penulisan (tidak butuh popup)
+    const nonPopupKeywords = [
+      'berita', 'artikel', 'cerita', 'puisi', 'pantun', 'dongeng', 'gambar', 'image', 'suara', 'audio', 
+      'ringkas', 'terjemah', 'laporan', 'caption', 'konten', 'post', 'email', 'surat', 'analisis', 'jelaskan'
+    ];
+    
+    const hasTech = technicalKeywords.some(kw => msg.includes(kw));
+    const hasNonPopup = nonPopupKeywords.some(kw => msg.includes(kw));
+    
+    // Jika tidak mengandung keyword teknis, atau mengandung keyword penulisan tanpa merujuk ke file/folder spesifik
+    if (!hasTech || (hasNonPopup && !msg.includes('file') && !msg.includes('folder') && !msg.includes('aplikasi') && !msg.includes('app') && !msg.includes('project') && !msg.includes('proyek'))) {
+      return true; // Lanjut kirim pesan secara instan (0ms delay)
+    }
+
     try {
       const res = await fetch(`${API_BASE}/file-manager/classify-intent`, {
         method: "POST",
