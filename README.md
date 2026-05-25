@@ -1,4 +1,4 @@
-# 🧠 AI ORCHESTRATOR v4.1
+# 🧠 AI ORCHESTRATOR v4.1.14
 ### *High-Autonomy Execution, Hardened Resilience & Execution Continuity*
 
 <p align="center">
@@ -30,6 +30,8 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 
 ### 2. 🧠 Intelligence, Reasoning & Memory
 *   **5-Tahap ReAct Reasoning:** Setiap eksekusi didahului dengan 5-tahap penalaran kognitif: *Intent Inference* → *Context Exploration* → *Plan* → *Execute* → *Verify*.
+*   **Human Logic Engine & Emotional State (v4.1.14):** Sistem menganalisis kondisi emosional pengguna secara *real-time* (emosi dominan, intensitas emosi, urgensi, niat tersirat, kebutuhan validasi) menggunakan kata kunci bilingual (ID/EN) sebelum melakukan klasifikasi intent teknis. Jika terdeteksi frustrasi atau tekanan waktu, prioritas kualitas otomatis ditingkatkan dan nada disesuaikan secara dinamis.
+*   **Humanizer Skill (Anti-Robot Slop):** Modul polesan bahasa dinamis yang menyaring kata/frasa klise mesin yang kaku (*"Penting untuk diingat"*, *"Sebagai model bahasa"*, *"Kesimpulannya"*, dll.) agar gaya komunikasi model lebih natural, asimetris, kasual, dan layaknya manusia.
 *   **QMD (Query Memory Distillation):** Algoritma kompresi konteks yang membuang redundansi percakapan sambil tetap menjaga format *whitespace/newline* pada kode secara ketat. Menghasilkan efisiensi token hingga **63%**.
 *   **Procedural Memory & Skill Crystallization:** Mengekstraksi graf eksekusi (*tool calls*) yang berhasil ≥5x berturut-turut menjadi *Learned Skill* permanen agar sistem bekerja lebih cepat di kemudian hari.
 *   **Auto-Generate AI Core:** Kemampuan menghasilkan profil identitas dan konfigurasi internal (*system prompt*) secara otomatis dari deskripsi bahasa natural pengguna dalam <10 detik.
@@ -46,7 +48,12 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 *   **Smart Audio Processing:** Otomatis memotong jawaban panjang, fallback ke teks jika TTS gagal, dan tidak menyimpan file audio di server (privacy-first).
 *   **AI Role Integration:** Terintegrasi penuh dengan AI Role Mapping — Anda bisa set model khusus untuk `multimodal` (Whisper) dan `audio_gen` (TTS) atau biarkan sistem auto-routing.
 
-### 5. 🛡️ Hardened Resilience & Execution Continuity
+### 5. 🎨 UI/UX & Interactive Interface (NEW!)
+*   **Expandable Thinking Process:** Antarmuka visual yang menampilkan langkah proses berpikir agen secara transparan ala Claude AI. Pengguna bisa mengklik ikon khusus untuk melihat detail langkah pemikiran model.
+*   **Drag & Drop Image Support:** Kemudahan mengirimkan input gambar dengan menyeret dan menjatuhkan file langsung ke area chat UI.
+*   **Auto-Focus & Smooth Interaction:** Input chat otomatis fokus kembali setelah mengirim pesan, dilengkapi penanganan error dashboard yang lebih baik untuk pengalaman integrasi yang mulus.
+
+### 6. 🛡️ Hardened Resilience & Execution Continuity
 *   **State Checkpointing & DAG Watchdog:** Eksekusi tugas diamankan di dalam basis data persisten. Jika sistem macet atau progres stagnan lebih dari 5 giliran, Watchdog otomatis memaksa pemulihan tanpa instruksi halusinasi ke *LLM*.
 *   **Actionable Error Translator & Circuit Breaker:** Sistem akan mengonversi pesan error teknis menjadi langkah taktis (misal: "Port bentrok, kill PID 1234"). Jika alat (*tool*) terus gagal 3x, ia akan dikenai penangguhan (*suspend*) sesi secara sementara agar tidak memblokir antrean.
 *   **Truncation Recovery:** Jika LLM memotong *output* kode akibat limit *max_tokens*, Orchestrator secara otomatis menyuntikkan *prompt* pelanjut dan merekatkan hasilnya di balik layar.
@@ -122,6 +129,7 @@ Sistem menggunakan **Native Function Calling** untuk eksekusi tanpa batas dan to
 *   **Network Isolation:** Mode pekerja (*worker*) diisolasi penuh dalam kontainer Docker, sehingga tidak dapat mengakses OS *Host* maupun melakukan eksploitasi *kernel*.
 *   **Privacy-Safe Prompting:** Nama asli LLM komersial disembunyikan menggunakan pelindung tiga lapis (*Prompt Alias*, *Post-processing Regex*, dan *Audit Log*) sehingga identitas LLM tidak bocor ke antarmuka klien.
 *   **Wipe & Export:** Anda memiliki kontrol penuh. Memori dapat dihapus total (*wipe*) kapan saja lewat CLI atau UI. Riwayat percakapan dapat diekspor menjadi format PDF, DOCX, TXT, dan XLSX.
+*   **Independent Local RAG (Git Tracking Fix):** Pelacakan repositori mengabaikan database binary (`chroma.sqlite3`) secara default. Setiap environment (dev/prod) memiliki data RAG lokal masing-masing untuk menghindari merge conflict saat melakukan update.
 
 ---
 
@@ -196,5 +204,5 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 <br>
 <p align="center">
   <i>Focus on Execution. Built for Engineers.</i><br>
-  <b>AI ORCHESTRATOR v4.1 — A True High-Autonomy Engineering Agent.</b>
+  <b>AI ORCHESTRATOR v4.1.14 — A True High-Autonomy Engineering Agent.</b>
 </p>
