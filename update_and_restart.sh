@@ -19,6 +19,10 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 err()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 step() { echo -e "\n${BOLD}${CYAN}━━━ $1 ━━━${NC}\n"; }
 
+can_sudo() {
+    sudo -n true 2>/dev/null
+}
+
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$APP_DIR/backend"
 VENV_PYTHON="$BACKEND_DIR/venv/bin/python3"
@@ -77,8 +81,12 @@ step "3. Menghentikan Proses Lama"
 # Cek apakah berjalan sebagai systemd service
 if systemctl list-unit-files | grep -q "ai-orchestrator-api.service"; then
     if systemctl is-active --quiet ai-orchestrator-api; then
-        sudo systemctl stop ai-orchestrator-api
-        log "Systemd service ai-orchestrator-api dihentikan"
+        if can_sudo; then
+            sudo systemctl stop ai-orchestrator-api
+            log "Systemd service ai-orchestrator-api dihentikan"
+        else
+            warn "Systemd service aktif tapi sudo butuh password. Melewati penghentian otomatis..."
+        fi
     fi
 fi
 
@@ -104,9 +112,13 @@ sleep 2
 # Matikan service systemd lama (legacy) yang mungkin merebut port
 for service in ai-super-assistant-api.service pitakonku-api.service; do
     if systemctl list-unit-files | grep -q "$service" 2>/dev/null; then
-        warn "Mematikan service lama: $service..."
-        sudo systemctl stop "$service" 2>/dev/null || true
-        sudo systemctl disable "$service" 2>/dev/null || true
+        if can_sudo; then
+            warn "Mematikan service lama: $service..."
+            sudo systemctl stop "$service" 2>/dev/null || true
+            sudo systemctl disable "$service" 2>/dev/null || true
+        else
+            warn "Service lama $service terdeteksi, lewati pemutusan otomatis karena tidak ada akses sudo tanpa password."
+        fi
     fi
 done
 
@@ -235,7 +247,7 @@ set -a
 source "$APP_DIR/.env"
 set +a
 
-if systemctl list-unit-files | grep -q "ai-orchestrator-api.service"; then
+if systemctl list-unit-files | grep -q "ai-orchestrator-api.service" && can_sudo; then
     log "Ditemukan systemd service. Menjalankan via systemctl..."
     sudo systemctl daemon-reload
     sudo systemctl start ai-orchestrator-api
@@ -246,7 +258,7 @@ if systemctl list-unit-files | grep -q "ai-orchestrator-api.service"; then
         err "Server gagal dijalankan via systemd. Cek log: sudo journalctl -u ai-orchestrator-api -f"
     fi
 else
-    log "Systemd service tidak ditemukan. Menjalankan via nohup..."
+    log "Systemd service tidak ditemukan atau tidak memiliki akses sudo. Menjalankan via nohup..."
     nohup "$VENV_UVICORN" main:app \
         --host 0.0.0.0 \
         --port "${PORT:-7860}" \
