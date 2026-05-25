@@ -43,6 +43,33 @@ log = structlog.get_logger()
 _pending_plans: Dict[str, asyncio.Event] = {}
 
 
+def _sanitize_commercial_names(text: str) -> str:
+    """
+    Pelindung lapis kedua: Post-processing Regex.
+    Menyembunyikan nama asli LLM komersial (seperti OpenAI, Anthropic, Gemini, dll)
+    agar tidak bocor ke antarmuka klien.
+    """
+    if not text:
+        return text
+    import re as _re
+    replacements = [
+        (r'(?i)\bopenai\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bchatgpt\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bclaude\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\banthropic\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bgemini\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bdeepseek\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bqwen\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bllama\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bgpt-4o\b', 'AI ORCHESTRATOR'),
+        (r'(?i)\bgpt-4\b', 'AI ORCHESTRATOR'),
+    ]
+    sanitized = text
+    for pattern, repl in replacements:
+        sanitized = _re.sub(pattern, repl, sanitized)
+    return sanitized
+
+
 @dataclass
 class OrchestratorEvent:
     """Event streamed back to the client during orchestration.
@@ -53,13 +80,17 @@ class OrchestratorEvent:
     data: Optional[Dict] = None
 
     def to_sse(self) -> str:
+        content = self.content
+        if self.type in ("chunk", "status", "error"):
+            content = _sanitize_commercial_names(content)
+
         if self.type == "process":
             # Process events carry structured step data
             payload = {"type": "process"}
             if self.data:
                 payload.update(self.data)
             return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-        payload = {"type": self.type, "content": self.content}
+        payload = {"type": self.type, "content": content}
         if self.data:
             payload.update(self.data)
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"

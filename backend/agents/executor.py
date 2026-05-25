@@ -1399,6 +1399,10 @@ User Request: {user_msg}
                         res_str_test = str(res)
                         if "error" in res_str_test.lower() or "failed" in res_str_test.lower():
                             error_recovery.record_tool_failure(cmd, res_str_test[:200], sid)
+                            # Emit translated actionable error to user UI
+                            from core.error_recovery import ActionableErrorTranslator
+                            translated_err = ActionableErrorTranslator.translate(res_str_test)
+                            yield process_emitter.to_sentinel("Error", f"{cmd} failed: {translated_err}")
                         else:
                             error_recovery.record_tool_success(cmd, sid)
 

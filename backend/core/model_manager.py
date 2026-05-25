@@ -1087,10 +1087,11 @@ class ModelManager:
         """
         import io, base64, os
 
-        # 1. Cek AI Role Mapping untuk 'multimodal'
-        multimodal_model = os.getenv("AI_ROLE_MULTIMODAL", "").strip()
+        # 1. Cek AI Role Mapping / Auto-routing untuk 'multimodal'
+        from agents.agent_registry import agent_registry
+        multimodal_model = agent_registry.resolve_model_for_agent("multimodal")
         
-        # 2. Jika user set Gemini di AI Role Mapping, gunakan Gemini
+        # 2. Jika user/auto set Gemini di AI Role Mapping, gunakan Gemini
         if multimodal_model and "gemini" in multimodal_model.lower():
             try:
                 import google.generativeai as genai
@@ -1168,6 +1169,67 @@ class ModelManager:
                 log.warning("Sumopod Whisper failed", error=str(e)[:80])
 
         return ""
+
+    async def generate_speech(
+        self,
+        text: str,
+        voice_or_model: str = "auto",
+        lang: str = "id",
+    ) -> bytes:
+        """
+        Hasilkan audio dari teks (TTS).
+        Mendukung:
+        - OpenAI TTS (jika voice_or_model adalah model OpenAI TTS atau dialokasikan via AI Role)
+        - edge-tts (100% gratis dan unlimited, default)
+        """
+        import io
+        from core.config import settings
+
+        # 1. Cek jika model_id adalah model OpenAI TTS
+        is_openai_tts = False
+        openai_model = "tts-1"
+        voice_name = "alloy"  # default OpenAI voice
+
+        if voice_or_model and ("tts-1" in voice_or_model.lower() or "tts" in voice_or_model.lower()) and "openai" in voice_or_model.lower():
+            is_openai_tts = True
+            if "/" in voice_or_model:
+                openai_model = voice_or_model.split("/")[-1]
+
+        if is_openai_tts and settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
+            try:
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+                response = await client.audio.speech.create(
+                    model=openai_model,
+                    voice=voice_name,
+                    input=text,
+                )
+                return await response.aread()
+            except Exception as e:
+                log.warning("OpenAI TTS failed, falling back to edge-tts", error=str(e))
+
+        # 2. Fallback ke edge-tts
+        import edge_tts
+        # Mapping bahasa ke voice edge-tts
+        voice_map = {
+            "id": "id-ID-ArdiNeural",      # Indonesia (Male)
+            "en": "en-US-GuyNeural",        # English (Male)
+            "ar": "ar-SA-HamedNeural",      # Arabic (Male)
+            "jp": "ja-JP-KeitaNeural",      # Japanese (Male)
+            "jv": "jv-ID-DimasNeural",      # Jawa (Javanese Male)
+        }
+        voice = voice_map.get(lang, "id-ID-ArdiNeural")
+
+        # Jika voice_or_model bukan model name tetapi voice name langsung dari edge-tts, gunakan langsung
+        if voice_or_model and "-" in voice_or_model and not "/" in voice_or_model:
+            voice = voice_or_model
+
+        communicate = edge_tts.Communicate(text, voice)
+        audio_data = io.BytesIO()
+        async for chunk in communicate.stream():
+            if chunk["type"] == "audio":
+                audio_data.write(chunk["data"])
+        return audio_data.getvalue()
 
     # ── Status & utils ────────────────────────────────────────
     async def get_status(self) -> list:

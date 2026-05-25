@@ -203,63 +203,46 @@ async def _send(token: str, chat_id: int, text: str, include_drive_btn: bool = F
 
 async def _send_voice(token: str, chat_id: int, text: str):
     """Generate TTS and send as voice note."""
-    import httpx, io, edge_tts
+    import httpx
+    from core.config import settings
+    from core.model_manager import model_manager
+    from agents.agent_registry import agent_registry
     try:
-        communicate = edge_tts.Communicate(text, "id-ID-ArdiNeural")
-        audio_data = io.BytesIO()
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_data.write(chunk["data"])
-        audio_data.seek(0)
+        audio_model = agent_registry.resolve_model_for_agent("audio_gen")
+        audio_bytes = await model_manager.generate_speech(text, voice_or_model=audio_model, lang=settings.VOICE_REPLY_LANGUAGE)
         
         async with httpx.AsyncClient(timeout=30) as c:
             await c.post(
                 f"https://api.telegram.org/bot{token}/sendVoice",
                 data={'chat_id': str(chat_id)},
-                files={'voice': ('voice.mp3', audio_data.getvalue())}
+                files={'voice': ('voice.mp3', audio_bytes, 'audio/mpeg')}
             )
     except Exception as e:
         log.error("Telegram send_voice error", error=str(e))
 
 
 async def _send_voice_with_tts(token: str, chat_id: int, text: str):
-    """Generate TTS dengan edge-tts dan kirim sebagai voice note ke Telegram."""
-    import httpx, io, edge_tts
+    """Generate TTS dengan edge-tts / Model Manager dan kirim sebagai voice note ke Telegram."""
+    import httpx
     from core.config import settings
+    from core.model_manager import model_manager
+    from agents.agent_registry import agent_registry
     
     try:
-        # Mapping bahasa ke voice edge-tts
-        voice_map = {
-            "id": "id-ID-ArdiNeural",      # Indonesia (Male)
-            "en": "en-US-GuyNeural",        # English (Male)
-            "ar": "ar-SA-HamedNeural",      # Arabic (Male)
-            "jp": "ja-JP-KeitaNeural",      # Japanese (Male)
-            "jv": "id-ID-ArdiNeural",       # Jawa (fallback ke Indonesia)
-        }
-        
-        voice = voice_map.get(settings.VOICE_REPLY_LANGUAGE, "id-ID-ArdiNeural")
-        
         # Batasi panjang teks (Telegram voice max ~1 menit, ~200 kata)
         max_chars = 1000
         if len(text) > max_chars:
             text = text[:max_chars] + "... Silakan baca caption untuk jawaban lengkap."
         
-        # Generate audio dengan edge-tts
-        communicate = edge_tts.Communicate(text, voice)
-        audio_data = io.BytesIO()
-        
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_data.write(chunk["data"])
-        
-        audio_data.seek(0)
+        audio_model = agent_registry.resolve_model_for_agent("audio_gen")
+        audio_bytes = await model_manager.generate_speech(text, voice_or_model=audio_model, lang=settings.VOICE_REPLY_LANGUAGE)
         
         # Kirim ke Telegram
         async with httpx.AsyncClient(timeout=60) as c:
             await c.post(
                 f"https://api.telegram.org/bot{token}/sendVoice",
                 data={'chat_id': str(chat_id)},
-                files={'voice': ('voice.mp3', audio_data.getvalue(), 'audio/mpeg')}
+                files={'voice': ('voice.mp3', audio_bytes, 'audio/mpeg')}
             )
             
         log.info("Voice reply sent", chat_id=chat_id, text_length=len(text))

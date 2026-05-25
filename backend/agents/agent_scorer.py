@@ -185,7 +185,7 @@ class AgentScorer:
             return default, agent_type, AgentScore(model_id=default, agent_type=agent_type)
 
         # ── Quality priority boosts — berdasarkan capability tags ──────────────
-        if quality_priority in ("speed", "quality"):
+        if quality_priority in ("speed", "quality", "high"):
             target_caps = _SPEED_CAPS if quality_priority == "speed" else _QUALITY_CAPS
             for c in candidates:
                 model_caps = self._get_model_caps(c.model_id)

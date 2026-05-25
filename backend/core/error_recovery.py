@@ -228,12 +228,20 @@ class ActionableErrorTranslator:
     @classmethod
     def translate(cls, raw_error: str) -> str:
         """
-        Terjemahkan error mentah ke pesan actionable.
+        Terjemahkan error mentah (FileNotFoundError, ENOENT, dsb)
+        menjadi pesan yang langsung actionable untuk user.
         Returns: pesan actionable, atau raw_error jika tidak cocok pattern apapun.
         """
         err_lower = raw_error.lower()
         for pattern, description, suggestion in cls._TRANSLATION_MAP:
             if pattern.lower() in err_lower:
+                # Dynamic port extraction for address conflicts
+                if "inuse" in pattern.lower() or "in use" in pattern.lower():
+                    import re as _re
+                    port_match = _re.search(r'\b(\d{4,5})\b', raw_error)
+                    if port_match:
+                        port = port_match.group(1)
+                        suggestion = suggestion.replace("PORT", port)
                 return (
                     f"❌ **{description}**\n"
                     f"💡 **Solusi:** {suggestion}\n"
@@ -248,6 +256,12 @@ class ActionableErrorTranslator:
         err_lower = raw_error.lower()
         for pattern, _, suggestion in cls._TRANSLATION_MAP:
             if pattern.lower() in err_lower:
+                if "inuse" in pattern.lower() or "in use" in pattern.lower():
+                    import re as _re
+                    port_match = _re.search(r'\b(\d{4,5})\b', raw_error)
+                    if port_match:
+                        port = port_match.group(1)
+                        suggestion = suggestion.replace("PORT", port)
                 return f"\n[HINT: {suggestion}]"
         return ""
 

@@ -12,37 +12,35 @@ log = structlog.get_logger()
 VOICES = {
     "id": "id-ID-ArdiNeural",
     "en": "en-US-GuyNeural",
+    "ar": "ar-SA-HamedNeural",
     "jp": "ja-JP-KeitaNeural",
+    "jv": "jv-ID-DimasNeural",
 }
 
 @router.get("/tts")
 async def text_to_speech(
     text: str = Query(..., description="The text to convert to speech"),
-    lang: str = Query("id", description="Language code (id, en, jp)"),
+    lang: str = Query("id", description="Language code (id, en, jp, ar, jv)"),
 ):
     """
-    Convert text to speech using Microsoft Edge TTS and return as an MP3 stream.
+    Convert text to speech using Microsoft Edge TTS / Model Manager and return as an MP3 stream.
     """
     if not text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
-    voice = VOICES.get(lang, VOICES["id"])
-    
     try:
-        log.info("Generating TTS", text_len=len(text), lang=lang, voice=voice)
+        from core.model_manager import model_manager
+        from agents.agent_registry import agent_registry
         
-        communicate = edge_tts.Communicate(text, voice)
+        # Resolve audio_gen model
+        audio_model = agent_registry.resolve_model_for_agent("audio_gen")
         
-        # We need to collect the audio in a buffer
-        audio_data = io.BytesIO()
-        async for chunk in communicate.stream():
-            if chunk["type"] == "audio":
-                audio_data.write(chunk["data"])
+        log.info("Generating TTS via ModelManager", text_len=len(text), lang=lang, audio_model=audio_model)
         
-        audio_data.seek(0)
+        audio_bytes = await model_manager.generate_speech(text, voice_or_model=audio_model, lang=lang)
         
         return StreamingResponse(
-            audio_data, 
+            io.BytesIO(audio_bytes), 
             media_type="audio/mpeg",
             headers={"Content-Disposition": f'attachment; filename="tts.mp3"'}
         )
