@@ -927,6 +927,31 @@ class ModelManager:
                 model_param = f"&model={pol_model}" if pol_model else ""
                 # Free, keyless API that directly returns an image buffer/URL, wrapped in backend proxy to bypass ISP block
                 direct_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?nologo=true{model_param}"
+                
+                # Pre-warm/pre-generate the image on pollinations to ensure it gets generated and cached
+                import httpx
+                import asyncio
+                log.info("generate_image: pre-warming Pollinations AI directly", url=direct_url)
+                async with httpx.AsyncClient(follow_redirects=True, timeout=60.0) as client:
+                    for attempt in range(3):
+                        try:
+                            resp = await client.get(direct_url)
+                            if resp.status_code == 200:
+                                log.info("generate_image: Pollinations pre-warm success", status=resp.status_code)
+                                break
+                            elif resp.status_code in (402, 429) and attempt < 2:
+                                wait_time = 3 * (attempt + 1)
+                                log.warning("generate_image: Pollinations overloaded/rate-limited, retrying", status=resp.status_code, wait=wait_time)
+                                await asyncio.sleep(wait_time)
+                            else:
+                                log.warning("generate_image: Pollinations returned non-200 during pre-warm", status=resp.status_code)
+                                break
+                        except Exception as e:
+                            if attempt < 2:
+                                await asyncio.sleep(3)
+                            else:
+                                log.warning("generate_image: Pollinations pre-warm error", error=str(e))
+
                 return f"/api/media/proxy?url={urllib.parse.quote(direct_url, safe='')}"
             except Exception as e:
                 log.error("generate_image: Pollinations failed", error=str(e))
@@ -1065,6 +1090,31 @@ class ModelManager:
             import urllib.parse
             safe_prompt = urllib.parse.quote(prompt)
             pollinations_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?nologo=true"
+            
+            # Pre-warm/pre-generate the image on pollinations to ensure it gets generated and cached
+            import httpx
+            import asyncio
+            log.info("generate_image: pre-warming Pollinations AI fallback", url=pollinations_url)
+            async with httpx.AsyncClient(follow_redirects=True, timeout=60.0) as client:
+                for attempt in range(3):
+                    try:
+                        resp = await client.get(pollinations_url)
+                        if resp.status_code == 200:
+                            log.info("generate_image: Pollinations fallback pre-warm success", status=resp.status_code)
+                            break
+                        elif resp.status_code in (402, 429) and attempt < 2:
+                            wait_time = 3 * (attempt + 1)
+                            log.warning("generate_image: Pollinations fallback overloaded/rate-limited, retrying", status=resp.status_code, wait=wait_time)
+                            await asyncio.sleep(wait_time)
+                        else:
+                            log.warning("generate_image: Pollinations fallback returned non-200 during pre-warm", status=resp.status_code)
+                            break
+                    except Exception as e:
+                        if attempt < 2:
+                            await asyncio.sleep(3)
+                        else:
+                            log.warning("generate_image: Pollinations fallback pre-warm error", error=str(e))
+
             # Wrap through backend proxy to bypass ISP DNS blocking (same as explicit Pollinations path)
             return f"/api/media/proxy?url={urllib.parse.quote(pollinations_url, safe='')}"
         except Exception as e:

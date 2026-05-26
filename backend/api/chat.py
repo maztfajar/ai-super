@@ -320,10 +320,36 @@ async def chat_send(
             _saved_to_db = False
 
             async def save_to_db_bg():
-                nonlocal _saved_to_db
+                nonlocal _saved_to_db, full_response
                 if _saved_to_db or (not full_response.strip() and not thinking_steps):
                     return
                 try:
+                    # --- AUTO IMAGE POST-PROCESSOR ---
+                    # Detect fake/hallucinated markdown images and replace them with actual generated images!
+                    import re
+                    fake_img_pattern = r'!\[(.*?)\]\((https?://[^\s)]+)\)'
+                    matches = re.findall(fake_img_pattern, full_response)
+                    if matches:
+                        log.info("Checking detected image tags for hallucinations in background save", count=len(matches))
+                        for alt_text, fake_url in matches:
+                            hallucination_domains = ["imgur.com", "unsplash.com", "placeholder", "dummy", "example.com", "picsum.photos", "google.com/imgres"]
+                            if any(dom in fake_url.lower() for dom in hallucination_domains):
+                                log.info("Detected hallucinated image URL, replacing with real generated image", url=fake_url, prompt=alt_text)
+                                try:
+                                    prompt_clean = alt_text.replace("Ilustrasi", "").replace("ilustrasi", "").strip("1234567890:.- ")
+                                    if not prompt_clean:
+                                        prompt_clean = f"{req.message} - {alt_text}"
+                                    
+                                    # Add user's message context if prompt is very short to get relevant results
+                                    if len(prompt_clean) < 10:
+                                        prompt_clean = f"{req.message}: {prompt_clean}"
+                                        
+                                    real_url = await model_manager.generate_image(prompt_clean, model="pollinations/auto")
+                                    if real_url:
+                                        full_response = full_response.replace(fake_url, real_url)
+                                except Exception as img_err:
+                                    log.warning("Failed to auto-generate replacement image in background save", error=str(img_err))
+
                     from db.database import AsyncSessionLocal
                     from datetime import datetime, timezone
                     async with AsyncSessionLocal() as save_db:
