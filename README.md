@@ -1,4 +1,4 @@
-# 🧠 AI ORCHESTRATOR v4.1.14
+# 🧠 AI ORCHESTRATOR v4.1.21
 ### *High-Autonomy Execution, Hardened Resilience & Execution Continuity*
 
 <p align="center">
@@ -24,12 +24,16 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 
 ### 1. ⚡ High-Autonomy Execution & Scalability
 *   **Native Function Calling (v4.1):** Orkestrasi kini didorong secara asli (*natively*) oleh standar JSON Schema bawaan dari penyedia model (OpenAI, Anthropic, Gemini, dll), memastikan akurasi pemanggilan alat (tool call) 95% bebas *syntax error* dan menghilangkan ketergantungan pada *regex parsing*.
+*   **Browser Automation Tools (v4.1.21):** Agen dilengkapi kemampuan navigasi web otonom (`browser_navigate`), interaksi elemen (`browser_click`, `browser_type`), ekstraksi teks (`browser_extract_text`), dan penangkapan halaman secara visual (`browser_screenshot`).
+*   **AI Image Generation (v4.1.21):** Integrasi pembuatan gambar (`generate_image`) dari instruksi teks dengan opsi resolusi dinamis (landscape, portrait, square) dan tingkat kualitas.
 *   **Infinite Sub-Task Decomposition:** Sistem sanggup memecah instruksi skala besar (*Fullstack App*, *Deployment*, *Database*) menjadi belasan langkah operasional tanpa terpotong oleh batasan sewenang-wenang (hard-limit).
 *   **True Parallel Execution:** Menggunakan arsitektur Directed Acyclic Graph (DAG) di `Command Center`, agen-agen beroperasi secara bersamaan (paralel) untuk tugas-tugas yang tidak saling mengunci (*non-blocking*).
 *   **Smart Botleneck Bypass:** Agen otomatis menyelesaikan path file yang salah, menimpa file (*overwrite*), dan membuat direktori secara mandiri. Intervensi manusia hanya diperlukan pada aksi destruktif tingkat sistem.
 
 ### 2. 🧠 Intelligence, Reasoning & Memory
 *   **5-Tahap ReAct Reasoning:** Setiap eksekusi didahului dengan 5-tahap penalaran kognitif: *Intent Inference* → *Context Exploration* → *Plan* → *Execute* → *Verify*.
+*   **Multi-Model Consensus / Voting Engine (v4.1.21):** Mengaktifkan consensus voting engine (`VotingEngine`) saat kompleksitas tugas tinggi (score ≥ 0.8) untuk menjalankan beberapa model secara paralel dan menyatukan respons terbaik.
+*   **Proactive Task Scheduler (v4.1.21):** Penjadwalan otomatis tugas masa depan atau pengingat (`schedule_task`) dengan perulangan berkala (daily, weekly) yang dikelola oleh Celery background worker.
 *   **Human Logic Engine & Emotional State (v4.1.14):** Sistem menganalisis kondisi emosional pengguna secara *real-time* (emosi dominan, intensitas emosi, urgensi, niat tersirat, kebutuhan validasi) menggunakan kata kunci bilingual (ID/EN) sebelum melakukan klasifikasi intent teknis. Jika terdeteksi frustrasi atau tekanan waktu, prioritas kualitas otomatis ditingkatkan dan nada disesuaikan secara dinamis.
 *   **Humanizer Skill (Anti-Robot Slop):** Modul polesan bahasa dinamis yang menyaring kata/frasa klise mesin yang kaku (*"Penting untuk diingat"*, *"Sebagai model bahasa"*, *"Kesimpulannya"*, dll.) agar gaya komunikasi model lebih natural, asimetris, kasual, dan layaknya manusia.
 *   **QMD (Query Memory Distillation):** Algoritma kompresi konteks yang membuang redundansi percakapan sambil tetap menjaga format *whitespace/newline* pada kode secara ketat. Menghasilkan efisiensi token hingga **63%**.
@@ -49,6 +53,8 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 *   **AI Role Integration:** Terintegrasi penuh dengan AI Role Mapping — Anda bisa set model khusus untuk `multimodal` (Whisper) dan `audio_gen` (TTS) atau biarkan sistem auto-routing.
 
 ### 5. 🎨 UI/UX & Interactive Interface (NEW!)
+*   **Default Simple Mode & UI Refinements (v4.1.21):** Default UI kini diset ke Simple Mode (Agent OFF) untuk respons cepat tanpa overhead preprocessor. Tombol **🤖 Agent** didesain ulang dengan indikator status ON/OFF interaktif dan tooltip informatif.
+*   **Tavily Web Search Integration:** Simple mode dapat secara otomatis melakukan pencarian web real-time (Tavily API) jika memerlukan informasi terkini.
 *   **Expandable Thinking Process:** Antarmuka visual yang menampilkan langkah proses berpikir agen secara transparan ala Claude AI. Pengguna bisa mengklik ikon khusus untuk melihat detail langkah pemikiran model.
 *   **Drag & Drop Image Support:** Kemudahan mengirimkan input gambar dengan menyeret dan menjatuhkan file langsung ke area chat UI.
 *   **Auto-Focus & Smooth Interaction:** Input chat otomatis fokus kembali setelah mengirim pesan, dilengkapi penanganan error dashboard yang lebih baik untuk pengalaman integrasi yang mulus.
@@ -58,6 +64,13 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 *   **Actionable Error Translator & Circuit Breaker:** Sistem akan mengonversi pesan error teknis menjadi langkah taktis (misal: "Port bentrok, kill PID 1234"). Jika alat (*tool*) terus gagal 3x, ia akan dikenai penangguhan (*suspend*) sesi secara sementara agar tidak memblokir antrean.
 *   **Truncation Recovery:** Jika LLM memotong *output* kode akibat limit *max_tokens*, Orchestrator secara otomatis menyuntikkan *prompt* pelanjut dan merekatkan hasilnya di balik layar.
 *   **Dead Letter Queue (DLQ):** Setiap tugas gagal yang tidak tertolong (*unrecoverable*) akan masuk ke DLQ selama 14 hari untuk tujuan peninjauan manual, sehingga tidak ada pekerjaan yang lenyap tanpa jejak.
+
+### 7. 🚀 Performance & Scalability Optimizations (v4.1.21)
+*   **Concurrent Module Startup:** Menginisialisasi komponen backend opsional (RAG, Model Manager, Memory) secara paralel menggunakan `asyncio.gather` sehingga memangkas waktu start server secara masif.
+*   **Non-Blocking Model Discovery:** Proses interview kemampuan model (`Capability Map`) dimigrasi sepenuhnya ke background thread, memuat data cache disk instan saat startup tanpa menghalangi peluncuran server API.
+*   **Aggressive Asset Caching & Compression:** Penerapan `GZipMiddleware` pada respons API dan custom static files handler (`CachedStaticFiles`) dengan header `Cache-Control` permanen (`immutable`) untuk aset frontend.
+*   **Thread-Safe WAL Mode SQLite:** Konfigurasi `PRAGMA journal_mode=WAL` and `PRAGMA synchronous=NORMAL` pada sinkronisasi DB engine (`SessionLocal`) guna mencegah kunci basis data (*database locks*) saat Celery worker beroperasi.
+*   **Dynamic Token Pricing & Cost Tracking:** Konfigurasi kustom token pricing via `data/pricing_overrides.json`, dynamic token pricing resolver (`get_pricing`) dengan support provider prefix stripping, serta pencatatan otomatis input/output token dan biaya eksekusi (USD) ke database metrics.
 
 ---
 
@@ -70,19 +83,28 @@ graph TD
     classDef execution  fill:#27ae60,stroke:#2ecc71,stroke-width:2px,color:#fff
     classDef memory     fill:#8e44ad,stroke:#9b59b6,stroke-width:2px,color:#fff
     classDef routing    fill:#d35400,stroke:#e67e22,stroke-width:2px,color:#fff
+    classDef simple     fill:#16a085,stroke:#1abc9c,stroke-width:2px,color:#fff
 
     User([👤 User Request]):::userNode --> Gateway[🌐 API Gateway / UI]:::coreEngine
+    Celery[⏰ Celery Beat / Worker] -->|Poll Due Tasks| ScheduledTasks[(📅 Scheduled Tasks DB)]:::memory
+    ScheduledTasks -->|Trigger Task| Gateway
+
     Gateway --> Preprocessor{⚙️ Request Preprocessor}:::coreEngine
 
+    Preprocessor -->|Simple Mode Bypass| DirectStream[⚡ Simple Stream Engine]:::simple
+    DirectStream -.->|Tavily Search| Web[🔍 Real-time Web Search]:::simple
+    DirectStream --> FinalResponse([🎯 Final Response]):::userNode
+
     subgraph "🧠 Orchestration & Routing"
-        Preprocessor --> Decomposer[📋 Task Decomposer]
+        Preprocessor -->|Agent Mode| Decomposer[📋 Task Decomposer]
         Decomposer --> DAG[🕸️ DAG Builder]
         DAG --> Scorer[⚖️ Agent Scorer]
         Scorer -.->|Zero-Hardcode| RoutingEngine[🔀 Dynamic Routing Engine]:::routing
         RoutingEngine --> AutoFill[✨ Auto-Fill UI Badge]
     end
 
-    subgraph "⚙️ Execution Layer (True Parallel)"
+    subgraph "⚙️ Execution Layer & Consensus"
+        RoutingEngine -.->|Complexity >= 0.8| VotingEngine[🏆 Multi-Model Consensus]:::routing
         RoutingEngine --> Agent1[💻 Coding Agent]:::execution
         RoutingEngine --> Agent2[🔍 Research Agent]:::execution
         RoutingEngine --> Agent3[🖥️ System Agent]:::execution
@@ -100,7 +122,8 @@ graph TD
         BR -.->|Inject Context| Preprocessor
     end
 
-    Aggregator --> FinalResponse([🎯 Final Response]):::userNode
+    VotingEngine --> FinalResponse
+    Aggregator --> FinalResponse
 ```
 
 ---
@@ -204,5 +227,5 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 <br>
 <p align="center">
   <i>Focus on Execution. Built for Engineers.</i><br>
-  <b>AI ORCHESTRATOR v4.1.14 — A True High-Autonomy Engineering Agent.</b>
+  <b>AI ORCHESTRATOR v4.1.21 — A True High-Autonomy Engineering Agent.</b>
 </p>

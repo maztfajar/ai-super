@@ -1,491 +1,124 @@
-[0;36m[1mStarting AI ORCHESTRATOR...[0m
-/home/bamuskal/Documents/ai-super/.env: line 44: gpt-5-mini,: command not found
 INFO:     Uvicorn running on http://0.0.0.0:7860 (Press CTRL+C to quit)
-INFO:     Started parent process [112138]
-[0;32m[1mAI ORCHESTRATOR berjalan![0m
-  🌐 http://localhost:7860
-  🔑 admin / admin
-
-  Ctrl+C untuk stop
-
-INFO:     Started server process [112141]
+INFO:     Started parent process [136094]
+INFO:     Started server process [136097]
 INFO:     Waiting for application startup.
-2026-05-19 22:13:42,857 INFO [2m2026-05-19T15:13:42.857268Z[0m [[32m[1minfo     [0m] [1mStarting AI ORCHESTRATOR...   [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:42,858 INFO [2m2026-05-19T15:13:42.858782Z[0m [[32m[1minfo     [0m] [1mFile permissions hardened (.env + logs → 600)[0m [[0m[1m[34mmain[0m][0m
-INFO:     Started server process [112142]
+2026-05-25 16:15:16,284 INFO [2m2026-05-25T09:15:16.284913Z[0m [[32m[1minfo     [0m] [1mStarting AI ORCHESTRATOR...   [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:16,285 INFO [2m2026-05-25T09:15:16.285682Z[0m [[32m[1minfo     [0m] [1mFile permissions hardened (.env + logs → 600)[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:16,298 INFO [2m2026-05-25T09:15:16.298880Z[0m [[32m[1minfo     [0m] [1mDatabase ready                [0m [[0m[1m[34mmain[0m][0m
+INFO:     Started server process [136098]
 INFO:     Waiting for application startup.
-2026-05-19 22:13:42,859 INFO [2m2026-05-19T15:13:42.859655Z[0m [[32m[1minfo     [0m] [1mStarting AI ORCHESTRATOR...   [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:42,860 INFO [2m2026-05-19T15:13:42.860472Z[0m [[32m[1minfo     [0m] [1mFile permissions hardened (.env + logs → 600)[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:42,875 INFO [2m2026-05-19T15:13:42.875644Z[0m [[32m[1minfo     [0m] [1mDatabase ready                [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:42,880 INFO [2m2026-05-19T15:13:42.880210Z[0m [[32m[1minfo     [0m] [1mDatabase ready                [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:42,903 INFO [2m2026-05-19T15:13:42.903846Z[0m [[32m[1minfo     [0m] [1mAdmin ready: admin            [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:42,904 INFO [2m2026-05-19T15:13:42.904283Z[0m [[32m[1minfo     [0m] [1mSumopod models registered: ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd'][0m [[0m[1m[34mcore.model_manager[0m][0m
-2026-05-19 22:13:42,905 INFO [2m2026-05-19T15:13:42.905843Z[0m [[32m[1minfo     [0m] [1mAdmin ready: admin            [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:42,906 INFO [2m2026-05-19T15:13:42.906121Z[0m [[32m[1minfo     [0m] [1mSumopod models registered: ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd'][0m [[0m[1m[34mcore.model_manager[0m][0m
-2026-05-19 22:13:42,954 INFO [2m2026-05-19T15:13:42.954454Z[0m [[32m[1minfo     [0m] [1mOllama not available          [0m [[0m[1m[34mcore.model_manager[0m][0m
-2026-05-19 22:13:42,955 INFO [2m2026-05-19T15:13:42.954985Z[0m [[32m[1minfo     [0m] [1mTotal models detected: 5      [0m [[0m[1m[34mcore.model_manager[0m][0m [36mmodels[0m=[35m['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd'][0m
-2026-05-19 22:13:42,956 INFO [2m2026-05-19T15:13:42.956209Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/rag_documents[0m
-2026-05-19 22:13:42,956 INFO [2m2026-05-19T15:13:42.956456Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/chroma_db[0m
-2026-05-19 22:13:42,956 INFO [2m2026-05-19T15:13:42.956750Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/uploads[0m
-2026-05-19 22:13:42,956 INFO [2m2026-05-19T15:13:42.956924Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/logs[0m
-2026-05-19 22:13:42,957 INFO [2m2026-05-19T15:13:42.957081Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data[0m
-2026-05-19 22:13:42,957 INFO [2m2026-05-19T15:13:42.957212Z[0m [[32m[1minfo     [0m] [1mSemua folder RAG siap         [0m [[0m[1m[34mrag.folder_manager[0m][0m
-2026-05-19 22:13:42,959 INFO [2m2026-05-19T15:13:42.959285Z[0m [[32m[1minfo     [0m] [1mOllama not available          [0m [[0m[1m[34mcore.model_manager[0m][0m
-2026-05-19 22:13:42,959 INFO [2m2026-05-19T15:13:42.959768Z[0m [[32m[1minfo     [0m] [1mTotal models detected: 5      [0m [[0m[1m[34mcore.model_manager[0m][0m [36mmodels[0m=[35m['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd'][0m
-2026-05-19 22:13:42,960 INFO [2m2026-05-19T15:13:42.960862Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/rag_documents[0m
-2026-05-19 22:13:42,961 INFO [2m2026-05-19T15:13:42.961058Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/chroma_db[0m
-2026-05-19 22:13:42,961 INFO [2m2026-05-19T15:13:42.961260Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/uploads[0m
-2026-05-19 22:13:42,961 INFO [2m2026-05-19T15:13:42.961435Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/logs[0m
-2026-05-19 22:13:42,961 INFO [2m2026-05-19T15:13:42.961696Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data[0m
-2026-05-19 22:13:42,961 INFO [2m2026-05-19T15:13:42.961838Z[0m [[32m[1minfo     [0m] [1mSemua folder RAG siap         [0m [[0m[1m[34mrag.folder_manager[0m][0m
-2026-05-19 22:13:43,779 INFO [2m2026-05-19T15:13:43.779405Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [general] → ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,779 INFO [2m2026-05-19T15:13:43.779645Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [writing] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,779 INFO [2m2026-05-19T15:13:43.779801Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [creative] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,779 INFO [2m2026-05-19T15:13:43.779937Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [research] → ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.0-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,780 INFO [2m2026-05-19T15:13:43.780117Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [coding] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,780 INFO [2m2026-05-19T15:13:43.780286Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [reasoning] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,780 INFO [2m2026-05-19T15:13:43.780565Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [system] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,780 INFO [2m2026-05-19T15:13:43.780759Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [validation] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,780 INFO [2m2026-05-19T15:13:43.780933Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [vision] → ['sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,781 INFO [2m2026-05-19T15:13:43.781123Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [multimodal] → ['sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,781 INFO [2m2026-05-19T15:13:43.781221Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [audio_gen] → ['sumopod/minimax/speech-2.8-hd'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,781 INFO [2m2026-05-19T15:13:43.781357Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [image_gen] → ['sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,781 INFO [2m2026-05-19T15:13:43.781458Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: routing cache rebuilt[0m [[0m[1m[34magents.model_classifier[0m][0m [36mroles[0m=[35m12[0m [36mtotal_models[0m=[35m5[0m
-2026-05-19 22:13:43,781 INFO [2m2026-05-19T15:13:43.781813Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [general] → ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,782 INFO [2m2026-05-19T15:13:43.782019Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [writing] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,782 INFO [2m2026-05-19T15:13:43.782144Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [creative] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,782 INFO [2m2026-05-19T15:13:43.782330Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [research] → ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.0-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,782 INFO [2m2026-05-19T15:13:43.782513Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [coding] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,782 INFO [2m2026-05-19T15:13:43.782660Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [reasoning] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,782 INFO [2m2026-05-19T15:13:43.782763Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [system] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,782 INFO [2m2026-05-19T15:13:43.782845Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [validation] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,783 INFO [2m2026-05-19T15:13:43.783084Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [vision] → ['sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,783 INFO [2m2026-05-19T15:13:43.783294Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [multimodal] → ['sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,783 INFO [2m2026-05-19T15:13:43.783485Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [audio_gen] → ['sumopod/minimax/speech-2.8-hd'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,783 INFO [2m2026-05-19T15:13:43.783617Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [image_gen] → ['sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
-2026-05-19 22:13:43,783 INFO [2m2026-05-19T15:13:43.783737Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: routing cache rebuilt[0m [[0m[1m[34magents.model_classifier[0m][0m [36mroles[0m=[35m12[0m [36mtotal_models[0m=[35m5[0m
-2026-05-19 22:13:44,028 INFO [2m2026-05-19T15:13:44.028894Z[0m [[32m[1minfo     [0m] [1mInisialisasi embedding        [0m [[0m[1m[34mrag.engine[0m][0m [36mprovider[0m=[35mlocal[0m
-2026-05-19 22:13:44,029 INFO [2m2026-05-19T15:13:44.029079Z[0m [[32m[1minfo     [0m] [1mInisialisasi embedding        [0m [[0m[1m[34mrag.engine[0m][0m [36mprovider[0m=[35mlocal[0m
-2026-05-19 22:13:44,030 INFO [2m2026-05-19T15:13:44.029986Z[0m [[32m[1minfo     [0m] [1mSumopodEmbeddings initialized [0m [[0m[1m[34mrag.embedding_service[0m][0m [36mbase_url[0m=[35mhttps://ai.sumopod.com/v1[0m [36mbatch_size[0m=[35m100[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
-2026-05-19 22:13:44,030 INFO [2m2026-05-19T15:13:44.030081Z[0m [[32m[1minfo     [0m] [1mSumopodEmbeddings initialized [0m [[0m[1m[34mrag.embedding_service[0m][0m [36mbase_url[0m=[35mhttps://ai.sumopod.com/v1[0m [36mbatch_size[0m=[35m100[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
-2026-05-19 22:13:44,728 INFO [2m2026-05-19T15:13:44.728251Z[0m [[32m[1minfo     [0m] [1mSumopod Embeddings aktif (fallback)[0m [[0m[1m[34mrag.engine[0m][0m [36mdim[0m=[35m1536[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
-2026-05-19 22:13:44,800 INFO [2m2026-05-19T15:13:44.800620Z[0m [[32m[1minfo     [0m] [1mSumopod Embeddings aktif (fallback)[0m [[0m[1m[34mrag.engine[0m][0m [36mdim[0m=[35m1536[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
+2026-05-25 16:15:16,300 INFO [2m2026-05-25T09:15:16.300421Z[0m [[32m[1minfo     [0m] [1mStarting AI ORCHESTRATOR...   [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:16,301 INFO [2m2026-05-25T09:15:16.301124Z[0m [[32m[1minfo     [0m] [1mFile permissions hardened (.env + logs → 600)[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:16,310 INFO [2m2026-05-25T09:15:16.310328Z[0m [[32m[1minfo     [0m] [1mDatabase ready                [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:16,317 INFO [2m2026-05-25T09:15:16.317786Z[0m [[32m[1minfo     [0m] [1mAdmin ready: admin            [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:16,318 INFO [2m2026-05-25T09:15:16.318149Z[0m [[32m[1minfo     [0m] [1mSumopod models registered: ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34mcore.model_manager[0m][0m
+2026-05-25 16:15:16,329 INFO [2m2026-05-25T09:15:16.329487Z[0m [[32m[1minfo     [0m] [1mAdmin ready: admin            [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:16,329 INFO [2m2026-05-25T09:15:16.329814Z[0m [[32m[1minfo     [0m] [1mSumopod models registered: ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34mcore.model_manager[0m][0m
+2026-05-25 16:15:16,367 INFO [2m2026-05-25T09:15:16.367167Z[0m [[32m[1minfo     [0m] [1mOllama not available          [0m [[0m[1m[34mcore.model_manager[0m][0m
+2026-05-25 16:15:16,367 INFO [2m2026-05-25T09:15:16.367730Z[0m [[32m[1minfo     [0m] [1mPollinations AI models registered[0m [[0m[1m[34mcore.model_manager[0m][0m
+2026-05-25 16:15:16,367 INFO [2m2026-05-25T09:15:16.367940Z[0m [[32m[1minfo     [0m] [1mTotal models detected: 10     [0m [[0m[1m[34mcore.model_manager[0m][0m [36mmodels[0m=[35m['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd', 'sumopod/gemini/gemini-2.5-flash', 'pollinations/auto', 'pollinations/flux', 'pollinations/turbo', 'pollinations/midjourney'][0m
+2026-05-25 16:15:16,369 INFO [2m2026-05-25T09:15:16.368995Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/rag_documents[0m
+2026-05-25 16:15:16,369 INFO [2m2026-05-25T09:15:16.369213Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/chroma_db[0m
+2026-05-25 16:15:16,369 INFO [2m2026-05-25T09:15:16.369394Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/uploads[0m
+2026-05-25 16:15:16,369 INFO [2m2026-05-25T09:15:16.369576Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/logs[0m
+2026-05-25 16:15:16,369 INFO [2m2026-05-25T09:15:16.369734Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data[0m
+2026-05-25 16:15:16,369 INFO [2m2026-05-25T09:15:16.369858Z[0m [[32m[1minfo     [0m] [1mSemua folder RAG siap         [0m [[0m[1m[34mrag.folder_manager[0m][0m
+2026-05-25 16:15:16,393 INFO [2m2026-05-25T09:15:16.392887Z[0m [[32m[1minfo     [0m] [1mOllama not available          [0m [[0m[1m[34mcore.model_manager[0m][0m
+2026-05-25 16:15:16,393 INFO [2m2026-05-25T09:15:16.393611Z[0m [[32m[1minfo     [0m] [1mPollinations AI models registered[0m [[0m[1m[34mcore.model_manager[0m][0m
+2026-05-25 16:15:16,393 INFO [2m2026-05-25T09:15:16.393799Z[0m [[32m[1minfo     [0m] [1mTotal models detected: 10     [0m [[0m[1m[34mcore.model_manager[0m][0m [36mmodels[0m=[35m['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/minimax/speech-2.8-hd', 'sumopod/gemini/gemini-2.5-flash', 'pollinations/auto', 'pollinations/flux', 'pollinations/turbo', 'pollinations/midjourney'][0m
+2026-05-25 16:15:16,395 INFO [2m2026-05-25T09:15:16.395105Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/rag_documents[0m
+2026-05-25 16:15:16,395 INFO [2m2026-05-25T09:15:16.395366Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/chroma_db[0m
+2026-05-25 16:15:16,395 INFO [2m2026-05-25T09:15:16.395583Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/uploads[0m
+2026-05-25 16:15:16,395 INFO [2m2026-05-25T09:15:16.395775Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data/logs[0m
+2026-05-25 16:15:16,395 INFO [2m2026-05-25T09:15:16.395961Z[0m [[32m[1minfo     [0m] [1mFolder siap                   [0m [[0m[1m[34mrag.folder_manager[0m][0m [36mpath[0m=[35m/home/bamuskal/Documents/ai-super/backend/data[0m
+2026-05-25 16:15:16,396 INFO [2m2026-05-25T09:15:16.396093Z[0m [[32m[1minfo     [0m] [1mSemua folder RAG siap         [0m [[0m[1m[34mrag.folder_manager[0m][0m
+2026-05-25 16:15:17,161 INFO [2m2026-05-25T09:15:17.161307Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [general] → ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,161 INFO [2m2026-05-25T09:15:17.161548Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [writing] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,161 INFO [2m2026-05-25T09:15:17.161715Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [creative] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,161 INFO [2m2026-05-25T09:15:17.161961Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [research] → ['sumopod/gemini/gemini-2.5-flash', 'sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,162 INFO [2m2026-05-25T09:15:17.162072Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [coding] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,162 INFO [2m2026-05-25T09:15:17.162155Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [reasoning] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,162 INFO [2m2026-05-25T09:15:17.162236Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [system] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,162 INFO [2m2026-05-25T09:15:17.162315Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [validation] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,162 INFO [2m2026-05-25T09:15:17.162885Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [vision] → ['sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,163 INFO [2m2026-05-25T09:15:17.163065Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [multimodal] → ['sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,163 INFO [2m2026-05-25T09:15:17.163163Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [audio_gen] → ['sumopod/minimax/speech-2.8-hd'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,163 INFO [2m2026-05-25T09:15:17.163260Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [image_gen] → ['sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,163 INFO [2m2026-05-25T09:15:17.163402Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: routing cache rebuilt[0m [[0m[1m[34magents.model_classifier[0m][0m [36mroles[0m=[35m12[0m [36mtotal_models[0m=[35m10[0m
+2026-05-25 16:15:17,165 INFO [2m2026-05-25T09:15:17.165293Z[0m [[32m[1minfo     [0m] [1mMemory system (Redis) connected — TTL 7 hari[0m [[0m[1m[34mmemory.manager[0m][0m
+2026-05-25 16:15:17,167 INFO [2m2026-05-25T09:15:17.167595Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [general] → ['sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gemini/gemini-2.0-flash', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,167 INFO [2m2026-05-25T09:15:17.167822Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [writing] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,167 INFO [2m2026-05-25T09:15:17.167921Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [creative] → ['sumopod/gemini/gemini-2.0-flash-lite'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,168 INFO [2m2026-05-25T09:15:17.168160Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [research] → ['sumopod/gemini/gemini-2.5-flash', 'sumopod/gemini/gemini-2.0-flash-lite', 'sumopod/gpt-5-mini'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,168 INFO [2m2026-05-25T09:15:17.168244Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [coding] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,168 INFO [2m2026-05-25T09:15:17.168426Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [reasoning] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,168 INFO [2m2026-05-25T09:15:17.168508Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [system] → ['sumopod/gpt-5-mini', 'sumopod/deepseek-v4-pro', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,168 INFO [2m2026-05-25T09:15:17.168596Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [validation] → ['sumopod/deepseek-v4-pro', 'sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,168 INFO [2m2026-05-25T09:15:17.168669Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [vision] → ['sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,168 INFO [2m2026-05-25T09:15:17.168912Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [multimodal] → ['sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,169 INFO [2m2026-05-25T09:15:17.168998Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [audio_gen] → ['sumopod/minimax/speech-2.8-hd'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,169 INFO [2m2026-05-25T09:15:17.169075Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: [image_gen] → ['sumopod/gpt-5-mini', 'sumopod/gemini/gemini-2.5-flash'][0m [[0m[1m[34magents.model_classifier[0m][0m
+2026-05-25 16:15:17,169 INFO [2m2026-05-25T09:15:17.169383Z[0m [[32m[1minfo     [0m] [1mmodel_classifier: routing cache rebuilt[0m [[0m[1m[34magents.model_classifier[0m][0m [36mroles[0m=[35m12[0m [36mtotal_models[0m=[35m10[0m
+2026-05-25 16:15:17,170 INFO [2m2026-05-25T09:15:17.170610Z[0m [[32m[1minfo     [0m] [1mMemory system (Redis) connected — TTL 7 hari[0m [[0m[1m[34mmemory.manager[0m][0m
+2026-05-25 16:15:17,332 INFO [2m2026-05-25T09:15:17.332843Z[0m [[32m[1minfo     [0m] [1mInisialisasi embedding        [0m [[0m[1m[34mrag.engine[0m][0m [36mprovider[0m=[35mlocal[0m
+2026-05-25 16:15:17,333 INFO [2m2026-05-25T09:15:17.333902Z[0m [[32m[1minfo     [0m] [1mSumopodEmbeddings initialized [0m [[0m[1m[34mrag.embedding_service[0m][0m [36mbase_url[0m=[35mhttps://ai.sumopod.com/v1[0m [36mbatch_size[0m=[35m100[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
+2026-05-25 16:15:17,343 INFO [2m2026-05-25T09:15:17.343890Z[0m [[32m[1minfo     [0m] [1mInisialisasi embedding        [0m [[0m[1m[34mrag.engine[0m][0m [36mprovider[0m=[35mlocal[0m
+2026-05-25 16:15:17,345 INFO [2m2026-05-25T09:15:17.345031Z[0m [[32m[1minfo     [0m] [1mSumopodEmbeddings initialized [0m [[0m[1m[34mrag.embedding_service[0m][0m [36mbase_url[0m=[35mhttps://ai.sumopod.com/v1[0m [36mbatch_size[0m=[35m100[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
+2026-05-25 16:15:17,814 INFO [2m2026-05-25T09:15:17.814636Z[0m [[32m[1minfo     [0m] [1mSumopod Embeddings aktif (fallback)[0m [[0m[1m[34mrag.engine[0m][0m [36mdim[0m=[35m1536[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
+2026-05-25 16:15:17,929 INFO [2m2026-05-25T09:15:17.929879Z[0m [[32m[1minfo     [0m] [1mSumopod Embeddings aktif (fallback)[0m [[0m[1m[34mrag.engine[0m][0m [36mdim[0m=[35m1536[0m [36mmodel[0m=[35mtext-embedding-3-small[0m
 /home/bamuskal/Documents/ai-super/backend/rag/engine.py:72: LangChainDeprecationWarning: The class `Chroma` was deprecated in LangChain 0.2.9 and will be removed in 1.0. An updated version of the class exists in the `langchain-chroma package and should be used instead. To use it run `pip install -U `langchain-chroma` and import as `from `langchain_chroma import Chroma``.
   self.vectorstore = Chroma(
 /home/bamuskal/Documents/ai-super/backend/rag/engine.py:72: LangChainDeprecationWarning: The class `Chroma` was deprecated in LangChain 0.2.9 and will be removed in 1.0. An updated version of the class exists in the `langchain-chroma package and should be used instead. To use it run `pip install -U `langchain-chroma` and import as `from `langchain_chroma import Chroma``.
   self.vectorstore = Chroma(
-2026-05-19 22:13:45,163 INFO [2m2026-05-19T15:13:45.163152Z[0m [[32m[1minfo     [0m] [1mVector store dan text splitter siap[0m [[0m[1m[34mrag.engine[0m][0m
-2026-05-19 22:13:45,163 INFO [2m2026-05-19T15:13:45.163700Z[0m [[32m[1minfo     [0m] [1mRAG engine initialized        [0m [[0m[1m[34mrag.engine[0m][0m [36mchroma_dir[0m=[35m/home/bamuskal/Documents/ai-super/data/chroma_db[0m [36membedding_provider[0m=[35mlocal[0m
-2026-05-19 22:13:45,191 INFO [2m2026-05-19T15:13:45.191798Z[0m [[32m[1minfo     [0m] [1mVector store dan text splitter siap[0m [[0m[1m[34mrag.engine[0m][0m
-2026-05-19 22:13:45,192 INFO [2m2026-05-19T15:13:45.192721Z[0m [[32m[1minfo     [0m] [1mRAG engine initialized        [0m [[0m[1m[34mrag.engine[0m][0m [36mchroma_dir[0m=[35m/home/bamuskal/Documents/ai-super/data/chroma_db[0m [36membedding_provider[0m=[35mlocal[0m
-2026-05-19 22:13:45,238 INFO [2m2026-05-19T15:13:45.238500Z[0m [[32m[1minfo     [0m] [1mMemory system (Redis) connected — TTL 7 hari[0m [[0m[1m[34mmemory.manager[0m][0m
-2026-05-19 22:13:45,239 INFO [2m2026-05-19T15:13:45.239206Z[0m [[32m[1minfo     [0m] [1m✅ Approval System initialized [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,239 INFO [2m2026-05-19T15:13:45.239452Z[0m [[32m[1minfo     [0m] [1m✅ Cost Tracking Engine initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,239 INFO [2m2026-05-19T15:13:45.239744Z[0m [[32m[1minfo     [0m] [1m✅ Audit Logging System initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,243 INFO [2m2026-05-19T15:13:45.243023Z[0m [[32m[1minfo     [0m] [1m✅ Self-Correction Engine initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,243 INFO [2m2026-05-19T15:13:45.243244Z[0m [[32m[1minfo     [0m] [1m✅ Procedural Memory Engine initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,243 INFO [2m2026-05-19T15:13:45.243503Z[0m [[32m[1minfo     [0m] [1m✅ Project Indexer (Project-Wide Awareness) initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,243 INFO [2m2026-05-19T15:13:45.243675Z[0m [[32m[1minfo     [0m] [1mSelf-Healing Engine started   [0m [[0m[1m[34mcore.self_healing[0m][0m [36minterval[0m=[35m30[0m
-2026-05-19 22:13:45,243 INFO [2m2026-05-19T15:13:45.243847Z[0m [[32m[1minfo     [0m] [1m✅ Self-Healing Engine started [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,244 INFO [2m2026-05-19T15:13:45.244029Z[0m [[32m[1minfo     [0m] [1mSecurity Scanner scheduler started[0m [[0m[1m[34mcore.security_scanner[0m][0m [36minterval_hours[0m=[35m24[0m
-2026-05-19 22:13:45,244 INFO [2m2026-05-19T15:13:45.244241Z[0m [[32m[1minfo     [0m] [1m✅ Security Scanner started (scan tiap 24 jam)[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,244 INFO [2m2026-05-19T15:13:45.244670Z[0m [[32m[1minfo     [0m] [1mCapabilityMap: loaded from disk[0m [[0m[1m[34mcore.capability_map[0m][0m [36mmodels[0m=[35m14[0m
-2026-05-19 22:13:45,245 INFO [2m2026-05-19T15:13:45.245209Z[0m [[32m[1minfo     [0m] [1mCapabilityMap sync complete   [0m [[0m[1m[34mcore.capability_map[0m][0m [36melapsed_ms[0m=[35m0[0m [36mtotal_models[0m=[35m14[0m
-2026-05-19 22:13:45,245 INFO [2m2026-05-19T15:13:45.245389Z[0m [[32m[1minfo     [0m] [1mCapabilityMap startup sync complete[0m [[0m[1m[34mcore.capability_map[0m][0m [36mmodels[0m=[35m14[0m
-2026-05-19 22:13:45,245 INFO [2m2026-05-19T15:13:45.245596Z[0m [[32m[1minfo     [0m] [1mCapability Map ready          [0m [[0m[1m[34mmain[0m][0m [36mmodels[0m=[35m14[0m
-2026-05-19 22:13:45,248 INFO [2m2026-05-19T15:13:45.248845Z[0m [[32m[1minfo     [0m] [1mCapabilityEvolver daemon started[0m [[0m[1m[34mcore.capability_evolver[0m][0m [36minterval_min[0m=[35m30[0m
-2026-05-19 22:13:45,249 INFO [2m2026-05-19T15:13:45.248993Z[0m [[32m[1minfo     [0m] [1m✅ Capability Evolver daemon started[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,249 INFO [2m2026-05-19T15:13:45.249908Z[0m [[32m[1minfo     [0m] [1m✅ Byte Rover (Long-term Memory) daemon started[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,250 INFO [2m2026-05-19T15:13:45.250126Z[0m [[32m[1minfo     [0m] [1m✅ Agent Registry perf_cache daemon started[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,253 INFO [2m2026-05-19T15:13:45.253528Z[0m [[32m[1minfo     [0m] [1mTelegram polling thread started[0m [[0m[1m[34mintegrations.telegram_bot[0m][0m
-2026-05-19 22:13:45,254 INFO [2m2026-05-19T15:13:45.254809Z[0m [[32m[1minfo     [0m] [1mTelegram polling watchdog started[0m [[0m[1m[34mintegrations.telegram_bot[0m][0m [36minterval[0m=[35m60[0m
-2026-05-19 22:13:45,255 INFO [2m2026-05-19T15:13:45.255072Z[0m [[32m[1minfo     [0m] [1mTelegram polling watchdog started[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,255 INFO [2m2026-05-19T15:13:45.255315Z[0m [[32m[1minfo     [0m] [1mAI ORCHESTRATOR ready! http://0.0.0.0:7860[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,186 INFO [2m2026-05-25T09:15:18.186718Z[0m [[32m[1minfo     [0m] [1mVector store dan text splitter siap[0m [[0m[1m[34mrag.engine[0m][0m
+2026-05-25 16:15:18,187 INFO [2m2026-05-25T09:15:18.187284Z[0m [[32m[1minfo     [0m] [1mRAG engine initialized        [0m [[0m[1m[34mrag.engine[0m][0m [36mchroma_dir[0m=[35m/home/bamuskal/Documents/ai-super/data/chroma_db[0m [36membedding_provider[0m=[35mlocal[0m
+2026-05-25 16:15:18,187 INFO [2m2026-05-25T09:15:18.187466Z[0m [[32m[1minfo     [0m] [1m✅ Approval System initialized [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,187 INFO [2m2026-05-25T09:15:18.187575Z[0m [[32m[1minfo     [0m] [1m✅ Cost Tracking Engine initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,187 INFO [2m2026-05-25T09:15:18.187695Z[0m [[32m[1minfo     [0m] [1m✅ Audit Logging System initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,190 INFO [2m2026-05-25T09:15:18.190220Z[0m [[32m[1minfo     [0m] [1m✅ Self-Correction Engine initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,190 INFO [2m2026-05-25T09:15:18.190405Z[0m [[32m[1minfo     [0m] [1m✅ Procedural Memory Engine initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,190 INFO [2m2026-05-25T09:15:18.190557Z[0m [[32m[1minfo     [0m] [1m✅ Project Indexer (Project-Wide Awareness) initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,190 INFO [2m2026-05-25T09:15:18.190832Z[0m [[32m[1minfo     [0m] [1mSelf-Healing Engine started   [0m [[0m[1m[34mcore.self_healing[0m][0m [36minterval[0m=[35m30[0m
+2026-05-25 16:15:18,191 INFO [2m2026-05-25T09:15:18.191035Z[0m [[32m[1minfo     [0m] [1m✅ Self-Healing Engine started [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,191 INFO [2m2026-05-25T09:15:18.191184Z[0m [[32m[1minfo     [0m] [1mSecurity Scanner scheduler started[0m [[0m[1m[34mcore.security_scanner[0m][0m [36minterval_hours[0m=[35m24[0m
+2026-05-25 16:15:18,191 INFO [2m2026-05-25T09:15:18.191339Z[0m [[32m[1minfo     [0m] [1m✅ Security Scanner started (scan tiap 24 jam)[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,191 INFO [2m2026-05-25T09:15:18.191799Z[0m [[32m[1minfo     [0m] [1mCapabilityMap: loaded from disk[0m [[0m[1m[34mcore.capability_map[0m][0m [36mmodels[0m=[35m18[0m
+2026-05-25 16:15:18,192 INFO [2m2026-05-25T09:15:18.191975Z[0m [[32m[1minfo     [0m] [1mCapability Map ready (background sync started)[0m [[0m[1m[34mmain[0m][0m [36mmodels[0m=[35m18[0m
+2026-05-25 16:15:18,194 INFO [2m2026-05-25T09:15:18.194681Z[0m [[32m[1minfo     [0m] [1mCapabilityEvolver daemon started[0m [[0m[1m[34mcore.capability_evolver[0m][0m [36minterval_min[0m=[35m30[0m
+2026-05-25 16:15:18,194 INFO [2m2026-05-25T09:15:18.194825Z[0m [[32m[1minfo     [0m] [1m✅ Capability Evolver daemon started[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,195 INFO [2m2026-05-25T09:15:18.195267Z[0m [[32m[1minfo     [0m] [1m✅ Byte Rover (Long-term Memory) daemon started[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,195 INFO [2m2026-05-25T09:15:18.195386Z[0m [[32m[1minfo     [0m] [1m✅ Agent Registry perf_cache daemon started[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,197 INFO [2m2026-05-25T09:15:18.196998Z[0m [[32m[1minfo     [0m] [1mTelegram polling thread started[0m [[0m[1m[34mintegrations.telegram_bot[0m][0m
+2026-05-25 16:15:18,197 INFO [2m2026-05-25T09:15:18.197264Z[0m [[32m[1minfo     [0m] [1mTelegram polling watchdog started[0m [[0m[1m[34mintegrations.telegram_bot[0m][0m [36minterval[0m=[35m60[0m
+2026-05-25 16:15:18,197 INFO [2m2026-05-25T09:15:18.197423Z[0m [[32m[1minfo     [0m] [1mTelegram polling watchdog started[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,197 INFO [2m2026-05-25T09:15:18.197581Z[0m [[32m[1minfo     [0m] [1mAI ORCHESTRATOR ready! http://0.0.0.0:7860[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,198 INFO [2m2026-05-25T09:15:18.198253Z[0m [[32m[1minfo     [0m] [1mCapabilityMap sync complete   [0m [[0m[1m[34mcore.capability_map[0m][0m [36melapsed_ms[0m=[35m0[0m [36mtotal_models[0m=[35m18[0m
 INFO:     Application startup complete.
-2026-05-19 22:13:45,268 INFO [2m2026-05-19T15:13:45.268789Z[0m [[32m[1minfo     [0m] [1mMemory system (Redis) connected — TTL 7 hari[0m [[0m[1m[34mmemory.manager[0m][0m
-2026-05-19 22:13:45,269 INFO [2m2026-05-19T15:13:45.269285Z[0m [[32m[1minfo     [0m] [1m✅ Approval System initialized [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,269 INFO [2m2026-05-19T15:13:45.269472Z[0m [[32m[1minfo     [0m] [1m✅ Cost Tracking Engine initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,269 INFO [2m2026-05-19T15:13:45.269680Z[0m [[32m[1minfo     [0m] [1m✅ Audit Logging System initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,274 INFO [2m2026-05-19T15:13:45.274061Z[0m [[32m[1minfo     [0m] [1m✅ Self-Correction Engine initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,274 INFO [2m2026-05-19T15:13:45.274306Z[0m [[32m[1minfo     [0m] [1m✅ Procedural Memory Engine initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,274 INFO [2m2026-05-19T15:13:45.274484Z[0m [[32m[1minfo     [0m] [1m✅ Project Indexer (Project-Wide Awareness) initialized[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,274 INFO [2m2026-05-19T15:13:45.274640Z[0m [[32m[1minfo     [0m] [1mSelf-Healing Engine started   [0m [[0m[1m[34mcore.self_healing[0m][0m [36minterval[0m=[35m30[0m
-2026-05-19 22:13:45,274 INFO [2m2026-05-19T15:13:45.274810Z[0m [[32m[1minfo     [0m] [1m✅ Self-Healing Engine started [0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,275 INFO [2m2026-05-19T15:13:45.274984Z[0m [[32m[1minfo     [0m] [1mSecurity Scanner scheduler started[0m [[0m[1m[34mcore.security_scanner[0m][0m [36minterval_hours[0m=[35m24[0m
-2026-05-19 22:13:45,275 INFO [2m2026-05-19T15:13:45.275163Z[0m [[32m[1minfo     [0m] [1m✅ Security Scanner started (scan tiap 24 jam)[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,275 INFO [2m2026-05-19T15:13:45.275774Z[0m [[32m[1minfo     [0m] [1mCapabilityMap: loaded from disk[0m [[0m[1m[34mcore.capability_map[0m][0m [36mmodels[0m=[35m14[0m
-2026-05-19 22:13:45,276 INFO [2m2026-05-19T15:13:45.276490Z[0m [[32m[1minfo     [0m] [1mCapabilityMap sync complete   [0m [[0m[1m[34mcore.capability_map[0m][0m [36melapsed_ms[0m=[35m0[0m [36mtotal_models[0m=[35m14[0m
-2026-05-19 22:13:45,276 INFO [2m2026-05-19T15:13:45.276684Z[0m [[32m[1minfo     [0m] [1mCapabilityMap startup sync complete[0m [[0m[1m[34mcore.capability_map[0m][0m [36mmodels[0m=[35m14[0m
-2026-05-19 22:13:45,276 INFO [2m2026-05-19T15:13:45.276848Z[0m [[32m[1minfo     [0m] [1mCapability Map ready          [0m [[0m[1m[34mmain[0m][0m [36mmodels[0m=[35m14[0m
-2026-05-19 22:13:45,280 INFO [2m2026-05-19T15:13:45.280806Z[0m [[32m[1minfo     [0m] [1mCapabilityEvolver daemon started[0m [[0m[1m[34mcore.capability_evolver[0m][0m [36minterval_min[0m=[35m30[0m
-2026-05-19 22:13:45,281 INFO [2m2026-05-19T15:13:45.281063Z[0m [[32m[1minfo     [0m] [1m✅ Capability Evolver daemon started[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,281 INFO [2m2026-05-19T15:13:45.281910Z[0m [[32m[1minfo     [0m] [1m✅ Byte Rover (Long-term Memory) daemon started[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,282 INFO [2m2026-05-19T15:13:45.282163Z[0m [[32m[1minfo     [0m] [1m✅ Agent Registry perf_cache daemon started[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:13:45,285 INFO [2m2026-05-19T15:13:45.285060Z[0m [[32m[1minfo     [0m] [1mTelegram polling already running in another worker process[0m [[0m[1m[34mintegrations.telegram_bot[0m][0m
-2026-05-19 22:13:45,285 INFO [2m2026-05-19T15:13:45.285785Z[0m [[32m[1minfo     [0m] [1mAI ORCHESTRATOR ready! http://0.0.0.0:7860[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,262 INFO [2m2026-05-25T09:15:18.262917Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
+2026-05-25 16:15:18,276 INFO [2m2026-05-25T09:15:18.276864Z[0m [[32m[1minfo     [0m] [1mVector store dan text splitter siap[0m [[0m[1m[34mrag.engine[0m][0m
+2026-05-25 16:15:18,277 INFO [2m2026-05-25T09:15:18.277416Z[0m [[32m[1minfo     [0m] [1mRAG engine initialized        [0m [[0m[1m[34mrag.engine[0m][0m [36mchroma_dir[0m=[35m/home/bamuskal/Documents/ai-super/data/chroma_db[0m [36membedding_provider[0m=[35mlocal[0m
+2026-05-25 16:15:18,277 INFO [2m2026-05-25T09:15:18.277620Z[0m [[32m[1minfo     [0m] [1m✅ Approval System initialized [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,277 INFO [2m2026-05-25T09:15:18.277735Z[0m [[32m[1minfo     [0m] [1m✅ Cost Tracking Engine initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,277 INFO [2m2026-05-25T09:15:18.277847Z[0m [[32m[1minfo     [0m] [1m✅ Audit Logging System initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,279 INFO [2m2026-05-25T09:15:18.279932Z[0m [[32m[1minfo     [0m] [1m✅ Self-Correction Engine initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,280 INFO [2m2026-05-25T09:15:18.280096Z[0m [[32m[1minfo     [0m] [1m✅ Procedural Memory Engine initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,280 INFO [2m2026-05-25T09:15:18.280238Z[0m [[32m[1minfo     [0m] [1m✅ Project Indexer (Project-Wide Awareness) initialized[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,280 INFO [2m2026-05-25T09:15:18.280348Z[0m [[32m[1minfo     [0m] [1mSelf-Healing Engine started   [0m [[0m[1m[34mcore.self_healing[0m][0m [36minterval[0m=[35m30[0m
+2026-05-25 16:15:18,280 INFO [2m2026-05-25T09:15:18.280476Z[0m [[32m[1minfo     [0m] [1m✅ Self-Healing Engine started [0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,280 INFO [2m2026-05-25T09:15:18.280584Z[0m [[32m[1minfo     [0m] [1mSecurity Scanner scheduler started[0m [[0m[1m[34mcore.security_scanner[0m][0m [36minterval_hours[0m=[35m24[0m
+2026-05-25 16:15:18,280 INFO [2m2026-05-25T09:15:18.280696Z[0m [[32m[1minfo     [0m] [1m✅ Security Scanner started (scan tiap 24 jam)[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,281 INFO [2m2026-05-25T09:15:18.280993Z[0m [[32m[1minfo     [0m] [1mCapabilityMap: loaded from disk[0m [[0m[1m[34mcore.capability_map[0m][0m [36mmodels[0m=[35m18[0m
+2026-05-25 16:15:18,281 INFO [2m2026-05-25T09:15:18.281152Z[0m [[32m[1minfo     [0m] [1mCapability Map ready (background sync started)[0m [[0m[1m[34mmain[0m][0m [36mmodels[0m=[35m18[0m
+2026-05-25 16:15:18,283 INFO [2m2026-05-25T09:15:18.283665Z[0m [[32m[1minfo     [0m] [1mCapabilityEvolver daemon started[0m [[0m[1m[34mcore.capability_evolver[0m][0m [36minterval_min[0m=[35m30[0m
+2026-05-25 16:15:18,283 INFO [2m2026-05-25T09:15:18.283815Z[0m [[32m[1minfo     [0m] [1m✅ Capability Evolver daemon started[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,284 INFO [2m2026-05-25T09:15:18.284212Z[0m [[32m[1minfo     [0m] [1m✅ Byte Rover (Long-term Memory) daemon started[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,284 INFO [2m2026-05-25T09:15:18.284328Z[0m [[32m[1minfo     [0m] [1m✅ Agent Registry perf_cache daemon started[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,285 INFO [2m2026-05-25T09:15:18.285447Z[0m [[32m[1minfo     [0m] [1mTelegram polling already running in another worker process[0m [[0m[1m[34mintegrations.telegram_bot[0m][0m
+2026-05-25 16:15:18,285 INFO [2m2026-05-25T09:15:18.285585Z[0m [[32m[1minfo     [0m] [1mAI ORCHESTRATOR ready! http://0.0.0.0:7860[0m [[0m[1m[34mmain[0m][0m
+2026-05-25 16:15:18,286 INFO [2m2026-05-25T09:15:18.286103Z[0m [[32m[1minfo     [0m] [1mCapabilityMap sync complete   [0m [[0m[1m[34mcore.capability_map[0m][0m [36melapsed_ms[0m=[35m0[0m [36mtotal_models[0m=[35m18[0m
 INFO:     Application startup complete.
-2026-05-19 22:13:45,324 INFO [2m2026-05-19T15:13:45.324748Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
-2026-05-19 22:13:45,360 INFO [2m2026-05-19T15:13:45.360653Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
-2026-05-19 22:13:45,406 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:13:45,411 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:13:45,529 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:13:45,531 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:13:45,841 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:13:45,854 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:13:46,610 INFO [2m2026-05-19T15:13:46.610258Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m15[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-2026-05-19 22:13:46,611 INFO [2m2026-05-19T15:13:46.611070Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m16[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:42510 - "GET /api/models?t=1779203626590 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:42494 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:13:46,628 INFO [2m2026-05-19T15:13:46.627830Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m10[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:42526 - "GET /api/models?t=1779203626590 HTTP/1.1" 200 OK
-2026-05-19 22:13:46,646 INFO [2m2026-05-19T15:13:46.646388Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m14[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:42494 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:13:47,254 INFO [2m2026-05-19T15:13:47.254795Z[0m [[32m[1minfo     [0m] [1mTelegram polling started      [0m [[0m[1m[34mintegrations.telegram_bot[0m][0m
-2026-05-19 22:13:48,867 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=-1&limit=1 "HTTP/1.1 200 OK"
-2026-05-19 22:14:15,986 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:14:15,993 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:14:16,248 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:14:16,248 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:14:16,538 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:14:16,732 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:14:18,391 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:14:44,197 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:14:46,603 INFO [2m2026-05-19T15:14:46.603347Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m7[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:60320 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:14:46,612 INFO [2m2026-05-19T15:14:46.611833Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m14[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:60328 - "GET /api/models?t=1779203686590 HTTP/1.1" 200 OK
-2026-05-19 22:14:46,621 INFO [2m2026-05-19T15:14:46.620888Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m23[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:60340 - "GET /api/models?t=1779203686591 HTTP/1.1" 200 OK
-2026-05-19 22:14:46,632 INFO [2m2026-05-19T15:14:46.632725Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m9[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:60328 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:14:46,735 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:14:46,824 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:14:46,889 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:14:47,104 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:14:47,146 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:14:47,428 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:11,885 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:15:17,284 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:15:17,368 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:17,622 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:15:17,665 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:17,935 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:18,300 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:42,287 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:15:45,257 INFO [2m2026-05-19T15:15:45.256354Z[0m [[32m[1minfo     [0m] [1mCapability Evolver: mulai siklus evolusi[0m [[0m[1m[34mcore.capability_evolver[0m][0m [36mcycle[0m=[35m1[0m
-2026-05-19 22:15:45,287 INFO [2m2026-05-19T15:15:45.287109Z[0m [[32m[1minfo     [0m] [1mCapability Evolver: mulai siklus evolusi[0m [[0m[1m[34mcore.capability_evolver[0m][0m [36mcycle[0m=[35m1[0m
-2026-05-19 22:15:45,345 INFO [2m2026-05-19T15:15:45.344952Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_coding_deepseek-v4-pro_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,359 INFO [2m2026-05-19T15:15:45.359495Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_file_operation_qwen3.6-flash_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,365 INFO [2m2026-05-19T15:15:45.364958Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_coding_deepseek-v4-pro_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,368 INFO [2m2026-05-19T15:15:45.368732Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_coding_deepseek-v3-2_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,371 INFO [2m2026-05-19T15:15:45.371579Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_file_operation_qwen3.6-flash_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,375 INFO [2m2026-05-19T15:15:45.374893Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_coding_gpt-4o-mini_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,382 INFO [2m2026-05-19T15:15:45.382554Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_coding_deepseek-v3-2_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,391 INFO [2m2026-05-19T15:15:45.390659Z[0m [[32m[1minfo     [0m] [1mEvolution rule added          [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mconfidence[0m=[35m0.5[0m [36mrule_id[0m=[35mlat_coding_gpt-4o-mini_1779203745[0m [36mtype[0m=[35mmodel_preference[0m
-2026-05-19 22:15:45,436 INFO [2m2026-05-19T15:15:45.436789Z[0m [[32m[1minfo     [0m] [1mEvolutionStore loaded from DB [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mrules[0m=[35m406[0m
-2026-05-19 22:15:45,438 INFO [2m2026-05-19T15:15:45.438267Z[0m [[32m[1minfo     [0m] [1mEvolver: siklus selesai       [0m [[0m[1m[34mcore.capability_evolver[0m][0m [36mactivated[0m=[35m0[0m [36mcreated[0m=[35m4[0m [36mdeprecated[0m=[35m0[0m [36mduration_ms[0m=[35m181[0m
-2026-05-19 22:15:45,444 INFO [2m2026-05-19T15:15:45.444307Z[0m [[32m[1minfo     [0m] [1mEvolutionStore loaded from DB [0m [[0m[1m[34mcore.evolution_store[0m][0m [36mrules[0m=[35m406[0m
-2026-05-19 22:15:45,447 INFO [2m2026-05-19T15:15:45.446807Z[0m [[32m[1minfo     [0m] [1mEvolver: siklus selesai       [0m [[0m[1m[34mcore.capability_evolver[0m][0m [36mactivated[0m=[35m0[0m [36mcreated[0m=[35m4[0m [36mdeprecated[0m=[35m0[0m [36mduration_ms[0m=[35m159[0m
-2026-05-19 22:15:46,609 INFO [2m2026-05-19T15:15:46.609267Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m7[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:36900 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:15:46,618 INFO [2m2026-05-19T15:15:46.617836Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m15[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:36910 - "GET /api/models?t=1779203746591 HTTP/1.1" 200 OK
-2026-05-19 22:15:46,622 INFO [2m2026-05-19T15:15:46.622225Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m19[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:36916 - "GET /api/models?t=1779203746592 HTTP/1.1" 200 OK
-2026-05-19 22:15:46,646 INFO [2m2026-05-19T15:15:46.645782Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m10[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:36916 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:15:47,879 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:15:47,965 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:48,261 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:48,469 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:15:48,566 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:15:49,064 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:10,671 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:16:18,508 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:16:18,887 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:19,260 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:19,284 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:16:19,384 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:19,691 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:40,804 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:16:46,603 INFO [2m2026-05-19T15:16:46.602916Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m7[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-2026-05-19 22:16:46,603 INFO [2m2026-05-19T15:16:46.602832Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m7[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:47374 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-INFO:     127.0.0.1:47380 - "GET /api/models?t=1779203806590 HTTP/1.1" 200 OK
-2026-05-19 22:16:46,618 INFO [2m2026-05-19T15:16:46.617883Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m5[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:47386 - "GET /api/models?t=1779203806590 HTTP/1.1" 200 OK
-2026-05-19 22:16:46,633 INFO [2m2026-05-19T15:16:46.633489Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m8[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:47386 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:16:49,478 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:16:49,934 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:49,957 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:16:50,107 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:50,319 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:16:50,493 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:07,424 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:17:20,465 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:17:20,553 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:20,638 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:17:20,732 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:20,875 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:21,021 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:36,330 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:17:46,625 INFO [2m2026-05-19T15:17:46.625631Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m29[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:53766 - "GET /api/models?t=1779203866590 HTTP/1.1" 200 OK
-2026-05-19 22:17:46,634 INFO [2m2026-05-19T15:17:46.633770Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m38[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:53750 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:17:46,656 INFO [2m2026-05-19T15:17:46.655746Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m18[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:53782 - "GET /api/models?t=1779203866590 HTTP/1.1" 200 OK
-2026-05-19 22:17:46,678 INFO [2m2026-05-19T15:17:46.678130Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m20[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:53766 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:17:51,171 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:17:51,187 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:17:51,545 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:51,551 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:51,993 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:17:51,994 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:18:04,059 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:18:09,112 INFO [2m2026-05-19T15:18:09.112350Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m8[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mPOST[0m [36mpath[0m=[35m/api/settings/ai-roles/test-tools[0m [36mstatus[0m=[35m401[0m
-INFO:     127.0.0.1:36726 - "POST /api/settings/ai-roles/test-tools HTTP/1.1" 401 Unauthorized
-2026-05-19 22:18:22,124 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:18:22,127 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:18:22,216 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:18:22,216 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:18:22,523 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:18:22,533 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:18:30,259 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:18:45,256 INFO [2m2026-05-19T15:18:45.256786Z[0m [[32m[1minfo     [0m] [1mSecurity scan started         [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mtriggered_by[0m=[35mscheduler[0m
-2026-05-19 22:18:45,257 INFO [2m2026-05-19T15:18:45.257624Z[0m [[32m[1minfo     [0m] [1mScanning Python dependencies via pip-audit[0m [[0m[1m[34mcore.security_scanner[0m][0m
-2026-05-19 22:18:45,287 INFO [2m2026-05-19T15:18:45.287468Z[0m [[32m[1minfo     [0m] [1mSecurity scan started         [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mtriggered_by[0m=[35mscheduler[0m
-2026-05-19 22:18:45,288 INFO [2m2026-05-19T15:18:45.288253Z[0m [[32m[1minfo     [0m] [1mScanning Python dependencies via pip-audit[0m [[0m[1m[34mcore.security_scanner[0m][0m
-2026-05-19 22:18:59,521 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:19:25,661 INFO [2m2026-05-19T15:19:25.661345Z[0m [[32m[1minfo     [0m] [1mPython scan done              [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfindings[0m=[35m3[0m
-2026-05-19 22:19:25,678 INFO [2m2026-05-19T15:19:25.678431Z[0m [[32m[1minfo     [0m] [1mPython scan done              [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfindings[0m=[35m3[0m
-2026-05-19 22:19:25,773 INFO [2m2026-05-19T15:19:25.773837Z[0m [[32m[1minfo     [0m] [1mScanning Node.js dependencies via npm audit[0m [[0m[1m[34mcore.security_scanner[0m][0m
-2026-05-19 22:19:25,784 INFO [2m2026-05-19T15:19:25.783952Z[0m [[32m[1minfo     [0m] [1mScanning Node.js dependencies via npm audit[0m [[0m[1m[34mcore.security_scanner[0m][0m
-2026-05-19 22:19:26,580 INFO [2m2026-05-19T15:19:26.580418Z[0m [[32m[1minfo     [0m] [1mNode.js scan done             [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfindings[0m=[35m1[0m
-2026-05-19 22:19:26,581 WARNING [2m2026-05-19T15:19:26.580909Z[0m [[33m[1mwarning  [0m] [1mCVE findings detected         [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mcount[0m=[35m4[0m [36mcritical[0m=[35m2[0m [36mhigh[0m=[35m1[0m
-2026-05-19 22:19:26,596 INFO [2m2026-05-19T15:19:26.595954Z[0m [[32m[1minfo     [0m] [1mNode.js scan done             [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfindings[0m=[35m1[0m
-2026-05-19 22:19:26,596 WARNING [2m2026-05-19T15:19:26.596295Z[0m [[33m[1mwarning  [0m] [1mCVE findings detected         [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mcount[0m=[35m4[0m [36mcritical[0m=[35m2[0m [36mhigh[0m=[35m1[0m
-2026-05-19 22:19:27,397 INFO [2m2026-05-19T15:19:27.397471Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m12[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:38146 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:19:27,399 INFO [2m2026-05-19T15:19:27.399842Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m9[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:38154 - "GET /api/models?t=1779203926591 HTTP/1.1" 200 OK
-2026-05-19 22:19:27,403 INFO [2m2026-05-19T15:19:27.403449Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m16[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:38156 - "GET /api/models?t=1779203926592 HTTP/1.1" 200 OK
-2026-05-19 22:19:27,409 INFO [2m2026-05-19T15:19:27.409084Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
-2026-05-19 22:19:27,411 INFO [2m2026-05-19T15:19:27.411112Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
-2026-05-19 22:19:27,424 INFO [2m2026-05-19T15:19:27.423845Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m9[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:38156 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:19:27,475 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:19:27,478 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:19:27,593 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:19:27,594 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:19:27,903 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:19:27,904 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:19:28,308 INFO HTTP Request: POST https://ai.sumopod.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-05-19 22:19:28,473 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:19:28,498 INFO HTTP Request: POST https://ai.sumopod.com/v1/chat/completions "HTTP/1.1 200 OK"
-2026-05-19 22:19:28,574 INFO [2m2026-05-19T15:19:28.573937Z[0m [[32m[1minfo     [0m] [1mAI security analysis complete [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mresponse_preview[0m=[35m'PRIORITAS TINGGI: CVE-2026-30922, CVE-2024-47874, GHSA-4r6h-8v6p-xvw6\nPERLU RESTART: ya\nFALSE POSITI'[0m
-2026-05-19 22:19:28,574 INFO [2m2026-05-19T15:19:28.574419Z[0m [[32m[1minfo     [0m] [1mAuto-fixing Python package    [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfrom_ver[0m=[35m0.4.8[0m [36mpackage[0m=[35mpyasn1[0m [36mto_ver[0m=[35m0.6.3[0m
-2026-05-19 22:19:28,712 INFO [2m2026-05-19T15:19:28.711974Z[0m [[32m[1minfo     [0m] [1mAI security analysis complete [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mresponse_preview[0m=[35m'PRIORITAS TINGGI: CVE-2026-30922, CVE-2024-47874, GHSA-4r6h-8v6p-xvw6\nPERLU RESTART: ya\nFALSE POSITI'[0m
-2026-05-19 22:19:28,712 INFO [2m2026-05-19T15:19:28.712296Z[0m [[32m[1minfo     [0m] [1mAuto-fixing Python package    [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfrom_ver[0m=[35m0.4.8[0m [36mpackage[0m=[35mpyasn1[0m [36mto_ver[0m=[35m0.6.3[0m
-2026-05-19 22:19:29,713 INFO [2m2026-05-19T15:19:29.713453Z[0m [[32m[1minfo     [0m] [1mPackage fixed                 [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mpackage[0m=[35mpyasn1[0m [36mversion[0m=[35m0.6.3[0m
-2026-05-19 22:19:29,713 INFO [2m2026-05-19T15:19:29.713704Z[0m [[32m[1minfo     [0m] [1mAuto-fixing Python package    [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfrom_ver[0m=[35m0.37.2[0m [36mpackage[0m=[35mstarlette[0m [36mto_ver[0m=[35m0.40.0[0m
-2026-05-19 22:19:30,783 INFO [2m2026-05-19T15:19:30.783692Z[0m [[32m[1minfo     [0m] [1mPackage fixed                 [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mpackage[0m=[35mpyasn1[0m [36mversion[0m=[35m0.6.3[0m
-2026-05-19 22:19:30,784 INFO [2m2026-05-19T15:19:30.783945Z[0m [[32m[1minfo     [0m] [1mAuto-fixing Python package    [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfrom_ver[0m=[35m0.37.2[0m [36mpackage[0m=[35mstarlette[0m [36mto_ver[0m=[35m0.40.0[0m
-2026-05-19 22:19:30,993 INFO [2m2026-05-19T15:19:30.993647Z[0m [[32m[1minfo     [0m] [1mPackage fixed                 [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mpackage[0m=[35mstarlette[0m [36mversion[0m=[35m0.40.0[0m
-2026-05-19 22:19:30,994 INFO [2m2026-05-19T15:19:30.993980Z[0m [[32m[1minfo     [0m] [1mAuto-fixing Python package    [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfrom_ver[0m=[35m0.37.2[0m [36mpackage[0m=[35mstarlette[0m [36mto_ver[0m=[35m0.47.2[0m
-2026-05-19 22:19:31,769 INFO [2m2026-05-19T15:19:31.768974Z[0m [[32m[1minfo     [0m] [1mPackage fixed                 [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mpackage[0m=[35mstarlette[0m [36mversion[0m=[35m0.40.0[0m
-2026-05-19 22:19:31,769 INFO [2m2026-05-19T15:19:31.769419Z[0m [[32m[1minfo     [0m] [1mAuto-fixing Python package    [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mfrom_ver[0m=[35m0.37.2[0m [36mpackage[0m=[35mstarlette[0m [36mto_ver[0m=[35m0.47.2[0m
-2026-05-19 22:19:32,756 INFO [2m2026-05-19T15:19:32.756621Z[0m [[32m[1minfo     [0m] [1mPackage fixed                 [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mpackage[0m=[35mstarlette[0m [36mversion[0m=[35m0.47.2[0m
-2026-05-19 22:19:32,756 INFO [2m2026-05-19T15:19:32.756907Z[0m [[32m[1minfo     [0m] [1mSecurity scan saved           [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mcritical[0m=[35m2[0m [36mduration_s[0m=[35m47.5[0m [36merror[0m=[35m[0m [36mhigh[0m=[35m1[0m [36mtotal_fixed[0m=[35m3[0m [36mtotal_found[0m=[35m4[0m [36mtriggered_by[0m=[35mscheduler[0m
-2026-05-19 22:19:32,762 INFO [2m2026-05-19T15:19:32.762637Z[0m [[32m[1minfo     [0m] [1mNo Telegram config — scan report logged only[0m [[0m[1m[34mcore.security_scanner[0m][0m
-2026-05-19 22:19:32,904 INFO [2m2026-05-19T15:19:32.904285Z[0m [[32m[1minfo     [0m] [1mPackage fixed                 [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mpackage[0m=[35mstarlette[0m [36mversion[0m=[35m0.47.2[0m
-2026-05-19 22:19:32,904 INFO [2m2026-05-19T15:19:32.904759Z[0m [[32m[1minfo     [0m] [1mSecurity scan saved           [0m [[0m[1m[34mcore.security_scanner[0m][0m [36mcritical[0m=[35m2[0m [36mduration_s[0m=[35m47.6[0m [36merror[0m=[35m[0m [36mhigh[0m=[35m1[0m [36mtotal_fixed[0m=[35m3[0m [36mtotal_found[0m=[35m4[0m [36mtriggered_by[0m=[35mscheduler[0m
-2026-05-19 22:19:32,911 INFO [2m2026-05-19T15:19:32.911153Z[0m [[32m[1minfo     [0m] [1mNo Telegram config — scan report logged only[0m [[0m[1m[34mcore.security_scanner[0m][0m
-2026-05-19 22:19:46,602 INFO [2m2026-05-19T15:19:46.602477Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m4[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59848 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:19:46,611 INFO [2m2026-05-19T15:19:46.611209Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m13[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59856 - "GET /api/models?t=1779203986590 HTTP/1.1" 200 OK
-2026-05-19 22:19:46,616 INFO [2m2026-05-19T15:19:46.615812Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m15[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59864 - "GET /api/models?t=1779203986591 HTTP/1.1" 200 OK
-2026-05-19 22:19:46,633 INFO [2m2026-05-19T15:19:46.633851Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m6[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59864 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:19:55,969 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:19:58,037 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:19:58,038 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:19:58,124 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:19:58,128 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:19:58,413 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:19:58,424 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:20:23,364 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:20:28,803 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:20:28,808 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:20:28,992 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:20:28,994 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:20:29,326 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:20:29,327 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:20:46,604 INFO [2m2026-05-19T15:20:46.603969Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m7[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59720 - "GET /api/models?t=1779204046590 HTTP/1.1" 200 OK
-2026-05-19 22:20:46,612 INFO [2m2026-05-19T15:20:46.612626Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m16[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59706 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:20:46,618 INFO [2m2026-05-19T15:20:46.617818Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m6[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59728 - "GET /api/models?t=1779204046590 HTTP/1.1" 200 OK
-2026-05-19 22:20:46,629 INFO [2m2026-05-19T15:20:46.628988Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m12[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:59720 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:20:50,554 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:20:59,711 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:20:59,718 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:20:59,942 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:20:59,956 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:21:00,281 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:21:00,284 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:21:18,235 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:21:30,856 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:21:30,858 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:21:30,971 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:21:30,976 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:21:31,356 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:21:31,356 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:21:44,114 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:21:46,605 INFO [2m2026-05-19T15:21:46.605005Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m9[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:48428 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:21:46,616 INFO [2m2026-05-19T15:21:46.616264Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m20[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:48436 - "GET /api/models?t=1779204106590 HTTP/1.1" 200 OK
-2026-05-19 22:21:46,625 INFO [2m2026-05-19T15:21:46.625592Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m6[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:48428 - "GET /api/models?t=1779204106590 HTTP/1.1" 200 OK
-2026-05-19 22:21:46,635 INFO [2m2026-05-19T15:21:46.635218Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m9[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:48436 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:22:01,510 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:22:01,516 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:22:01,613 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:01,621 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:01,903 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:01,910 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:11,145 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:22:32,090 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:22:32,091 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:22:32,183 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:32,186 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:32,485 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:32,505 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:22:37,801 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:22:46,605 INFO [2m2026-05-19T15:22:46.605404Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m6[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54510 - "GET /api/models?t=1779204166590 HTTP/1.1" 200 OK
-2026-05-19 22:22:46,609 INFO [2m2026-05-19T15:22:46.608954Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m10[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54494 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:22:46,622 INFO [2m2026-05-19T15:22:46.621855Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m22[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54526 - "GET /api/models?t=1779204166591 HTTP/1.1" 200 OK
-2026-05-19 22:22:46,632 INFO [2m2026-05-19T15:22:46.632272Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m12[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54494 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:23:02,669 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:23:02,671 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:23:02,808 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:02,826 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:03,374 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:03,376 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:05,505 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:23:33,458 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:23:33,550 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:23:33,560 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:23:33,656 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:33,662 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:33,987 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:34,002 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:23:46,603 INFO [2m2026-05-19T15:23:46.603328Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m8[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:41472 - "GET /api/models?t=1779204226590 HTTP/1.1" 200 OK
-2026-05-19 22:23:46,622 INFO [2m2026-05-19T15:23:46.622515Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m28[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:41470 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:23:46,627 INFO [2m2026-05-19T15:23:46.626869Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m15[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:41484 - "GET /api/models?t=1779204226590 HTTP/1.1" 200 OK
-2026-05-19 22:23:46,641 INFO [2m2026-05-19T15:23:46.641738Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m17[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:41472 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:24:04,666 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:24:04,666 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:24:05,576 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:05,578 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:06,291 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:06,292 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:16,738 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:24:27,420 INFO [2m2026-05-19T15:24:27.420174Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
-2026-05-19 22:24:27,421 INFO [2m2026-05-19T15:24:27.421201Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
-2026-05-19 22:24:36,642 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:24:36,645 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:24:37,135 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:37,141 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:37,628 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:37,628 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:24:43,689 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:24:46,600 INFO [2m2026-05-19T15:24:46.599913Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m5[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:46846 - "GET /api/models?t=1779204286590 HTTP/1.1" 200 OK
-2026-05-19 22:24:46,603 INFO [2m2026-05-19T15:24:46.603368Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m9[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:46836 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:24:46,618 INFO [2m2026-05-19T15:24:46.618535Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m11[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:46860 - "GET /api/models?t=1779204286590 HTTP/1.1" 200 OK
-2026-05-19 22:24:46,629 INFO [2m2026-05-19T15:24:46.628927Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m10[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:46836 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:25:08,307 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:25:08,309 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:25:08,470 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:08,474 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:08,775 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:08,775 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:16,132 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:25:39,588 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:25:39,588 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:25:40,302 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:40,302 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:40,718 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:40,733 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:25:43,373 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:25:46,608 INFO [2m2026-05-19T15:25:46.608364Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m11[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:51898 - "GET /api/models?t=1779204346590 HTTP/1.1" 200 OK
-2026-05-19 22:25:46,612 INFO [2m2026-05-19T15:25:46.611953Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m15[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:51886 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:25:46,633 INFO [2m2026-05-19T15:25:46.632974Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m18[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:51908 - "GET /api/models?t=1779204346590 HTTP/1.1" 200 OK
-2026-05-19 22:25:46,641 INFO [2m2026-05-19T15:25:46.641064Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m11[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:51886 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:26:11,639 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:26:11,639 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:26:12,427 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:12,428 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:12,723 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:12,740 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:14,709 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:26:41,334 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:26:43,191 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:26:43,198 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:26:44,211 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:44,211 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:44,949 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:44,950 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:26:46,605 INFO [2m2026-05-19T15:26:46.605493Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m6[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54854 - "GET /api/models?t=1779204406591 HTTP/1.1" 200 OK
-2026-05-19 22:26:46,616 INFO [2m2026-05-19T15:26:46.615852Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m17[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/integrations/telegram/polling-status[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54838 - "GET /api/integrations/telegram/polling-status HTTP/1.1" 200 OK
-2026-05-19 22:26:46,634 INFO [2m2026-05-19T15:26:46.634346Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m18[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/models[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54858 - "GET /api/models?t=1779204406591 HTTP/1.1" 200 OK
-2026-05-19 22:26:46,640 INFO [2m2026-05-19T15:26:46.640379Z[0m [[32m[1minfo     [0m] [1mAPI Request Completed         [0m [[0m[1m[34mmain[0m][0m [36mexecution_time_ms[0m=[35m11[0m [36mis_error[0m=[35mFalse[0m [36mmethod[0m=[35mGET[0m [36mpath[0m=[35m/api/settings/ai-roles/resolved[0m [36mstatus[0m=[35m200[0m
-INFO:     127.0.0.1:54838 - "GET /api/settings/ai-roles/resolved HTTP/1.1" 200 OK
-2026-05-19 22:27:13,907 INFO HTTP Request: GET https://api.telegram.org/bot8634604858:AAFoADROLn99yIRKkQS19i2dgZkCrhYpCzE/getUpdates?offset=0&timeout=25&allowed_updates=message&allowed_updates=callback_query "HTTP/1.1 200 OK"
-2026-05-19 22:27:15,450 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:27:15,450 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
-2026-05-19 22:27:16,052 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:27:16,052 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:27:16,494 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-2026-05-19 22:27:16,507 INFO HTTP Request: HEAD https://api.anthropic.com "HTTP/1.1 404 Not Found"
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-2026-05-19 22:27:26,736 INFO [2m2026-05-19T15:27:26.736467Z[0m [[32m[1minfo     [0m] [1mShutting down AI ORCHESTRATOR...[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:27:26,737 INFO [2m2026-05-19T15:27:26.737080Z[0m [[32m[1minfo     [0m] [1mTelegram polling stopped      [0m [[0m[1m[34mintegrations.telegram_bot[0m][0m
-INFO:     Application shutdown complete.
-INFO:     Finished server process [112141]
-INFO:     Shutting down
-INFO:     Waiting for application shutdown.
-2026-05-19 22:27:26,936 INFO [2m2026-05-19T15:27:26.935906Z[0m [[32m[1minfo     [0m] [1mShutting down AI ORCHESTRATOR...[0m [[0m[1m[34mmain[0m][0m
-2026-05-19 22:27:26,936 INFO [2m2026-05-19T15:27:26.936340Z[0m [[32m[1minfo     [0m] [1mTelegram polling stopped      [0m [[0m[1m[34mintegrations.telegram_bot[0m][0m
-INFO:     Application shutdown complete.
-INFO:     Finished server process [112142]
-INFO:     Stopping parent process [112138]
+2026-05-25 16:15:18,340 INFO [2m2026-05-25T09:15:18.340367Z[0m [[32m[1minfo     [0m] [1mAgentRegistry: perf_cache updated[0m [[0m[1m[34magents.agent_registry[0m][0m [36mentries[0m=[35m3[0m
+2026-05-25 16:15:18,406 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
+2026-05-25 16:15:18,433 INFO HTTP Request: HEAD https://api.openai.com "HTTP/1.1 421 Misdirected Request"
+2026-05-25 16:15:18,526 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"
+2026-05-25 16:15:18,526 INFO HTTP Request: HEAD https://generativelanguage.googleapis.com "HTTP/1.1 404 Not Found"

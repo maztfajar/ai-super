@@ -160,10 +160,13 @@ async def lifespan(app: FastAPI):
         await ensure_admin_exists(db)
     log.info(f"Admin ready: {settings.ADMIN_USERNAME}")
 
-    # Init layanan opsional
-    await model_manager.startup()
-    await rag_engine.startup()
-    await memory_manager.startup()
+    # Init layanan opsional — jalankan concurrent untuk mempercepat startup
+    await asyncio.gather(
+        model_manager.startup(),
+        rag_engine.startup(),
+        memory_manager.startup(),
+        return_exceptions=True,
+    )
     
     # Init new compliance systems
     log.info("✅ Approval System initialized")
@@ -186,14 +189,21 @@ async def lifespan(app: FastAPI):
     from core.security_scanner import security_scanner
     await security_scanner.start_scheduler()
     log.info("✅ Security Scanner started (scan tiap 24 jam)")
+    
+    # ── Hydrate Metrics Engine ───────────────────────────────────
+    from core.metrics import metrics_engine
+    await metrics_engine.hydrate()
+    log.info("✅ Metrics Engine hydrated")
 
     # Capability Map — discover model capabilities
     from core.capability_map import capability_map
-    import asyncio
-    await capability_map.startup_sync()
+    # Load from disk immediately (fast) — interview runs in background
+    capability_map._load_from_disk()
+    # Schedule sync in background without blocking server startup
+    asyncio.create_task(capability_map.sync())
     # Schedule background re-sync every 30 minutes
     asyncio.create_task(capability_map.sync_background_loop())
-    log.info("Capability Map ready", models=len(capability_map._map))
+    log.info("Capability Map ready (background sync started)", models=len(capability_map._map))
 
     # Capability Evolver — self-improvement daemon
     from core.capability_evolver import capability_evolver
@@ -255,6 +265,8 @@ app = FastAPI(
 )
 
 # Add middlewares
+from fastapi.middleware.gzip import GZipMiddleware
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.add_middleware(TimeoutMiddleware)
 app.add_middleware(APIMetricsMiddleware)
 
@@ -373,9 +385,15 @@ import mimetypes
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 
+class CachedStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
 frontend_dist = Path(__file__).parent.parent / "frontend" / "dist"
 if frontend_dist.exists():
-    app.mount("/assets", StaticFiles(directory=str(frontend_dist / "assets")), name="assets")
+    app.mount("/assets", CachedStaticFiles(directory=str(frontend_dist / "assets")), name="assets")
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):

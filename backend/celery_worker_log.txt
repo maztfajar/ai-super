@@ -1,0 +1,29 @@
+ 
+ -------------- celery@darknote v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- Linux-6.17.0-23-generic-x86_64-with-glibc2.39 2026-05-25 16:18:29
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         ai-orchestrator:0x7880386a15b0
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/1
+- *** --- * --- .> concurrency: 8 (prefork)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> celery           exchange=celery(direct) key=celery
+                
+
+[tasks]
+  . workflow.tasks.check_scheduled_workflows
+  . workflow.tasks.cleanup_dlq_tasks
+  . workflow.tasks.index_document_task
+  . workflow.tasks.run_scheduled_task_async
+  . workflow.tasks.run_workflow_task
+  . workflow.tasks.save_build_checkpoint
+  . workflow.tasks.send_telegram_message
+
+[2026-05-25 16:18:29,605: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-05-25 16:18:29,611: INFO/MainProcess] mingle: searching for neighbors
+[2026-05-25 16:18:30,620: INFO/MainProcess] mingle: all alone
+[2026-05-25 16:18:30,651: INFO/MainProcess] celery@darknote ready.

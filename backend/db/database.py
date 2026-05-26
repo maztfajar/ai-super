@@ -42,6 +42,29 @@ AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
 
+# ── Sync engine for Celery tasks and non-async contexts ──────────────────────
+sync_db_url = db_url.replace("sqlite+aiosqlite://", "sqlite:///").replace("+asyncpg://", "://")
+from sqlalchemy import create_engine as _create_sync_engine
+from sqlalchemy.orm import sessionmaker as _sync_sessionmaker
+
+_sync_engine = _create_sync_engine(
+    sync_db_url,
+    connect_args={"check_same_thread": False, "timeout": 30} if is_sqlite else {},
+    pool_pre_ping=True,
+    pool_recycle=3600,
+)
+
+if is_sqlite:
+    @sa.event.listens_for(_sync_engine, "connect")
+    def set_sqlite_pragma_sync(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA busy_timeout=30000")
+        cursor.close()
+
+SessionLocal = _sync_sessionmaker(bind=_sync_engine, expire_on_commit=False)
+
 async def init_db():
     """Create all tables + run safe column migrations"""
     from db import models  # noqa - import to register models

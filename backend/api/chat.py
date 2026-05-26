@@ -13,7 +13,7 @@ from db.database import get_db
 from db.models import ChatSession, Message, User
 from core.auth import get_current_user
 from core.model_manager import model_manager
-from core.orchestrator import orchestrator
+from core.orchestrator import orchestrator, OrchestratorEvent
 from agents.executor import agent_executor
 from rag.engine import rag_engine
 from memory.manager import memory_manager
@@ -311,65 +311,161 @@ async def chat_send(
         return text
 
     async def generate():
-        full_response = ""
         final_model = req.model or "orchestrator"
-        thinking_steps = []  # Collect all status messages for thinking section
-        error_occurred = False
-        _saved_to_db = False
 
-        # Helper function to save response to DB
-        async def save_to_db_if_needed():
-            nonlocal _saved_to_db
-            if _saved_to_db or (not full_response.strip() and not thinking_steps):
-                return
+        async def orchestrator_producer(q: asyncio.Queue):
+            full_response = ""
+            thinking_steps = []
+            error_occurred = False
+            _saved_to_db = False
+
+            async def save_to_db_bg():
+                nonlocal _saved_to_db
+                if _saved_to_db or (not full_response.strip() and not thinking_steps):
+                    return
+                try:
+                    from db.database import AsyncSessionLocal
+                    from datetime import datetime, timezone
+                    async with AsyncSessionLocal() as save_db:
+                        # Implement retry logic for WAL locks
+                        for attempt in range(3):
+                            try:
+                                # Safely encode thinking steps
+                                thinking_json = None
+                                if thinking_steps:
+                                    try:
+                                        thinking_json = json.dumps(thinking_steps, ensure_ascii=False)
+                                    except Exception:
+                                        thinking_json = str(thinking_steps)
+
+                                ai_msg = Message(
+                                    session_id=session.id,
+                                    user_id=user.id,
+                                    role="assistant",
+                                    content=full_response.strip() or "*(Eksekusi Selesai)*",
+                                    model=final_model,
+                                    rag_sources=json.dumps(rag_sources) if rag_sources else None,
+                                    thinking_process=thinking_json,
+                                )
+                                save_db.add(ai_msg)
+
+                                sess = await save_db.get(ChatSession, session.id)
+                                if sess:
+                                    if sess.title == "New Chat" and req.message:
+                                        sess.title = req.message[:50]
+                                    sess.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                                    save_db.add(sess)
+                                
+                                await save_db.commit()
+                                _saved_to_db = True
+                                break
+                            except Exception as dberr:
+                                if attempt == 2:
+                                    log.error("Background DB Save failed completely", error=str(dberr))
+                                    raise dberr
+                                await asyncio.sleep(0.5)
+                except Exception as e:
+                    log.error("Failed to save AI response in background task", error=str(e))
+
             try:
-                from db.database import AsyncSessionLocal
-                from datetime import datetime, timezone
-                async with AsyncSessionLocal() as save_db:
-                    # Implement retry logic for WAL locks
-                    for attempt in range(3):
+                async for event in orchestrator.process(
+                    message=req.message,
+                    user_id=user.id,
+                    session_id=session.id,
+                    user_model_choice=req.model,
+                    system_prompt=system_prompt,
+                    history=history,
+                    temperature=req.temperature,
+                    max_tokens=req.max_tokens,
+                    use_rag=req.use_rag,
+                    image_b64=req.image_b64,
+                    image_mime=req.image_mime,
+                    project_path=project_path,
+                    force_simple=True if req.agent_mode is False else False,
+                ):
+                    # Accumulate state inside producer
+                    if event.type == "chunk":
+                        clean_content = _strip_internal_tags(event.content)
+                        if clean_content:
+                            full_response += clean_content
+                            await q.put(event)
+                    elif event.type == "process":
+                        if event.data:
+                            action = event.data.get("action", "")
+                            if action != "thinking_delta":
+                                thinking_steps.append(event.data)
+                        await q.put(event)
+                    elif event.type == "status":
+                        thinking_steps.append(event.content)
+                        await q.put(event)
+                    elif event.type == "impl_plan":
+                        await q.put(event)
+                    elif event.type == "pending_plan":
+                        await q.put(event)
+                    elif event.type == "pending_confirmation":
+                        await q.put(event)
+                    elif event.type == "require_project_location":
+                        await q.put(event)
+                    elif event.type == "done":
+                        # Save to DB inside the background task immediately on 'done'
+                        await save_to_db_bg()
+                        
+                        # Update memory
                         try:
-                            # Safely encode thinking steps
-                            thinking_json = None
-                            if thinking_steps:
-                                try:
-                                    thinking_json = json.dumps(thinking_steps, ensure_ascii=False)
-                                except Exception:
-                                    thinking_json = str(thinking_steps)
-
-                            ai_msg = Message(
-                                session_id=session.id,
-                                user_id=user.id,
-                                role="assistant",
-                                content=full_response.strip() or "*(Eksekusi Selesai)*",
-                                model=final_model,
-                                rag_sources=json.dumps(rag_sources) if rag_sources else None,
-                                thinking_process=thinking_json,
-                            )
-                            save_db.add(ai_msg)
-
-                            sess = await save_db.get(ChatSession, session.id)
-                            if sess:
-                                if sess.title == "New Chat" and req.message:
-                                    sess.title = req.message[:50]
-                                sess.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-                                save_db.add(sess)
+                            await memory_manager.save_chat_to_redis(session.id, "user", req.message)
+                            await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
+                        except Exception as mem_err:
+                            log.warning("Failed to update memory in background", error=str(mem_err)[:100])
                             
-                            await save_db.commit()
-                            _saved_to_db = True
-                            break
-                        except Exception as dberr:
-                            if attempt == 2:
-                                log.error("DB Save failed completely", error=str(dberr))
-                                raise dberr
-                            await asyncio.sleep(0.5)
+                        # Forward AI Response to Telegram (If applicable)
+                        if is_telegram_sync and getattr(user, "telegram_chat_id", None) and not error_occurred:
+                            import os
+                            from integrations.telegram_bot import _send
+                            telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
+                            if telegram_token:
+                                try:
+                                    asyncio.create_task(_send(
+                                        telegram_token, 
+                                        int(user.telegram_chat_id), 
+                                        f"🤖 *AI:* {full_response[:4000]}"  # Telegram limits to 4096
+                                    ))
+                                except Exception as tel_err:
+                                    log.warning("Gagal forward balasan AI ke Telegram", error=str(tel_err))
+
+                        # Enrich the 'done' event with accumulated metadata for the generator stream
+                        event.data = event.data or {}
+                        event.data["thinking_process"] = json.dumps(thinking_steps) if thinking_steps else ""
+                        event.data["sources"] = rag_sources
+                        await q.put(event)
+
+                    elif event.type == "error":
+                        full_response = f"Error: {event.content}"
+                        error_occurred = True
+                        await q.put(event)
+            except asyncio.CancelledError:
+                log.info("Background orchestrator producer was cancelled", session_id=session.id)
+                error_occurred = True
+                thinking_steps.append("⚠️ Latar belakang dibatalkan...")
+                raise
             except Exception as e:
-                log.error("Failed to save AI response in finally block", error=str(e))
+                log.error("orchestrator_producer failed", error=str(e))
+                error_occurred = True
+                try:
+                    await q.put(OrchestratorEvent(type="error", content=str(e), data={}))
+                except Exception:
+                    pass
+            finally:
+                # In all cases (success, error, or cancellation), save to DB if not saved yet
+                if not _saved_to_db:
+                    await save_to_db_bg()
+                    try:
+                        await memory_manager.save_chat_to_redis(session.id, "user", req.message)
+                        await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
+                    except Exception as mem_err:
+                        log.warning("Failed to update memory in background finally", error=str(mem_err)[:100])
+                await q.put(None)
 
         # ─── ANTI-BUFFERING PADDING ────────────────────────────
-        # VPS reverse proxies (Nginx/Cloudflare) often buffer SSE chunks until 4KB.
-        # This padding forces the proxy to flush the headers/buffer immediately
-        # so the frontend doesn't hang at "0 karakter" for a long time.
         yield f": {' ' * 4096}\n\n"
 
         # Send session info
@@ -386,233 +482,115 @@ async def chat_send(
                     except: meta = {}
                 project_path = meta.get("project_path") if isinstance(meta, dict) else None
 
-            # ═══════════════════════════════════════════════════════
-            # DELEGATE TO ORCHESTRATOR — all intelligence lives there
-            # ═══════════════════════════════════════════════════════
-            async def orchestrator_producer(q: asyncio.Queue):
-                try:
-                    async for event in orchestrator.process(
-                        message=req.message,
-                        user_id=user.id,
-                        session_id=session.id,
-                        user_model_choice=req.model,
-                        system_prompt=system_prompt,
-                        history=history,
-                        temperature=req.temperature,
-                        max_tokens=req.max_tokens,
-                        use_rag=req.use_rag,
-                        image_b64=req.image_b64,
-                        image_mime=req.image_mime,
-                        project_path=project_path,
-                        force_simple=True if req.agent_mode is False else False,
-                    ):
-                        await q.put(event)
-                except asyncio.CancelledError:
-                    pass
-                except Exception as e:
-                    await q.put(e)
-                finally:
-                    await q.put(None)
-
             q = asyncio.Queue()
             prod_task = asyncio.create_task(orchestrator_producer(q))
 
-            try:
-                while True:
-                    try:
-                        item = await asyncio.wait_for(q.get(), timeout=5.0)
-                    except asyncio.TimeoutError:
-                        # Pad keepalive with 4KB of spaces to force proxy (Cloudflare/Nginx) to flush buffer
-                        # v4.2: Interval diturunkan 8s → 5s karena beberapa proxy timeout lebih cepat
-                        # saat tidak ada data di SSE stream (e.g. selama tool execution 10+ detik)
-                        yield f": keepalive {' ' * 4096}\n\n"
-                        continue
-                    
-                    if item is None:
-                        break
-                    
-                    if isinstance(item, Exception):
-                        raise item
-                    
-                    event = item
+            while True:
+                try:
+                    item = await asyncio.wait_for(q.get(), timeout=5.0)
+                except asyncio.TimeoutError:
+                    yield f": keepalive {' ' * 4096}\n\n"
+                    continue
+                
+                if item is None:
+                    break
+                
+                if isinstance(item, Exception):
+                    raise item
+                
+                event = item
 
-                    if event.type == "chunk":
-                        # Bersihkan tag XML internal yang mungkin bocor dari model
-                        clean_content = _strip_internal_tags(event.content)
-                        if clean_content:
-                            full_response += clean_content
-                            # Override content sebelum dikirim ke frontend
-                            yield f"data: {json.dumps({'type': 'chunk', 'content': clean_content})}\n\n"
+                if event.type == "chunk":
+                    clean_content = _strip_internal_tags(event.content)
+                    if clean_content:
+                        yield f"data: {json.dumps({'type': 'chunk', 'content': clean_content})}\n\n"
 
-                    elif event.type == "process":
-                        # Structured process step — forward directly to frontend
-                        yield event.to_sse()
-                        # Also collect for storage
-                        if event.data:
-                            action = event.data.get("action", "")
-                            if action != "thinking_delta":
-                                thinking_steps.append(event.data)
+                elif event.type == "process":
+                    yield event.to_sse()
 
-                    elif event.type == "status":
-                        # Collect thinking steps
-                        thinking_steps.append(event.content)
-                        yield event.to_sse()
+                elif event.type == "status":
+                    yield event.to_sse()
 
-                    elif event.type == "impl_plan":
-                        # Forward implementation plan directly to UI
-                        payload = {
-                            "type": "impl_plan",
-                            "content": event.content,
-                            "intent": event.data.get("intent", ""),
-                            "complexity": event.data.get("complexity", 0),
-                        }
-                        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                elif event.type == "impl_plan":
+                    payload = {
+                        "type": "impl_plan",
+                        "content": event.content,
+                        "intent": event.data.get("intent", ""),
+                        "complexity": event.data.get("complexity", 0),
+                    }
+                    yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
-                    elif event.type == "pending_plan":
-                        # Interactive planning — send plan for user review
-                        payload = {
-                            "type": "pending_plan",
-                            "plan": event.data.get("plan", "") if event.data else "",
-                            "subtask_count": event.data.get("subtask_count", 0) if event.data else 0,
-                            "session_id": session.id,
-                            "assignment_summary": event.data.get("assignment_summary", "") if event.data else "",
-                        }
-                        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                        # Do NOT return — orchestrator is waiting for confirmation
-                        # Keep the SSE stream alive with keepalives while waiting
+                elif event.type == "pending_plan":
+                    payload = {
+                        "type": "pending_plan",
+                        "plan": event.data.get("plan", "") if event.data else "",
+                        "subtask_count": event.data.get("subtask_count", 0) if event.data else 0,
+                        "session_id": session.id,
+                        "assignment_summary": event.data.get("assignment_summary", "") if event.data else "",
+                    }
+                    yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
-                    elif event.type == "pending_confirmation":
-                        # VPS safety protocol — send confirmation request
-                        payload = {
-                            "type": "pending_confirmation",
-                            "command": req.message,
-                            "purpose": event.data.get("purpose", "") if event.data else "",
-                            "risk": event.data.get("risk", "MEDIUM") if event.data else "MEDIUM",
-                            "session_id": session.id,
-                        }
-                        yield f"data: {json.dumps(payload)}\n\n"
-                        return  # Stop generator
+                elif event.type == "pending_confirmation":
+                    payload = {
+                        "type": "pending_confirmation",
+                        "command": req.message,
+                        "purpose": event.data.get("purpose", "") if event.data else "",
+                        "risk": event.data.get("risk", "MEDIUM") if event.data else "MEDIUM",
+                        "session_id": session.id,
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+                    return
 
-                    elif event.type == "require_project_location":
-                        # Orchestrator needs project path for this intent
-                        payload = {
-                            "type": "require_project_location",
-                            "session_id": session.id,
-                        }
-                        yield f"data: {json.dumps(payload)}\n\n"
-                        return  # Stop generator and wait for user to provide path
+                elif event.type == "require_project_location":
+                    payload = {
+                        "type": "require_project_location",
+                        "session_id": session.id,
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+                    return
 
-                    elif event.type == "done":
-                        # Save AI response to DB
-                        await save_to_db_if_needed()
+                elif event.type == "done":
+                    done_payload = {"type": "done", "sources": event.data.get("sources", [])}
+                    if event.data:
+                        done_payload.update({k: v for k, v in event.data.items() if k not in ["sources", "thinking_process"]})
+                    done_payload["thinking_process"] = event.data.get("thinking_process", "")
+                    yield f"data: {json.dumps(done_payload)}\n\n"
+                    return
 
-                        # Pass through done event with orchestrator metadata + thinking process
-                        done_payload = {"type": "done", "sources": rag_sources}
-                        if event.data:
-                            done_payload.update(event.data)
-                        # Include thinking process for expandable thinking section
-                        done_payload["thinking_process"] = json.dumps(thinking_steps) if thinking_steps else ""
-                        yield f"data: {json.dumps(done_payload)}\n\n"
-                        return # Exit generator cleanly
-
-                    elif event.type == "error":
-                        yield event.to_sse()
-                        full_response = f"Error: {event.content}"
-                        error_occurred = True
-            finally:
-                if not prod_task.done():
-                    prod_task.cancel()
-                    try:
-                        await prod_task
-                    except (asyncio.CancelledError, Exception):
-                        pass
+                elif event.type == "error":
+                    yield event.to_sse()
+                    return
 
         except asyncio.CancelledError:
-            log.info("Chat stream cancelled by client", session_id=session.id)
-            error_occurred = True
-            if full_response.strip():
-                thinking_steps.append("⚠️ Klien terputus, menyimpan sebagian respons...")
+            log.info("Chat stream cancelled by client (navigated away or refreshed)", session_id=session.id)
+            raise
 
         except Exception as e:
             import traceback
             import uuid as _uuid
             traceback.print_exc()
             err_str = str(e)
-            # Generate an error ID for debugging — full details stay server-side
             err_id = _uuid.uuid4().hex[:8].upper()
-            log.error("Chat error", error=err_str[:300], error_id=err_id)
+            log.error("Generator loop error", error=err_str[:300], error_id=err_id)
 
-            # Provide user-friendly error messages — never expose raw internals to client
             if "overdue balance" in err_str.lower() or "insufficient_quota" in err_str.lower():
                 user_friendly_err = "❌ API Key Anda kehabisan saldo. Silakan isi ulang di menu Integrations."
-                yield f"data: {json.dumps({'type': 'chunk', 'content': user_friendly_err})}\n\n"
-                full_response = user_friendly_err
             elif "timeout" in err_str.lower():
                 user_friendly_err = "⏱️ Operasi timeout - silakan coba lagi dengan pesan yang lebih singkat"
-                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
-                full_response = user_friendly_err
             elif "rate limit" in err_str.lower():
                 user_friendly_err = "🛑 Terlalu banyak request - silakan tunggu beberapa detik sebelum mencoba lagi"
-                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
-                full_response = user_friendly_err
             elif "content filter" in err_str.lower() or "request was blocked" in err_str.lower():
                 user_friendly_err = "🔒 Permintaan diblokir oleh filter konten provider. Silakan coba ulangi pesan Anda."
-                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
-                full_response = user_friendly_err
             elif "connection" in err_str.lower() or "network" in err_str.lower():
                 user_friendly_err = "🌐 Gagal terhubung ke layanan AI. Periksa koneksi dan coba lagi."
-                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
-                full_response = user_friendly_err
             else:
-                # Generic safe message — include error ID so admin can trace in logs
                 user_friendly_err = f"⚠️ Terjadi kesalahan internal (ID: {err_id}). Silakan coba lagi atau hubungi admin."
-                yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
-                full_response = f"Error [{err_id}]: Internal error"
 
-            error_occurred = True
-            thinking_steps.append(f"❌ Error [{err_id}]: {err_str[:100]}")
-
+            yield f"data: {json.dumps({'type': 'error', 'content': user_friendly_err})}\n\n"
+            raise
 
         finally:
-            # FORCE COMIT TO DB: Always runs even if CancelledError or TimeoutError
-            async def finalize_chat():
-                await save_to_db_if_needed()
-
-                # ─── Update memory ────────────────────────────────────
-                try:
-                    await memory_manager.save_chat_to_redis(session.id, "user", req.message)
-                    await memory_manager.save_chat_to_redis(session.id, "assistant", full_response[:5000])
-                except Exception as e:
-                    log.warning("Failed to update memory", error=str(e)[:100])
-                    # Continue anyway - don't fail the chat if memory update fails
-            
-            # Since the current task might be cancelled (e.g., client disconnected),
-            # any direct `await` here would instantly raise CancelledError.
-            # Spawning a background task guarantees the DB commit completes.
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(finalize_chat())
-            except Exception as e:
-                log.error("Failed to spawn finalize task", error=str(e))
-
-            # Ensure done event if not already sent and no error
-            if not error_occurred and not full_response.startswith("Error"):
-                pass  # done already yielded by orchestrator
-
-        # ─── Forward AI Response to Telegram (If applicable) ───
-        if is_telegram_sync and getattr(user, "telegram_chat_id", None) and not error_occurred:
-            import os
-            from integrations.telegram_bot import _send
-            telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
-            if telegram_token:
-                try:
-                    asyncio.create_task(_send(
-                        telegram_token, 
-                        int(user.telegram_chat_id), 
-                        f"🤖 *AI:* {full_response[:4000]}"  # Telegram limits to 4096
-                    ))
-                except Exception as e:
-                    log.warning("Gagal forward balasan AI ke Telegram", error=str(e))
+            pass
 
     return StreamingResponse(
         generate(),

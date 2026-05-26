@@ -12,6 +12,7 @@ from .core_tools import (
     find_safe_port,
     read_document,
     replace_in_file,
+    schedule_task,
 )
 
 # Legacy aliases (tetap ada agar tidak breaking)
@@ -77,6 +78,7 @@ TOOLS = {
     "write_file":            write_file,
     "ask_model":             ask_model,
     "find_safe_port":        find_safe_port,
+    "schedule_task":         schedule_task,
     "web_search":            web_search,
     "read_document":         read_document,
     "replace_in_file":       replace_in_file,

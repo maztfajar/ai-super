@@ -58,6 +58,46 @@ class MetricsEngine:
         self._summaries: Dict[str, AgentPerformanceSummary] = {}
         self._last_summary_compute = 0.0
 
+    async def hydrate(self):
+        """Hydrate the hot metrics cache from the database on startup."""
+        try:
+            from db.database import AsyncSessionLocal
+            from db.models import AgentPerformance
+            from sqlmodel import select
+            from datetime import datetime, timedelta, timezone
+            
+            # Match DB naive UTC format
+            cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(AgentPerformance)
+                    .where(AgentPerformance.created_at >= cutoff)
+                    .order_by(AgentPerformance.created_at.desc())
+                    .limit(self._max_hot_size)
+                )
+                rows = result.scalars().all()
+                
+            metrics_list = []
+            for r in reversed(rows):  # reverse so oldest is first, newest is appended last
+                metrics_list.append(AgentMetric(
+                    agent_type=r.agent_type,
+                    model_used=r.model_used,
+                    task_type=r.task_type,
+                    success=r.success,
+                    confidence=r.confidence,
+                    execution_time_ms=r.execution_time_ms,
+                    tokens_input=r.tokens_input,
+                    tokens_output=r.tokens_output,
+                    cost_usd=r.cost_usd,
+                    error_message=r.error_message,
+                    timestamp=r.created_at.timestamp()
+                ))
+            
+            self._hot_metrics = metrics_list
+            log.info(f"Hydrated {len(self._hot_metrics)} hot metrics from DB")
+        except Exception as e:
+            log.error("Failed to hydrate metrics engine", error=str(e))
+
     async def record(self, metric: AgentMetric, task_id: Optional[str] = None):
         """Record a single agent execution metric."""
         # Add to hot cache

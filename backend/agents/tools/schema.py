@@ -284,5 +284,113 @@ NATIVE_TOOLS_SCHEMA = [
                 "required": ["path", "old_string", "new_string"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_navigate",
+            "description": "Buka dan navigasi ke sebuah URL menggunakan browser headless. Gunakan untuk mengakses website, scraping, atau otomasi web.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL yang akan dibuka (contoh: https://example.com)."},
+                    "session_id": {"type": "string", "description": "ID sesi browser (opsional, untuk mempertahankan session)."}
+                },
+                "required": ["url"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_click",
+            "description": "Klik elemen di halaman browser menggunakan CSS selector.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector elemen yang akan diklik (contoh: '#submit-btn', '.btn-primary')."},
+                    "session_id": {"type": "string", "description": "ID sesi browser (opsional)."}
+                },
+                "required": ["selector"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_type",
+            "description": "Isi teks ke dalam field input di browser (seperti form input, search box, dll).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "selector": {"type": "string", "description": "CSS selector field input."},
+                    "text": {"type": "string", "description": "Teks yang akan diisi."},
+                    "session_id": {"type": "string", "description": "ID sesi browser (opsional)."}
+                },
+                "required": ["selector", "text"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_extract_text",
+            "description": "Ambil seluruh teks yang terlihat dari halaman web saat ini di browser. Gunakan setelah browser_navigate untuk membaca konten halaman.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "session_id": {"type": "string", "description": "ID sesi browser (opsional)."}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "browser_screenshot",
+            "description": "Ambil screenshot halaman browser saat ini dan simpan sebagai file PNG.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "filename": {"type": "string", "description": "Nama file screenshot yang akan disimpan (tanpa ekstensi, contoh: 'hasil_scraping')."},
+                    "session_id": {"type": "string", "description": "ID sesi browser (opsional)."}
+                },
+                "required": ["filename"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generate_image",
+            "description": "Generate gambar dari deskripsi teks menggunakan AI image generation.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string", "description": "Deskripsi gambar yang ingin dibuat (dalam bahasa Inggris untuk hasil terbaik)."},
+                    "size": {"type": "string", "description": "Ukuran gambar: '1024x1024' (default), '1792x1024' (landscape), '1024x1792' (portrait)."},
+                    "quality": {"type": "string", "description": "Kualitas: 'standard' (default) atau 'hd'."}
+                },
+                "required": ["prompt"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "schedule_task",
+            "description": "Jadwalkan tugas atau pengingat proaktif yang akan dieksekusi secara otomatis di masa depan. Gunakan saat user meminta diingatkan, penjadwalan otomatis, atau eksekusi berulang.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "Judul singkat tugas terjadwal (maks 100 karakter)."},
+                    "description": {"type": "string", "description": "Instruksi lengkap yang akan dijalankan saat waktu tiba."},
+                    "due_in_minutes": {"type": "integer", "description": "Berapa menit dari sekarang task akan dieksekusi (default: 60). Contoh: 1440 = 24 jam."},
+                    "recurrence": {"type": "string", "description": "Pola perulangan: null (sekali), 'daily' (harian), 'weekly' (mingguan), atau cron expression."}
+                },
+                "required": ["title", "description"]
+            }
+        }
     }
 ]
+

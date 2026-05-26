@@ -1,59 +1,50 @@
 {
-  "sumopod/deepseek-v4-pro": [
-    "reasoning",
-    "coding",
-    "analysis"
-  ],
-  "sumopod/gemini/gemini-2.5-flash": [
-    "reasoning",
-    "speed",
-    "text",
-    "vision"
-  ],
-  "sumopod/minimax/speech-2.8-hd": [
-    "audio",
-    "speed",
-    "tts"
-  ],
-  "sumopod/claude-haiku-4-5": [
-    "creative",
-    "formatting",
-    "speed",
-    "writing"
-  ],
-  "sumopod/gpt-5-mini": [
-    "reasoning",
-    "speed",
-    "coding",
-    "vision"
-  ],
   "sumopod/gemini/gemini-2.0-flash-lite": [
     "free",
     "speed",
     "text"
   ],
+  "sumopod/gpt-5-mini": [
+    "vision",
+    "coding",
+    "reasoning",
+    "speed"
+  ],
+  "sumopod/deepseek-v4-pro": [
+    "analysis",
+    "coding",
+    "reasoning"
+  ],
   "sumopod/gemini/gemini-2.0-flash": [
     "speed",
     "text"
   ],
-  "pollinations/turbo": [
-    "speed"
+  "sumopod/minimax/speech-2.8-hd": [
+    "tts",
+    "speed",
+    "audio"
+  ],
+  "sumopod/gemini/gemini-2.5-flash": [
+    "vision",
+    "reasoning",
+    "speed",
+    "text"
   ],
   "pollinations/auto": [
-    "text",
-    "speed"
+    "image_gen",
+    "text"
   ],
   "pollinations/flux": [
-    "text",
-    "speed"
+    "image_gen",
+    "text"
+  ],
+  "pollinations/turbo": [
+    "image_gen",
+    "speed",
+    "text"
   ],
   "pollinations/midjourney": [
-    "text",
-    "speed"
-  ],
-  "sumopod/minimax/speech-2.8-hd\"": [
-    "audio",
-    "speed",
-    "tts"
+    "image_gen",
+    "text"
   ]
 }

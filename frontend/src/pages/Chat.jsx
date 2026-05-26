@@ -1923,7 +1923,7 @@ export default function Chat() {
   const input = useChatStore(s => s.draftInput)
   const setInput = useChatStore(s => s.setDraftInput)
   const [useRAG, setUseRAG] = useState(false)
-  const [agentMode, setAgentMode] = useState(true)
+  const [agentMode, setAgentMode] = useState(false)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
   const [speakingId, setSpeakingId] = useState(null)
   const audioRef = useRef(null)
@@ -2348,8 +2348,10 @@ export default function Chat() {
     if (!text && !imageToSend && attachedFiles.length === 0) return
 
     if (typeof overrideText !== 'string' && text) {
-      const shouldProceed = await classifyAndHandle(text)
-      if (!shouldProceed) return
+      if (agentMode) {
+        const shouldProceed = await classifyAndHandle(text)
+        if (!shouldProceed) return
+      }
     }
     
     let activeSession = currentSession
@@ -2947,11 +2949,19 @@ export default function Chat() {
               'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border flex items-center gap-1.5',
               agentMode
                 ? 'bg-accent/15 border-accent/50 text-accent shadow-[0_0_12px_rgba(168,85,247,0.3)]'
-                : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5'
+                : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5 hover:text-ink-2'
             )}
-            title="Toggle Agent / Deep Thinking Mode"
+            title={agentMode
+              ? 'Agent Mode AKTIF — Orchestrator penuh: tool use, eksekusi kode, analisis mendalam. Klik untuk menonaktifkan.'
+              : 'Agent Mode NONAKTIF — Jawaban cepat & langsung. Aktifkan untuk task teknis, coding, atau eksekusi perintah.'}
           >
-            🧠 Agent Mode
+            🤖 Agent
+            <span className={clsx(
+              'text-[10px] font-bold px-1 py-0.5 rounded',
+              agentMode ? 'bg-accent/20 text-accent' : 'bg-bg-5 text-ink-4'
+            )}>
+              {agentMode ? 'ON' : 'OFF'}
+            </span>
             {agentMode && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"/>}
           </button>
         </div>

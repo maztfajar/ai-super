@@ -894,3 +894,65 @@ async def replace_in_file(path: str, old_string: str, new_string: str, session_i
 
     except Exception as e:
         return f"Error replacing text in file: {str(e)}"
+
+
+# ─── Proactive Scheduler Tool ─────────────────────────────────────────────────
+
+async def schedule_task(
+    title: str,
+    description: str,
+    due_in_minutes: int = 60,
+    recurrence: str = None,
+    session_id: str = None,
+    user_id: str = None,
+) -> str:
+    """
+    Jadwalkan tugas atau pengingat proaktif yang akan dieksekusi di masa depan.
+    
+    Args:
+        title: Judul singkat tugas (maks 100 karakter)
+        description: Instruksi lengkap yang akan dijalankan saat due_at tercapai
+        due_in_minutes: Berapa menit dari sekarang task akan dieksekusi (default: 60)
+        recurrence: Pola perulangan — None, "daily", "weekly", atau cron expression
+        session_id: ID sesi saat ini (diisi otomatis)
+        user_id: ID user (diisi otomatis)
+    
+    Returns:
+        Konfirmasi penjadwalan task beserta ID-nya
+    """
+    try:
+        from datetime import timezone, timedelta
+        from db.database import SessionLocal
+        from db.models import ScheduledTask
+
+        due_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=int(due_in_minutes))
+
+        with SessionLocal() as db:
+            task = ScheduledTask(
+                session_id=session_id or "unknown",
+                user_id=user_id or "unknown",
+                title=str(title)[:200],
+                description=str(description)[:2000],
+                due_at=due_at,
+                recurrence=str(recurrence) if recurrence else None,
+                status="pending",
+            )
+            db.add(task)
+            db.commit()
+            db.refresh(task)
+            task_id = task.id
+
+        due_str = due_at.strftime("%Y-%m-%d %H:%M UTC")
+        rec_str = f" (berulang: {recurrence})" if recurrence else ""
+        log.info("Scheduled proactive task", task_id=task_id, due_at=due_str, title=title)
+        return (
+            f"✅ Task terjadwal berhasil dibuat!\n"
+            f"ID: {task_id}\n"
+            f"Judul: {title}\n"
+            f"Akan dijalankan: {due_str}{rec_str}\n"
+            f"Instruksi: {str(description)[:200]}..."
+        )
+    except Exception as e:
+        log.error("Failed to schedule task", error=str(e))
+        return f"Error menjadwalkan task: {str(e)}"
+

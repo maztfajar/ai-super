@@ -166,6 +166,139 @@ class Orchestrator:
             except Exception as e:
                 log.debug("Clarification check skipped", error=str(e)[:80])
 
+        # ─── FAST EXIT: Agent Mode OFF → Skip all preprocessing ────────────────
+        # Ketika agent_mode=False, lewati semua phase preprocessing yang berat.
+        # Langsung lompat ke direct chat dengan model terbaik untuk mempercepat respons.
+        if force_simple:
+            from datetime import datetime
+            now = datetime.now()
+            hari_names = ["Senin","Selasa","Rabu","Kamis","Jumat","Sabtu","Minggu"]
+            bulan_names = ["Januari","Februari","Maret","April","Mei","Juni","Juli",
+                           "Agustus","September","Oktober","November","Desember"]
+            current_time_id = f"{hari_names[now.weekday()]}, {now.day} {bulan_names[now.month-1]} {now.year}, {now.strftime('%H:%M:%S')}"
+
+            # Pilih model terbaik secara cepat
+            if user_model_choice and user_model_choice in model_manager.available_models:
+                direct_model = user_model_choice
+            else:
+                direct_model = agent_registry.resolve_model_for_agent("general", user_model_choice)
+
+            # --- BYPASS: Image Generation saat Agent Mode OFF ---
+            # Jika user meminta gambar, gunakan Pollinations AI langsung tanpa alur agent
+            image_keywords = ["buatkan gambar", "bikin gambar", "buat foto", "buat ilustrasi", "generate image", "bikinkan gambar", "tolong buatkan gambar"]
+            if any(kw in message.lower() for kw in image_keywords):
+                yield OrchestratorEvent("status", "🎨 Membuat gambar (Pollinations AI)...")
+                try:
+                    img_url = await model_manager.generate_image(message, model="pollinations/auto")
+                    if img_url:
+                        yield OrchestratorEvent("chunk", f"Berikut adalah gambar yang Anda minta:\n\n![Hasil Gambar]({img_url})")
+                        yield OrchestratorEvent("done", "", {"model_used": "pollinations/auto"})
+                        return
+                except Exception as e:
+                    log.warning("Simple mode image generation failed", error=str(e))
+                    yield OrchestratorEvent("status", "⚠️ Gagal membuat gambar, beralih ke chat biasa...")
+            # ----------------------------------------------------
+
+            # Bangun system prompt yang kuat tapi ringkas untuk mode non-agent
+            enhanced_direct_prompt = (
+                f"WAKTU SAAT INI (REALTIME): {current_time_id}\n"
+                "[PENTING: Gunakan WAKTU SAAT INI sebagai acuan mutlak jika pengguna bertanya tentang hari, tanggal, atau waktu. Dilarang halusinasi.]\n\n"
+                "Anda adalah AI ORCHESTRATOR, AI Orchestrator tingkat tinggi yang cerdas, analitis, dan komunikatif.\n\n"
+                "PANDUAN RESPONS:\n"
+                "• Jawab dengan jelas, ringkas, dan tepat sasaran dalam Bahasa Indonesia.\n"
+                "• Gunakan markdown (bold, list, code block) untuk memperjelas jawaban bila diperlukan.\n"
+                "• Berikan jawaban yang substansial dan informatif — jangan terlalu pendek.\n"
+                "• Untuk pertanyaan teknis: sertakan contoh, langkah-langkah, atau kode yang relevan.\n"
+                "• Untuk pertanyaan faktual: berikan informasi akurat dan lengkap.\n"
+                "• JANGAN sebutkan model AI, routing, atau arsitektur internal.\n"
+                "• Tunjukkan kepribadian yang hangat, profesional, dan membantu.\n"
+            )
+
+            # Inject RAG context jika ada
+            if use_rag:
+                try:
+                    from rag.engine import rag_engine
+                    rag_results = await rag_engine.query(message, top_k=3)
+                    if rag_results:
+                        snippets = "\n---\n".join(r.get("content","")[:500] for r in rag_results)
+                        enhanced_direct_prompt += f"\n\n[KONTEKS KNOWLEDGE BASE]\n{snippets}\n[/KONTEKS]\n"
+                except Exception:
+                    pass
+
+            # ─── REAL-TIME SEARCH (TAVILY) IN SIMPLE MODE ────────────────
+            search_keywords = [
+                "harga", "hari ini", "terkini", "terbaru", "berita", "live", "crypto", "saham",
+                "cuaca", "tavily", "cari", "search", "internet", "sekarang", "skor", "pertandingan",
+                "kurs", "dolar", "rupiah", "berita terbaru", "info terkini", "siapa", "kapan", "dimana"
+            ]
+            needs_search = any(kw in message.lower() for kw in search_keywords)
+            if needs_search:
+                yield OrchestratorEvent("status", "🔍 Mencari data terkini di internet (Tavily)...")
+                try:
+                    from agents.tools.web_search import web_search_realtime
+                    query = message[:200]
+                    search_results = await asyncio.wait_for(
+                        web_search_realtime(query, max_results=5),
+                        timeout=12.0
+                    )
+                    if search_results:
+                        snippets = []
+                        for r in search_results:
+                            snippets.append(f"- **{r['title']}**: {r['snippet']} ({r['url']})")
+                        search_context = (
+                            "\n\n[DATA REAL-TIME DARI INTERNET (TAVILY)]\n" +
+                            "\n".join(snippets) +
+                            "\n[/DATA REAL-TIME]"
+                        )
+                        enhanced_direct_prompt += search_context
+                        yield OrchestratorEvent("status", f"  ✅ {len(search_results)} hasil ditemukan dari web")
+                except asyncio.TimeoutError:
+                    yield OrchestratorEvent("status", "  ⚠️ Web search timeout, lanjut tanpa data real-time")
+                except Exception as e:
+                    log.warning("Simple mode web search failed", error=str(e)[:80])
+                    yield OrchestratorEvent("status", "  ⚠️ Web search gagal, lanjut tanpa data terkini")
+
+            direct_messages = [{"role": "system", "content": enhanced_direct_prompt}]
+            direct_messages += history[-12:]
+            if image_b64 and image_mime:
+                direct_messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": message},
+                        {"type": "image_url", "image_url": {"url": f"data:{image_mime};base64,{image_b64}"}},
+                    ]
+                })
+            else:
+                direct_messages.append({"role": "user", "content": message})
+
+            # Stream langsung tanpa overhead apapun
+            buffer = ""
+            import re as _re
+            async for chunk in model_manager.chat_stream(
+                model=direct_model,
+                messages=direct_messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            ):
+                # Strip thinking blocks
+                buffer += chunk
+                if "<thinking>" in buffer or "<think>" in buffer:
+                    if "</thinking>" in buffer or "</think>" in buffer:
+                        buffer = _re.sub(r"<(?:thinking|think)>.*?</(?:thinking|think)>", "", buffer, flags=_re.DOTALL)
+                    else:
+                        continue
+                if buffer:
+                    sanitized = _sanitize_commercial_names(buffer)
+                    yield OrchestratorEvent("chunk", sanitized)
+                    buffer = ""
+            if buffer:
+                # Flush any remaining buffer
+                clean = _re.sub(r"<(?:thinking|think)>.*", "", buffer, flags=_re.DOTALL)
+                if clean.strip():
+                    yield OrchestratorEvent("chunk", _sanitize_commercial_names(clean))
+            yield OrchestratorEvent("done", "", {"model_used": direct_model})
+            return
+
         # ─── PHASE 1: PREPROCESSING ──────────────────────────────
         yield OrchestratorEvent.proc("Thinking", "memulai analisis", extra={
             "result": (
@@ -196,11 +329,6 @@ class Orchestrator:
                 primary_intent="general",
             )
 
-        if force_simple:
-            spec.is_simple = True
-            if spec.primary_intent in ("system", "file_operation", "coding", "web_development", "research"):
-                spec.primary_intent = "general"
-
         yield OrchestratorEvent.proc("Analyzed", f"intent: {spec.primary_intent} ({spec.action_type})", extra={
             "result": (
                 f"Intent: {spec.primary_intent}\n"
@@ -212,6 +340,7 @@ class Orchestrator:
         })
 
         # ─── HUMAN LOGIC ENGINE: Injeksi Konteks Emosi ───────────────
+
         emotional_hint = ""
         if hasattr(spec, "emotional_state"):
             if spec.emotional_state.needs_acknowledgment:
@@ -537,7 +666,40 @@ class Orchestrator:
                 )
             return
 
+        # ─── VOTING PATH: Multi-Model Consensus ───────────────────
+        # Saat requires_multi_agent=True DAN complexity tinggi, gunakan VotingEngine
+        # untuk menjalankan beberapa model secara paralel dan memilih respons terbaik.
+        if spec.requires_multi_agent and spec.complexity_score >= 0.8:
+            from agents.voting_engine import voting_engine
+            yield OrchestratorEvent("status", "🏆 Memulai Multi-AI Parallel Voting — menjalankan beberapa model secara paralel untuk mendapatkan jawaban terbaik...")
+            task_exec_id = await self._create_task_execution(
+                session_id, user_id, message, spec, [], None
+            )
+            try:
+                voting_result = await voting_engine.execute_complex_task(
+                    system_prompt=system_prompt,
+                    user_message=message,
+                    history=history,
+                )
+                yield OrchestratorEvent("status", "✅ Multi-AI Voting selesai. Menampilkan jawaban terbaik...")
+                sanitized = _sanitize_commercial_names(voting_result)
+                yield OrchestratorEvent("chunk", sanitized)
+                if task_exec_id:
+                    await self._update_task_execution(
+                        task_exec_id,
+                        AggregatedResult(final_response=voting_result, overall_confidence=0.95),
+                        int((time.time() - start_time) * 1000),
+                        []
+                    )
+            except Exception as _ve:
+                log.warning("VotingEngine failed, falling through to standard pipeline", error=str(_ve)[:80])
+                yield OrchestratorEvent("status", f"⚠️ Voting gagal ({str(_ve)[:60]}), melanjutkan eksekusi normal...")
+                # Fall through to decomposition below
+            else:
+                return
+
         # ─── PHASE 2: TASK DECOMPOSITION ─────────────────────────
+
         yield OrchestratorEvent("status", "📋 Memecah tugas menjadi sub-tasks...")
 
         try:
@@ -838,6 +1000,17 @@ class Orchestrator:
 
         # Record per-agent metrics
         for result in results:
+            desc_len = len(result.description) if result.description else 0
+            resp_len = len(result.response) if result.response else 0
+            
+            tokens_in = int(1200 + desc_len / 4)
+            tokens_out = int(resp_len / 4)
+            
+            # Resolve pricing and calculate cost
+            from core.cost_tracking import get_pricing
+            pricing = get_pricing(result.model_used)
+            cost = (tokens_in / 1000) * pricing["input"] + (tokens_out / 1000) * pricing["output"]
+            
             await metrics_engine.record(AgentMetric(
                 agent_type=result.agent_type,
                 model_used=result.model_used,
@@ -845,6 +1018,9 @@ class Orchestrator:
                 success=result.success,
                 confidence=result.confidence,
                 execution_time_ms=result.execution_time_ms,
+                tokens_input=tokens_in,
+                tokens_output=tokens_out,
+                cost_usd=round(cost, 6),
             ), task_id=task_exec_id)
 
         # ─── PHASE 8.5: PROCEDURAL MEMORY — SAVE RECIPE ──────────

@@ -1347,15 +1347,77 @@ User Request: {user_msg}
                             return await get_file_info(
                                 args.get("path", ""), session_id
                             )
+
+                        elif cmd == "read_document":
+                            from agents.tools.core_tools import read_document
+                            return await read_document(args.get("path", ""), session_id)
+
+                        elif cmd == "replace_in_file":
+                            from agents.tools.core_tools import replace_in_file
+                            return await replace_in_file(
+                                args.get("path", ""),
+                                args.get("old_string", ""),
+                                args.get("new_string", ""),
+                                session_id
+                            )
+
+                        elif cmd == "schedule_task":
+                            from agents.tools.core_tools import schedule_task
+                            return await schedule_task(
+                                title=args.get("title", "Scheduled Task"),
+                                description=args.get("description", ""),
+                                due_in_minutes=int(args.get("due_in_minutes", 60)),
+                                recurrence=args.get("recurrence"),
+                                session_id=session_id,
+                                user_id=None,  # will be 'unknown' — acceptable for agent-created tasks
+                            )
+
+                        elif cmd == "browser_navigate":
+                            from agents.tools.browser_automation import browser_navigate
+                            return await browser_navigate(
+                                args.get("url", ""), session_id
+                            )
+                        elif cmd == "browser_click":
+                            from agents.tools.browser_automation import browser_click
+                            return await browser_click(
+                                args.get("selector", ""), session_id
+                            )
+                        elif cmd == "browser_type":
+                            from agents.tools.browser_automation import browser_type
+                            return await browser_type(
+                                args.get("selector", ""),
+                                args.get("text", ""),
+                                session_id
+                            )
+                        elif cmd == "browser_extract_text":
+                            from agents.tools.browser_automation import browser_extract_text
+                            return await browser_extract_text(session_id)
+                        elif cmd == "browser_screenshot":
+                            from agents.tools.browser_automation import browser_screenshot
+                            return await browser_screenshot(
+                                args.get("filename", "screenshot"), session_id
+                            )
+
+                        elif cmd == "generate_image":
+                            from agents.tools.media import generate_image
+                            return await generate_image(
+                                prompt=args.get("prompt", ""),
+                                size=args.get("size", "1024x1024"),
+                                quality=args.get("quality", "standard"),
+                            )
+
                         else:
                             return (
                                 "Unknown tool: '" + cmd + "'. "
                                 "Available: execute_bash, read_file, write_file, "
-                                "ask_model, web_search, find_safe_port, "
+                                "ask_model, web_search, find_safe_port, read_document, replace_in_file, "
+                                "schedule_task, browser_navigate, browser_click, browser_type, "
+                                "browser_extract_text, browser_screenshot, generate_image, "
                                 "list_directory, file_tree, find_files, search_in_files, "
                                 "make_directory, move_file, copy_file, delete_file, "
                                 "get_project_path, set_project_path, list_all_projects, get_file_info"
                             )
+
 
                     # ── FASE 7: Tool Circuit Breaker Check ─────────────────
                     from core.error_recovery import error_recovery

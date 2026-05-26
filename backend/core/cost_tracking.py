@@ -36,6 +36,145 @@ TOKEN_PRICING = {
 }
 
 
+import os
+import json
+
+def load_pricing_overrides():
+    """Load pricing overrides from data/pricing_overrides.json if exists, else create default."""
+    overrides_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data"))
+    overrides_path = os.path.join(overrides_dir, "pricing_overrides.json")
+    
+    default_overrides = {
+        "sumopod/qwen3.6-flash": {"input": 0.00013, "output": 0.00075},
+        "sumopod/qwen3.6-plus": {"input": 0.00025, "output": 0.00150},
+        "sumopod/claude-haiku-4-5": {"input": 0.00070, "output": 0.00350},
+        "sumopod/claude-opus-4-6": {"input": 0.00500, "output": 0.02500},
+        "sumopod/claude-opus-4-7": {"input": 0.00500, "output": 0.02500},
+        "sumopod/claude-sonnet-4-6": {"input": 0.00300, "output": 0.01500},
+        "sumopod/deepseek-v3-2": {"input": 0.00028, "output": 0.00042},
+        "sumopod/glm-4-7": {"input": 0.00060, "output": 0.00220},
+        "sumopod/seed-2-0-code": {"input": 0.00050, "output": 0.00300},
+        "sumopod/seed-2-0-lite": {"input": 0.00025, "output": 0.00200},
+        "sumopod/seed-2-0-mini": {"input": 0.00010, "output": 0.00040},
+        "sumopod/seed-2-0-pro": {"input": 0.00050, "output": 0.00300},
+        "sumopod/deepseek-v4-flash": {"input": 0.00014, "output": 0.00028},
+        "sumopod/deepseek-v4-pro": {"input": 0.00043, "output": 0.00087},
+        "sumopod/gemini/gemini-2.5-flash": {"input": 0.00030, "output": 0.00250},
+        "sumopod/gemini/gemini-2.5-flash-lite": {"input": 0.00010, "output": 0.00040},
+        "sumopod/gemini/gemini-2.5-pro": {"input": 0.00125, "output": 0.01000},
+        "sumopod/gemini/gemini-3-flash-preview": {"input": 0.00050, "output": 0.00300},
+        "sumopod/gemini/gemini-3.1-flash-lite-preview": {"input": 0.00025, "output": 0.00150},
+        "sumopod/gemini/gemini-3.1-pro-preview": {"input": 0.00200, "output": 0.01200},
+        "sumopod/gemini/gemini-2.0-flash": {"input": 0.00010, "output": 0.00040},
+        "sumopod/gemini/gemini-2.0-flash-lite": {"input": 0.00007, "output": 0.00030},
+        "sumopod/mimo-v2-flash": {"input": 0.00010, "output": 0.00030},
+        "sumopod/mimo-v2-omni": {"input": 0.00012, "output": 0.00060},
+        "sumopod/mimo-v2-pro": {"input": 0.00030, "output": 0.00090},
+        "sumopod/mimo-v2.5": {"input": 0.00012, "output": 0.00060},
+        "sumopod/mimo-v2.5-pro": {"input": 0.00030, "output": 0.00090},
+        "sumopod/MiniMax-M2.7-highspeed": {"input": 0.00002, "output": 0.00006},
+        "sumopod/kimi-k2.6": {"input": 0.00008, "output": 0.00035},
+        "sumopod/gpt-4.1": {"input": 0.00200, "output": 0.00800},
+        "sumopod/gpt-4.1-mini": {"input": 0.00040, "output": 0.00160},
+        "sumopod/gpt-4.1-nano": {"input": 0.00010, "output": 0.00040},
+        "sumopod/gpt-4o": {"input": 0.00250, "output": 0.01000},
+        "sumopod/gpt-4o-mini": {"input": 0.00015, "output": 0.00060},
+        "sumopod/gpt-5": {"input": 0.00125, "output": 0.01000},
+        "sumopod/gpt-5-mini": {"input": 0.00025, "output": 0.00200},
+        "sumopod/gpt-5-nano": {"input": 0.00005, "output": 0.00040},
+        "sumopod/gpt-5.1": {"input": 0.00125, "output": 0.01000},
+        "sumopod/gpt-5.1-codex": {"input": 0.00125, "output": 0.01000},
+        "sumopod/gpt-5.1-codex-mini": {"input": 0.00025, "output": 0.00200},
+        "sumopod/gpt-5.2": {"input": 0.00175, "output": 0.01400},
+        "sumopod/gpt-5.2-codex": {"input": 0.00175, "output": 0.01400},
+        "sumopod/gpt-5.3-codex": {"input": 0.00175, "output": 0.01400},
+        "sumopod/gpt-5.4": {"input": 0.00250, "output": 0.01500},
+        "sumopod/gpt-5.4-mini": {"input": 0.00075, "output": 0.00450},
+        "sumopod/gpt-5.4-nano": {"input": 0.00020, "output": 0.00125},
+        "sumopod/text-embedding-3-large": {"input": 0.00013, "output": 0.00000},
+        "sumopod/text-embedding-3-small": {"input": 0.00002, "output": 0.00000},
+        "sumopod/gemma-4-31b-it": {"input": 0.00012, "output": 0.00037},
+        "sumopod/qwen3.6-27b": {"input": 0.00032, "output": 0.00320},
+        "sumopod/glm-5": {"input": 0.00010, "output": 0.00032},
+        "sumopod/glm-5-turbo": {"input": 0.00010, "output": 0.00032},
+        "sumopod/glm-5.1": {"input": 0.00010, "output": 0.00032},
+    }
+    
+    if not os.path.exists(overrides_dir):
+        try:
+            os.makedirs(overrides_dir, exist_ok=True)
+        except Exception:
+            pass
+            
+    if os.path.exists(overrides_path):
+        try:
+            with open(overrides_path, "r") as f:
+                custom_data = json.load(f)
+                if isinstance(custom_data, dict):
+                    # Validate and merge
+                    for k, v in custom_data.items():
+                        if isinstance(v, dict) and "input" in v and "output" in v:
+                            TOKEN_PRICING[k] = {
+                                "input": float(v["input"]),
+                                "output": float(v["output"])
+                            }
+                    log.info(f"Loaded {len(custom_data)} pricing overrides from {overrides_path}")
+                    return
+        except Exception as e:
+            log.warning("Failed to load pricing_overrides.json", error=str(e))
+            
+    # Create default file if it doesn't exist or failed to load
+    try:
+        with open(overrides_path, "w") as f:
+            json.dump(default_overrides, f, indent=2)
+        log.info(f"Created default pricing overrides at {overrides_path}")
+    except Exception as e:
+        log.warning("Failed to save default pricing_overrides.json", error=str(e))
+        
+    # Apply default overrides to TOKEN_PRICING
+    for k, v in default_overrides.items():
+        TOKEN_PRICING[k] = v
+
+# Run on startup to load custom/default pricing overrides
+load_pricing_overrides()
+
+
+def get_pricing(model_id: str) -> dict:
+    """Helper to resolve pricing for a model_id, stripping provider prefixes and using robust fallbacks."""
+    if not model_id:
+        return {"input": 0.00030, "output": 0.0020}  # default fallback
+
+    # Strip provider prefixes
+    clean_id = model_id
+    for prefix in ("sumopod/", "ollama/", "openai/", "anthropic/", "google/", "custom/"):
+        if clean_id.startswith(prefix):
+            clean_id = clean_id[len(prefix):]
+            break
+
+    # Exact match in TOKEN_PRICING
+    if clean_id in TOKEN_PRICING:
+        return TOKEN_PRICING[clean_id]
+    if model_id in TOKEN_PRICING:
+        return TOKEN_PRICING[model_id]
+
+    # Partial match/substring
+    for key, price in TOKEN_PRICING.items():
+        if key in clean_id or clean_id in key:
+            return price
+
+    # General keywords-based fallback
+    model_lower = clean_id.lower()
+    if "flash" in model_lower:
+        return TOKEN_PRICING["gemini-2.5-flash"]
+    if "deepseek" in model_lower or "reasoning" in model_lower or "pro" in model_lower:
+        return TOKEN_PRICING["deepseek-v4-pro"]
+    if "mini" in model_lower or "haiku" in model_lower:
+        return TOKEN_PRICING["gpt-5-mini"]
+
+    # Final fallback
+    return {"input": 0.00030, "output": 0.0020}
+
+
 @dataclass
 class TokenUsage:
     """Token usage per request."""
@@ -51,17 +190,13 @@ class TokenUsage:
     @property
     def input_cost(self) -> float:
         """Calculate input cost in USD."""
-        if self.model_id not in TOKEN_PRICING:
-            return 0.0
-        pricing = TOKEN_PRICING[self.model_id]
+        pricing = get_pricing(self.model_id)
         return (self.input_tokens / 1000) * pricing["input"]
     
     @property
     def output_cost(self) -> float:
         """Calculate output cost in USD."""
-        if self.model_id not in TOKEN_PRICING:
-            return 0.0
-        pricing = TOKEN_PRICING[self.model_id]
+        pricing = get_pricing(self.model_id)
         return (self.output_tokens / 1000) * pricing["output"]
     
     @property

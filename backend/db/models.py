@@ -293,6 +293,24 @@ class ArtifactRegistry(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
 
+class ScheduledTask(SQLModel, table=True):
+    """Tugas terjadwal yang dibuat oleh agent atau user.
+    Celery heartbeat membaca tabel ini dan menjalankan task saat due_at tercapai.
+    """
+    __tablename__ = "scheduled_tasks"
+    id: str = Field(default_factory=gen_id, primary_key=True)
+    session_id: str = Field(index=True)           # Session sumber perintah
+    user_id: str = Field(index=True)              # Pemilik task
+    title: str = ""                                # Judul ringkas
+    description: str = ""                          # Instruksi lengkap untuk dijalankan
+    due_at: datetime                               # Kapan task harus dijalankan
+    recurrence: Optional[str] = None              # None | "daily" | "weekly" | cron expression
+    status: str = "pending"                        # pending | triggered | done | failed | cancelled
+    triggered_at: Optional[datetime] = None
+    result: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+
+
 class ExecutionCheckpoint(SQLModel, table=True):
     """Checkpoint untuk menyimpan state eksekusi agar bisa resume."""
     __tablename__ = "execution_checkpoints"
