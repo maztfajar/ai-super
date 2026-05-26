@@ -267,6 +267,58 @@ async def reload_models(user: User = Depends(get_current_user)):
     }
 
 
+@router.get("/google/models")
+async def get_google_models(key: Optional[str] = None, user: User = Depends(get_current_user)):
+    """Fetch available Gemini models from Google API using the provided key or configured key"""
+    api_key = key or settings.GOOGLE_API_KEY
+    if not api_key or api_key.startswith("AIza..."):
+        return {"models": []}
+        
+    import httpx
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            resp = await client.get(url)
+            if resp.status_code != 200:
+                log.warning("Failed to fetch Google models", status=resp.status_code, body=resp.text[:200])
+                return {"models": [], "error": f"HTTP {resp.status_code}: {resp.text[:100]}"}
+            
+            data = resp.json()
+            models = data.get("models", [])
+            filtered = []
+            seen_ids = set()
+            for m in models:
+                name = m.get("name", "")
+                methods = m.get("supportedGenerationMethods", [])
+                clean_name = name.replace("models/", "")
+                
+                # Filter for text/chat models
+                if "generateContent" in methods and ("gemini-" in clean_name or "gemma-" in clean_name):
+                    # Skip tuning/experimental/preview-tts variations to keep list clean
+                    if any(x in clean_name for x in ["-tuning-", "-tts", "-preview-", "-vision"]):
+                        continue
+                    
+                    # Deduplicate model versions: skip raw version numbers like gemini-2.0-flash-001
+                    import re
+                    if re.search(r'-\d{3}$', clean_name):
+                        continue
+                        
+                    if clean_name not in seen_ids:
+                        seen_ids.add(clean_name)
+                        filtered.append({
+                            "id": clean_name,
+                            "name": m.get("displayName", clean_name),
+                            "description": m.get("description", "")
+                        })
+            
+            # Sort by name/id
+            filtered.sort(key=lambda x: x["id"])
+            return {"models": filtered}
+    except Exception as e:
+        log.error("Error fetching Google models", error=str(e))
+        return {"models": [], "error": str(e)}
+
+
 
 # ── POST: full restart server ─────────────────────────────────
 @router.post("/restart")

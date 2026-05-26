@@ -292,33 +292,36 @@ async def rebuild_routing_cache(available_models: Dict[str, dict]):
         else:
             # Keyword matching dulu
             tags = _keyword_classify(model_key)
-            if tags:
-                classified[model_key] = tags
-                disk_cache[model_key] = list(tags)
-                log.debug("model_classifier: keyword classified",
-                          model=model_key, tags=list(tags))
-            else:
-                # Jadwalkan web search untuk model tidak dikenal
-                search_tasks.append(model_key)
-
-    # Jalankan web search secara paralel untuk model tidak dikenal
-    if search_tasks:
-        log.info("model_classifier: searching capabilities for unknown models",
-                 models=search_tasks)
-        results = await asyncio.gather(
-            *[_search_model_capabilities(m) for m in search_tasks],
-            return_exceptions=True
-        )
-        for model_key, result in zip(search_tasks, results):
-            if isinstance(result, Exception) or not result:
-                # Fallback: taruh di "text" agar tetap tersedia
+            if not tags:
+                # Instant local fallback so the cache is immediately ready and lightning fast
                 tags = {"text", "speed"}
-            else:
-                tags = result
+                name_lower = model_key.lower()
+                if any(x in name_lower for x in ["gpt-4", "claude-3", "pro", "ultra", "plus", "deepseek-r"]):
+                    tags.update({"reasoning", "analysis"})
+                if "gpt" in name_lower or "claude" in name_lower or "gemini" in name_lower:
+                    tags.add("reasoning")
+                if "vision" in name_lower:
+                    tags.add("vision")
+                if "coder" in name_lower or "coding" in name_lower:
+                    tags.add("coding")
+                
+                # Schedule silent background web search so it doesn't block the caller
+                async def silent_search(m_key):
+                    try:
+                        res = await _search_model_capabilities(m_key)
+                        if res:
+                            # Re-load, update, and save
+                            d_cache = _load_disk_cache()
+                            d_cache[m_key] = list(res)
+                            _save_disk_cache(d_cache)
+                    except Exception:
+                        pass
+                asyncio.create_task(silent_search(model_key))
+            
             classified[model_key] = tags
             disk_cache[model_key] = list(tags)
-            log.info("model_classifier: web search classified",
-                     model=model_key, tags=list(tags))
+            log.debug("model_classifier: locally classified model",
+                      model=model_key, tags=list(tags))
 
     # Simpan cache ke disk
     _save_disk_cache(disk_cache)

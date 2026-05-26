@@ -165,8 +165,7 @@ function Card({ icon, title, subtitle, configured, children }) {
   )
 }
 
-// ── MaskedField — tampil masked + tombol Ganti ────────────────
-function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave, saving, isSecret = true }) {
+function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave, onDelete, saving, isSecret = true }) {
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
 
@@ -182,6 +181,19 @@ function MaskedField({ masked, label, value, onChange, placeholder, hint, onSave
             className="text-[10px] uppercase tracking-widest text-ink-3 hover:text-accent-2 border border-border hover:border-accent/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-bg-3">
             {t('edit')}
           </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`Apakah Anda yakin ingin menghapus ${label}?`)) {
+                  onDelete()
+                }
+              }}
+              className="text-[10px] uppercase tracking-widest text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 px-3 py-1.5 rounded-lg transition-all flex-shrink-0 font-bold shadow-sm active:scale-95 bg-red-500/5"
+            >
+              🗑️ Hapus
+            </button>
+          )}
         </div>
       </div>
     )
@@ -1282,6 +1294,10 @@ export default function Integrations() {
   const [anthropicModels,setAnthropicModels]= useState('')
   const [googleKey,      setGoogleKey]      = useState('')
   const [googleModels,   setGoogleModels]   = useState('')
+  const [googleModelList,setGoogleModelList]= useState([])
+  const [fetchingGoogleModels, setFetchingGoogleModels] = useState(false)
+  const [googleModelsError, setGoogleModelsError] = useState('')
+  const [modelSearch,    setModelSearch]    = useState('')
   const [sumopodKey,     setSumopodKey]     = useState('')
   const [sumopodHost,    setSumopodHost]    = useState('')
   const [sumopodModels,  setSumopodModels]  = useState('')
@@ -1326,6 +1342,43 @@ export default function Integrations() {
       syncModelsToOrchestrator(ms)
     }).catch(() => {})
   }, [])
+
+  const fetchGoogleModels = async (keyToUse) => {
+    setFetchingGoogleModels(true)
+    setGoogleModelsError('')
+    try {
+      const url = keyToUse
+        ? `/integrations/google/models?key=${encodeURIComponent(keyToUse)}`
+        : '/integrations/google/models'
+      const res = await api.get(url)
+      if (res.error) {
+        setGoogleModelsError(res.error)
+        setGoogleModelList([])
+      } else if (res.models) {
+        setGoogleModelList(res.models)
+      }
+    } catch (err) {
+      setGoogleModelsError('Gagal memuat model Google.')
+      setGoogleModelList([])
+    } finally {
+      setFetchingGoogleModels(false)
+    }
+  }
+
+  useEffect(() => {
+    if (status?.google?.configured) {
+      fetchGoogleModels(null)
+    }
+  }, [status?.google?.configured])
+
+  useEffect(() => {
+    if (googleKey && googleKey.length > 20 && !googleKey.startsWith('AIzaSy...')) {
+      const timer = setTimeout(() => {
+        fetchGoogleModels(googleKey)
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+  }, [googleKey])
 
   async function save(provider, fields) {
     setSaving(s => ({ ...s, [provider]: true }))
@@ -1401,8 +1454,8 @@ export default function Integrations() {
 
           <Card icon="💬" title="WhatsApp Business" subtitle="Meta Business API" configured={status?.whatsapp?.configured}>
             <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <MaskedField masked={status?.whatsapp?.token_masked} label="Access Token" value={waToken} onChange={setWaToken} onSave={() => save('whatsapp', { WHATSAPP_ACCESS_TOKEN: waToken })} saving={saving.whatsapp}/>
-              <MaskedField masked={status?.whatsapp?.phone_number_id} label="Phone Number ID" value={waPhoneId} onChange={setWaPhoneId} onSave={() => save('whatsapp', { WHATSAPP_PHONE_NUMBER_ID: waPhoneId })} saving={saving.whatsapp} isSecret={false}/>
+              <MaskedField masked={status?.whatsapp?.token_masked} label="Access Token" value={waToken} onChange={setWaToken} onSave={() => save('whatsapp', { WHATSAPP_ACCESS_TOKEN: waToken })} onDelete={() => save('whatsapp', { WHATSAPP_ACCESS_TOKEN: '' })} saving={saving.whatsapp}/>
+              <MaskedField masked={status?.whatsapp?.phone_number_id} label="Phone Number ID" value={waPhoneId} onChange={setWaPhoneId} onSave={() => save('whatsapp', { WHATSAPP_PHONE_NUMBER_ID: waPhoneId })} onDelete={() => save('whatsapp', { WHATSAPP_PHONE_NUMBER_ID: '' })} saving={saving.whatsapp} isSecret={false}/>
             </div>
           </Card>
         </div>
@@ -1411,7 +1464,7 @@ export default function Integrations() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Card icon="🧠" title="OpenAI" subtitle="GPT-4o, GPT-4o Mini" configured={status?.openai?.configured}>
               <div className="mt-3 space-y-2.5">
-                <MaskedField masked={status?.openai?.key_masked} label="API Key" value={openaiKey} onChange={setOpenaiKey} onSave={() => save('openai', { OPENAI_API_KEY: openaiKey, OPENAI_AVAILABLE_MODELS: openaiModels })} saving={saving.openai}/>
+                <MaskedField masked={status?.openai?.key_masked} label="API Key" value={openaiKey} onChange={setOpenaiKey} onSave={() => save('openai', { OPENAI_API_KEY: openaiKey, OPENAI_AVAILABLE_MODELS: openaiModels })} onDelete={() => save('openai', { OPENAI_API_KEY: '', OPENAI_AVAILABLE_MODELS: '' })} saving={saving.openai}/>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={openaiModels} onChange={setOpenaiModels} placeholder="contoh: o1, o1-mini" mono/></div>
                   {status?.openai?.configured && <Btn label="Simpan" onClick={() => save('openai', { OPENAI_AVAILABLE_MODELS: openaiModels })} loading={saving.openai} variant="default" icon={Save}/>}
@@ -1420,7 +1473,7 @@ export default function Integrations() {
             </Card>
             <Card icon="✨" title="Anthropic Claude" subtitle="Claude 3.5" configured={status?.anthropic?.configured}>
               <div className="mt-3 space-y-2.5">
-                <MaskedField masked={status?.anthropic?.key_masked} label="API Key" value={anthropicKey} onChange={setAnthropicKey} onSave={() => save('anthropic', { ANTHROPIC_API_KEY: anthropicKey, ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} saving={saving.anthropic}/>
+                <MaskedField masked={status?.anthropic?.key_masked} label="API Key" value={anthropicKey} onChange={setAnthropicKey} onSave={() => save('anthropic', { ANTHROPIC_API_KEY: anthropicKey, ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} onDelete={() => save('anthropic', { ANTHROPIC_API_KEY: '', ANTHROPIC_AVAILABLE_MODELS: '' })} saving={saving.anthropic}/>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={anthropicModels} onChange={setAnthropicModels} placeholder="contoh: claude-haiku-4-5" mono/></div>
                   {status?.anthropic?.configured && <Btn label="Simpan" onClick={() => save('anthropic', { ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} loading={saving.anthropic} variant="default" icon={Save}/>}
@@ -1428,17 +1481,106 @@ export default function Integrations() {
               </div>
             </Card>
             <Card icon="💎" title="Google Gemini" subtitle="Gemini 1.5" configured={status?.google?.configured}>
-              <div className="mt-3 space-y-2.5">
-                <MaskedField masked={status?.google?.key_masked} label="API Key" value={googleKey} onChange={setGoogleKey} onSave={() => save('google', { GOOGLE_API_KEY: googleKey, GOOGLE_AVAILABLE_MODELS: googleModels })} saving={saving.google}/>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={googleModels} onChange={setGoogleModels} placeholder="contoh: gemini-2.5-flash" mono/></div>
-                  {status?.google?.configured && <Btn label="Simpan" onClick={() => save('google', { GOOGLE_AVAILABLE_MODELS: googleModels })} loading={saving.google} variant="default" icon={Save}/>}
-                </div>
+              <div className="mt-3 space-y-3">
+                <MaskedField masked={status?.google?.key_masked} label="API Key" value={googleKey} onChange={setGoogleKey} onSave={() => save('google', { GOOGLE_API_KEY: googleKey, GOOGLE_AVAILABLE_MODELS: googleModels })} onDelete={() => save('google', { GOOGLE_API_KEY: '', GOOGLE_AVAILABLE_MODELS: '' })} saving={saving.google}/>
+                
+                {/* DYNAMIC MODEL SELECTOR */}
+                {(status?.google?.configured || (googleKey && googleKey.length > 20 && !googleKey.startsWith('AIzaSy...'))) && (
+                  <div className="mt-4 border-t border-border pt-4 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <Label>Model AI yang Aktif</Label>
+                      {fetchingGoogleModels && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-accent font-semibold">
+                          <span className="inline-block w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+                          Memuat model...
+                        </div>
+                      )}
+                    </div>
+
+                    {googleModelsError && (
+                      <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold">
+                        ⚠️ {googleModelsError}
+                      </div>
+                    )}
+
+                    {!fetchingGoogleModels && !googleModelsError && googleModelList.length > 0 && (
+                      <div className="space-y-2">
+                        {/* Search bar */}
+                        <input
+                          type="text"
+                          placeholder="Cari model Gemini..."
+                          value={modelSearch}
+                          onChange={(e) => setModelSearch(e.target.value)}
+                          className="w-full px-3 py-2 text-xs bg-bg-4 border border-border rounded-xl text-ink focus:outline-none focus:border-accent/40 shadow-inner"
+                        />
+
+                        {/* Badges Grid */}
+                        <div className="flex flex-wrap gap-2 max-h-[180px] overflow-y-auto p-2 bg-bg-3 border border-border rounded-xl shadow-inner scrollbar-thin">
+                          {googleModelList
+                            .filter(m => m.name.toLowerCase().includes(modelSearch.toLowerCase()) || m.id.toLowerCase().includes(modelSearch.toLowerCase()))
+                            .map(model => {
+                              const selectedList = googleModels ? googleModels.split(',').map(x => x.trim()).filter(Boolean) : []
+                              const isSelected = selectedList.includes(model.id)
+                              
+                              const toggleModel = (id) => {
+                                let updated
+                                if (selectedList.includes(id)) {
+                                  updated = selectedList.filter(x => x !== id)
+                                } else {
+                                  updated = [...selectedList, id]
+                                }
+                                setGoogleModels(updated.join(', '))
+                              }
+
+                              return (
+                                <button
+                                  key={model.id}
+                                  type="button"
+                                  onClick={() => toggleModel(model.id)}
+                                  title={model.description}
+                                  className={clsx(
+                                    "px-3 py-2 rounded-lg text-xs font-semibold font-mono border transition-all duration-200 shadow-sm active:scale-95 text-left flex flex-col min-w-[120px] max-w-[200px] flex-grow",
+                                    isSelected
+                                      ? "bg-accent/15 text-accent border-accent/40 shadow-inner"
+                                      : "bg-bg-4 text-ink-3 border-border hover:border-accent/30 hover:text-ink-2"
+                                  )}
+                                >
+                                  <span className="truncate font-bold">{model.name}</span>
+                                  <span className="text-[9px] opacity-60 truncate mt-0.5">{model.id}</span>
+                                </button>
+                              )
+                            })}
+                        </div>
+                        <div className="text-[10px] text-ink-3">
+                          Klik badge di atas untuk memilih model yang ingin digunakan. Model terpilih saat ini: <strong className="text-accent font-mono">{googleModels || 'Tidak ada'}</strong>
+                        </div>
+                      </div>
+                    )}
+
+                    {!fetchingGoogleModels && !googleModelsError && googleModelList.length === 0 && (
+                      <div className="text-xs text-ink-3 italic p-2 bg-bg-4 rounded-xl border border-border text-center">
+                        Masukkan API Key untuk memuat daftar model otomatis.
+                      </div>
+                    )}
+
+                    {status?.google?.configured && googleModelList.length > 0 && (
+                      <div className="flex justify-end pt-2">
+                        <Btn
+                          label="Simpan Pilihan Model"
+                          onClick={() => save('google', { GOOGLE_AVAILABLE_MODELS: googleModels })}
+                          loading={saving.google}
+                          variant="primary"
+                          icon={Save}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </Card>
             <Card icon="🚀" title="Sumopod" subtitle="OpenAI-compatible" configured={status?.sumopod?.configured}>
               <div className="mt-3 space-y-2.5">
-                <MaskedField masked={status?.sumopod?.key_masked} label="API Key" value={sumopodKey} onChange={setSumopodKey} onSave={() => save('sumopod', { SUMOPOD_API_KEY: sumopodKey, SUMOPOD_HOST: sumopodHost, SUMOPOD_AVAILABLE_MODELS: sumopodModels })} saving={saving.sumopod}/>
+                <MaskedField masked={status?.sumopod?.key_masked} label="API Key" value={sumopodKey} onChange={setSumopodKey} onSave={() => save('sumopod', { SUMOPOD_API_KEY: sumopodKey, SUMOPOD_HOST: sumopodHost, SUMOPOD_AVAILABLE_MODELS: sumopodModels })} onDelete={() => save('sumopod', { SUMOPOD_API_KEY: '', SUMOPOD_AVAILABLE_MODELS: '' })} saving={saving.sumopod}/>
                 <TextInput label="API Host" value={sumopodHost} onChange={setSumopodHost} placeholder="https://ai.sumopod.com/v1" mono/>
                 <div className="flex gap-2 items-end">
                   <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={sumopodModels} onChange={setSumopodModels} placeholder="contoh: meta-llama/Llama-3-70b" mono/></div>
@@ -1480,7 +1622,7 @@ export default function Integrations() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
             <Card icon="🔍" title="Tavily" subtitle="AI Search Engine" configured={status?.tavily?.configured}>
               <div className="mt-3 space-y-2.5">
-                <MaskedField masked={status?.tavily?.key_masked} label="API Key" value={tavilyKey} onChange={setTavilyKey} onSave={() => save('tavily', { TAVILY_API_KEY: tavilyKey })} saving={saving.tavily}/>
+                <MaskedField masked={status?.tavily?.key_masked} label="API Key" value={tavilyKey} onChange={setTavilyKey} onSave={() => save('tavily', { TAVILY_API_KEY: tavilyKey })} onDelete={() => save('tavily', { TAVILY_API_KEY: '' })} saving={saving.tavily}/>
                 <div className="p-3 bg-bg-4 border border-border rounded-xl text-xs text-ink-3 font-medium">
                   <strong className="text-ink block mb-1 text-sm font-semibold">Pencarian Cerdas</strong>
                   Tavily dirancang khusus untuk agen AI. Dengan API Key ini, AI dapat mengakses informasi terkini secara real-time dari internet.

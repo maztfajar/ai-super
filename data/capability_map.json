@@ -76,5 +76,11 @@
   ],
   "pollinations/midjourney": [
     "text"
+  ],
+  "gemini-1.5-pro": [
+    "speed"
+  ],
+  "gemini-1.5-flash": [
+    "speed"
   ]
 }
