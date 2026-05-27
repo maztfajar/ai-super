@@ -86,47 +86,40 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
     'lineColor': '#64748b',
     'secondaryColor': '#f8fafc',
     'tertiaryColor': '#f1f5f9'
-  }
+  },
+  'flowchart': { 'curve': 'monotoneX' }
 }}%%
 
 graph TB
-    %% Styling Global Toko / Node
+    %% Styling
     classDef entry fill:#e2e8f0,stroke:#94a3b8,stroke-width:1px,rx:5px,ry:5px;
     classDef process fill:#ffffff,stroke:#cbd5e1,stroke-width:1px,rx:6px,ry:6px;
     classDef router fill:#0f172a,textColor:#ffffff,stroke:#0f172a,stroke-width:1px,rx:4px,ry:4px;
-    classDef engine fill:#38bdf8,stroke:#0284c7,stroke-width:1px,rx:4px,ry:4px;
+    classDef engine fill:#0ea5e9,textColor:#ffffff,stroke:#0284c7,stroke-width:1px,rx:4px,ry:4px;
     classDef agent fill:#f0fdf4,stroke:#bbf7d0,textColor:#166534,stroke-width:1px;
     classDef db fill:#f8fafc,stroke:#94a3b8,stroke-dasharray: 3 3,rx:8px,ry:8px;
-    classDef output fill:#0ea5e9,textColor:#ffffff,stroke:#0284c7,stroke-width:1px,rx:20px;
+    classDef output fill:#0284c7,textColor:#ffffff,stroke:#0284c7,stroke-width:1px,rx:20px;
 
-    %% --- ENTRY POINTS LAYER ---
+    %% LAYERS
     subgraph EP ["📥 Entry Points"]
         CB[Celery Beat / Worker] -->|Poll Due Tasks| ST[(Scheduled Tasks DB)]
         ST -->|Trigger Task| AG[API Gateway / UI]
         UR[User Request] --> AG
     end
-    class CB,ST,UR,AG entry;
 
-    %% --- ORCHESTRATION & ROUTING ---
     subgraph OR ["🧠 Orchestration & Routing"]
         AG --> RP{Request Preprocessor}
         
-        %% Agent Mode Path
         RP -->|Agent Mode| TD[Task Decomposer]
         TD --> DB[DAG Builder]
         DB --> AS[Agent Scorer]
         AS -->|Zero-Hardcode| DR[Dynamic Routing Engine]
         
-        %% Simple Mode Path
-        RP -->|Simple Mode Bypass| DR
-        RP -->|Complexity >= 0.8| DR
+        RP -.->|Simple Mode Bypass| DR
+        RP -.->|Complexity >= 0.8| DR
         RP -->|Inject Context| AU[Auto-Fill UI Badge]
     end
-    class RP router;
-    class TD,DB,AS,AU process;
-    class DR engine;
 
-    %% --- EXECUTION LAYER & CONSENSUS ---
     subgraph EX ["⚡ Execution Layer & Consensus"]
         DR --> SA[System Agent]
         DR --> RA[Research Agent]
@@ -135,37 +128,35 @@ graph TB
         SA & RA & CA --> SS[Secure Sandbox]
         SA & RA & CA --> MC[Multi-Model Consensus]
     end
-    class SA,RA,CA agent;
-    class SS,MC process;
 
-    %% --- INTELLIGENCE & MEMORY ---
     subgraph IM ["💾 Intelligence & Memory"]
         QE[Quality Engine]
         RAg[Result Aggregator]
-        
         PM[(Procedural Memory)]
         BRM[(Byte Rover Memory)]
     end
-    class QE,RAg process;
-    class PM,BRM db;
 
-    %% --- ALUR INTER-LAYER ---
+    %% INTER-CONNECTIONS (Disesuaikan agar panah tidak tumpang tindih)
+    AU -.-> PM
     SS --> QE
     MC --> RAg
-    AU --> PM
     
     PM --> RAg
     BRM --> RAg
     
-    %% --- OUTPUT LAYER ---
     RAg -->|Tavily Search| RWS[Real-time Web Search]
     RWS --> FR((Final Response))
-    MC -->|Simple Path| FR
-    
-    class RWS process;
+    MC -.->|Simple Path| FR
+
+    %% Class Assign
+    class CB,ST,UR,AG entry;
+    class RP router;
+    class TD,DB,AS,AU,QE,RAg,RWS process;
+    class DR engine;
+    class SA,RA,CA agent;
+    class PM,BRM db;
     class FR output;
 
-    %% Layout Adjustment
     style EP fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
     style OR fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
     style EX fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
