@@ -77,54 +77,101 @@ Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah d
 ## 🏛️ System Architecture
 
 ```mermaid
-graph TD
-    classDef userNode  fill:#f39c12,stroke:#e67e22,stroke-width:2px,color:#fff,font-weight:bold
-    classDef coreEngine fill:#2c3e50,stroke:#34495e,stroke-width:2px,color:#fff
-    classDef execution  fill:#27ae60,stroke:#2ecc71,stroke-width:2px,color:#fff
-    classDef memory     fill:#8e44ad,stroke:#9b59b6,stroke-width:2px,color:#fff
-    classDef routing    fill:#d35400,stroke:#e67e22,stroke-width:2px,color:#fff
-    classDef simple     fill:#16a085,stroke:#1abc9c,stroke-width:2px,color:#fff
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryTextColor': '#1e293b',
+    'primaryBorderColor': '#cbd5e1',
+    'lineColor': '#64748b',
+    'secondaryColor': '#f8fafc',
+    'tertiaryColor': '#f1f5f9'
+  }
+}}%%
 
-    User([👤 User Request]):::userNode --> Gateway[🌐 API Gateway / UI]:::coreEngine
-    Celery[⏰ Celery Beat / Worker] -->|Poll Due Tasks| ScheduledTasks[(📅 Scheduled Tasks DB)]:::memory
-    ScheduledTasks -->|Trigger Task| Gateway
+graph TB
+    %% Styling Global Toko / Node
+    classDef entry fill:#e2e8f0,stroke:#94a3b8,stroke-width:1px,rx:5px,ry:5px;
+    classDef process fill:#ffffff,stroke:#cbd5e1,stroke-width:1px,rx:6px,ry:6px;
+    classDef router fill:#0f172a,textColor:#ffffff,stroke:#0f172a,stroke-width:1px,rx:4px,ry:4px;
+    classDef engine fill:#38bdf8,stroke:#0284c7,stroke-width:1px,rx:4px,ry:4px;
+    classDef agent fill:#f0fdf4,stroke:#bbf7d0,textColor:#166534,stroke-width:1px;
+    classDef db fill:#f8fafc,stroke:#94a3b8,stroke-dasharray: 3 3,rx:8px,ry:8px;
+    classDef output fill:#0ea5e9,textColor:#ffffff,stroke:#0284c7,stroke-width:1px,rx:20px;
 
-    Gateway --> Preprocessor{⚙️ Request Preprocessor}:::coreEngine
-
-    Preprocessor -->|Simple Mode Bypass| DirectStream[⚡ Simple Stream Engine]:::simple
-    DirectStream -.->|Tavily Search| Web[🔍 Real-time Web Search]:::simple
-    DirectStream --> FinalResponse([🎯 Final Response]):::userNode
-
-    subgraph "🧠 Orchestration & Routing"
-        Preprocessor -->|Agent Mode| Decomposer[📋 Task Decomposer]
-        Decomposer --> DAG[🕸️ DAG Builder]
-        DAG --> Scorer[⚖️ Agent Scorer]
-        Scorer -.->|Zero-Hardcode| RoutingEngine[🔀 Dynamic Routing Engine]:::routing
-        RoutingEngine --> AutoFill[✨ Auto-Fill UI Badge]
+    %% --- ENTRY POINTS LAYER ---
+    subgraph EP ["📥 Entry Points"]
+        CB[Celery Beat / Worker] -->|Poll Due Tasks| ST[(Scheduled Tasks DB)]
+        ST -->|Trigger Task| AG[API Gateway / UI]
+        UR[User Request] --> AG
     end
+    class CB,ST,UR,AG entry;
 
-    subgraph "⚙️ Execution Layer & Consensus"
-        RoutingEngine -.->|Complexity >= 0.8| VotingEngine[🏆 Multi-Model Consensus]:::routing
-        RoutingEngine --> Agent1[💻 Coding Agent]:::execution
-        RoutingEngine --> Agent2[🔍 Research Agent]:::execution
-        RoutingEngine --> Agent3[🖥️ System Agent]:::execution
-        Agent1 --> Sandbox[(🛡️ Secure Sandbox)]
-        Agent2 --> Sandbox
-        Agent3 --> Sandbox
+    %% --- ORCHESTRATION & ROUTING ---
+    subgraph OR ["🧠 Orchestration & Routing"]
+        AG --> RP{Request Preprocessor}
+        
+        %% Agent Mode Path
+        RP -->|Agent Mode| TD[Task Decomposer]
+        TD --> DB[DAG Builder]
+        DB --> AS[Agent Scorer]
+        AS -->|Zero-Hardcode| DR[Dynamic Routing Engine]
+        
+        %% Simple Mode Path
+        RP -->|Simple Mode Bypass| DR
+        RP -->|Complexity >= 0.8| DR
+        RP -->|Inject Context| AU[Auto-Fill UI Badge]
     end
+    class RP router;
+    class TD,DB,AS,AU process;
+    class DR engine;
 
-    subgraph "💾 Intelligence & Memory"
-        Sandbox --> Quality[✅ Quality Engine]:::coreEngine
-        Quality --> Aggregator[📊 Result Aggregator]:::coreEngine
-        Aggregator --> PM[(🧠 Procedural Memory)]:::memory
-        Aggregator --> BR[(📚 Byte Rover Memory)]:::memory
-        PM -.->|Inject Context| Preprocessor
-        BR -.->|Inject Context| Preprocessor
+    %% --- EXECUTION LAYER & CONSENSUS ---
+    subgraph EX ["⚡ Execution Layer & Consensus"]
+        DR --> SA[System Agent]
+        DR --> RA[Research Agent]
+        DR --> CA[Coding Agent]
+        
+        SA & RA & CA --> SS[Secure Sandbox]
+        SA & RA & CA --> MC[Multi-Model Consensus]
     end
+    class SA,RA,CA agent;
+    class SS,MC process;
 
-    VotingEngine --> FinalResponse
-    Aggregator --> FinalResponse
+    %% --- INTELLIGENCE & MEMORY ---
+    subgraph IM ["💾 Intelligence & Memory"]
+        QE[Quality Engine]
+        RAg[Result Aggregator]
+        
+        PM[(Procedural Memory)]
+        BRM[(Byte Rover Memory)]
+    end
+    class QE,RAg process;
+    class PM,BRM db;
+
+    %% --- ALUR INTER-LAYER ---
+    SS --> QE
+    MC --> RAg
+    AU --> PM
+    
+    PM --> RAg
+    BRM --> RAg
+    
+    %% --- OUTPUT LAYER ---
+    RAg -->|Tavily Search| RWS[Real-time Web Search]
+    RWS --> FR((Final Response))
+    MC -->|Simple Path| FR
+    
+    class RWS process;
+    class FR output;
+
+    %% Layout Adjustment
+    style EP fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
+    style OR fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
+    style EX fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
+    style IM fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
 ```
+
 
 ---
 
