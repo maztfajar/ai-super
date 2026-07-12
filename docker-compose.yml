@@ -1,5 +1,6 @@
 services:
   ai-orchestrator:
+    build: .
     image: nyepetke/ai-super:latest
     container_name: ai-orchestrator
     restart: always
