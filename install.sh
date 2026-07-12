@@ -225,7 +225,7 @@ log "venv aktif: $(which python3)"
 log "Installing Python packages (estimasi 3-5 menit)..."
 
 PACKAGES=(
-    "fastapi==0.111.0"
+    "fastapi>=0.111.0"
     "uvicorn[standard]==0.29.0"
     "python-multipart==0.0.9"
     "websockets==12.0"

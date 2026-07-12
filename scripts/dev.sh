@@ -83,6 +83,13 @@ async def main():
 asyncio.run(main())
 PYEOF
 
+# ── Stop existing server ────────────────────────────────────────
+step "Membersihkan Port & Server Lama"
+pkill -f "uvicorn main:app" 2>/dev/null || true
+fuser -k 7860/tcp 2>/dev/null || true
+sleep 1
+log "Port 7860 siap digunakan."
+
 # ── Start server ──────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════╗"

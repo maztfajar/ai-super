@@ -82,5 +82,41 @@
   ],
   "gemini-1.5-flash": [
     "speed"
+  ],
+  "ollama/llama3.1": [
+    "text"
+  ],
+  "ollama/mistral": [
+    "text"
+  ],
+  "ollama/qwen2.5:7b": [
+    "text"
+  ],
+  "ollama/qwen2.5vl:3b": [
+    "text"
+  ],
+  "ollama/deepseek-r1:latest": [
+    "text"
+  ],
+  "ollama/mistral:latest": [
+    "text"
+  ],
+  "ollama/glm-ocr:latest": [
+    "text"
+  ],
+  "ollama/llama3.1:latest": [
+    "text"
+  ],
+  "ollama/dolphin-mistral:latest": [
+    "text"
+  ],
+  "sumopod/qwen3.7-plus": [
+    "text"
+  ],
+  "sumopod/text-embedding-3-small": [
+    "speed"
+  ],
+  "sumopod/glm-5.2": [
+    "text"
   ]
 }
