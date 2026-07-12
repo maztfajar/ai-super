@@ -3,6 +3,7 @@ AI ORCHESTRATOR — AI Orchestrator
 Main FastAPI Application
 """
 import sys
+import os
 from pathlib import Path
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -59,6 +60,44 @@ import time
 
 setup_logging()
 log = structlog.get_logger()
+
+
+def _is_primary_worker() -> bool:
+    """
+    Mendeteksi apakah proses ini adalah worker utama (primary).
+    Digunakan untuk memastikan singleton daemons hanya berjalan sekali
+    meskipun Uvicorn dijalankan dengan multiple workers.
+
+    Strategi:
+    - Uvicorn 0.21+: set env UVICORN_WORKER_ID (0 = primary)
+    - Fallback: gunakan file lock berbasis PID di /tmp
+    """
+    # Strategi 1: Uvicorn worker ID (paling reliable)
+    worker_id = os.environ.get("UVICORN_WORKER_ID", "")
+    if worker_id:
+        return worker_id == "0"
+
+    # Strategi 2: File lock — proses pertama yang menulis PID = primary
+    lock_file = Path("/tmp/ai_orchestrator_primary.pid")
+    current_pid = os.getpid()
+    try:
+        if lock_file.exists():
+            stored_pid = int(lock_file.read_text().strip())
+            # Cek apakah proses dengan PID tersebut masih berjalan
+            try:
+                os.kill(stored_pid, 0)  # Signal 0 = cek eksistensi proses
+                return stored_pid == current_pid  # True hanya jika ini adalah proses yang sama
+            except OSError:
+                # Proses lama sudah mati — kita jadi primary baru
+                lock_file.write_text(str(current_pid))
+                return True
+        else:
+            # Belum ada lock file — kita adalah primary pertama
+            lock_file.write_text(str(current_pid))
+            return True
+    except Exception:
+        # Fallback aman: izinkan berjalan (lebih baik duplikat daripada tidak jalan)
+        return True
 
 class APIMetricsMiddleware(BaseHTTPMiddleware):
     """Middleware for tracking request performance to provide objective telemetry."""
@@ -181,45 +220,67 @@ async def lifespan(app: FastAPI):
     log.info("✅ Procedural Memory Engine initialized")
     log.info("✅ Project Indexer (Project-Wide Awareness) initialized")
 
+    # ── Singleton Daemons — hanya boleh berjalan di 1 worker ────────────────
+    # Jika Uvicorn dijalankan dengan --workers N, semua lifespan dipanggil N kali.
+    # Guard _is_primary_worker() memastikan daemons tidak duplikat.
+    _primary = _is_primary_worker()
+    log.info("Worker primary check", is_primary=_primary, pid=os.getpid())
+
     # ── Self-Healing Engine ───────────────────────────────────────
-    await self_healing_engine.start()
-    log.info("✅ Self-Healing Engine started")
+    if _primary:
+        await self_healing_engine.start()
+        log.info("✅ Self-Healing Engine started")
+    else:
+        log.info("⏭ Self-Healing Engine skipped (secondary worker)")
 
     # ── Security Scanner ─────────────────────────────────────────
-    from core.security_scanner import security_scanner
-    await security_scanner.start_scheduler()
-    log.info("✅ Security Scanner started (scan tiap 24 jam)")
-    
+    if _primary:
+        from core.security_scanner import security_scanner
+        await security_scanner.start_scheduler()
+        log.info("✅ Security Scanner started (scan tiap 24 jam)")
+    else:
+        log.info("⏭ Security Scanner skipped (secondary worker)")
+
     # ── Hydrate Metrics Engine ───────────────────────────────────
     from core.metrics import metrics_engine
     await metrics_engine.hydrate()
     log.info("✅ Metrics Engine hydrated")
 
-    # Capability Map — discover model capabilities
+    # Capability Map — semua worker memuat dari disk (baca, bukan tulis)
     from core.capability_map import capability_map
-    # Load from disk immediately (fast) — interview runs in background
     capability_map._load_from_disk()
-    # Schedule sync in background without blocking server startup
-    asyncio.create_task(capability_map.sync())
-    # Schedule background re-sync every 30 minutes
-    asyncio.create_task(capability_map.sync_background_loop())
-    log.info("Capability Map ready (background sync started)", models=len(capability_map._map))
+    if _primary:
+        # Hanya primary yang menjalankan background sync (yang bisa menulis disk)
+        asyncio.create_task(capability_map.sync())
+        asyncio.create_task(capability_map.sync_background_loop())
+        log.info("Capability Map ready (background sync started)", models=len(capability_map._map))
+    else:
+        log.info("Capability Map loaded (read-only, secondary worker)", models=len(capability_map._map))
 
     # Capability Evolver — self-improvement daemon
-    from core.capability_evolver import capability_evolver
-    capability_evolver.start()
-    log.info("✅ Capability Evolver daemon started")
+    if _primary:
+        from core.capability_evolver import capability_evolver
+        capability_evolver.start()
+        log.info("✅ Capability Evolver daemon started")
+    else:
+        log.info("⏭ Capability Evolver skipped (secondary worker)")
 
     # Byte Rover — Long-term Memory
-    from core.byte_rover import byte_rover
-    asyncio.create_task(byte_rover.background_loop())
-    log.info("✅ Byte Rover (Long-term Memory) daemon started")
+    if _primary:
+        from core.byte_rover import byte_rover
+        asyncio.create_task(byte_rover.background_loop())
+        log.info("✅ Byte Rover (Long-term Memory) daemon started")
+    else:
+        log.info("⏭ Byte Rover skipped (secondary worker)")
 
-    # Agent Registry — Performance-based routing (auto-learning)
+    # Agent Registry — Performance-based routing (semua worker butuh cache ini)
     from agents.agent_registry import refresh_perf_cache, perf_cache_background_loop
-    asyncio.create_task(refresh_perf_cache())           # initial load (non-blocking)
-    asyncio.create_task(perf_cache_background_loop())   # refresh every 5 minutes
-    log.info("✅ Agent Registry perf_cache daemon started")
+    asyncio.create_task(refresh_perf_cache())           # initial load (non-blocking, baca DB saja)
+    if _primary:
+        asyncio.create_task(perf_cache_background_loop())   # hanya primary yang refresh berkala
+        log.info("✅ Agent Registry perf_cache daemon started")
+    else:
+        log.info("✅ Agent Registry perf_cache loaded (secondary worker)")
 
     if settings.TELEGRAM_BOT_TOKEN:
         from integrations.telegram_bot import start_polling, start_watchdog, stop_watchdog, stop_polling
@@ -239,22 +300,29 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
-    # Stop self-healing
-    self_healing_engine.stop()
+    # Stop singleton daemons (hanya primary yang menjalankan, primary yang stop)
+    if _is_primary_worker():
+        self_healing_engine.stop()
 
-    # Stop security scanner
-    try:
-        from core.security_scanner import security_scanner
-        security_scanner.stop()
-    except Exception:
-        pass
+        try:
+            from core.security_scanner import security_scanner
+            security_scanner.stop()
+        except Exception:
+            pass
 
-    # Stop capability evolver
-    try:
-        from core.capability_evolver import capability_evolver
-        capability_evolver.stop()
-    except Exception:
-        pass
+        try:
+            from core.capability_evolver import capability_evolver
+            capability_evolver.stop()
+        except Exception:
+            pass
+
+        # Bersihkan lock file saat shutdown bersih
+        try:
+            _lock = Path("/tmp/ai_orchestrator_primary.pid")
+            if _lock.exists() and _lock.read_text().strip() == str(os.getpid()):
+                _lock.unlink()
+        except Exception:
+            pass
 
 
 app = FastAPI(

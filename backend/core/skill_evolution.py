@@ -39,6 +39,8 @@ class SkillEvolutionEngine:
         # Cache skill di memory untuk akses cepat
         self._skill_cache: dict[str, list] = {}
         self._cache_updated = 0.0
+        import asyncio
+        self._lock = asyncio.Lock()
 
     # ══════════════════════════════════════════════════════
     # KRISTALISASI: ProceduralMemory → Skill
@@ -147,7 +149,8 @@ class SkillEvolutionEngine:
         await db.refresh(skill)
 
         # Invalidate cache
-        self._skill_cache = {}
+        async with self._lock:
+            self._skill_cache = {}
 
         log.info("New skill crystallized",
                  name=skill.name,
@@ -187,7 +190,8 @@ class SkillEvolutionEngine:
         await db.commit()
 
         # Invalidate cache
-        self._skill_cache = {}
+        async with self._lock:
+            self._skill_cache = {}
 
         log.info("Skill improved",
                  name=skill.name,
@@ -287,7 +291,8 @@ class SkillEvolutionEngine:
                     success_rate = skill.success_count / skill.usage_count
                     if success_rate < MIN_SUCCESS_RATE_TO_USE:
                         skill.is_active = False
-                        self._skill_cache = {}  # invalidate cache
+                        async with self._lock:
+                            self._skill_cache = {}  # invalidate cache
                         log.warning("Skill auto-deactivated — success rate too low",
                                     name=skill.name,
                                     success_rate=round(success_rate, 2),
@@ -303,7 +308,8 @@ class SkillEvolutionEngine:
                         # (sederhana: jika >50% penggunaan terakhir gagal)
                         if skill.usage_count > 0 and (recent_failures / skill.usage_count) > 0.4:
                             skill.is_active = False
-                            self._skill_cache = {}
+                            async with self._lock:
+                                self._skill_cache = {}
                             log.warning("Skill auto-deactivated — too many failures",
                                         name=skill.name,
                                         failures=recent_failures,
@@ -477,15 +483,16 @@ Jawab HANYA dengan JSON valid."""
         """Ambil skills dari cache atau DB."""
         now = time.time()
 
-        # Refresh cache setiap 5 menit
-        if (category not in self._skill_cache or
-                now - self._cache_updated > 300):
-            await self._refresh_cache(category)
+        # Gunakan lock agar tidak ada race condition saat _refresh_cache dipanggil banyak request
+        async with self._lock:
+            if (category not in self._skill_cache or
+                    now - self._cache_updated > 300):
+                await self._refresh_cache_locked(category)
 
-        return self._skill_cache.get(category, [])
+            return self._skill_cache.get(category, [])
 
-    async def _refresh_cache(self, category: str):
-        """Refresh skill cache dari DB."""
+    async def _refresh_cache_locked(self, category: str):
+        """Refresh skill cache dari DB. PENTING: Harus dipanggil di dalam lock."""
         try:
             from db.database import AsyncSessionLocal
             from db.models import LearnedSkill

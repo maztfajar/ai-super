@@ -1002,10 +1002,12 @@ class Orchestrator:
         for result in results:
             desc_len = len(result.description) if result.description else 0
             resp_len = len(result.response) if result.response else 0
-            
-            tokens_in = int(1200 + desc_len / 4)
-            tokens_out = int(resp_len / 4)
-            
+            # Perbaiki estimasi token agar lebih akurat (asumsi ~3.5 karakter per token)
+            sys_len = len(system_prompt) if 'system_prompt' in locals() and system_prompt else 0
+            tokens_in = int((sys_len + desc_len) / 3.5)
+            # Minimal 100 token in jika kosong
+            tokens_in = max(100, tokens_in)
+            tokens_out = int(resp_len / 3.5)
             # Resolve pricing and calculate cost
             from core.cost_tracking import get_pricing
             pricing = get_pricing(result.model_used)

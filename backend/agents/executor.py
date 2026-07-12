@@ -56,18 +56,20 @@ async def build_agent_system_prompt_async(
     project_path: Optional[str] = None,
     session_id: Optional[str] = None,
 ) -> str:
-    cache_key = (current_model, execution_mode, _project_path_key(project_path))
-    if cache_key in _PROMPT_CACHE:
-        return _PROMPT_CACHE[cache_key]
-
-    models = list(model_manager.available_models.keys())
-    model_list_str = ", ".join(models)
     now = datetime.now()
     hari = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
     bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"]
     nama_hari = hari[now.weekday()]
     nama_bulan = bulan[now.month - 1]
     current_time_id = f"{nama_hari}, {now.day} {nama_bulan} {now.year}, {now.strftime('%H:%M:%S')}"
+
+    cache_key = (current_model, execution_mode, _project_path_key(project_path))
+    if cache_key in _PROMPT_CACHE:
+        # Perbaikan: Ganti placeholder dengan waktu terbaru setiap kali diambil dari cache
+        return _PROMPT_CACHE[cache_key].replace("{CURRENT_TIME_PLACEHOLDER}", current_time_id)
+
+    models = list(model_manager.available_models.keys())
+    model_list_str = ", ".join(models)
 
     mode_instructions = ""
     if execution_mode == "analysis":
@@ -117,7 +119,7 @@ async def build_agent_system_prompt_async(
 
     # ── FASE 2: System prompt — professional but firm ──────────────────────
     prompt = f"""You are AI ORCHESTRATOR — an AUTONOMOUS EXECUTOR that completes tasks independently.
-WAKTU SAAT INI (REALTIME): {current_time_id}
+WAKTU SAAT INI (REALTIME): {{CURRENT_TIME_PLACEHOLDER}}
 [PENTING: Gunakan WAKTU SAAT INI sebagai acuan mutlak jika pengguna bertanya tentang hari, tanggal, atau waktu. Dilarang halusinasi.]
 {mode_instructions}
 
@@ -262,7 +264,7 @@ Gunakan tool write_file bertahap jika kode terlalu panjang.
         oldest_key = next(iter(_PROMPT_CACHE))
         del _PROMPT_CACHE[oldest_key]
     _PROMPT_CACHE[cache_key] = prompt
-    return prompt
+    return prompt.replace("{CURRENT_TIME_PLACEHOLDER}", current_time_id)
 
 
 class ErrorType:

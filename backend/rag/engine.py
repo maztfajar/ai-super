@@ -68,7 +68,13 @@ class RAGEngine:
         Path(settings.CHROMA_PERSIST_DIR).mkdir(parents=True, exist_ok=True)
 
         try:
-            from langchain_community.vectorstores import Chroma
+            # Coba langchain_chroma dulu (versi baru, non-deprecated)
+            try:
+                from langchain_chroma import Chroma
+            except ImportError:
+                # Fallback ke langchain_community (versi lama)
+                from langchain_community.vectorstores import Chroma  # type: ignore[no-redef]
+
             self.vectorstore = Chroma(
                 persist_directory=settings.CHROMA_PERSIST_DIR,
                 embedding_function=self.embeddings,

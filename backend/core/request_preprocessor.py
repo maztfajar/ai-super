@@ -769,7 +769,9 @@ class RequestPreprocessor:
             for patterns in LIGHT_PATTERNS.values():
                 if first_word in patterns or msg in patterns:
                     return True
-            return True
+            # Perbaikan: Jika tidak cocok pola ringan, biarkan LLM yang menentukan (False),
+            # jangan otomatis menganggapnya trivial (seperti "docker?", "nginx?").
+            return False
         return False
 
     async def _classify_with_llm(self, message: str, history: List[Dict]) -> Dict:

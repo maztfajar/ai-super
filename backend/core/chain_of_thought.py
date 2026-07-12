@@ -440,8 +440,14 @@ class ChainOfThoughtEngine:
         stage_results: Dict[str, Any]    = {}
         used_correction = False
         correction_note = ""
+        _skip_correction_stages = False  # Flag: skip CORRECT+REFLECT jika validasi lulus
 
         for stage in stages:
+            # ── Skip CORRECT dan REFLECT jika validasi lulus (hemat 2 API calls) ──
+            if _skip_correction_stages and stage in (ThoughtStage.CORRECT, ThoughtStage.REFLECT):
+                log.debug("CoT stage skipped (validation passed)", stage=stage.value)
+                continue
+
             emoji = STAGE_EMOJI.get(stage, "•")
             label = STAGE_LABELS.get(stage, stage.value)
 
@@ -458,18 +464,19 @@ class ChainOfThoughtEngine:
             thought_trace.append(step)
             stage_results[stage.value] = step.parsed or {"raw": step.raw_output}
 
-            # Cek apakah perlu self-correction
+            # ── Cek apakah perlu self-correction (setelah VALIDATE selesai) ──
             if stage == ThoughtStage.VALIDATE:
                 needs_fix = step.parsed.get("needs_correction", False)
                 priority  = step.parsed.get("correction_priority", "none")
                 if needs_fix and priority in ("medium", "high"):
                     yield OrchestratorEvent("status",
                         f"  🔧 Validasi menemukan kelemahan ({priority}) — menjalankan koreksi...")
-                elif not needs_fix:
-                    # Skip CORRECT + REFLECT jika tidak perlu
+                else:
+                    # Tidak perlu koreksi — set flag untuk skip CORRECT+REFLECT
+                    _skip_correction_stages = True
                     if selected_depth == CoTDepth.EXPERT:
                         yield OrchestratorEvent("status",
-                            "  ✅ Validasi lulus — koreksi tidak diperlukan")
+                            "  ✅ Validasi lulus — koreksi tidak diperlukan (2 API calls dihemat)")
 
             if stage == ThoughtStage.CORRECT:
                 used_correction = True
