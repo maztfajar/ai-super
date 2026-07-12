@@ -4,7 +4,7 @@
 fastapi>=0.111.0
 uvicorn[standard]==0.29.0
 python-multipart==0.0.30
-websockets==12.0
+websockets>=14.0,<16.0
 
 # ── Database ──────────────────────────────────────────────────
 sqlmodel==0.0.19
