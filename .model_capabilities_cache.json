@@ -1,9 +1,4 @@
 {
-  "sumopod/gemini/gemini-2.0-flash-lite": [
-    "free",
-    "speed",
-    "text"
-  ],
   "sumopod/gpt-5-mini": [
     "vision",
     "coding",
@@ -14,10 +9,6 @@
     "analysis",
     "coding",
     "reasoning"
-  ],
-  "sumopod/gemini/gemini-2.0-flash": [
-    "speed",
-    "text"
   ],
   "sumopod/minimax/speech-2.8-hd": [
     "tts",
@@ -46,20 +37,6 @@
   "pollinations/midjourney": [
     "image_gen",
     "text"
-  ],
-  "gemini-1.5-pro": [
-    "reasoning",
-    "analysis",
-    "speed"
-  ],
-  "gemini-1.5-flash": [
-    "text",
-    "speed"
-  ],
-  "gemini-2.0-flash-lite": [
-    "text",
-    "free",
-    "speed"
   ],
   "gemini-2.5-flash": [
     "reasoning",
@@ -93,13 +70,6 @@
   ],
   "ollama/dolphin-mistral:latest": [
     "text"
-  ],
-  "sumopod/gemini/gemini-2.5-flash-lite": [
-    "text",
-    "vision",
-    "reasoning",
-    "speed",
-    "free"
   ],
   "sumopod/gemini/gemini-3.1-flash-lite": [
     "text",

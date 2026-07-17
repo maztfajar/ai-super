@@ -930,13 +930,30 @@ class RequestPreprocessor:
         }, ts)
 
     def _get_fast_model(self) -> str:
+        # Daftar kata kunci model yang BUKAN untuk text chat — skip untuk klasifikasi
+        _NON_CHAT_KEYWORDS = (
+            "embedding", "embed", "tts", "speech", "whisper",
+            "audio", "image", "vision", "flux", "midjourney",
+            "turbo-image", "dall-e",
+        )
+
+        def _is_chat_model(model_id: str) -> bool:
+            m = model_id.lower()
+            return not any(kw in m for kw in _NON_CHAT_KEYWORDS)
+
         try:
             from agents.agent_registry import agent_registry as _ar
             model = _ar.resolve_model_for_agent("general")
-            if model and model in model_manager.available_models:
+            if model and model in model_manager.available_models and _is_chat_model(model):
                 return model
         except Exception:
             pass
+
+        # Cari model chat pertama yang tersedia jika default tidak cocok
+        for mid in model_manager.available_models:
+            if _is_chat_model(mid):
+                return mid
+
         return model_manager.get_default_model()
 
 

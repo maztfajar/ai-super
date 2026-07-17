@@ -342,8 +342,12 @@ class ModelManager:
             async for chunk in self._stream_google(clean_model, messages, temperature, max_tokens, tools):
                 yield chunk
         elif provider == "sumopod":
+            # Gunakan model_id dari available_models jika ada (nama persis yang Sumopod harapkan)
+            # Ini mencegah format error untuk nested models seperti gemini/gemini-X
+            info = self.available_models.get(model, {})
+            actual_model = info.get("model_id", clean_model)
             async for chunk in self._stream_openai_compatible(
-                clean_model, messages, temperature, max_tokens,
+                actual_model, messages, temperature, max_tokens,
                 base_url=settings.SUMOPOD_HOST,
                 api_key=settings.SUMOPOD_API_KEY,
                 provider_name="Sumopod",
