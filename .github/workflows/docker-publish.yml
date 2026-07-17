@@ -62,6 +62,10 @@ jobs:
         with:
           cosign-release: 'v2.4.1'
 
+      # Set up QEMU for multi-platform builds
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       # Set up BuildKit Docker container builder
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -97,6 +101,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
