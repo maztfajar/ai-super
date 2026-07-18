@@ -9,10 +9,12 @@ services:
     volumes:
       - ./data:/app/data
       - ./rag_documents:/app/rag_documents
-      - ./.env:/app/.env
+      # Optional: mount .env kustom jika ingin override konfigurasi/API keys
+      # - ./.env:/app/.env
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    env_file:
-      - .env
+    # Optional: aktifkan env_file jika Anda punya file .env kustom
+    # env_file:
+    #   - .env
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
@@ -28,11 +30,13 @@ services:
     restart: always
     command: tunnel --no-autoupdate run
     environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN:-}
     depends_on:
       - ai-orchestrator
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+    profiles:
+      - tunnel  # Hanya aktif jika: docker compose --profile tunnel up
 
   watchtower:
     image: containrrr/watchtower

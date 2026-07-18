@@ -11,9 +11,9 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-echo -e "${CYAN}========================================================${NC}"
-echo -e "${CYAN}       AI ORCHESTRATOR - DOCKER INSTALLER               ${NC}"
-echo -e "${CYAN}========================================================${NC}"
+echo -e "${CYAN}========================================================"
+echo -e "       AI ORCHESTRATOR - DOCKER INSTALLER               "
+echo -e "========================================================${NC}"
 echo ""
 
 # Pengecekan Docker
@@ -24,7 +24,7 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
+if ! docker compose version &> /dev/null && ! command -v docker-compose &> /dev/null; then
     echo -e "${RED}[ERROR] Docker Compose tidak ditemukan!${NC}"
     echo "Pastikan docker-compose plugin terinstall."
     exit 1
@@ -32,29 +32,16 @@ fi
 
 echo -e "${GREEN}[OK] Docker dan Docker Compose tersedia.${NC}"
 
-# Setup .env
-if [ ! -f ".env" ]; then
-    if [ -f ".env.example" ]; then
-        echo -e "${GREEN}[OK] Membuat file konfigurasi .env...${NC}"
-        cp .env.example .env
-    else
-        echo -e "${YELLOW}[WARNING] File .env.example tidak ditemukan. Melewati pembuatan .env.${NC}"
-    fi
-else
-    echo -e "${CYAN}[INFO] File .env sudah ada, tidak akan ditimpa.${NC}"
-fi
-
 # Setup Volumes
-echo -e "${GREEN}[OK] Membuat direktori penyimpanan data (volumes)...${NC}"
+echo -e "${GREEN}[OK] Membuat direktori penyimpanan data...${NC}"
 mkdir -p data/logs data/uploads data/chroma_db rag_documents
-# Berikan permission yang longgar agar container docker dapat menulis ke dalamnya
 chmod -R 777 data rag_documents 2>/dev/null || true
 
 echo ""
-echo -e "${CYAN}========================================================${NC}"
-echo "Menjalankan aplikasi AI Orchestrator..."
-echo -e "${CYAN}========================================================${NC}"
-echo "Ini mungkin memakan waktu beberapa menit saat pertama kali dijalankan karena mengunduh image."
+echo -e "${CYAN}========================================================"
+echo "  Menjalankan AI Orchestrator..."
+echo -e "========================================================${NC}"
+echo "  Mengunduh image dari DockerHub (mungkin butuh beberapa menit)"
 echo ""
 
 # Menjalankan Docker Compose
@@ -65,12 +52,27 @@ else
 fi
 
 echo ""
-echo -e "${GREEN}========================================================${NC}"
-echo -e "${GREEN}🎉 INSTALASI SELESAI 🎉${NC}"
-echo -e "${GREEN}========================================================${NC}"
-echo "Aplikasi berjalan di belakang layar."
-echo -e "Silakan buka browser Anda di: ${CYAN}http://localhost:7860${NC}"
+echo -e "${GREEN}========================================================"
+echo -e "  🎉 INSTALASI SELESAI! 🎉"
+echo -e "========================================================${NC}"
 echo ""
-echo -e "Untuk melihat log, ketik: ${YELLOW}docker-compose logs -f${NC}"
-echo -e "Untuk menghentikan, ketik: ${YELLOW}docker-compose down${NC}"
+echo -e "  Buka browser: ${CYAN}http://localhost:7860${NC}"
+echo ""
+echo -e "  ┌─────────────────────────────────────────────────┐"
+echo -e "  │           KREDENSIAL LOGIN DEFAULT               │"
+echo -e "  │                                                   │"
+echo -e "  │   Username : ${YELLOW}admin${NC}                              │"
+echo -e "  │   Password : ${YELLOW}admin123${NC}                           │"
+echo -e "  │                                                   │"
+echo -e "  │   ⚠️  Segera ganti password setelah login!       │"
+echo -e "  └─────────────────────────────────────────────────┘"
+echo ""
+echo -e "  💡 Untuk menambahkan API key (OpenAI, Gemini, dll):"
+echo -e "     Login → Settings → API Keys"
+echo ""
+echo -e "  Perintah berguna:"
+echo -e "  ${YELLOW}docker compose logs -f${NC}     → Lihat log"
+echo -e "  ${YELLOW}docker compose down${NC}         → Hentikan aplikasi"
+echo -e "  ${YELLOW}docker compose pull && docker compose up -d${NC} → Update"
 echo -e "${GREEN}========================================================${NC}"
+

@@ -16,3 +16,6 @@ rag_documents/
 *.db-journal
 *.db-wal
 *.db-shm
+# File berikut HARUS masuk ke image — jangan di-ignore:
+!.env.default
+!entrypoint.sh

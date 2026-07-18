@@ -84,7 +84,12 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 COPY VERSION /app/VERSION
 
 # Copy other necessary files
-COPY .env.example .env
+# Bake default config (tanpa API keys) ke image
+COPY .env.default /app/.env.default
+
+# Bake entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Create data directories
 RUN mkdir -p /app/data/uploads /app/data/chroma_db /app/data/logs /app/rag_documents
@@ -107,6 +112,6 @@ ENV PYTHONDONTWRITEBYTECODE=0
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:7860/api/health || exit 1
 
-# Run the application using the compiled main.pyc
-CMD ["python", "backend/main.pyc"]
+# Run via entrypoint — auto-setup .env jika belum ada
+ENTRYPOINT ["/app/entrypoint.sh"]
 

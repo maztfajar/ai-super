@@ -29,19 +29,7 @@ if %ERRORLEVEL% neq 0 (
 echo [OK] Docker terdeteksi dan berjalan.
 echo.
 
-:: Salin .env.example ke .env jika belum ada
-if not exist ".env" (
-    if exist ".env.example" (
-        echo [OK] Membuat file konfigurasi .env...
-        copy .env.example .env >nul
-    ) else (
-        echo [WARNING] File .env.example tidak ditemukan. Melewati pembuatan .env.
-    )
-) else (
-    echo [INFO] File .env sudah ada, tidak akan ditimpa.
-)
-
-:: Buat folder direktori persistent agar tidak ada masalah permission saat di mount
+:: Buat folder direktori persistent
 echo [OK] Membuat folder penyimpanan data (volumes)...
 if not exist "data\logs" mkdir data\logs
 if not exist "data\uploads" mkdir data\uploads
@@ -50,12 +38,12 @@ if not exist "rag_documents" mkdir rag_documents
 
 echo.
 echo ========================================================
-echo Menjalankan aplikasi AI Orchestrator...
+echo   Menjalankan AI Orchestrator...
 echo ========================================================
-echo Ini mungkin memakan waktu beberapa menit saat pertama kali dijalankan karena harus mengunduh image.
+echo   Mengunduh image dari DockerHub (mungkin butuh beberapa menit)
 echo.
 
-docker-compose up -d
+docker compose up -d 2>nul || docker-compose up -d
 
 if %ERRORLEVEL% neq 0 (
     echo.
@@ -68,12 +56,26 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo ========================================================
-echo 🎉 INSTALASI SELESAI 🎉
+echo   INSTALASI SELESAI!
 echo ========================================================
-echo Aplikasi berjalan di belakang layar.
-echo Silakan buka browser Anda di: http://localhost:7860
 echo.
-echo Untuk melihat log, ketik: docker-compose logs -f
-echo Untuk menghentikan, ketik: docker-compose down
+echo   Buka browser: http://localhost:7860
+echo.
+echo   +-----------------------------------------------+
+echo   ^|        KREDENSIAL LOGIN DEFAULT               ^|
+echo   ^|                                               ^|
+echo   ^|   Username : admin                            ^|
+echo   ^|   Password : admin123                         ^|
+echo   ^|                                               ^|
+echo   ^|   SEGERA ganti password setelah login!        ^|
+echo   +-----------------------------------------------+
+echo.
+echo   Untuk menambahkan API key (OpenAI, Gemini, dll):
+echo     Login -^> Settings -^> API Keys
+echo.
+echo   Perintah berguna:
+echo     docker compose logs -f              -^> Lihat log
+echo     docker compose down                 -^> Hentikan
+echo     docker compose pull ^&^& docker compose up -d  -^> Update
 echo ========================================================
 pause
