@@ -66,11 +66,22 @@ async def get_admin_user(current_user: User = Depends(get_current_user)) -> User
 
 
 async def ensure_admin_exists(db: AsyncSession):
-    """Buat admin default jika belum ada"""
+    """
+    Buat atau update admin default.
+    - Jika user belum ada: dibuat baru dengan kredensial dari .env
+    - Jika user sudah ada: password & role di-sync dari .env (penting setelah
+      container baru dijalankan dengan .env yang berbeda atau setelah volume lama)
+    """
+    import structlog
+    log = structlog.get_logger()
+
     result = await db.execute(
         select(User).where(User.username == settings.ADMIN_USERNAME)
     )
-    if not result.scalar_one_or_none():
+    existing = result.scalar_one_or_none()
+
+    if not existing:
+        # Buat admin baru
         admin = User(
             username=settings.ADMIN_USERNAME,
             email=settings.ADMIN_EMAIL,
@@ -80,3 +91,23 @@ async def ensure_admin_exists(db: AsyncSession):
         )
         db.add(admin)
         await db.commit()
+        log.info(
+            "✅ Admin user DIBUAT",
+            username=settings.ADMIN_USERNAME,
+            password_source="ADMIN_PASSWORD dari .env",
+        )
+    else:
+        # Sync password & role dari .env — penting agar perubahan .env
+        # langsung berlaku tanpa harus hapus database.
+        new_hash = hash_password(settings.ADMIN_PASSWORD)
+        existing.hashed_password = new_hash
+        existing.email = settings.ADMIN_EMAIL
+        existing.is_admin = True
+        existing.is_active = True
+        db.add(existing)
+        await db.commit()
+        log.info(
+            "🔄 Admin user PASSWORD di-sync dari .env",
+            username=settings.ADMIN_USERNAME,
+            password_source="ADMIN_PASSWORD dari .env",
+        )
