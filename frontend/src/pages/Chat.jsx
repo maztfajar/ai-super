@@ -11,6 +11,7 @@ import ProjectLocationPopup from '../components/ProjectLocationPopup'
 import FileManagerPopup from '../components/FileManagerPopup'
 import { useIntentClassifier } from '../hooks/useIntentClassifier'
 import toast from 'react-hot-toast'
+import VoiceMode from '../components/VoiceMode'
 import { useChatFileHandler } from '../hooks/useChatFileHandler'
 import { extractFileContent } from '../utils/fileExtractor'
 import {
@@ -2000,6 +2001,7 @@ export default function Chat() {
   const [showMobileAttachMenu, setShowMobileAttachMenu] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isTranscribing, setIsTranscribing] = useState(false)
+  const [voiceModeOpen, setVoiceModeOpen] = useState(false)
   
   // Drag and drop attachment handler
   const {
@@ -3386,7 +3388,7 @@ export default function Chat() {
                 </div>
               </div>
 
-              {/* Mikrofon */}
+              {/* Mikrofon (STT ke teks) */}
               <button
                 onClick={isRecording ? stopRecording : startRecording}
                 disabled={streaming || isTranscribing}
@@ -3398,9 +3400,23 @@ export default function Chat() {
                       ? 'border-warn bg-warn/20 text-warn'
                       : 'border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
                 )}
-                title={isRecording ? 'Berhenti merekam' : isTranscribing ? 'Mentranskripsi...' : 'Rekam suara'}
+                title={isRecording ? 'Berhenti merekam' : isTranscribing ? 'Mentranskripsi...' : 'Rekam suara ke teks'}
               >
                 {isRecording ? <MicOff size={16} className="md:w-[15px] md:h-[15px]" /> : isTranscribing ? <Loader2 size={16} className="animate-spin md:w-[15px] md:h-[15px]" /> : <Mic size={16} className="md:w-[15px] md:h-[15px]" />}
+              </button>
+
+              {/* Voice Mode (percakapan suara dua arah) */}
+              <button
+                onClick={() => setVoiceModeOpen(true)}
+                disabled={streaming}
+                className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-purple-400 transition-all disabled:opacity-40"
+                title="Voice Mode — ngobrol dengan AI via suara"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <ellipse cx="12" cy="12" rx="10" ry="10"/>
+                  <path d="M12 7a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0v-4a3 3 0 0 0-3-3z"/>
+                  <path d="M9 20h6"/><path d="M12 17v3"/>
+                </svg>
               </button>
 
               {/* Text input */}
@@ -3538,6 +3554,14 @@ export default function Chat() {
         pendingMessage={fileManagerState.pendingMessage}
         onConfirm={handleFileManagerConfirm}
         onClose={closeFileManager}
+      />
+
+      {/* Voice Mode Overlay */}
+      <VoiceMode
+        isOpen={voiceModeOpen}
+        onClose={() => setVoiceModeOpen(false)}
+        sessionId={currentSession?.id}
+        selectedModel={selectedOrchestrator}
       />
     </div>
   )
