@@ -1,76 +1,61 @@
-# 🧠 AI ORCHESTRATOR v4.1.21
-### *High-Autonomy Execution, Hardened Resilience & Execution Continuity*
+# 🧠 AI ORCHESTRATOR v4.1.52
+### *High-Autonomy Multi-Agent Execution, Real-Time Voice Interaction & Resilient Orchestration*
 
 <p align="center">
+  <img src="https://img.shields.io/badge/Version-v4.1.52-blueviolet?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Arch-Multi--Agent--DAG-blue?style=for-the-badge" alt="Architecture">
   <img src="https://img.shields.io/badge/Routing-Zero--Hardcode-orange?style=for-the-badge" alt="Routing">
+  <img src="https://img.shields.io/badge/Voice-Realtime--VAD-cyan?style=for-the-badge" alt="Voice">
   <img src="https://img.shields.io/badge/Memory-Semantic--Procedural-blueviolet?style=for-the-badge" alt="Memory">
   <img src="https://img.shields.io/badge/Security-2FA--Audited-red?style=for-the-badge" alt="Security">
-  <img src="https://img.shields.io/badge/AI_Core-Auto--Generate-ff69b4?style=for-the-badge" alt="AI Core">
 </p>
 
 ---
 
 ## 📖 Overview
 
-**AI ORCHESTRATOR** adalah platform orkestrasi AI mandiri (Self-Hosted) yang dirancang untuk mengeksekusi tugas-tugas kompleks melalui sistem multi-agent yang terkoordinasi. Berbeda dengan chat UI standar, sistem ini berfokus pada **Execution & Autonomy**, didukung oleh lapisan memori prosedural dan **Dynamic Model Routing** yang memungkinkannya memilih model AI terbaik secara otomatis untuk setiap jenis tugas — tanpa perlu menyentuh kode keras (Zero-Hardcode).
+**AI ORCHESTRATOR** adalah platform orkestrasi AI otonom mandiri (*Self-Hosted*) yang dirancang untuk mengeksekusi tugas-tugas rekayasa dan operasional skala kompleks melalui sistem multi-agent yang terkoordinasi. 
+
+Berbeda dengan antarmuka percakapan konvensional, AI ORCHESTRATOR mengedepankan **Full Autonomy & Native Tool Calling**, didukung arsitektur **Directed Acyclic Graph (DAG)**, memori prosedural cerdas, pemrosesan suara dua arah (*Voice-to-Voice with VAD*), serta **Dynamic Model Routing** yang memilih model AI paling efisien dan kompeten secara otomatis tanpa konfigurasi kaku (*Zero-Hardcode*).
 
 ---
 
 ## 🌟 Core Features & Capabilities
 
-Seluruh fitur mutakhir dari pembaruan sebelumnya (v3.8 hingga v4.1) kini telah disatukan dalam infrastruktur inti yang solid:
+### 1. ⚡ High-Autonomy Execution & Native Tools
+* **Native Function Calling:** Orkestrasi terintegrasi langsung dengan standar JSON Schema bawaan dari provider model (OpenAI, Anthropic Claude, Google Gemini, Groq, DeepSeek, Ollama, dll.), menghasilkan akurasi pemanggilan alat (*tool calls*) tinggi dan bebas kegagalan sintaks regex.
+* **Modular Chat Engine & Agent Progress:** Antarmuka percakapan modular (`ChatInput`, `MessageList`, `AgentProgress`) dengan visualisasi proses berpikir agen (*Thinking Process*), status langkah demi langkah, dan *live step-by-step telemetry*.
+* **Browser Automation Tools:** Agen memiliki kapabilitas navigasi web otonom (`browser_navigate`), interaksi elemen (`browser_click`, `browser_type`), ekstraksi konten teks (`browser_extract_text`), dan penangkapan visual halaman (`browser_screenshot`).
+* **AI Image Generation:** Integrasi pembuatan gambar (`generate_image`) teks-ke-gambar berbasis Pollinations AI (100% gratis, tanpa API key) dan provider kustom dengan opsi rasio dinamis (square, landscape, portrait).
+* **Infinite Sub-Task Decomposition:** Pemecahan instruksi skala besar (*Fullstack App*, *Refactoring*, *DevOps*, *Database Migration*) menjadi langkah-langkah operasional yang dieksekusi secara terstruktur tanpa terpotong limit token.
+* **True Parallel Execution (DAG):** Agen-agen beroperasi secara simultan (*non-blocking*) melalui graph eksekusi terkoordinasi di `Command Center`.
 
-### 1. ⚡ High-Autonomy Execution & Scalability
-*   **Native Function Calling (v4.1):** Orkestrasi kini didorong secara asli (*natively*) oleh standar JSON Schema bawaan dari penyedia model (OpenAI, Anthropic, Gemini, dll), memastikan akurasi pemanggilan alat (tool call) 95% bebas *syntax error* dan menghilangkan ketergantungan pada *regex parsing*.
-*   **Browser Automation Tools (v4.1.21):** Agen dilengkapi kemampuan navigasi web otonom (`browser_navigate`), interaksi elemen (`browser_click`, `browser_type`), ekstraksi teks (`browser_extract_text`), dan penangkapan halaman secara visual (`browser_screenshot`).
-*   **AI Image Generation (v4.1.21):** Integrasi pembuatan gambar (`generate_image`) dari instruksi teks dengan opsi resolusi dinamis (landscape, portrait, square) dan tingkat kualitas.
-*   **Infinite Sub-Task Decomposition:** Sistem sanggup memecah instruksi skala besar (*Fullstack App*, *Deployment*, *Database*) menjadi belasan langkah operasional tanpa terpotong oleh batasan sewenang-wenang (hard-limit).
-*   **True Parallel Execution:** Menggunakan arsitektur Directed Acyclic Graph (DAG) di `Command Center`, agen-agen beroperasi secara bersamaan (paralel) untuk tugas-tugas yang tidak saling mengunci (*non-blocking*).
-*   **Smart Botleneck Bypass:** Agen otomatis menyelesaikan path file yang salah, menimpa file (*overwrite*), dan membuat direktori secara mandiri. Intervensi manusia hanya diperlukan pada aksi destruktif tingkat sistem.
+### 2. 🎙️ Voice-to-Voice Realtime Mode (NEW!)
+* **Interactive Voice Overlay (`VoiceMode`):** Antarmuka percakapan suara interaktif layar penuh dengan animasi visualizer dinamis, status indikator (Listening, Processing, Speaking), dan Voice Activity Detection (VAD).
+* **Realtime Speech Recognition & Edge-TTS:** Transkripsi suara pengguna secara instan (Web Speech API / Whisper) dipadukan dengan sintesis suara *edge-tts* multi-bahasa (Indonesia, English, Arabic, Japanese, Jawa) dengan latensi ultra-rendah dan tanpa biaya.
+* **Smart Audio Interruption & Privacy-First:** Deteksi interupsi otomatis saat pengguna berbicara kembali serta pemrosesan audio efemeral tanpa penyimpanan rekaman sensitif di server.
 
-### 2. 🧠 Intelligence, Reasoning & Memory
-*   **5-Tahap ReAct Reasoning:** Setiap eksekusi didahului dengan 5-tahap penalaran kognitif: *Intent Inference* → *Context Exploration* → *Plan* → *Execute* → *Verify*.
-*   **Multi-Model Consensus / Voting Engine (v4.1.21):** Mengaktifkan consensus voting engine (`VotingEngine`) saat kompleksitas tugas tinggi (score ≥ 0.8) untuk menjalankan beberapa model secara paralel dan menyatukan respons terbaik.
-*   **Proactive Task Scheduler (v4.1.21):** Penjadwalan otomatis tugas masa depan atau pengingat (`schedule_task`) dengan perulangan berkala (daily, weekly) yang dikelola oleh Celery background worker.
-*   **Human Logic Engine & Emotional State (v4.1.14):** Sistem menganalisis kondisi emosional pengguna secara *real-time* (emosi dominan, intensitas emosi, urgensi, niat tersirat, kebutuhan validasi) menggunakan kata kunci bilingual (ID/EN) sebelum melakukan klasifikasi intent teknis. Jika terdeteksi frustrasi atau tekanan waktu, prioritas kualitas otomatis ditingkatkan dan nada disesuaikan secara dinamis.
-*   **Humanizer Skill (Anti-Robot Slop):** Modul polesan bahasa dinamis yang menyaring kata/frasa klise mesin yang kaku (*"Penting untuk diingat"*, *"Sebagai model bahasa"*, *"Kesimpulannya"*, dll.) agar gaya komunikasi model lebih natural, asimetris, kasual, dan layaknya manusia.
-*   **QMD (Query Memory Distillation):** Algoritma kompresi konteks yang membuang redundansi percakapan sambil tetap menjaga format *whitespace/newline* pada kode secara ketat. Menghasilkan efisiensi token hingga **63%**.
-*   **Procedural Memory & Skill Crystallization:** Mengekstraksi graf eksekusi (*tool calls*) yang berhasil ≥5x berturut-turut menjadi *Learned Skill* permanen agar sistem bekerja lebih cepat di kemudian hari.
-*   **Auto-Generate AI Core:** Kemampuan menghasilkan profil identitas dan konfigurasi internal (*system prompt*) secara otomatis dari deskripsi bahasa natural pengguna dalam <10 detik.
+### 3. 🧠 Intelligence, Reasoning & Memory Systems
+* **5-Stage ReAct Reasoning:** Setiap eksekusi didahului penalaran kognitif bertahap: *Intent Inference* → *Context Exploration* → *Plan* → *Execute* → *Verify*.
+* **Intent Classifier & Emotional State Engine:** Analisis niat (*intent*) dan kondisi emosional pengguna (urgensi, nada, kepuasan, kebutuhan validasi) untuk menyesuaikan prioritas eksekusi dan gaya bahasa model secara otomatis.
+* **Humanizer Engine:** Modul pemoles bahasa yang menyaring frasa-frasa klise mesin yang kaku agar komunikasi lebih luwes, asimetris, dan natural.
+* **QMD (Query Memory Distillation):** Algoritma kompresi konteks percakapan yang membuang redundansi tanpa merusak struktur kode atau token penting, menghemat hingga **63% token**.
+* **Vector RAG & Knowledge Base:** Integrasi ChromaDB lokal untuk pengindeksan dokumen, pencarian semantik berkecepatan tinggi, dan *project context loading*.
+* **Procedural Memory & Learned Skills:** Kristalisasi graf eksekusi yang sukses ≥5 kali menjadi skill permanen baru untuk akselerasi eksekusi tugas serupa di masa depan.
+* **Multi-Model Consensus / Voting Engine:** Menjalankan beberapa LLM secara paralel untuk tugas kritis (skor kompleksitas ≥ 0.8) guna menyatukan hasil terbaik.
 
-### 3. 🔀 Dynamic Model Routing (Zero-Hardcode)
-*   **Self-Learning Routing (>85% Accuracy):** Sistem menganalisis histori performa agen setiap 5 menit. Jika pengguna tidak menentukan model secara manual, sistem akan mendistribusikan *task* ke model paling kompeten secara dinamis berdasarkan 7-lapis prioritas.
-*   **Transparent UI Auto-Fill:** Antarmuka secara jujur (`Real-time 30s`) menampilkan label `🤖 Auto — [Nama Model]` pada panel *Integrations* sehingga keputusan *routing* AI tidak lagi menjadi *black-box*.
-*   **Absolute Manual Override:** Pilihan model manual dari pengguna adalah prioritas mutlak yang tidak akan pernah ditimpa oleh sistem otomatis (*auto-routing*).
-*   **Built-in Free Image Generation:** Integrasi *native* dengan Pollinations AI yang menjamin pembuatan gambar 100% gratis, super cepat, tanpa perlu registrasi atau memasukkan API key sama sekali.
+### 4. 🔀 Dynamic Model Routing (Zero-Hardcode)
+* **Self-Learning Performance Routing:** Analisis otomatis performa model berdasarkan latensi, akurasi, dan jenis tugas (Coding, Research, Creative, Multimodal) untuk mengarahkan prompt ke model terbaik.
+* **AI Roles Mapping:** Pemetaan peran fleksibel di mana pengguna dapat menetapkan model spesifik untuk tugas tertentu (*Coding Agent*, *Research Agent*, *Vision Agent*, dll.) atau membiarkan sistem melakukan *Auto-Routing*.
+* **Latest Model Capabilities Support:** Kompatibel dengan model generasi terbaru (Gemini 2.5/3.1, Claude 3.5/3.7 Sonnet, GPT-4o, DeepSeek-V3/R1, Qwen 2.5 Coder, Ollama lokal, dsb).
 
-### 4. 🎤 Voice-to-Voice Interaction (NEW!)
-*   **Seamless Voice Chat:** Kirim pesan suara di Telegram → Bot mentranskrip dengan Whisper → AI memproses → Jawaban dikembalikan dalam bentuk voice note + caption teks.
-*   **Multi-Language TTS:** Mendukung 5 bahasa (Indonesia, English, Arabic, Japanese, Jawa) dengan edge-tts yang 100% gratis dan unlimited.
-*   **Smart Audio Processing:** Otomatis memotong jawaban panjang, fallback ke teks jika TTS gagal, dan tidak menyimpan file audio di server (privacy-first).
-*   **AI Role Integration:** Terintegrasi penuh dengan AI Role Mapping — Anda bisa set model khusus untuk `multimodal` (Whisper) dan `audio_gen` (TTS) atau biarkan sistem auto-routing.
-
-### 5. 🎨 UI/UX & Interactive Interface (NEW!)
-*   **Default Simple Mode & UI Refinements (v4.1.21):** Default UI kini diset ke Simple Mode (Agent OFF) untuk respons cepat tanpa overhead preprocessor. Tombol **🤖 Agent** didesain ulang dengan indikator status ON/OFF interaktif dan tooltip informatif.
-*   **Tavily Web Search Integration:** Simple mode dapat secara otomatis melakukan pencarian web real-time (Tavily API) jika memerlukan informasi terkini.
-*   **Expandable Thinking Process:** Antarmuka visual yang menampilkan langkah proses berpikir agen secara transparan ala Claude AI. Pengguna bisa mengklik ikon khusus untuk melihat detail langkah pemikiran model.
-*   **Drag & Drop Image Support:** Kemudahan mengirimkan input gambar dengan menyeret dan menjatuhkan file langsung ke area chat UI.
-*   **Auto-Focus & Smooth Interaction:** Input chat otomatis fokus kembali setelah mengirim pesan, dilengkapi penanganan error dashboard yang lebih baik untuk pengalaman integrasi yang mulus.
-
-### 6. 🛡️ Hardened Resilience & Execution Continuity
-*   **State Checkpointing & DAG Watchdog:** Eksekusi tugas diamankan di dalam basis data persisten. Jika sistem macet atau progres stagnan lebih dari 5 giliran, Watchdog otomatis memaksa pemulihan tanpa instruksi halusinasi ke *LLM*.
-*   **Actionable Error Translator & Circuit Breaker:** Sistem akan mengonversi pesan error teknis menjadi langkah taktis (misal: "Port bentrok, kill PID 1234"). Jika alat (*tool*) terus gagal 3x, ia akan dikenai penangguhan (*suspend*) sesi secara sementara agar tidak memblokir antrean.
-*   **Truncation Recovery:** Jika LLM memotong *output* kode akibat limit *max_tokens*, Orchestrator secara otomatis menyuntikkan *prompt* pelanjut dan merekatkan hasilnya di balik layar.
-*   **Dead Letter Queue (DLQ):** Setiap tugas gagal yang tidak tertolong (*unrecoverable*) akan masuk ke DLQ selama 14 hari untuk tujuan peninjauan manual, sehingga tidak ada pekerjaan yang lenyap tanpa jejak.
-
-### 7. 🚀 Performance & Scalability Optimizations (v4.1.21)
-*   **Concurrent Module Startup:** Menginisialisasi komponen backend opsional (RAG, Model Manager, Memory) secara paralel menggunakan `asyncio.gather` sehingga memangkas waktu start server secara masif.
-*   **Non-Blocking Model Discovery:** Proses interview kemampuan model (`Capability Map`) dimigrasi sepenuhnya ke background thread, memuat data cache disk instan saat startup tanpa menghalangi peluncuran server API.
-*   **Aggressive Asset Caching & Compression:** Penerapan `GZipMiddleware` pada respons API dan custom static files handler (`CachedStaticFiles`) dengan header `Cache-Control` permanen (`immutable`) untuk aset frontend.
-*   **Thread-Safe WAL Mode SQLite:** Konfigurasi `PRAGMA journal_mode=WAL` and `PRAGMA synchronous=NORMAL` pada sinkronisasi DB engine (`SessionLocal`) guna mencegah kunci basis data (*database locks*) saat Celery worker beroperasi.
-*   **Dynamic Token Pricing & Cost Tracking:** Konfigurasi kustom token pricing via `data/pricing_overrides.json`, dynamic token pricing resolver (`get_pricing`) dengan support provider prefix stripping, serta pencatatan otomatis input/output token dan biaya eksekusi (USD) ke database metrics.
+### 5. 🛡️ Hardened Resilience & Security
+* **State Checkpointing & Watchdog:** Penyimpanan status eksekusi persisten dengan pemulihan otomatis jika terjadi *freeze* atau anomali jaringan.
+* **Actionable Error Translator & Circuit Breaker:** Penerjemahan error teknis menjadi langkah koreksi nyata (misal: penanganan konflik port otomatis) dan isolasi alat bermasalah.
+* **Truncation Auto-Recovery:** Penyambungan otomatis kode atau respons teks yang terpotong akibat limit *max_tokens*.
+* **Enterprise Security & 2FA:** Otentikasi dua faktor (TOTP 2FA), audit logging komprehensif, security scanner untuk mendeteksi kerentanan file, dan approval system untuk perintah berbahaya.
+* **Cloudflare Tunnel Wizard:** Integrasi wizard bawaan untuk mengekspos dashboard ke domain HTTPS publik secara instan tanpa perlu port-forwarding manual.
 
 ---
 
@@ -101,166 +86,156 @@ graph TB
     classDef output fill:#0284c7,textColor:#ffffff,stroke:#0284c7,stroke-width:1px,rx:20px;
 
     %% LAYERS
-    subgraph EP ["📥 Entry Points"]
-        CB[Celery Beat / Worker] -->|Poll Due Tasks| ST[(Scheduled Tasks DB)]
-        ST -->|Trigger Task| AG[API Gateway / UI]
-        UR[User Request] --> AG
+    subgraph EP ["📥 Ingestion & User Interfaces"]
+        UI[React Modular Chat UI]
+        VM[VoiceMode Overlay / VAD]
+        TG[Telegram Bot Webhook]
+        CB[Celery Beat Scheduler]
+        
+        UI & VM & TG & CB --> AG[FastAPI Gateway]
     end
 
-    subgraph OR ["🧠 Orchestration & Routing"]
-        AG --> RP{Request Preprocessor}
-        
-        RP -->|Agent Mode| TD[Task Decomposer]
-        TD --> DB[DAG Builder]
-        DB --> AS[Agent Scorer]
-        AS -->|Zero-Hardcode| DR[Dynamic Routing Engine]
-        
-        RP -.->|Simple Mode Bypass| DR
-        RP -.->|Complexity >= 0.8| DR
-        RP -->|Inject Context| AU[Auto-Fill UI Badge]
+    subgraph OR ["🧠 Reasoning & Preprocessing"]
+        AG --> IC{Intent & Emotion Classifier}
+        IC -->|Simple Mode| DR[Dynamic Model Router]
+        IC -->|Agent Mode| TD[Task Decomposer]
+        TD --> DAG[DAG Plan Builder]
+        DAG --> AS[Agent Scorer & Evaluator]
+        AS --> DR
     end
 
-    subgraph EX ["⚡ Execution Layer & Consensus"]
-        DR --> SA[System Agent]
-        DR --> RA[Research Agent]
+    subgraph EX ["⚡ Execution & Native Tools"]
+        DR --> SA[System / Bash Agent]
         DR --> CA[Coding Agent]
+        DR --> RA[Research & Web Agent]
+        DR --> BA[Browser Automation]
         
-        SA & RA & CA --> SS[Secure Sandbox]
-        SA & RA & CA --> MC[Multi-Model Consensus]
+        SA & CA & RA & BA --> Tools[(Native Tools & Sandbox)]
+        Tools --> VE[Voting & Quality Engine]
     end
 
-    subgraph IM ["💾 Intelligence & Memory"]
-        QE[Quality Engine]
-        RAg[Result Aggregator]
-        PM[(Procedural Memory)]
-        BRM[(Byte Rover Memory)]
+    subgraph IM ["💾 Memory, RAG & Knowledge"]
+        QMD[QMD Context Distiller]
+        VDB[(ChromaDB Vector Store)]
+        PM[(Procedural Memory DB)]
+        
+        VE --> QMD
+        QMD --> VDB
+        VE --> PM
     end
 
-    %% INTER-CONNECTIONS (Disesuaikan agar panah tidak tumpang tindih)
-    AU -.-> PM
-    SS --> QE
-    MC --> RAg
-    
-    PM --> RAg
-    BRM --> RAg
-    
-    RAg -->|Tavily Search| RWS[Real-time Web Search]
-    RWS --> FR((Final Response))
-    MC -.->|Simple Path| FR
+    subgraph OUT ["📤 Response Synthesis & Delivery"]
+        VE --> TTS[Edge-TTS Audio Stream]
+        VE --> Stream[SSE / WebSocket Stream]
+        TTS & Stream --> Client((User Client))
+    end
 
-    %% Class Assign
-    class CB,ST,UR,AG entry;
-    class RP router;
-    class TD,DB,AS,AU,QE,RAg,RWS process;
+    %% Class Assignments
+    class UI,VM,TG,CB,AG entry;
+    class IC router;
+    class TD,DAG,AS,VE,QMD process;
     class DR engine;
-    class SA,RA,CA agent;
-    class PM,BRM db;
-    class FR output;
+    class SA,CA,RA,BA agent;
+    class Tools,VDB,PM db;
+    class TTS,Stream,Client output;
 
     style EP fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
     style OR fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
     style EX fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
     style IM fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
+    style OUT fill:#f8fafc,stroke:#e2e8f0,stroke-width:1px;
 ```
 
+---
+
+## 📁 Repository Structure
+
+```text
+ai-super/
+├── backend/
+│   ├── agents/             # Agent definitions, tools (bash, browser, filesystem), voting engine
+│   ├── api/                # FastAPI endpoints (chat, voice/tts, auth, integrations, qmd, rag)
+│   ├── core/               # Orchestrator, intent classifier, DAG builder, QMD, model manager
+│   ├── db/                 # Database models, SQLite WAL session management
+│   ├── memory/             # Procedural & episodic memory management
+│   ├── rag/                # ChromaDB vector engine and document indexer
+│   └── main.py             # FastAPI entrypoint and concurrent startup lifecycle
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # UI components (VoiceMode, CloudflareWizard, File Manager)
+│   │   │   └── chat/       # Modular Chat (ChatInput, MessageList, AgentProgress)
+│   │   ├── pages/          # App views (Chat, Dashboard, Integrations, Security, Models)
+│   │   ├── hooks/          # Custom React hooks (speech, audio, telemetry)
+│   │   └── App.jsx         # App router and global context providers
+│   ├── package.json        # Frontend dependencies & Vite configuration
+│   └── vite.config.js      # Vite build setup with aggressive asset bundling
+├── scripts/                # Utility and deployment scripts
+├── .env.example            # Environment variables template
+├── start.sh / stop.sh      # Native service management scripts
+├── update.sh               # One-click update and dependency installation script
+└── VERSION                 # Active release version identifier
+```
 
 ---
 
 ## 💻 Hardware & AI Model Requirements
 
-Untuk performa optimal terutama saat menjalankan **15+ agent secara paralel**:
-
 | Komponen | Minimum | Rekomendasi |
 |----------|---------|-------------|
-| **RAM**  | 4 GB*   | 16 GB+      |
+| **RAM**  | 4 GB    | 16 GB+      |
 | **CPU**  | 2 Cores | 8 Cores+    |
-| **Disk** | 20 GB   | 100 GB (SSD)|
+| **Disk** | 20 GB   | 100 GB SSD  |
 
-*\*Catatan: Minimum 4GB disarankan untuk beban terbatas (~5-8 agent). Untuk kapasitas paralel maksimum, setidaknya dibutuhkan 8GB-16GB RAM.*
-
-### ⚠️ Syarat Model AI (Penting!)
-Sistem menggunakan **Native Function Calling** untuk eksekusi tanpa batas dan toleransi *error* maksimal. Gunakan tombol **Zap Test (⚡)** di menu *Integrations* untuk memeriksa kompatibilitas model.
-*   **Model yang Didukung:** GPT-4o, gpt-4o-mini, Claude 3.5 Sonnet, Gemini 1.5/2.5 Pro/Flash, Llama 3/3.1, Qwen 2.5, Mistral-Nemo.
-*   **TIDAK Didukung:** Model lawas (pra-2024), Llama 2, atau AI yang tidak mendukung kapabilitas penggunaan alat (*Tool Use*).
+### ⚠️ Kompatibilitas Model AI (Native Function Calling)
+Sistem dioptimalkan untuk model yang mendukung **Native Tool Calling / Function Calling**:
+* **Didukung Penuh:** OpenAI (GPT-4o, GPT-4o-mini), Anthropic (Claude 3.5/3.7 Sonnet), Google Gemini (Gemini 2.5 Pro/Flash, Gemini 3.1 Flash-Lite), Groq, DeepSeek (V3/R1), Qwen 2.5, Mistral, Ollama (Llama 3.1/3.2, Qwen2.5-Coder).
+* **Verifikasi Cepat:** Gunakan tombol petir **Zap Test (⚡)** pada menu *Integrations* untuk memvalidasi dukungan Native Tools model secara instan.
 
 ---
 
-## 🔒 Security Model & Data Privacy
-
-*   **Network Isolation:** Mode pekerja (*worker*) diisolasi penuh dalam kontainer Docker, sehingga tidak dapat mengakses OS *Host* maupun melakukan eksploitasi *kernel*.
-*   **Privacy-Safe Prompting:** Nama asli LLM komersial disembunyikan menggunakan pelindung tiga lapis (*Prompt Alias*, *Post-processing Regex*, dan *Audit Log*) sehingga identitas LLM tidak bocor ke antarmuka klien.
-*   **Wipe & Export:** Anda memiliki kontrol penuh. Memori dapat dihapus total (*wipe*) kapan saja lewat CLI atau UI. Riwayat percakapan dapat diekspor menjadi format PDF, DOCX, TXT, dan XLSX.
-*   **Independent Local RAG (Git Tracking Fix):** Pelacakan repositori mengabaikan database binary (`chroma.sqlite3`) secara default. Setiap environment (dev/prod) memiliki data RAG lokal masing-masing untuk menghindari merge conflict saat melakukan update.
-
----
-
-## 🚀 Real Execution Trace (Example)
-
-**Input:** *"Bangun landing page produk kopi, tambahkan form kontak, dan siapkan script deploy ke VPS."*
-
-1.  **Decomposition:** Sistem memecah belasan instruksi, dikelompokkan ke 4 sub-task utama: (A) Desain UI, (B) Backend Form, (C) Dockerization, (D) Deployment Script.
-2.  **Dynamic Routing:** Agent Scorer mendeteksi AI Roles Mapping kosong → menggunakan *Performance Cache* → memilih AI paling jago *front-end* untuk (A) dan spesialis *devops* untuk (D).
-3.  **Parallel Execution:** Agent-1 menulis HTML/CSS, Agent-2 merakit skrip Python/Node.js secara **bersamaan**.
-4.  **Resilience:** Terjadi interupsi *Token Limit* di baris ke-150 CSS. *Truncation Recovery* menyambungnya otomatis di latar belakang.
-5.  **Validation:** Terjadi error `EADDRINUSE` saat agen mencoba mengetes server. *Error Translator* memerintahkan `execute_bash` untuk mencari dan membunuh proses port terkait, lalu uji ulang sukses.
-6.  **Crystallization:** Seluruh urutan sukses ini direkam ke *Procedural Memory*. Jika diminta hal serupa besok, sistem akan mengeksekusinya lebih instan.
-
----
-
-## ⚡ Instalasi (Mode Lokal / Native)
-
-AI-SUPER v5.0 kini difokuskan untuk berjalan secara lokal langsung di mesin Host Anda agar memiliki akses tanpa batas (untuk operasi berkas, eksekusi kode, dll).
+## ⚡ Panduan Instalasi & Menjalankan
 
 ### 1. Prasyarat Sistem
-Pastikan sistem Anda (Linux/VPS/Mac) telah memiliki:
-*   **Python 3.10+** dan `venv`
-*   **Node.js 18+** & `npm`
-*   Port **7860** tidak terblokir oleh Firewall (UFW).
+Pastikan lingkungan Anda (Linux Ubuntu/Debian/Mac) telah terpasang:
+* **Python 3.10+** dan `python3-venv`
+* **Node.js 18+** dan `npm`
+* Port **7860** terbuka.
 
-### 2. Kloning Repositori & Konfigurasi
+### 2. Kloning Repositori & Konfigurasi Lingkungan
 ```bash
 git clone https://github.com/maztfajarwahyudi/ai-super.git
 cd ai-super
 
-# Salin file environment (wajib)
+# Siapkan file konfigurasi environment
 cp .env.example .env
 
-# Edit .env dan atur kredensial ADMIN_USERNAME dan ADMIN_PASSWORD Anda
-# nano .env
+# Edit kredensial admin dan variabel lingkungan
+nano .env
 ```
 
-### 3. Build & Jalankan
-Cukup jalankan script *update* yang akan meng-install seluruh dependensi Frontend dan Backend:
+### 3. Instalasi Dependensi & Build
+Jalankan skrip pembaruan otomatis untuk mengunduh seluruh dependensi frontend dan backend:
 ```bash
 ./update.sh
 ```
 
-Aplikasi secara otomatis akan dijalankan di latar belakang *(background)*.
-- Untuk mematikan aplikasi: `./stop.sh`
-- Untuk menyalakan kembali: `./start.sh`
+### 4. Menjalankan Layanan
+Aplikasi dapat dikontrol dengan skrip berikut:
+* **Menjalankan aplikasi:** `./start.sh`
+* **Menghentikan aplikasi:** `./stop.sh`
+* **Melihat log backend:** `tail -f backend/backend_log.txt`
+
+Akses dashboard web melalui browser di: `http://localhost:7860` (atau IP server Anda).
 
 ---
 
-## 🎮 Panduan Penggunaan (Quick Start)
+## 🎮 Quick Start Guide
 
-Setelah instalasi selesai, ikuti langkah berikut untuk mengoperasikan AI Orchestrator:
-
-1.  **Akses Dashboard:** Buka peramban web dan navigasi ke `http://localhost:7860` (atau IP VPS Anda).
-    *   Sistem akan meminta **Login**. Gunakan `ADMIN_USERNAME` dan `ADMIN_PASSWORD` yang telah Anda atur di file `.env` sebelumnya.
-2.  **Konfigurasi Kunci API (Wajib):** 
-    *   Buka menu ⚙️ **Integrations**.
-    *   Masukkan API Key dari penyedia LLM pilihan Anda (misal: OpenAI, Anthropic, Gemini, Groq, atau endpoint lokal Ollama).
-    *   *(Opsional)* Aktifkan **🎨 Pollinations AI** jika Anda ingin menggunakan fitur pembuatan gambar *tanpa batas dan tanpa API key*.
-    *   Klik **Simpan**.
-3.  **Verifikasi Native Tools:**
-    *   Masih di menu Integrations, klik tombol petir **Zap Test (⚡)** di samping model AI pilihan Anda.
-    *   Pastikan notifikasi memunculkan indikator warna **Hijau** (Mendukung *Native Tools*). Jika merah/kuning, AI tersebut tidak kompatibel dengan orkestrasi lanjutan.
-4.  **Atur AI Roles (Opsional):**
-    *   Buka menu 🤖 **AI Roles Mapping**.
-    *   Anda bisa mengatur model spesifik untuk tugas tertentu (misal: *Claude 3.5 Sonnet* untuk Coding, *Gemini 1.5 Pro* untuk Riset). Jika dikosongkan, fitur *Auto-Routing* akan menanganinya untuk Anda.
-5.  **Mulai Memberi Perintah:**
-    *   Kembali ke Dashboard/Chat. Berikan instruksi kompleks seperti: *"Deploy aplikasi Express.js sederhana di port 8080 dengan endpoint /ping."*
-    *   Duduk santai dan perhatikan agen merencanakan DAG, menulis *source code*, mengeksekusi *bash*, memperbaiki *error* secara otonom, dan mengembalikan tautan yang sudah siap pakai!
+1. **Login:** Masuk dengan `ADMIN_USERNAME` dan `ADMIN_PASSWORD` dari file `.env`.
+2. **Setup Integrasi:** Buka menu ⚙️ **Integrations**, masukkan API Key provider LLM Anda, dan klik **Simpan**.
+3. **Uji Kompatibilitas:** Klik tombol **⚡ Zap Test** pada model yang aktif untuk memastikan fungsi *Native Tools* aktif.
+4. **Gunakan Mode Suara (VoiceMode):** Klik ikon mikrofon pada halaman Chat untuk membuka *VoiceMode* dan berbicara langsung dengan AI.
+5. **Jalankan Perintah Otonom:** Ketik perintah rekayasa lengkap di halaman Chat, aktifkan mode **🤖 Agent**, dan pantau agen bekerja menyelesaikan DAG secara transparan.
 
 ---
 
@@ -269,6 +244,6 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 
 <br>
 <p align="center">
-  <i>Focus on Execution. Built for Engineers.</i><br>
-  <b>AI ORCHESTRATOR v4.1.21 — A True High-Autonomy Engineering Agent.</b>
+  <i>Built for High-Autonomy Engineering & Intelligent Automation.</i><br>
+  <b>AI ORCHESTRATOR v4.1.52</b>
 </p>
