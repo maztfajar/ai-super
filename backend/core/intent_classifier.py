@@ -82,6 +82,7 @@ _NO_POPUP_KEYWORDS = [
 
 # Kata kunci BUILD_APP — butuh popup pilih lokasi
 _BUILD_KEYWORDS = [
+    r"^\s*\/(buat|build|create|project|app)\b",
     r"\bbuatkan?\s+(app|aplikasi|website|web|dashboard|sistem|platform|api|backend|frontend)\b",
     r"\bbuat\s+(project|proyek)\s+baru\b",
     r"\bbikin(kan)?\s+(app|aplikasi|website|web|dashboard|api)\b",

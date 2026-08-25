@@ -20,6 +20,7 @@ import Profile from './pages/Profile'
 import Admin from './pages/Admin'
 import Security2FA from './pages/Security2FA'
 import Monitoring from './pages/Monitoring'
+import AppBuilder from './pages/AppBuilder'
 import './locales'
 
 function Protected({ children }) {
@@ -126,6 +127,7 @@ export default function App() {
             <Route path="settings"     element={<AdminOnly><SettingsPage/></AdminOnly>}/>
             <Route path="admin"        element={<AdminOnly><Admin/></AdminOnly>}/>
             <Route path="monitoring"   element={<Monitoring/>}/>
+            <Route path="app-builder"  element={<Protected><AppBuilder/></Protected>}/>
             <Route path="security"     element={<Navigate to="/security2fa" replace/>}/>
           </Route>
         </Routes>

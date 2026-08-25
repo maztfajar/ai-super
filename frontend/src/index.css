@@ -11,56 +11,68 @@
   .font-mono { font-family: 'Outfit', system-ui, sans-serif !important; }
 }
 
-/* ── Theme Variables ─────────────────────────────────── */
+/* ── Theme Variables (OKLCH Modern Design) ─────────────────────────────────── */
 :root, [data-theme="dark"] {
   color-scheme: dark;
-  --bg:       #0a0b0f;
-  --bg-2:     #111218;
-  --bg-3:     #16181f;
-  --bg-4:     #1c1f28;
-  --bg-5:     #222636;
-  --ink:      #d4d8f0;
-  --ink-2:    #8b8fa8;
-  --ink-3:    #565a70;
-  --border:   rgba(255,255,255,0.05);
-  --border-2: rgba(255,255,255,0.03);
-  --accent:   #4f6ef7;
-  --accent-2: #7b93ff;
-  --success:  #22c55e;
-  --warn:     #f59e0b;
-  --danger:   #ef4444;
-  --code-bg:       var(--bg-3);
-  --code-ink:      #c3e88d;
-  --neon-shadow: 0 0 20px rgba(79, 110, 247, 0.15);
+  /* Deep obsidian/slate blues for modern dark mode */
+  --bg:       oklch(0.18 0.02 255);
+  --bg-2:     oklch(0.22 0.025 255);
+  --bg-3:     oklch(0.26 0.03 255);
+  --bg-4:     oklch(0.30 0.035 255);
+  --bg-5:     oklch(0.35 0.04 255);
+  
+  /* High contrast text */
+  --ink:      oklch(0.95 0.01 255);
+  --ink-2:    oklch(0.80 0.02 255);
+  --ink-3:    oklch(0.65 0.03 255);
+  
+  /* Subtle glassmorphic borders */
+  --border:   oklch(0.95 0.01 255 / 0.08);
+  --border-2: oklch(0.95 0.01 255 / 0.12);
+  
+  /* Vibrant accents */
+  --accent:   oklch(0.72 0.18 260); /* Electric Blue-Violet */
+  --accent-2: oklch(0.82 0.12 260);
+  --success:  oklch(0.70 0.16 150); /* Neon Green */
+  --warn:     oklch(0.75 0.18 65);  /* Bright Amber */
+  --danger:   oklch(0.65 0.22 25);  /* Deep Red */
+  
+  --code-bg:  var(--bg-3);
+  --code-ink: oklch(0.85 0.15 140);
+  --neon-shadow: 0 4px 20px oklch(0.72 0.18 260 / 0.2);
 }
 
-/* Force border-border to be transparent/subtle in dark mode */
 [data-theme="dark"] .border,
 [data-theme="dark"] .border-2,
 [data-theme="dark"] .border-border,
 [data-theme="dark"] .border-border-2 {
-  border-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: var(--border) !important;
 }
 
 [data-theme="light"] {
   color-scheme: light;
-  --bg:       #f4f6fb;
-  --bg-2:     #ffffff;
-  --bg-3:     #eef0f8;
-  --bg-4:     #e4e7f2;
-  --bg-5:     #d8dced;
-  --ink:      #1a1d2e;
-  --ink-2:    #3d4163;
-  --ink-3:    #7b7f9e;
-  --border:   rgba(79,110,247,0.12);
-  --border-2: rgba(79,110,247,0.25);
-  --accent:   #3d5ce8;
-  --accent-2: #4f6ef7;
-  --success:  #16a34a;
-  --warn:     #d97706;
-  --danger:   #dc2626;
-  --code-bg:       var(--bg-3);
-  --code-ink:      #24292e;
+  /* Crisp clean whites & grays */
+  --bg:       oklch(0.98 0.01 255);
+  --bg-2:     oklch(1.0 0 0);
+  --bg-3:     oklch(0.95 0.015 255);
+  --bg-4:     oklch(0.90 0.02 255);
+  --bg-5:     oklch(0.85 0.025 255);
+  
+  --ink:      oklch(0.20 0.02 255);
+  --ink-2:    oklch(0.35 0.03 255);
+  --ink-3:    oklch(0.50 0.03 255);
+  
+  --border:   oklch(0.72 0.18 260 / 0.15);
+  --border-2: oklch(0.72 0.18 260 / 0.25);
+  
+  --accent:   oklch(0.60 0.20 260);
+  --accent-2: oklch(0.50 0.22 260);
+  --success:  oklch(0.60 0.18 150);
+  --warn:     oklch(0.65 0.20 65);
+  --danger:   oklch(0.55 0.22 25);
+  
+  --code-bg:  var(--bg-3);
+  --code-ink: oklch(0.25 0.05 255);
 }
 
 /* ── Premium Card Neon Glow (Dark Mode) ──────────────── */

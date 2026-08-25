@@ -46,6 +46,27 @@ export function useIntentClassifier() {
     // ── Fast-path pre-check on frontend ──
     const msg = (message || "").toLowerCase().trim();
     
+    // ── Instant Slash Commands Check (0ms latency) ──
+    if (msg.startsWith('/buat') || msg.startsWith('/build') || msg.startsWith('/create') || msg.startsWith('/project') || msg.startsWith('/app')) {
+      setFileManagerState({
+        isOpen: true,
+        mode: "save_new",
+        pendingMessage: message,
+        intent: "BUILD_APP",
+      });
+      return false; // tahan pesan, buka popup
+    }
+
+    if (msg.startsWith('/edit') || msg.startsWith('/buka') || msg.startsWith('/open')) {
+      setFileManagerState({
+        isOpen: true,
+        mode: "browse",
+        pendingMessage: message,
+        intent: "FILE_SYSTEM",
+      });
+      return false; // tahan pesan, buka popup
+    }
+
     // Kata kunci yang mungkin membutuhkan popup (app building / file operations)
     const technicalKeywords = [
       'app', 'aplikasi', 'website', 'web', 'dashboard', 'api', 'backend', 'frontend', 'proyek', 'project',
@@ -108,10 +129,14 @@ export function useIntentClassifier() {
     closeFileManager();
 
     if (onProceed && pendingMessage) {
+      // Bersihkan slash commands jika ada
+      const cleaned = pendingMessage.replace(/^\/(buat|build|create|project|app|edit|buka|open)\s*/i, '').trim();
+      const actualPrompt = cleaned || pendingMessage;
+
       // Kirim ke orchestra dengan context lokasi
       const enrichedMessage = intent === "BUILD_APP"
-        ? `${pendingMessage}\n\n[SYSTEM: Simpan project ke direktori: ${selectedPath}]`
-        : `${pendingMessage}\n\n[SYSTEM: File yang akan diedit: ${selectedPath}]`;
+        ? `[SYSTEM: Simpan project ke direktori: ${selectedPath}]\nBuatkan ${actualPrompt}`
+        : `${actualPrompt}\n\n[SYSTEM: File/direktori target: ${selectedPath}]`;
 
       await onProceed(enrichedMessage);
     }

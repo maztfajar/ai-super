@@ -1,12 +1,16 @@
+/**
+ * Chat.jsx — Slim orchestrator (state + wiring only)
+ * All UI components extracted to /components/chat/
+ *
+ * Phase 3 refactor: 3598 → ~850 lines.
+ * Components: ChatInput, Bubble, SessionItem, DragOverlay,
+ *             ProcessStepsPanel, ArtifactsPanel
+ */
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { api } from '../hooks/useApi'
-import { copyToClipboard } from "../utils/clipboard"
 import { useAuthStore, useChatStore, useModelsStore, useOrchestratorStore } from '../store'
-import ChannelSelector from '../components/ChannelSelector'
 import ProjectLocationPopup from '../components/ProjectLocationPopup'
 import FileManagerPopup from '../components/FileManagerPopup'
 import { useIntentClassifier } from '../hooks/useIntentClassifier'
@@ -14,1882 +18,19 @@ import toast from 'react-hot-toast'
 import VoiceMode from '../components/VoiceMode'
 import { useChatFileHandler } from '../hooks/useChatFileHandler'
 import { extractFileContent } from '../utils/fileExtractor'
-import {
-  Plus, Trash2, Send, Paperclip, Copy, Check, Download,
-  Bot, User, Loader2, Square, Sparkles, Zap, FileText, CloudUpload, Menu, X,
-  ImagePlus, Mic, MicOff, Camera, Volume2, Brain, ChevronDown, ChevronUp, ChevronRight,
-  ExternalLink, FileCode2, Maximize2, Minimize2, PanelRightClose, PanelRightOpen,
-  Terminal, BookOpen, PenLine, List, Search, Globe, FilePlus, Trash, MoveRight,
-  ClipboardList, AlignLeft, CheckCircle2, Hash, AlertCircle, Wrench, RefreshCw
-} from 'lucide-react'
+import AgentLoopVisualizer from '../components/AgentLoopVisualizer'
+import { Plus, Loader2, Sparkles, Zap, FileText, CloudUpload } from 'lucide-react'
 import clsx from 'clsx'
 
-
-// ── Language color badges ─────────────────────────────────────
-const LANG_COLORS = {
-  javascript: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
-  typescript: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
-  python: 'text-blue-300 bg-blue-300/10 border-blue-300/20',
-  html: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
-  css: 'text-pink-400 bg-pink-400/10 border-pink-400/20',
-  sql: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20',
-  bash: 'text-green-400 bg-green-400/10 border-green-400/20',
-  sh: 'text-green-400 bg-green-400/10 border-green-400/20',
-  json: 'text-amber-400 bg-amber-400/10 border-amber-400/20',
-  jsx: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20',
-  tsx: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20',
-}
-
-// ── CodeBlock: replaces default ReactMarkdown pre/code renders ─
-function CodeBlock({ language, code, onOpenArtifact }) {
-  const [copied, setCopied] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false) // Collapsed by default — less clutter
-  const lines = code.split('\n').length
-  const isLong = lines > 25
-  const langColor = LANG_COLORS[language?.toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
-
-  const handleCopy = () => {
-    copyToClipboard(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div className="code-block-wrapper relative my-3 rounded-xl overflow-hidden border border-border bg-bg-3 shadow-sm">
-      {/* Header bar */}
-      <div 
-        className="flex items-center justify-between px-3 py-1.5 bg-bg-4 cursor-pointer hover:bg-bg-5 transition-all"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div className="flex items-center gap-2">
-          {isExpanded ? <ChevronDown size={14} className="text-ink-3" /> : <ChevronRight size={14} className="text-ink-3" />}
-          <span className={clsx('text-[10px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded border', langColor)}>
-            {language || 'code'}
-          </span>
-          {!isExpanded && (
-            <span className="text-[10px] text-ink-3 opacity-60">{lines} baris — klik untuk lihat</span>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-          {isLong && onOpenArtifact && (
-            <button
-              onClick={() => onOpenArtifact(code, language || 'txt')}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-transparent hover:border-accent/20 bg-bg-3 shadow-sm"
-              style={{ color: 'var(--accent-2)' }}
-              title="Buka di Artifacts Panel"
-            >
-              <ExternalLink size={11} />
-              <span>Artifacts</span>
-            </button>
-          )}
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all border border-transparent hover:border-border bg-bg-3 shadow-sm"
-            style={{ color: copied ? 'var(--success)' : 'var(--ink-3)' }}
-            title="Copy kode"
-          >
-            {copied ? <Check size={11} /> : <Copy size={11} />}
-            <span>{copied ? 'Copied!' : 'Copy'}</span>
-          </button>
-        </div>
-      </div>
-      {/* Code content */}
-      {isExpanded && (
-        <pre className="p-4 text-[12.5px] overflow-x-auto leading-relaxed font-mono text-ink-2 bg-transparent m-0 border-none">
-          <code className="text-inherit bg-transparent p-0 font-semibold">{code}</code>
-        </pre>
-      )}
-    </div>
-  )
-}
-
-// ── ProcessStepsPanel: Live structured thinking toggle ────────
-const ACTION_META = {
-  Thinking:   { icon: Brain,         color: 'text-purple-400',  bg: 'bg-purple-400/10' },
-  Thought:    { icon: Brain,         color: 'text-purple-400',  bg: 'bg-purple-400/10' },
-  Planned:    { icon: ClipboardList, color: 'text-blue-400',    bg: 'bg-blue-400/10'   },
-  Worked:     { icon: Wrench,        color: 'text-emerald-400', bg: 'bg-emerald-400/10'},
-  Explored:   { icon: RefreshCw,     color: 'text-cyan-400',    bg: 'bg-cyan-400/10'   },
-  Ran:        { icon: Terminal,      color: 'text-green-400',   bg: 'bg-green-400/10'  },
-  Edited:     { icon: PenLine,       color: 'text-yellow-400',  bg: 'bg-yellow-400/10' },
-  Modify:     { icon: PenLine,       color: 'text-yellow-400',  bg: 'bg-yellow-400/10' },
-  Analyzed:   { icon: Brain,         color: 'text-indigo-400',  bg: 'bg-indigo-400/10' },
-  Reading:    { icon: BookOpen,      color: 'text-sky-400',     bg: 'bg-sky-400/10'    },
-  Writing:    { icon: PenLine,       color: 'text-amber-400',   bg: 'bg-amber-400/10'  },
-  Written:    { icon: FileCode2,     color: 'text-emerald-300', bg: 'bg-emerald-300/10'},
-  Listed:     { icon: List,          color: 'text-teal-400',    bg: 'bg-teal-400/10'   },
-  Searched:   { icon: Search,        color: 'text-violet-400',  bg: 'bg-violet-400/10' },
-  Fetched:    { icon: Globe,         color: 'text-blue-300',    bg: 'bg-blue-300/10'   },
-  Created:    { icon: FilePlus,      color: 'text-emerald-400', bg: 'bg-emerald-400/10'},
-  Deleted:    { icon: Trash,         color: 'text-red-400',     bg: 'bg-red-400/10'    },
-  Moved:      { icon: MoveRight,     color: 'text-orange-400',  bg: 'bg-orange-400/10' },
-  Copied:     { icon: Copy,          color: 'text-orange-300',  bg: 'bg-orange-300/10' },
-  Summarized: { icon: AlignLeft,     color: 'text-pink-400',    bg: 'bg-pink-400/10'   },
-  Checked:    { icon: CheckCircle2,  color: 'text-emerald-300', bg: 'bg-emerald-300/10'},
-  Found:      { icon: Hash,          color: 'text-cyan-300',    bg: 'bg-cyan-300/10'   },
-  Error:      { icon: AlertCircle,   color: 'text-red-400',     bg: 'bg-red-400/10'    },
-  Done:       { icon: CheckCircle2,  color: 'text-emerald-400', bg: 'bg-emerald-400/10'},
-}
-const DEFAULT_META = { icon: Zap, color: 'text-ink-3', bg: 'bg-bg-5' }
-
-// ── Status visual per langkah ─────────────────────────────────
-const _SS = {
-  done:    { dot: '#4ade80', bg: 'rgba(74,222,128,0.10)',    border: 'rgba(74,222,128,0.30)',  text: '#4ade80',  label: 'Selesai'  },
-  running: { dot: '#a78bfa', bg: 'rgba(167,139,250,0.10)',   border: 'rgba(167,139,250,0.35)', text: '#a78bfa',  label: 'Berjalan' },
-  error:   { dot: '#f87171', bg: 'rgba(248,113,113,0.10)',   border: 'rgba(248,113,113,0.30)', text: '#f87171',  label: 'Error'    },
-}
-
-// ── Action → Tabler icon ──────────────────────────────────────
-const _ICONS = {
-  Thinking: 'brain', Thought: 'brain',
-  Planned: 'list-check', Worked: 'tool',
-  Explored: 'compass', Ran: 'terminal-2',
-  Edited: 'pencil', Modify: 'pencil',
-  Analyzed: 'chart-bar', Reading: 'book-open',
-  Writing: 'file-pencil', Written: 'file-check',
-  Listed: 'list', Searched: 'search',
-  Fetched: 'world', Created: 'file-plus',
-  Deleted: 'trash', Moved: 'arrow-right',
-  Copied: 'copy', Summarized: 'align-left',
-  Checked: 'circle-check', Found: 'hash',
-  Error: 'alert-circle', Done: 'circle-check',
-}
-
-// ── Elapsed time display ──────────────────────────────────────
-function _ElapsedBadge({ active }) {
-  const [sec, setSec] = React.useState(0)
-  const ref = React.useRef(null)
-  React.useEffect(() => {
-    if (!active) { setSec(0); return }
-    const start = Date.now()
-    ref.current = setInterval(() => setSec(Math.floor((Date.now() - start) / 1000)), 1000)
-    return () => clearInterval(ref.current)
-  }, [active])
-  if (!active && sec === 0) return null
-  const fmt = s => s < 60 ? `${s}s` : `${Math.floor(s/60)}m ${s%60}s`
-  return (
-    <span style={{
-      marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono, monospace)',
-      color: 'var(--color-text-tertiary, #555)', flexShrink: 0,
-    }}>
-      <i className="ti ti-clock" style={{ marginRight: 3, fontSize: 10 }} />
-      {fmt(sec)}
-    </span>
-  )
-}
-
-// ── Individual step ───────────────────────────────────────────
-function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtifactCard }) {
-  const [open, setOpen] = React.useState(isActive)
-
-  React.useEffect(() => {
-    if (isActive) setOpen(true)
-    if (!isActive && !step.code && !step.result) setOpen(false)
-  }, [isActive])
-
-  const status = step.action === 'Error' ? 'error' : isActive ? 'running' : 'done'
-  const s = _SS[status]
-  const icon = _ICONS[step.action] || 'bolt'
-  const spinning = status === 'running'
-
-  const getContent = () => {
-    if (isActive && step._textOffset != null && streamingText && !step._isLiveThinking) {
-      const live = streamingText.substring(step._textOffset)
-      if (live.trim()) return live
-    }
-    return step.liveContent || step.code || step.result
-      || `Action: ${step.action}\nDetail: ${step.detail || '—'}`
-  }
-
-  const handleCopy = (e) => {
-    e.stopPropagation()
-    navigator.clipboard?.writeText(getContent()).catch(() => {})
-  }
-
-  return (
-    <div style={{ display: 'flex', gap: 10 }}>
-      {/* Icon + connector line */}
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: '10px',
-          background: s.bg, border: `2px solid ${s.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all 0.3s', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)',
-        }}>
-          <i
-            className={`ti ti-${icon}`}
-            style={{
-              fontSize: 16, color: s.text,
-              animation: spinning ? '_sp-spin 1.2s linear infinite' : 'none',
-            }}
-          />
-        </div>
-        {!isLast && (
-          <div style={{ width: 2, flex: 1, minHeight: 12, background: 'var(--border)', margin: '4px 0', opacity: 0.5 }} />
-        )}
-      </div>
-
-      {/* Body */}
-      <div style={{ flex: 1, paddingBottom: isLast ? 2 : 6 }}>
-        {/* Header row — clickable */}
-        <div
-          onClick={() => setOpen(o => !o)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 10,
-            padding: '8px 12px', borderRadius: 12, cursor: 'pointer',
-            transition: 'all 0.2s', border: '1px solid transparent',
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-5)'; e.currentTarget.style.borderColor = 'var(--border)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'transparent' }}
-        >
-          {/* Status badge */}
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            fontSize: 10, fontWeight: 900,
-            padding: '3px 10px', borderRadius: 99, flexShrink: 0,
-            background: s.bg, border: `2px solid ${s.border}`, color: s.text,
-            animation: spinning ? '_sp-pulse 1.5s ease-in-out infinite' : 'none',
-            letterSpacing: '1px', textTransform: 'uppercase',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-          }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%', background: s.dot,
-              animation: spinning ? '_sp-pulse 1.2s ease-in-out infinite' : 'none',
-              boxShadow: `0 0 8px ${s.dot}`,
-            }} />
-            {s.label}
-          </span>
-
-          {/* Detail label */}
-          <span style={{
-            fontSize: 13, fontWeight: 900,
-            color: isActive ? 'var(--color-text-primary, #ddd)' : 'var(--color-text-secondary, #aaa)',
-            flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            textTransform: 'uppercase', letterSpacing: '0.5px', opacity: isActive ? 1 : 0.7,
-          }}>
-            {step.detail || step.action}
-          </span>
-
-          {/* Language pill */}
-          {step.language && (
-            <span style={{
-              fontSize: 9, fontFamily: 'var(--font-mono, monospace)', fontWeight: 900,
-              padding: '2px 8px', borderRadius: 6,
-              background: 'var(--bg-4)', border: '2px solid var(--border)',
-              color: 'var(--ink-3)', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.5px',
-            }}>
-              {step.language}
-            </span>
-          )}
-
-          {/* Animated dots when active */}
-          {isActive && isStreaming && (
-            <span style={{ display: 'flex', gap: 3, flexShrink: 0 }}>
-              {[0, 1, 2].map(i => (
-                <span key={i} style={{
-                  width: 4, height: 4, borderRadius: '50%', background: '#a78bfa',
-                  animation: `_sp-pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
-                }} />
-              ))}
-            </span>
-          )}
-
-          {/* Chevron */}
-          <i
-            className="ti ti-chevron-down"
-            style={{
-              fontSize: 16, color: 'var(--color-text-tertiary, #555)', flexShrink: 0,
-              transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)', transform: open ? 'rotate(180deg)' : 'none',
-              opacity: open ? 1 : 0.5,
-            }}
-          />
-        </div>
-
-        {/* Expandable detail panel */}
-        <div style={{
-          overflow: 'hidden', maxHeight: open ? 600 : 0,
-          transition: 'max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}>
-          <div style={{
-            margin: '8px 4px 10px 4px',
-            border: '2px solid var(--border)',
-            borderRadius: 16,
-            background: 'var(--bg-3)',
-            overflow: 'hidden',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-          }}>
-            {/* Detail header */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '8px 16px',
-              background: 'var(--bg-4)',
-              borderBottom: '2px solid var(--border)',
-            }}>
-              <span style={{ fontSize: 10, color: s.text, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <i className={`ti ti-${icon}`} style={{ fontSize: 12 }} />
-                {step.action}
-              </span>
-              <button
-                onClick={handleCopy}
-                style={{
-                  padding: '4px 10px', borderRadius: 8, border: '2px solid var(--border)',
-                  background: 'var(--bg-3)', cursor: 'pointer', fontSize: 10, fontWeight: 900,
-                  color: 'var(--ink-3)', transition: 'all 0.2s', textTransform: 'uppercase', letterSpacing: '0.5px',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-5)'; e.currentTarget.style.borderColor = 'var(--accent-2)' }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.borderColor = 'var(--border)' }}
-              >
-                <i className="ti ti-copy" style={{ fontSize: 12, marginRight: 4 }} />
-                Copy
-              </button>
-            </div>
-
-            {/* Code/content area */}
-            <pre style={{
-              padding: '16px 20px', margin: 0,
-              fontSize: 12, fontFamily: 'var(--font-mono, monospace)', lineHeight: 1.7,
-              color: 'var(--color-text-secondary, #bbb)', fontWeight: 700,
-              overflowX: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              maxHeight: 350, overflowY: 'auto', background: 'rgba(0,0,0,0.1)',
-            }}>
-              {getContent()}
-              {isActive && step._isLiveThinking && (
-                <span style={{
-                  display: 'inline-block', width: 8, height: 16,
-                  background: '#a78bfa', animation: '_sp-pulse 1s ease-in-out infinite',
-                  verticalAlign: 'middle', marginLeft: 4, borderRadius: 2,
-                  boxShadow: '0 0 8px rgba(167,139,250,0.5)',
-                }} />
-              )}
-            </pre>
-
-            {/* Open in Artifacts button for Written steps */}
-            {step.action === 'Written' && step.code && onOpenArtifactCard && (
-              <div style={{
-                padding: '8px 16px', borderTop: '2px solid var(--border)',
-                background: 'var(--bg-4)', textAlign: 'right',
-              }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    const ext = (step.language || step.detail?.split('.').pop() || 'txt').toLowerCase()
-                    onOpenArtifactCard(
-                      step.code + (step.truncated ? '\n\n// [konten dipotong]' : ''),
-                      ext, `✍️ ${step.detail?.split('/').pop()}`, false
-                    )
-                  }}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    padding: '6px 16px', borderRadius: 10,
-                    background: 'rgba(139,92,246,0.2)', border: '2px solid rgba(139,92,246,0.4)',
-                    color: '#a78bfa', fontSize: 11, fontWeight: 900, cursor: 'pointer',
-                    textTransform: 'uppercase', letterSpacing: '1px', transition: 'all 0.2s',
-                    boxShadow: '0 4px 8px rgba(139,92,246,0.2)',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.3)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.2)'; e.currentTarget.style.transform = 'translateY(0)' }}
-                >
-                  <i className="ti ti-external-link" style={{ fontSize: 13 }} />
-                  Buka di Artifacts
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Main upgraded ProcessStepsPanel ──────────────────────────
-const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
-  steps, isStreaming, onStop, streamingText, onOpenArtifactCard, defaultOpen = true
-}) {
-  const [open, setOpen] = React.useState(defaultOpen)
-  const [staleSeconds, setStaleSeconds] = React.useState(0)
-  const staleCountRef = React.useRef(steps.length)
-
-  // Stale watcher (unchanged from original)
-  React.useEffect(() => {
-    if (!isStreaming) { setStaleSeconds(0); return }
-    if (steps.length !== staleCountRef.current) {
-      staleCountRef.current = steps.length
-      setStaleSeconds(0)
-      return
-    }
-    const t = setInterval(() => setStaleSeconds(s => s + 1), 1000)
-    return () => clearInterval(t)
-  }, [steps.length, isStreaming])
-
-  if (!steps || steps.length === 0) return null
-
-  const latest = steps[steps.length - 1]
-  const doneCount = isStreaming ? steps.length - 1 : steps.length
-  const hasError = steps.some(s => s.action === 'Error')
-
-  const headerLabel = isStreaming
-    ? `⚡ ${latest?.action}${latest?.detail ? ` · ${latest.detail}` : '...'}`
-    : `✓ Eksekusi selesai (${steps.length} langkah)`
-
-  return (
-    <>
-      {/* Keyframe injection */}
-      <style>{`
-        @keyframes _sp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes _sp-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
-      `}</style>
-
-      <div style={{ marginBottom: 20, marginTop: 4 }} className="animate-fade">
-        {/* ── Collapsible toggle header ── */}
-        <div
-          style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: open ? 16 : 0, cursor: 'pointer' }}
-          onClick={() => setOpen(o => !o)}
-        >
-          <i
-            className={`ti ti-chevron-down`}
-            style={{
-              fontSize: 18, color: 'var(--color-text-tertiary, #777)',
-              transition: 'transform 0.3s', transform: open ? 'none' : 'rotate(-90deg)',
-            }}
-          />
-
-          {/* Status icon */}
-          <i
-            className={`ti ti-${hasError ? 'alert-circle' : isStreaming ? 'loader-2' : 'circle-check'}`}
-            style={{
-              fontSize: 16,
-              color: hasError ? '#f87171' : isStreaming ? '#a78bfa' : '#4ade80',
-              animation: isStreaming ? '_sp-spin 1.2s linear infinite' : 'none',
-              filter: isStreaming ? 'drop-shadow(0 0 8px rgba(167,139,250,0.5))' : 'none',
-            }}
-          />
-
-          <span style={{ fontSize: 14, fontWeight: 900, color: 'var(--color-text-secondary, #ccc)', flex: 1, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            {headerLabel}
-          </span>
-
-          {/* Step counter pill */}
-          <span className="text-[10px] px-3 py-1 rounded-full bg-bg-3 border border-border text-ink-3 font-bold uppercase tracking-widest shadow-sm">
-            {doneCount} / {steps.length} langkah
-          </span>
-
-          {/* Elapsed timer */}
-          <_ElapsedBadge active={isStreaming} />
-
-          {isStreaming && (
-            <i className="ti ti-loader-2" style={{ fontSize: 16, color: '#a78bfa', animation: '_sp-spin 1s linear infinite', marginLeft: 4 }} />
-          )}
-        </div>
-
-        {/* ── Steps list ── */}
-        {open && (
-          <div className="ml-2 pl-6 border-l-2 border-border/50">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {steps.map((step, i) => (
-                <_Step
-                  key={i}
-                  step={step}
-                  idx={i}
-                  isActive={i === steps.length - 1 && isStreaming}
-                  isLast={i === steps.length - 1}
-                  isStreaming={isStreaming}
-                  streamingText={streamingText}
-                  onOpenArtifactCard={onOpenArtifactCard}
-                />
-              ))}
-            </div>
-
-            {/* ── Stale / Stop indicators (unchanged from original) ── */}
-            {isStreaming && (staleSeconds >= 8 || onStop) && (
-              <div style={{ marginTop: 20, marginLeft: 10, display: 'flex', alignItems: 'center', gap: 16 }}>
-                {staleSeconds >= 8 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#fbbf24', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    <i className="ti ti-loader-2" style={{ animation: '_sp-spin 1s linear infinite', fontSize: 14 }} />
-                    Menunggu pemrosesan tool... ({staleSeconds}s)
-                  </div>
-                )}
-                {onStop && (
-                  <button
-                    data-allow-propagation="true"
-                    onClick={(e) => { e.stopPropagation(); onStop() }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '6px 16px', borderRadius: 10,
-                      background: 'rgba(248,113,113,0.15)', border: '2px solid rgba(248,113,113,0.40)',
-                      color: '#f87171', fontSize: 11, fontWeight: 900,
-                      cursor: 'pointer', letterSpacing: '1px', textTransform: 'uppercase',
-                      transition: 'all 0.2s', boxShadow: '0 4px 8px rgba(248,113,113,0.2)',
-                    }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.25)'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.15)'; e.currentTarget.style.transform = 'translateY(0)' }}
-                  >
-                    <i className="ti ti-square-filled" style={{ fontSize: 10 }} />
-                    HENTIKAN EKSEKUSI
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </>
-  )
-})
-
-// ── ArtifactsPanel: slideout panel di sebelah kanan ───────────
-function ArtifactsPanel({ code, language, title, isPreviewUrl, onClose }) {
-  const isAppPreview = isPreviewUrl || language === 'preview'
-  const isHtml = ['html', 'htm', 'svg'].includes((language || '').toLowerCase())
-
-  const [activeTab, setActiveTab] = useState(isAppPreview || isHtml ? 'preview' : 'code')
-  const [copied, setCopied] = useState(false)
-  const [localCode, setLocalCode] = useState(code)
-  const [iframeKey, setIframeKey] = useState(0)  // force reload
-  const [appOnline, setAppOnline] = useState(true)
-
-  useEffect(() => { setLocalCode(code) }, [code])
-
-  const filename  = `artifact.${language || 'txt'}`
-  const iframeSrc = isAppPreview
-    ? localCode   // code IS the URL for app previews
-    : isHtml
-      ? `data:text/html;charset=utf-8,${encodeURIComponent(localCode)}`
-      : null
-
-  const handleCopy = () => {
-    copyToClipboard(isAppPreview ? localCode : localCode)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleDownload = () => {
-    if (isAppPreview) { window.open(localCode, '_blank'); return }
-    const blob = new Blob([localCode], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = filename; a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const langColor = LANG_COLORS[(language || '').toLowerCase()] || 'text-ink-3 bg-bg-5 border-border'
-  const lines     = isAppPreview ? 0 : localCode.split('\n').length
-
-  return (
-    <div className="flex flex-col border-l-2 border-border bg-bg-2 animate-slide-in-right shadow-2xl" style={{ width: '48%', flexShrink: 0 }}>
-      {/* Header */}
-      <div className="h-14 border-b-2 border-border flex items-center px-4 gap-3 flex-shrink-0 bg-bg-3">
-        {isAppPreview
-          ? <span className="text-xl flex-shrink-0">🚀</span>
-          : <FileCode2 size={20} className="text-accent-2 flex-shrink-0" />}
-        <span className="text-sm font-bold text-ink truncate flex-1 uppercase tracking-tight">{title || filename}</span>
-
-        {/* Running indicator for app previews */}
-        {isAppPreview && (
-          <span className="flex items-center gap-2 px-3 py-1 rounded-full bg-success/15 border border-success/30 text-success text-[10px] font-bold uppercase tracking-widest flex-shrink-0 shadow-sm">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse shadow-lg" />
-            Running
-          </span>
-        )}
-
-        {!isAppPreview && (
-          <>
-            <span className={clsx('text-[10px] font-mono font-bold px-2 py-0.5 rounded border flex-shrink-0 uppercase tracking-widest shadow-sm', langColor)}>
-              {language || 'txt'}
-            </span>
-            <span className="text-[10px] text-ink-3 font-bold uppercase tracking-widest flex-shrink-0 opacity-60">{lines} baris</span>
-          </>
-        )}
-
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Reload — for app previews */}
-          {isAppPreview && (
-            <button
-              onClick={() => setIframeKey(k => k + 1)}
-              className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
-              title="Reload aplikasi"
-            >
-              <RefreshCw size={18} />
-            </button>
-          )}
-          {/* Open in new tab — for app previews */}
-          {isAppPreview && (
-            <button
-              onClick={() => window.open(localCode, '_blank')}
-              className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
-              title="Buka di tab baru"
-            >
-              <ExternalLink size={18} />
-            </button>
-          )}
-          <button
-            onClick={handleCopy}
-            className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
-            title={isAppPreview ? 'Copy URL' : 'Copy semua'}
-          >
-            {copied ? <Check size={18} className="text-success" /> : <Copy size={18} />}
-          </button>
-          {!isAppPreview && (
-            <button
-              onClick={handleDownload}
-              className="p-2 rounded-xl hover:bg-bg-4 transition-all text-ink-3 hover:text-ink shadow-sm border border-transparent hover:border-border"
-              title={`Download ${filename}`}
-            >
-              <Download size={18} />
-            </button>
-          )}
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-danger/10 hover:text-danger transition-all text-ink-3 shadow-sm border border-transparent hover:border-danger/30"
-            title="Tutup panel"
-          >
-            <X size={18} />
-          </button>
-        </div>
-      </div>
-
-      {/* URL bar for app previews */}
-      {isAppPreview && (
-        <div className="flex items-center gap-3 px-4 py-2 border-b-2 border-border bg-bg-3 flex-shrink-0 shadow-inner">
-          <span className="text-[10px] text-ink-3 flex-shrink-0 font-bold uppercase tracking-widest opacity-60">URL:</span>
-          <span className="flex-1 text-[11px] font-mono text-accent-2 truncate font-bold">{localCode}</span>
-          <button
-            onClick={() => window.open(localCode, '_blank')}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 text-[10px] font-bold uppercase tracking-widest transition-all flex-shrink-0 shadow-sm active:scale-95"
-          >
-            <ExternalLink size={12} /> Buka
-          </button>
-        </div>
-      )}
-
-      {/* Tabs — for HTML/SVG code artifacts */}
-      {isHtml && !isAppPreview && (
-        <div className="flex border-b-2 border-border flex-shrink-0 bg-bg-3 p-1">
-          {['preview', 'code'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={clsx(
-                'flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-all rounded-xl',
-                activeTab === tab
-                  ? 'text-accent-2 bg-accent/10 shadow-inner'
-                  : 'text-ink-3 hover:text-ink hover:bg-bg-4'
-              )}
-            >
-              {tab === 'preview' ? '👁 Preview' : '{ } Code'}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Content */}
-      {(isAppPreview || (isHtml && activeTab === 'preview')) && iframeSrc ? (
-        <iframe
-          key={iframeKey}
-          src={iframeSrc}
-          className="flex-1 w-full"
-          style={{ background: 'white', border: 'none' }}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals"
-          title="App Preview"
-          onError={() => setAppOnline(false)}
-        />
-      ) : (
-        <div className="flex-1 overflow-auto flex flex-col bg-bg-4">
-          <textarea
-            value={localCode}
-            onChange={(e) => setLocalCode(e.target.value)}
-            className="flex-1 w-full p-6 font-mono text-[13px] leading-relaxed text-ink-2 bg-transparent border-none resize-none focus:outline-none focus:ring-0 font-semibold shadow-inner"
-            spellCheck="false"
-            style={{ minHeight: '100%' }}
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── SaveFileDialog: dialog untuk simpan file ke server ────────
-function SaveFileDialog({ filename, content, onClose }) {
-  const [directory, setDirectory] = useState('')
-  const [dirs, setDirs] = useState([])
-  const [currentPath, setCurrentPath] = useState('')
-  const [parentPath, setParentPath] = useState('')
-  const [customFilename, setCustomFilename] = useState(filename || 'output.txt')
-  const [saving, setSaving] = useState(false)
-  const [loading, setLoading] = useState(true)
-
-  // New Folder State
-  const [showNewFolder, setShowNewFolder] = useState(false)
-  const [newFolderName, setNewFolderName] = useState('')
-  const [creatingFolder, setCreatingFolder] = useState(false)
-
-  // Load initial directory
-  useEffect(() => {
-    loadDirs('~')
-  }, [])
-
-  async function loadDirs(path) {
-    setLoading(true)
-    setShowNewFolder(false)
-    setNewFolderName('')
-    try {
-      const result = await api.listDirectories(path)
-      setDirs(result.directories || [])
-      setCurrentPath(result.path || path)
-      setParentPath(result.parent || '')
-      setDirectory(result.path || path)
-    } catch (e) {
-      toast.error('Gagal memuat direktori')
-    }
-    setLoading(false)
-  }
-
-  async function handleCreateFolder(e) {
-    e.preventDefault()
-    if (!newFolderName.trim()) return
-    setCreatingFolder(true)
-    try {
-      const result = await api.createDirectory(currentPath, newFolderName.trim())
-      toast.success(result.message || 'Folder berhasil dibuat')
-      // Masuk ke folder baru tersebut
-      loadDirs(result.path)
-    } catch (e) {
-      toast.error(e.message || 'Gagal membuat folder')
-    }
-    setCreatingFolder(false)
-  }
-
-  async function handleSave() {
-    if (!directory) return toast.error('Pilih direktori tujuan')
-    setSaving(true)
-    try {
-      const result = await api.saveFile(directory, customFilename, content)
-      toast.success(`✅ Tersimpan: ${result.path}`, { duration: 4000 })
-      onClose()
-    } catch (e) {
-      toast.error(e.message || 'Gagal menyimpan file')
-    }
-    setSaving(false)
-  }
-
-  // Also support client-side download as fallback
-  function handleDownload() {
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = customFilename; a.click()
-    URL.revokeObjectURL(url)
-    toast.success('📥 File di-download ke browser')
-    onClose()
-  }
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-bg-2 border border-border rounded-3xl w-[500px] max-w-[90vw] max-h-[80vh] flex flex-col shadow-2xl animate-slide-in-up overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b-2 border-border bg-bg-3">
-          <div className="flex items-center gap-3">
-            <Download size={22} className="text-accent-2" />
-            <span className="text-lg font-bold text-ink uppercase tracking-tight">Simpan File</span>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-danger/10 hover:text-danger transition-all text-ink-3 shadow-sm border border-transparent hover:border-danger/30">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Filename */}
-        <div className="px-6 py-4 border-b-2 border-border/50 bg-bg-4 shadow-inner">
-          <label className="text-[10px] text-ink-3 uppercase tracking-widest font-bold mb-2 block opacity-60">Nama File</label>
-          <input
-            value={customFilename}
-            onChange={e => setCustomFilename(e.target.value)}
-            className="w-full px-4 py-3 bg-bg-2 border border-border rounded-xl text-sm text-ink font-mono font-bold focus:outline-none focus:border-accent transition-all shadow-sm"
-          />
-        </div>
-
-        {/* Directory Browser */}
-        <div className="px-6 py-4 flex-1 overflow-hidden flex flex-col bg-bg-2">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-[10px] text-ink-3 uppercase tracking-widest font-bold block opacity-60">Direktori Tujuan</label>
-            <button
-              onClick={() => setShowNewFolder(!showNewFolder)}
-              className="text-[10px] flex items-center gap-2 font-bold text-accent-2 hover:text-accent-2/80 transition-all uppercase tracking-widest"
-            >
-              <Plus size={14} /> Buat Folder
-            </button>
-          </div>
-          
-          {/* Current path */}
-          <div className="flex items-center gap-1.5 mb-2">
-            <div className="flex-1 px-3 py-1.5 bg-bg-3 border border-border rounded-lg text-xs text-ink font-mono truncate" title={currentPath || '~'}>
-              📁 {currentPath || '~'}
-            </div>
-            {parentPath && (
-              <button
-                onClick={() => loadDirs(parentPath)}
-                className="px-2 py-1.5 bg-bg-4 border border-border rounded-lg text-xs text-ink-3 hover:text-ink hover:bg-bg-5 transition-colors flex-shrink-0"
-                title="Naik ke folder induk"
-              >
-                ⬆️
-              </button>
-            )}
-          </div>
-
-          {/* Create New Folder Inline */}
-          {showNewFolder && (
-            <form onSubmit={handleCreateFolder} className="flex gap-2 mb-2 animate-fade">
-              <input 
-                autoFocus
-                placeholder="Nama folder baru..."
-                value={newFolderName}
-                onChange={e => setNewFolderName(e.target.value)}
-                className="flex-1 px-3 py-1.5 bg-bg-3 border border-border rounded-lg text-xs text-ink focus:outline-none focus:border-accent-2"
-              />
-              <button
-                type="submit"
-                disabled={creatingFolder || !newFolderName.trim()}
-                className="px-3 py-1.5 rounded-lg bg-accent-2/10 text-accent-2 border border-accent-2/20 text-xs font-medium hover:bg-accent-2/20 disabled:opacity-50 transition-colors"
-              >
-                {creatingFolder ? 'Membuat...' : 'Buat'}
-              </button>
-            </form>
-          )}
-
-          {/* Directory list */}
-          <div className="flex-1 overflow-y-auto border border-border rounded-lg bg-bg-3 min-h-[140px] max-h-[200px]">
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 size={18} className="animate-spin text-accent-2" />
-              </div>
-            ) : dirs.length === 0 ? (
-              <div className="text-center text-xs text-ink-3 py-8">Tidak ada subdirektori</div>
-            ) : (
-              dirs.map((d, i) => (
-                <button
-                  key={i}
-                  onClick={() => loadDirs(d.path)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent/10 transition-colors border-b border-border/30 last:border-b-0"
-                >
-                  <span className="text-amber-400">📂</span>
-                  <span className="text-ink truncate">{d.name}</span>
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-border gap-2">
-          <button
-            onClick={handleDownload}
-            className="px-3 py-2 text-xs font-medium rounded-lg bg-bg-4 border border-border text-ink-2 hover:bg-bg-5 hover:text-ink transition-all flex items-center gap-1.5"
-          >
-            <Download size={13} /> Download
-          </button>
-          <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-medium rounded-lg bg-bg-4 border border-border text-ink-3 hover:text-ink transition-colors"
-            >
-              Batal
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || !directory}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-accent text-white hover:bg-accent/80 transition-colors disabled:opacity-40 flex items-center gap-1.5"
-            >
-              {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-              Simpan ke Server
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Parse %%SAVE_FILE%% marker from AI response ───────────────
-function parseSaveFileMarker(content) {
-  if (!content) return null
-  const markerStart = content.indexOf('%%SAVE_FILE%%')
-  const markerEnd = content.indexOf('%%END_SAVE%%')
-  if (markerStart === -1 || markerEnd === -1) return null
-
-  const block = content.substring(markerStart + '%%SAVE_FILE%%'.length, markerEnd).trim()
-  const lines = block.split('\n')
-  let filename = 'output.txt'
-  let saveContent = ''
-  let contentStarted = false
-
-  for (const line of lines) {
-    if (!contentStarted && line.trim().toLowerCase().startsWith('filename:')) {
-      filename = line.trim().substring('filename:'.length).trim()
-    } else if (!contentStarted && line.trim().toLowerCase().startsWith('content:')) {
-      contentStarted = true
-      const firstLine = line.trim().substring('content:'.length).trim()
-      if (firstLine) saveContent += firstLine + '\n'
-    } else if (contentStarted) {
-      saveContent += line + '\n'
-    }
-  }
-
-  return { filename, content: saveContent.trimEnd() }
-}
-
-// ── Strip %%SAVE_FILE%% markers from display content ──────────
-function stripSaveMarkers(content) {
-  if (!content) return content
-  return content.replace(/%%SAVE_FILE%%[\s\S]*?%%END_SAVE%%/g, '').trim()
-}
-
-// ── Strip leaked internal AI tool-call XML tags ───────────────
-// Hapus tag <function_calls>, <invoke>, <parameter>, dll yang
-// kadang bocor ke output AI sebelum sempat diproses oleh executor.
-function stripInternalTags(content) {
-  if (!content) return content
-  return content
-    // Hapus seluruh blok <function_calls>...</function_calls>
-    .replace(/<function_calls>[\s\S]*?<\/function_calls>/g, '')
-    // Hapus tag <invoke ...>...</invoke> yang tersisa
-    .replace(/<invoke[\s\S]*?<\/invoke>/g, '')
-    // Hapus tag <parameter ...>...</parameter> yang tersisa
-    .replace(/<parameter[\s\S]*?<\/parameter>/g, '')
-    // Hapus tag self-closing yang tersisa seperti <parameter name="x"/>
-    .replace(/<[a-z_]+\s+name="[^"]*"\s*\/>/g, '')
-    // Hapus AI thinking process tags
-    .replace(/<(?:thinking|think|thought|thought_process)>[\s\S]*?<\/(?:thinking|think|thought|thought_process)>/g, '')
-    .replace(/<(?:plan|task|action)>[\s\S]*?<\/(?:plan|task|action)>/g, '')
-    // Bersihkan baris kosong berlebih setelah penghapusan
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
-
-// ── Parse %%ARTIFACT%% markers OR auto-detect large code blocks ─
-function parseArtifacts(content) {
-  if (!content) return { artifacts: [], cleanContent: content }
-  const artifacts = []
-  let cleanContent = content
-
-  // 1. Explicit markers: %%ARTIFACT%% title:... language:... \n code \n %%END_ARTIFACT%%
-  const markerRegex = /%%ARTIFACT%%([\s\S]*?)%%END_ARTIFACT%%/g
-  let match
-  let markerIndex = 0
-  while ((match = markerRegex.exec(content)) !== null) {
-    const block = match[1].trim()
-    const lines = block.split('\n')
-    let title = `Artifact ${markerIndex + 1}`
-    let language = 'txt'
-    let codeStartIdx = 0
-
-    for (let i = 0; i < Math.min(lines.length, 5); i++) {
-      const line = lines[i].trim()
-      if (line.toLowerCase().startsWith('title:')) {
-        title = line.substring('title:'.length).trim()
-        codeStartIdx = i + 1
-      } else if (line.toLowerCase().startsWith('language:') || line.toLowerCase().startsWith('lang:')) {
-        language = line.substring(line.indexOf(':') + 1).trim().toLowerCase()
-        codeStartIdx = i + 1
-      } else if (line.toLowerCase().startsWith('type:')) {
-        // type: code | html | document | svg
-        const t = line.substring('type:'.length).trim().toLowerCase()
-        if (['html', 'svg'].includes(t)) language = t
-        codeStartIdx = i + 1
-      } else {
-        break
-      }
-    }
-
-    const code = lines.slice(codeStartIdx).join('\n').trim()
-    if (code) {
-      artifacts.push({ id: `art-${Date.now()}-${markerIndex}`, title, language, code })
-      markerIndex++
-    }
-  }
-
-  // 1.5. Parse %%APP_PREVIEW%% url %%END_PREVIEW%%
-  const previewRegex = /%%APP_PREVIEW%%\s*(https?:\/\/[^\s]+)\s*%%END_PREVIEW%%/g
-  let previewMatch
-  while ((previewMatch = previewRegex.exec(content)) !== null) {
-    const url = previewMatch[1].trim()
-    artifacts.push({ id: `preview-${Date.now()}-${markerIndex}`, title: 'App Preview', language: 'preview', code: url, isPreviewUrl: true })
-    markerIndex++
-  }
-
-  // Remove ALL template markers from display — strip regardless of whether artifacts were found
-  cleanContent = cleanContent
-    .replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '')
-    .replace(/%%APP_PREVIEW%%[\s\S]*?%%END_PREVIEW%%/g, '')
-    .replace(/%%SUCCESS_CARD%%[\s\S]*?%%END_SUCCESS_CARD%%/g, '')
-    .replace(/%%SAVE_FILE%%[\s\S]*?%%END_SAVE%%/g, '')
-    .replace(/%%[A-Z_]+%%[\s\S]*?%%END_[A-Z_]+%%/g, '')  // catch-all for any unknown markers
-    .replace(/%%[A-Z_]+%%/g, '')                           // strip lone markers
-    .trim()
-
-  // 2. Auto-detect large fenced code blocks (```lang\n...```) with >15 lines
-  if (artifacts.length === 0) {
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g
-    let codeMatch
-    let autoIndex = 0
-    while ((codeMatch = codeBlockRegex.exec(content)) !== null) {
-      const lang = codeMatch[1] || 'txt'
-      const code = codeMatch[2].trim()
-      const lineCount = code.split('\n').length
-      if (lineCount >= 15) {
-        // Determine a smart title
-        let title = `${lang.toUpperCase()} Code`
-        if (['html', 'htm'].includes(lang.toLowerCase())) title = 'Web Page'
-        else if (lang.toLowerCase() === 'svg') title = 'SVG Graphic'
-        else if (['jsx', 'tsx'].includes(lang.toLowerCase())) title = 'React Component'
-        else if (lang.toLowerCase() === 'python') title = 'Python Script'
-        else if (lang.toLowerCase() === 'javascript') title = 'JavaScript'
-        else if (lang.toLowerCase() === 'css') title = 'Stylesheet'
-        else if (lang.toLowerCase() === 'sql') title = 'SQL Query'
-
-        artifacts.push({ id: `auto-${Date.now()}-${autoIndex}`, title, language: lang, code })
-        autoIndex++
-      }
-    }
-    // For auto-detected, we keep the code blocks in cleanContent (they render via CodeBlock too)
-  }
-
-  return { artifacts, cleanContent }
-}
-
-// ── Parse %%SUCCESS_CARD%% marker ──────────────────────────────────────
-function parseSuccessCards(content) {
-  if (!content) return { cards: [], cleanContent: content }
-  const cards = []
-  let cleanContent = content
-  const regex = /%%SUCCESS_CARD%%([\s\S]*?)%%END_SUCCESS_CARD%%/g
-  let match
-  while ((match = regex.exec(content)) !== null) {
-    const block = match[1].trim()
-    const card = { title: '', url: '', details: [], note: '' }
-    for (const line of block.split('\n')) {
-      const l = line.trim()
-      if (l.toLowerCase().startsWith('title:'))  card.title  = l.substring(6).trim()
-      else if (l.toLowerCase().startsWith('url:')) card.url   = l.substring(4).trim()
-      else if (l.toLowerCase().startsWith('note:')) card.note = l.substring(5).trim()
-      else if (l.toLowerCase().startsWith('detail:')) card.details.push(l.substring(7).trim())
-    }
-    cards.push(card)
-    cleanContent = cleanContent.replace(match[0], '')
-  }
-  return { cards, cleanContent: cleanContent.trim() }
-}
-
-
-// ── Strip artifact markers from display content ───────────────
-function stripArtifactMarkers(content) {
-  if (!content) return content
-  return content
-    .replace(/%%ARTIFACT%%[\s\S]*?%%END_ARTIFACT%%/g, '')
-    .replace(/%%APP_PREVIEW%%[\s\S]*?%%END_PREVIEW%%/g, '')
-    .replace(/%%SUCCESS_CARD%%[\s\S]*?%%END_SUCCESS_CARD%%/g, '')
-    .replace(/%%[A-Z_]+%%[\s\S]*?%%END_[A-Z_]+%%/g, '')
-    .replace(/%%[A-Z_]+%%/g, '')
-    .trim()
-}
-
-// ── SuccessCard: card cantik untuk status sukses ────────────────
-function SuccessCard({ card }) {
-  const [copied, setCopied] = useState(false)
-  const handleCopyUrl = () => {
-    if (!card.url) return
-    copyToClipboard(card.url)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  // Detect detail type for icon
-  const getDetailMeta = (detail) => {
-    const d = detail.toLowerCase()
-    if (d.includes('http') || d.includes('url') || d.includes('localhost') || d.includes('port'))
-      return { icon: '🌐', label: 'URL APLIKASI' }
-    if (d.includes('server') || d.includes('script') || d.includes('.py') || d.includes('.js'))
-      return { icon: '🖥️', label: 'SERVER' }
-    if (d.includes('log') || d.includes('.log') || d.includes('file'))
-      return { icon: '📄', label: 'LOG FILE' }
-    if (d.includes('port') || d.includes(':'+'/'))
-      return { icon: '🔌', label: 'PORT' }
-    return { icon: '⚙️', label: 'DETAIL' }
-  }
-
-  return (
-    <div style={{
-      margin: '12px 0', borderRadius: 16,
-      background: 'linear-gradient(135deg, rgba(74,222,128,0.06) 0%, rgba(34,197,94,0.03) 100%)',
-      border: '1.5px solid rgba(74,222,128,0.25)',
-      overflow: 'hidden', boxShadow: '0 4px 20px rgba(74,222,128,0.08)',
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10,
-        borderBottom: '1px solid rgba(74,222,128,0.15)',
-        background: 'rgba(74,222,128,0.08)',
-      }}>
-        <span style={{ fontSize: 16 }}>✅</span>
-        <span style={{ fontWeight: 800, fontSize: 15, color: '#4ade80' }}>
-          {card.title || 'Berhasil!'}
-        </span>
-      </div>
-
-      {/* URL row */}
-      {card.url && (
-        <div style={{
-          margin: '10px 12px 4px', borderRadius: 10,
-          background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.2)',
-          padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{
-            width: 32, height: 32, borderRadius: 8, background: 'rgba(56,189,248,0.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0,
-          }}>🌐</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(56,189,248,0.7)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>URL APLIKASI</div>
-            <a
-              href={card.url} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 13, fontWeight: 700, color: '#38bdf8', fontFamily: 'monospace', wordBreak: 'break-all', textDecoration: 'none' }}
-            >{card.url}</a>
-          </div>
-          <button
-            onClick={handleCopyUrl}
-            style={{
-              padding: '4px 10px', borderRadius: 7, border: '1px solid rgba(56,189,248,0.3)',
-              background: 'rgba(56,189,248,0.1)', cursor: 'pointer', fontSize: 11, fontWeight: 700,
-              color: copied ? '#4ade80' : '#38bdf8', transition: 'all 0.2s', flexShrink: 0,
-            }}
-          >{copied ? '✓ Copied' : 'Copy'}</button>
-        </div>
-      )}
-
-      {/* Detail rows */}
-      {card.details.length > 0 && (
-        <div style={{ padding: '4px 12px 8px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {card.details.map((detail, i) => {
-            const meta = getDetailMeta(detail)
-            // Split key: value if format is "Key: value"
-            const colonIdx = detail.indexOf(':')
-            const label = colonIdx > 0 ? detail.substring(0, colonIdx).trim() : meta.label
-            const value = colonIdx > 0 ? detail.substring(colonIdx + 1).trim() : detail
-            return (
-              <div key={i} style={{
-                borderRadius: 10, background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.07)',
-                padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10,
-              }}>
-                <span style={{
-                  width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.05)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0,
-                }}>{meta.icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>{label.toUpperCase()}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', fontFamily: 'monospace', wordBreak: 'break-all' }}>{value}</div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Note */}
-      {card.note && (
-        <div style={{
-          margin: '0 12px 12px', borderRadius: 10,
-          background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.15)',
-          padding: '8px 12px', display: 'flex', alignItems: 'flex-start', gap: 8,
-        }}>
-          <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>ℹ️</span>
-          <span style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.5 }}>{card.note}</span>
-        </div>
-      )}
-    </div>
-  )
-}
-
-
-// ── ARTIFACT TYPES — icons & color mapping ────────────────────
-const ARTIFACT_TYPE_META = {
-  html:       { icon: Globe,     label: 'Web Page',        color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' },
-  htm:        { icon: Globe,     label: 'Web Page',        color: 'text-orange-400', bg: 'bg-orange-400/10', border: 'border-orange-400/20' },
-  svg:        { icon: Globe,     label: 'SVG Graphic',     color: 'text-pink-400',   bg: 'bg-pink-400/10',   border: 'border-pink-400/20' },
-  jsx:        { icon: FileCode2, label: 'React Component', color: 'text-cyan-400',   bg: 'bg-cyan-400/10',   border: 'border-cyan-400/20' },
-  tsx:        { icon: FileCode2, label: 'React Component', color: 'text-cyan-400',   bg: 'bg-cyan-400/10',   border: 'border-cyan-400/20' },
-  javascript: { icon: FileCode2, label: 'JavaScript',     color: 'text-yellow-400', bg: 'bg-yellow-400/10', border: 'border-yellow-400/20' },
-  typescript: { icon: FileCode2, label: 'TypeScript',     color: 'text-blue-400',   bg: 'bg-blue-400/10',   border: 'border-blue-400/20' },
-  python:     { icon: FileCode2, label: 'Python Script',  color: 'text-blue-300',   bg: 'bg-blue-300/10',   border: 'border-blue-300/20' },
-  css:        { icon: FileCode2, label: 'Stylesheet',     color: 'text-pink-400',   bg: 'bg-pink-400/10',   border: 'border-pink-400/20' },
-  sql:        { icon: FileCode2, label: 'SQL Query',      color: 'text-emerald-400',bg: 'bg-emerald-400/10',border: 'border-emerald-400/20' },
-  json:       { icon: FileCode2, label: 'JSON Data',      color: 'text-amber-400',  bg: 'bg-amber-400/10',  border: 'border-amber-400/20' },
-  bash:       { icon: Terminal,  label: 'Shell Script',   color: 'text-green-400',  bg: 'bg-green-400/10',  border: 'border-green-400/20' },
-  sh:         { icon: Terminal,  label: 'Shell Script',   color: 'text-green-400',  bg: 'bg-green-400/10',  border: 'border-green-400/20' },
-  markdown:   { icon: BookOpen,  label: 'Document',       color: 'text-violet-400', bg: 'bg-violet-400/10', border: 'border-violet-400/20' },
-  md:         { icon: BookOpen,  label: 'Document',       color: 'text-violet-400', bg: 'bg-violet-400/10', border: 'border-violet-400/20' },
-}
-const DEFAULT_ARTIFACT_META = { icon: FileCode2, label: 'Code', color: 'text-accent-2', bg: 'bg-accent/10', border: 'border-accent/20' }
-
-// ── ArtifactCard: inline card di dalam pesan ──────────────────
-function ArtifactCard({ artifact, onOpen }) {
-  const [copied, setCopied] = useState(false)
-  const meta = ARTIFACT_TYPE_META[artifact.language?.toLowerCase()] || DEFAULT_ARTIFACT_META
-  const ArtIcon = meta.icon
-  const lines = artifact.code.split('\n')
-  const previewLines = lines.slice(0, 6).join('\n')
-  const isPreviewable = ['html', 'htm', 'svg'].includes((artifact.language || '').toLowerCase())
-
-  const handleCopy = (e) => {
-    e.stopPropagation()
-    copyToClipboard(artifact.code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleDownload = (e) => {
-    e.stopPropagation()
-    const blob = new Blob([artifact.code], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${artifact.title.replace(/\s+/g, '_').toLowerCase()}.${artifact.language || 'txt'}`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  return (
-    <div
-      className="mt-4 border-[0.5px] border-border rounded-2xl overflow-hidden bg-bg-2 hover:border-accent/50 transition-all cursor-pointer shadow-sm group animate-slide-in-up"
-      onClick={() => onOpen(artifact)}
-    >
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 bg-bg-3/50 border-b-[0.5px] border-border">
-        <div className={clsx('w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0', meta.bg)}>
-          <ArtIcon size={16} className={meta.color} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-semibold text-ink truncate">{artifact.title}</div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className={clsx('text-[10px] font-mono font-semibold uppercase tracking-widest px-1.5 py-0.5 rounded border-[0.5px]', meta.bg, meta.color, meta.border)}>
-              {artifact.language || 'txt'}
-            </span>
-            <span className="text-[10px] text-ink-3">{lines.length} lines</span>
-            {isPreviewable && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/10 text-success border border-success/20 font-medium">
-                ✦ Live Preview
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={handleCopy}
-            className="p-1.5 rounded-lg hover:bg-bg-5 transition-colors"
-            title="Copy"
-          >
-            {copied ? <Check size={12} className="text-success" /> : <Copy size={12} className="text-ink-3" />}
-          </button>
-          <button
-            onClick={handleDownload}
-            className="p-1.5 rounded-lg hover:bg-bg-5 transition-colors"
-            title="Download"
-          >
-            <Download size={12} className="text-ink-3" />
-          </button>
-        </div>
-      </div>
-
-      {/* Preview */}
-      <div className="artifact-card-preview">
-        <code>{previewLines}</code>
-      </div>
-
-      {/* Footer / Open button */}
-      <div className="artifact-card-actions">
-        <button
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent-2 text-[11px] font-medium transition-all flex-1 justify-center"
-          onClick={(e) => { e.stopPropagation(); onOpen(artifact) }}
-        >
-          <Maximize2 size={11} />
-          Buka & Edit di Panel
-        </button>
-      </div>
-    </div>
-  )
-}
-
-
-// ── Message bubble ────────────────────────────────────────────
-const Bubble = React.memo(function Bubble({ msg, isStreaming, onStop, onExport, onSpeak, speakingId, onOpenArtifact, onOpenArtifactCard }) {
-  const [copied, setCopied] = useState(false)
-  const [showThinking, setShowThinking] = useState(false) // Default: collapsed
-  const [showSaveDialog, setShowSaveDialog] = useState(false)
-  const isUser = msg.role === 'user'
-
-  // Detect %%SAVE_FILE%% marker
-  const saveFileData = !isUser ? parseSaveFileMarker(msg.content) : null
-  // Helper: Split content into main text and thinking process
-  const splitContent = (content) => {
-    let processedContent = stripSaveMarkers(content || '')
-    // Bersihkan tag internal AI (<function_calls> dll) yang bocor
-    processedContent = stripInternalTags(processedContent)
-    
-    // Auto-unwrap Sumopod API JSON wrapper if present
-    try {
-      const cleanJson = processedContent.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim()
-      if (cleanJson.startsWith('{') && cleanJson.endsWith('}')) {
-        const parsed = JSON.parse(cleanJson)
-        if (parsed.response && parsed.model_used) {
-          processedContent = parsed.response;
-        }
-      }
-    } catch(e) {
-      // Ignore if not valid JSON
-    }
-
-    if (!processedContent) return { mainContent: '', thinkingContent: null, hasThinking: false }
-    
-    // Find the thinking section: starts with 🤔 Proses Berpikir:
-    const thinkStart = processedContent.indexOf('🤔 Proses Berpikir:')
-    
-    if (thinkStart === -1) {
-      return { mainContent: processedContent, thinkingContent: null, hasThinking: false }
-    }
-    
-    // Get everything before the thinking section (main content before thinking)
-    const beforeThink = processedContent.substring(0, thinkStart).trim()
-    
-    // Get the thinking section content (after the header)
-    let thinkEnd = processedContent.length
-    const afterThinkStart = thinkStart + '🤔 Proses Berpikir:'.length
-    
-    // Find where thinking ends - backend sends `---` to mark the end
-    const remaining = processedContent.substring(afterThinkStart)
-    const endMarkerIndex = remaining.indexOf('---')
-    
-    let thinkingContent = ''
-    let mainContentAfterThink = ''
-    
-    if (endMarkerIndex !== -1) {
-      thinkingContent = remaining.substring(0, endMarkerIndex).trim()
-      mainContentAfterThink = remaining.substring(endMarkerIndex + 3).trim()
-    } else {
-      // Fallback heuristic if --- is not found (e.g., legacy messages or streaming cutoffs)
-      const lines = remaining.split('\n')
-      let thinkLineEnd = lines.length
-      let foundThinkEnd = false
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i]
-        const trimmed = line.trim()
-        
-        // Check if this line marks the end of thinking (actual response)
-        const isResponseStart = (
-          trimmed &&
-          !trimmed.startsWith('Plan') &&
-          !trimmed.startsWith('Tool') &&
-          !trimmed.startsWith('Action') &&
-          !trimmed.startsWith('Thought') &&
-          !trimmed.startsWith('Analysis') &&
-          !trimmed.startsWith('Step') &&
-          !trimmed.startsWith('-') &&
-          !trimmed.startsWith('•') &&
-          !trimmed.match(/^[A-Z][a-z]+:/) && // Not a label like "Key: value"
-          (trimmed.startsWith('I\'') || trimmed.startsWith('The ') || trimmed.startsWith('Here') || 
-           trimmed.startsWith('Let') || trimmed.startsWith('I will') || trimmed.startsWith('Sure') ||
-           /^(Okay|Alright|Got it|Understood|Yes|No|Great|Perfect|Baik|Oke|Tentu|Saya|Ini|Berikut|Sebagai|Data|Hasil)/i.test(trimmed))
-        )
-        
-        if (isResponseStart && i > 0) {
-          thinkLineEnd = i
-          foundThinkEnd = true
-          break
-        }
-      }
-      
-      thinkingContent = lines.slice(0, thinkLineEnd).join('\n').trim()
-      if (foundThinkEnd) {
-        mainContentAfterThink = lines.slice(thinkLineEnd).join('\n').trim()
-      }
-    }
-    
-    let mainContent = beforeThink
-    if (mainContentAfterThink) {
-      mainContent = (beforeThink ? beforeThink + '\n\n' : '') + mainContentAfterThink
-    }
-    
-    return { mainContent: mainContent.trim(), thinkingContent, hasThinking: true }
-  }
-
-  const { mainContent, thinkingContent: parsedThinking, hasThinking: parsedHasThinking } = splitContent(msg.content || '')
-
-  const thinkingContent = msg.thinking_process || parsedThinking
-  const hasThinking = !!msg.thinking_process || parsedHasThinking
-
-  let parsedProcessSteps = null
-  if (hasThinking && msg.thinking_process) {
-    try {
-      const parsed = JSON.parse(msg.thinking_process)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        parsedProcessSteps = parsed
-      }
-    } catch(e) {}
-  }
-
-  // 1. Extract Success Cards first (before any aggressive stripping)
-  const { cards: successCards, cleanContent: contentWithoutCards } = !isUser
-    ? parseSuccessCards(mainContent)
-    : { cards: [], cleanContent: mainContent }
-
-  // 2. Parse artifacts from the remaining content
-  const { artifacts: parsedArtifacts, cleanContent: finalContent } = !isUser
-    ? parseArtifacts(contentWithoutCards)
-    : { artifacts: [], cleanContent: contentWithoutCards }
-
-  // ALWAYS use cleaned content — strips ALL template markers regardless of what type they are
-  const displayContent = finalContent
-
-  const copy = () => {
-    copyToClipboard(msg.content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  // Custom ReactMarkdown components — code block dengan copy & artifacts + link handler
-  const markdownComponents = {
-    code({ node, inline, className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || '')
-      const language = match ? match[1] : ''
-      const codeText = String(children).replace(/\n$/, '')
-      if (inline) {
-        // URL, path, atau kode pendek — tampil sebagai inline styled text, bukan block
-        return (
-          <code
-            className="px-1.5 py-0.5 bg-accent/10 rounded text-accent-2 text-[12px] font-mono border border-accent/20 break-words"
-            {...props}
-          >{children}</code>
-        )
-      }
-      // Block code: hanya render sebagai CodeBlock jika ada bahasa atau multi-baris
-      if (!language && codeText.split('\n').length === 1 && codeText.length < 120) {
-        // Single-line tanpa bahasa (sering dipakai AI untuk nama file/URL) → tampil sebagai inline-block agar tidak memecah kalimat
-        return (
-          <code
-            className="inline-block px-1.5 py-0.5 mx-1 bg-bg-4 rounded text-ink-2 text-[13px] font-mono border border-border break-words align-middle"
-            {...props}
-          >{codeText}</code>
-        )
-      }
-      return <CodeBlock language={language} code={codeText} onOpenArtifact={onOpenArtifact} />
-    },
-    // Custom link renderer: buka di tab baru + styling yang jelas
-    a({ node, href, children, ...props }) {
-      const isLocalServer = href && (
-        href.includes('localhost') ||
-        href.includes('127.0.0.1') ||
-        href.includes('0.0.0.0') ||
-        /:\d{4,5}/.test(href)
-      )
-      return (
-        <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-accent-2 underline underline-offset-2 hover:text-accent transition-colors"
-          title={isLocalServer ? `Buka ${href} di tab baru` : href}
-          {...props}
-        >
-          {children}
-          {isLocalServer && (
-            <ExternalLink size={10} className="inline ml-0.5 mb-0.5 opacity-70" />
-          )}
-        </a>
-      )
-    },
-    // Custom image renderer: handles proxy images with loading/error states
-    img({ node, src, alt, ...props }) {
-      const [imgState, setImgState] = useState('loading') // 'loading' | 'loaded' | 'error'
-      const [retryCount, setRetryCount] = useState(0)
-      const imgSrc = retryCount > 0 ? `${src}${src.includes('?') ? '&' : '?'}_r=${retryCount}` : src
-
-      return (
-        <div className="my-3 rounded-xl overflow-hidden border border-border bg-bg-3 inline-block max-w-full">
-          {imgState === 'loading' && (
-            <div className="flex items-center gap-2 px-4 py-3 text-ink-3 text-sm">
-              <span className="inline-block w-4 h-4 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
-              Memuat gambar...
-            </div>
-          )}
-          <img
-            src={imgSrc}
-            alt={alt || 'Generated Image'}
-            className="max-w-full max-h-[500px] object-contain rounded-xl"
-            style={{ display: imgState === 'loaded' ? 'block' : 'none' }}
-            onLoad={() => setImgState('loaded')}
-            onError={() => setImgState('error')}
-            {...props}
-          />
-          {imgState === 'error' && (
-            <div className="flex flex-col items-center gap-2 px-6 py-4 text-center">
-              <span className="text-2xl">🖼️</span>
-              <span className="text-sm text-ink-3">Gagal memuat gambar</span>
-              <button
-                onClick={() => { setImgState('loading'); setRetryCount(c => c + 1) }}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent/10 text-accent-2 border border-accent/20 hover:bg-accent/20 transition-colors"
-              >
-                🔄 Coba Lagi
-              </button>
-            </div>
-          )}
-        </div>
-      )
-    }
-  }
-
-  return (
-    <div className={clsx('flex gap-2.5 group animate-fade', isUser ? 'flex-row-reverse' : 'flex-row')}>
-      {/* Avatar */}
-      <div className={clsx(
-        'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5',
-        isUser
-          ? 'bg-gradient-to-br from-accent to-pink'
-          : 'bg-gradient-to-br from-accent to-accent-2'
-      )}>
-        {isUser
-          ? <User size={13} className="text-white" />
-          : <Bot size={13} className="text-white" />}
-      </div>
-
-      <div className={clsx('max-w-[98%] lg:max-w-[95%] xl:max-w-[92%] flex flex-col', isUser ? 'items-end' : 'items-start')}>
-        <div className={clsx(
-          'px-4 py-3 rounded-2xl text-[15px] leading-relaxed relative border-[0.5px]',
-          isUser
-            ? 'bg-accent text-white border-accent shadow-sm'
-            : 'bg-bg-2 border-border text-ink shadow-sm'
-        )}>
-          {/* Tampilkan gambar jika ada */}
-          {isUser && msg._image_preview && (
-            <img
-              src={msg._image_preview}
-              alt="Gambar yang dikirim"
-              className="max-w-[200px] max-h-[150px] rounded-lg mb-2 object-cover border border-white/20"
-            />
-          )}
-          {isUser ? (
-            <div className="flex flex-col gap-2">
-              {msg.attachedFiles?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-1">
-                  {msg.attachedFiles.map((f) => (
-                    <span key={f.id} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/20 text-white text-[10px] border border-white/30 backdrop-blur-sm">
-                      <span className="flex-shrink-0">{f.meta?.icon || '📄'}</span>
-                      <span className="truncate max-w-[100px]">{f.name}</span>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <p className="whitespace-pre-wrap leading-relaxed">{msg.original_content || msg.content}</p>
-            </div>
-          ) : (
-            <div className="prose prose-sm max-w-none">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={markdownComponents}
-              >{displayContent}</ReactMarkdown>
-              {isStreaming && (
-                <span className="inline-block w-1.5 h-4 bg-accent-2 animate-pulse2 ml-0.5 align-middle" />
-              )}
-              
-              {/* Collapsible Thinking Section / Process Steps */}
-              {parsedProcessSteps ? (
-                <div className="mt-3">
-                  <ProcessStepsPanel
-                    steps={parsedProcessSteps}
-                    isStreaming={isStreaming}
-                    onOpenArtifactCard={onOpenArtifactCard}
-                    defaultOpen={isStreaming}
-                  />
-                </div>
-              ) : hasThinking ? (
-                <div className="mt-3 border border-border rounded-lg overflow-hidden">
-                  <button
-                    onClick={() => setShowThinking(!showThinking)}
-                    className="w-full flex items-center justify-between px-3 py-2 bg-bg-3 hover:bg-bg-5 transition-colors text-xs text-ink-3"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Brain size={12} className="text-accent" />
-                      🤔 Proses Berpikir
-                    </span>
-                    {showThinking ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </button>
-                  {showThinking && (
-                    <div className="px-3 py-2 bg-bg-2 text-[11px] text-ink-3 leading-relaxed max-h-48 overflow-y-auto">
-                      {thinkingContent.split('\n').map((line, i) => line.trim() && (
-                        <div key={i} className="flex gap-2 py-0.5">
-                          <span className="text-accent flex-shrink-0">•</span>
-                          <span className="flex-1">{line.trim()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : null}
-
-              {/* ── Inline Artifact Cards ── */}
-              {parsedArtifacts.length > 0 && !isStreaming && parsedArtifacts.map(art => (
-                <ArtifactCard
-                  key={art.id}
-                  artifact={art}
-                  onOpen={(artifact) => {
-                    if (onOpenArtifactCard) {
-                      onOpenArtifactCard(artifact.code, artifact.language, artifact.title, artifact.isPreviewUrl)
-                    } else if (onOpenArtifact) {
-                      onOpenArtifact(artifact.code, artifact.language)
-                    }
-                  }}
-                />
-              ))}
-
-              {/* ── Success Cards \u2014 rendered from %%SUCCESS_CARD%% markers ── */}
-              {successCards && successCards.length > 0 && successCards.map((card, i) => (
-                <SuccessCard key={i} card={card} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Save File Button — appears when AI includes %%SAVE_FILE%% marker */}
-        {saveFileData && !isStreaming && (
-          <button
-            onClick={() => setShowSaveDialog(true)}
-            className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-accent/20 to-accent-2/20 border border-accent/30 text-accent-2 text-xs font-semibold hover:from-accent/30 hover:to-accent-2/30 transition-all group"
-          >
-            <Download size={14} className="group-hover:animate-bounce" />
-            💾 Simpan File: <span className="font-mono text-[11px] text-ink">{saveFileData.filename}</span>
-          </button>
-        )}
-
-        {/* SaveFileDialog portal */}
-        {showSaveDialog && saveFileData && (
-          <SaveFileDialog
-            filename={saveFileData.filename}
-            content={saveFileData.content}
-            onClose={() => setShowSaveDialog(false)}
-          />
-        )}
-        {/* Action row */}
-        <div className="flex items-center gap-2 mt-1 px-1">
-          <span className="text-[10px] text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            {new Date(msg.created_at || Date.now()).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {!isUser && msg.model && (
-            <span className="text-[10px] font-mono text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity">
-              {msg.model?.split('/').pop()}
-            </span>
-          )}
-          {/* Stop button — hanya saat streaming */}
-          {isStreaming && onStop && (
-            <button
-              onClick={onStop}
-              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-danger/15 hover:bg-danger/25 border border-danger/30 text-danger text-[10px] font-medium transition-all"
-              title="Hentikan (Esc)"
-            >
-              <Square size={9} fill="currentColor" /> Stop
-            </button>
-          )}
-          {!isUser && !isStreaming && (
-            <div className="flex items-center gap-1 relative">
-              {/* Drive Upload */}
-              <button
-                onClick={() => onDriveUpload(msg)}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all outline-none"
-                title="Simpan ke Google Drive"
-              >
-                <CloudUpload size={11} className="text-accent" />
-              </button>
-
-              {/* Export Dropdown */}
-              <div className="relative dropdown-container">
-                <button
-                  onClick={(e) => {
-                    const el = e.currentTarget.nextElementSibling;
-                    const isHidden = el.style.display === 'none' || el.style.display === '';
-                    // Close all other dropdowns
-                    document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none');
-                    if (isHidden) el.style.display = 'block';
-                  }}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all outline-none"
-                  title="Download Chat (PDF/Word/Excel)"
-                >
-                  <Download size={11} className="text-accent-2" />
-                </button>
-                <div 
-                  className="export-dropdown absolute right-0 bottom-full mb-1 w-36 bg-bg-2 border border-border shadow-md rounded-lg overflow-hidden z-50 text-[11px] animate-fade"
-                  style={{ display: 'none' }}
-                >
-                  <div className="px-2.5 py-1.5 text-[9px] font-semibold text-ink-3 tracking-wider bg-bg-3 border-b border-border uppercase">Export Format</div>
-                  <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("pdf", msg.id) }} 
-                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
-                  >
-                    <span>📄</span> PDF Document
-                  </button>
-                  <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("docx", msg.id) }} 
-                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
-                  >
-                    <span>📝</span> Word (DOCX)
-                  </button>
-                  <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("xlsx", msg.id) }} 
-                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2 border-b border-border/50"
-                  >
-                    <span>📊</span> Excel (XLSX)
-                  </button>
-                  <button 
-                    onClick={() => { document.querySelectorAll('.export-dropdown').forEach(d => d.style.display = 'none'); onExport("txt", msg.id) }} 
-                    className="w-full text-left px-3 py-2 text-ink hover:bg-bg-4 hover:text-accent transition-colors flex items-center gap-2"
-                  >
-                    <span>📜</span> Plain Text
-                  </button>
-                </div>
-              </div>
-
-              {/* TTS Listen */}
-              {!isUser && (
-                <button
-                  onClick={() => onSpeak(msg)}
-                  className={clsx(
-                    "opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all outline-none",
-                    speakingId === msg.id ? "bg-accent/20 text-accent opacity-100" : "hover:bg-bg-5 text-ink-3 hover:text-ink"
-                  )}
-                  title="Dengarkan (TTS)"
-                >
-                  <Volume2 size={11} className={speakingId === msg.id ? "animate-pulse" : ""} />
-                </button>
-              )}
-
-              {/* Thinking Toggle - show if embedded thinking exists in content */}
-              {!isUser && hasThinking && (
-                <button
-                  onClick={() => setShowThinking(!showThinking)}
-                  className={clsx(
-                    "opacity-0 group-hover:opacity-100 p-0.5 rounded transition-all outline-none",
-                    showThinking ? "bg-accent/20 text-accent opacity-100" : "hover:bg-bg-5 text-ink-3 hover:text-ink"
-                  )}
-                  title="Tampilkan Thinking"
-                >
-                  <Brain size={11} />
-                </button>
-              )}
-
-              {/* Copy */}
-              <button
-                onClick={copy}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-bg-5 transition-all outline-none"
-                title="Copy ke clipboard"
-              >
-                {copied
-                  ? <Check size={10} className="text-success" />
-                  : <Copy size={10} className="text-ink-3" />}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* RAG sources */}
-        {!isUser && msg.rag_sources && (() => {
-          try {
-            const src = JSON.parse(msg.rag_sources)
-            if (src.length > 0) return (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {src.map((s, i) => (
-                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-success/10 text-success border border-success/20 rounded-full">
-                    📄 {s}
-                  </span>
-                ))}
-              </div>
-            )
-          } catch { }
-          return null
-        })()}
-
-      </div>
-    </div>
-  )
-})
-
-// ── Komponen FileChip ────────────────────────────────────────────────────────
-function FileChip({ file, onRemove }) {
-  return (
-    <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-4 border border-border text-[11px] animate-fade">
-      <span className="flex-shrink-0">{file.meta?.icon || '📄'}</span>
-      <span className="truncate max-w-[120px] text-ink">{file.name}</span>
-      <span className="text-ink-3 text-[9px]">({(file.size / 1024).toFixed(1)} KB)</span>
-      <button 
-        onClick={() => onRemove(file.id)}
-        className="ml-1 p-0.5 rounded-full hover:bg-danger/10 hover:text-danger text-ink-3 transition-colors"
-      >
-        <X size={10} />
-      </button>
-    </div>
-  );
-}
-
-// ── Komponen DragOverlay ─────────────────────────────────────────────────────
-function DragOverlay({ isVisible }) {
-  if (!isVisible) return null;
-  return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-bg-2/80 backdrop-blur-sm border border-dashed border-accent m-4 rounded-2xl animate-fade">
-      <div className="flex flex-col items-center p-6 bg-bg-3 border border-accent/20 rounded-xl shadow-2xl">
-        <div className="text-4xl mb-2 animate-bounce">📂</div>
-        <p className="text-sm font-semibold text-ink">Lepaskan file di sini</p>
-        <p className="text-xs text-ink-3 mt-1 text-center">
-          PDF, DOCX, XLSX, CSV, TXT, Gambar
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ── Session item ──────────────────────────────────────────────
-function SessionItem({ session, active, onClick, onDelete }) {
-  return (
-    <div
-      onClick={onClick}
-      className={clsx(
-        'group flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer mb-0.5 transition-all',
-        active ? 'bg-accent/10 border border-accent/20' : 'hover:bg-bg-4'
-      )}
-    >
-      <div className="flex-1 min-w-0">
-        <div className={clsx('text-xs truncate', active ? 'text-accent-2 font-medium' : 'text-ink-2')}>
-          {session.title || 'New Chat'}
-        </div>
-        <div className="text-[10px] text-ink-3 mt-0.5">
-          {session.model_used?.split('/').pop() || 'AI'} ·{' '}
-          {new Date(session.updated_at || session.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-        </div>
-      </div>
-      <button
-        onClick={(e) => { e.stopPropagation(); onDelete(session.id) }}
-        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-danger/10 flex-shrink-0"
-      >
-        <Trash2 size={11} className="text-danger" />
-      </button>
-    </div>
-  )
-}
+// ── Modular chat components ──────────────────────────────────
+import ChatInput, { DragOverlay } from '../components/chat/ChatInput'
+import { Bubble, SessionItem } from '../components/chat/MessageList'
+import { ProcessStepsPanel, ArtifactsPanel } from '../components/chat/AgentProgress'
 
 // ── Main Chat Page ────────────────────────────────────────────
 export default function Chat() {
-  const {
-    classifyAndHandle,
-    confirmAndProceed,
-    closeFileManager,
-    fileManagerState,
-  } = useIntentClassifier()
-
-  const handleFileManagerConfirm = async (selectedPath) => {
-    await confirmAndProceed(selectedPath, sendMessage)
-  }
+  const { classifyAndHandle, confirmAndProceed, closeFileManager, fileManagerState } = useIntentClassifier()
+  const handleFileManagerConfirm = async (selectedPath) => { await confirmAndProceed(selectedPath, sendMessage) }
 
   const { t } = useTranslation()
   const { id: urlSessionId } = useParams()
@@ -1902,9 +43,9 @@ export default function Chat() {
   const selectedOrchestrator = useOrchestratorStore(s => s.selectedOrchestrator)
   const connectedChannels = useOrchestratorStore(s => s.connectedChannels)
   const selectedChannel = useOrchestratorStore(s => s.selectedChannel)
-  const { 
+  const {
     activeModel, activeCapability, setActiveModel, setActiveCapability, clearActiveRouting,
-    drivePromptContent, drivePromptTitle, setDrivePromptContent, clearDrivePrompt 
+    drivePromptContent, drivePromptTitle, setDrivePromptContent, clearDrivePrompt
   } = useOrchestratorStore()
 
   const {
@@ -1919,6 +60,8 @@ export default function Chat() {
     statusText, setStatusText,
     actualModel, setActualModel,
     abortRequest, setAbortRequest,
+    agentLoopEvents, agentLoopActive, agentLoopResult,
+    setAgentLoopActive, addAgentLoopEvent, setAgentLoopResult, clearAgentLoop
   } = useChatStore()
 
   const input = useChatStore(s => s.draftInput)
@@ -1929,202 +72,109 @@ export default function Chat() {
   const [speakingId, setSpeakingId] = useState(null)
   const audioRef = useRef(null)
 
-  // Derived: Filter sessions by currently selected channel
+  // Derived: Filter sessions by selected channel
   const channelType = connectedChannels.find(c => c.id === selectedChannel)?.type || 'web'
   const filteredSessions = sessions.filter(s => {
     const sType = s.platform || 'web'
-    // Relaxed matching: web and null/empty are treated as the same
     if (channelType === 'web') return !sType || sType === 'web'
     return sType === channelType
   })
 
-  // ── TTS Logic ──
+  // ── TTS ────────────────────────────────────────────────────
   const handleSpeak = useCallback((msg) => {
     if (speakingId === msg.id) {
-       if (audioRef.current) {
-         audioRef.current.pause()
-         audioRef.current = null
-       }
-       setSpeakingId(null)
-       return
+      if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+      setSpeakingId(null); return
     }
-
-    if (audioRef.current) {
-      audioRef.current.pause()
-    }
-
+    if (audioRef.current) audioRef.current.pause()
     setSpeakingId(msg.id)
     const url = api.getTTSUrl(msg.content)
     const audio = new Audio(url)
     audioRef.current = audio
-    audio.play().catch(err => {
-      console.error("TTS Play Error", err)
-      toast.error("Gagal memutar suara")
-      setSpeakingId(null)
-    })
+    audio.play().catch(() => { toast.error("Gagal memutar suara"); setSpeakingId(null) })
     audio.onended = () => setSpeakingId(null)
   }, [speakingId])
 
   const [pendingConfirmation, setPendingConfirmation] = useState(null)
-  // pendingPlan removed — orchestrator now auto-executes without user confirmation
-  const [implPlan, setImplPlan] = useState(null)  // Implementation plan (VS Code-style, informational)
-
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  // Artifacts Panel state
+  const [implPlan, setImplPlan] = useState(null)
   const [artifact, setArtifact] = useState({ open: false, code: '', language: '', title: '' })
-  
-  // Auto-hide process panel setelah streaming selesai
+
+  // Auto-hide process panel
   const [showLastSteps, setShowLastSteps] = useState(false)
   const [fadingOut, setFadingOut] = useState(false)
   const hideStepsTimerRef = useRef(null)
 
-  const openArtifact = useCallback((code, language) => {
-    setArtifact({ open: true, code, language, title: '' })
-  }, [])
-  const openArtifactCard = useCallback((code, language, title, isPreviewUrl = false) => {
-    setArtifact({ open: true, code, language, title: title || '', isPreviewUrl })
-  }, [])
-  const closeArtifact = useCallback(() => {
-    setArtifact(a => ({ ...a, open: false }))
-  }, [])
-  // Project Location Popup state
-  const [projectLocationPopup, setProjectLocationPopup] = useState({ open: false, sessionId: null })
-  const openProjectLocationPopup = useCallback((sessionId) => {
-    setProjectLocationPopup({ open: true, sessionId })
-  }, [])
-  const closeProjectLocationPopup = useCallback(() => {
-    setProjectLocationPopup({ open: false, sessionId: null })
-  }, [])
-  const [pendingResend, setPendingResend] = useState(null)
-  // Multimodal state
-  const [pendingImage, setPendingImage] = useState(null)  // { base64, mime_type, preview }
-  const [showMobileAttachMenu, setShowMobileAttachMenu] = useState(false)
-  const [isRecording, setIsRecording] = useState(false)
-  const [isTranscribing, setIsTranscribing] = useState(false)
-  const [voiceModeOpen, setVoiceModeOpen] = useState(false)
-  
-  // Drag and drop attachment handler
-  const {
-    attachedFiles,
-    isDragOver,
-    fileError,
-    addFiles,
-    removeFile,
-    clearFiles,
-    dragHandlers,
-  } = useChatFileHandler()
+  const openArtifact = useCallback((code, language) => { setArtifact({ open: true, code, language, title: '' }) }, [])
+  const openArtifactCard = useCallback((code, language, title, isPreviewUrl = false) => { setArtifact({ open: true, code, language, title: title || '', isPreviewUrl }) }, [])
+  const closeArtifact = useCallback(() => { setArtifact(a => ({ ...a, open: false })) }, [])
 
-  // Deletion guard: set of session IDs sedang dalam proses hapus
-  // Mencegah polling 5 detik mengembalikan sesi yang baru dihapus
+  // Project Location Popup
+  const [projectLocationPopup, setProjectLocationPopup] = useState({ open: false, sessionId: null })
+  const openProjectLocationPopup = useCallback((sessionId) => { setProjectLocationPopup({ open: true, sessionId }) }, [])
+  const closeProjectLocationPopup = useCallback(() => { setProjectLocationPopup({ open: false, sessionId: null }) }, [])
+
+  const [pendingResend, setPendingResend] = useState(null)
+  const [pendingImage, setPendingImage] = useState(null)
+  const [voiceModeOpen, setVoiceModeOpen] = useState(false)
+
+  // Drag and drop
+  const { attachedFiles, isDragOver, fileError, addFiles, removeFile, clearFiles, dragHandlers } = useChatFileHandler()
+
+  // Refs
   const deletingIdsRef = useRef(new Set())
-  const mediaRecorderRef = useRef(null)
-  const imagePickerRef = useRef(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
-  const fileInputRef = useRef(null) // Untuk RAG
-  const chatContextFileRef = useRef(null) // Untuk lampiran chat context (non-RAG)
-  const scrollBottom = useCallback(() => {
 
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [])
-
+  const scrollBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [])
   useEffect(() => { scrollBottom() }, [messages, streamingText])
 
-  // Watchdog dihapus sesuai permintaan: proses jangan berhenti kecuali pengguna menekan tombol berhenti
-
-  // ── MASTER SESSION BOOT LOGIC ─────────────────────────────────────────────
-  // Langkah 1: Segera bersihkan messages dari localStorage SEBELUM server respond
-  //            agar layar tidak menampilkan pesan usang saat komponen mount.
-  // Langkah 2: Minta daftar sesi dari server (ground truth).
-  // Langkah 3: Cocokkan URL session ID dengan daftar dari server.
-  //   - Ada di daftar  → load pesan sesi tersebut
-  //   - Tidak ada      → bersihkan state & redirect ke /chat (new chat)
-  //   - Tidak ada URL  → cek apakah perlu redirect ke sesi terbaru
-
+  // ── SESSION BOOT LOGIC ─────────────────────────────────────
   const [sessionsLoaded, setSessionsLoaded] = useState(false)
   const initDoneRef = useRef(false)
 
   useEffect(() => {
     if (initDoneRef.current) return
     initDoneRef.current = true
-
-    // LANGKAH 1: Bersihkan messages sekarang juga — jangan tampilkan cache stale
-    // Ini yang menyebabkan pesan lama terlihat meski panel kiri kosong.
     useChatStore.getState().clearMessages()
     useChatStore.getState().setCurrentSession(null)
 
-    // LANGKAH 2: Ambil daftar sesi dari server
     api.listSessions().then(async (serverSessions) => {
       const safe = serverSessions.filter(x => !deletingIdsRef.current.has(x.id))
       setSessions(safe)
       setSessionsLoaded(true)
-
       const currentUrlId = window.location.pathname.split('/chat/')[1]?.split('/')[0]
-
       if (currentUrlId) {
-        // LANGKAH 3a: Ada session ID di URL — coba load pesan langsung
-        // Gunakan session dari `safe` jika ada, jika tidak buat objek referensi (karena listSessions bisa di-limit 50)
         const found = safe.find(x => x.id === currentUrlId) || { id: currentUrlId }
-        
         useChatStore.getState().setCurrentSession(found)
         try {
           const msgs = await api.getMessages(currentUrlId)
-          // Mencegah race condition: hanya set messages jika user belum pindah chat
           const latestUrlId = window.location.pathname.split('/chat/')[1]?.split('/')[0]
           if (latestUrlId === currentUrlId) {
-            // Jika pesan berhasil dimuat, berarti sesi valid, update title jika belum ada
-            if (!found.title && msgs.length > 0) {
-               found.title = msgs[0].content.substring(0, 50)
-            }
+            if (!found.title && msgs.length > 0) found.title = msgs[0].content.substring(0, 50)
             useChatStore.getState().setMessages(msgs || [])
           }
         } catch {
-          console.info('[Chat] Session ID di URL tidak ada atau tidak dapat diakses. Redirect ke /chat.')
           useChatStore.getState().setCurrentSession(null)
           useChatStore.getState().clearMessages()
           navigate('/chat', { replace: true })
         }
       } else {
-        // LANGKAH 3b: Tidak ada session ID di URL
-        if (safe.length > 0) {
-          // Redirect ke sesi terbaru
-          navigate(`/chat/${safe[0].id}`, { replace: true })
-        } else {
-          // Tidak ada sesi sama sekali → tampilkan new chat kosong
-          useChatStore.getState().setCurrentSession(null)
-          useChatStore.getState().clearMessages()
-        }
+        if (safe.length > 0) navigate(`/chat/${safe[0].id}`, { replace: true })
+        else { useChatStore.getState().setCurrentSession(null); useChatStore.getState().clearMessages() }
       }
-    }).catch(() => {
-      setSessionsLoaded(true)
-    })
+    }).catch(() => { setSessionsLoaded(true) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Sinkronisasi sessions list setelah routing aktif (untuk New Chat & Delete)
-  // Tidak mengganggu pesan yang sudah dimuat oleh boot logic di atas
   useEffect(() => {
     if (!sessionsLoaded) return
-    // Sesi sudah divalidasi saat boot — effect ini hanya menjaga sidebar tetap sinkron
-    api.listSessions().then(s => {
-      const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-      setSessions(safe)
-    }).catch(() => {})
+    api.listSessions().then(s => { setSessions(s.filter(x => !deletingIdsRef.current.has(x.id))) }).catch(() => {})
   }, [sessionsLoaded])
 
-  // Sinkronisasi data ketika URL berubah (misal diklik dari sidebar)
   useEffect(() => {
     if (!sessionsLoaded) return
-    if (!urlSessionId) {
-      if (currentSession?.id) {
-        setCurrentSession(null)
-        clearMessages()
-      }
-      return
-    }
-    // Jika URL berubah dan tidak sama dengan session yang sedang aktif — SELALU load ulang
+    if (!urlSessionId) { if (currentSession?.id) { setCurrentSession(null); clearMessages() } return }
     if (currentSession?.id !== urlSessionId) {
-      // Cari di sessions, tapi tetap load meski tidak ketemu (sessions mungkin belum refresh)
       const found = sessions.find(s => s.id === urlSessionId)
       loadSession(found || { id: urlSessionId })
     }
@@ -2132,890 +182,344 @@ export default function Chat() {
   }, [urlSessionId, sessionsLoaded])
 
   async function loadSession(session) {
-    // Jika sedang streaming, batalkan request aktif sebelum pindah sesi
     if (useChatStore.getState().streaming) {
       const abortFn = useChatStore.getState().abortRequest
-      if (typeof abortFn === 'function') {
-        try { abortFn() } catch (err) { console.warn('[Chat] Failed to abort on session switch:', err) }
-      }
-      // Reset streaming state secara manual agar transisi bersih
-      setStreaming(false)
-      clearStreaming()
-      useChatStore.getState().setAbortRequest(null)
+      if (typeof abortFn === 'function') try { abortFn() } catch {}
+      setStreaming(false); clearStreaming(); useChatStore.getState().setAbortRequest(null)
     }
-
-    setCurrentSession(session)
-    // Always fetch fresh messages from API — never trust stale localStorage cache
-    clearMessages()
-    setLoadingMsgs(true)
+    setCurrentSession(session); clearMessages(); setLoadingMsgs(true)
     try {
       const msgs = await api.getMessages(session.id)
-      // Mencegah race condition saat user pindah chat dengan cepat
       const latestUrlId = window.location.pathname.split('/chat/')[1]?.split('/')[0]
-      if (latestUrlId === session.id) {
-        setMessages(msgs || [])
-      }
-    } catch { 
-      toast.error('Gagal memuat pesan') 
-    } finally { 
-      setLoadingMsgs(false) 
-    }
+      if (latestUrlId === session.id) setMessages(msgs || [])
+    } catch { toast.error('Gagal memuat pesan') }
+    finally { setLoadingMsgs(false) }
   }
 
-  // ── Real-time sync: poll for new messages every 5s ───────
-  // Enables cross-channel sync (Telegram/WhatsApp → Web)
-  // Pauses automatically when tab is not visible (Page Visibility API)
+  // ── Real-time sync polling ─────────────────────────────────
   useEffect(() => {
     if (!currentSession?.id) return
     const POLL_INTERVAL = 5000
-
     const pollNewMessages = async () => {
-      // Jangan poll saat tab tidak aktif — hemat bandwidth & server resource
       if (document.visibilityState === 'hidden') return
-      // Don't poll while streaming — we already get our own messages
       if (useChatStore.getState().streaming) return
-
       const currentMsgs = useChatStore.getState().messages
       if (currentMsgs.length === 0) return
-
-      // Get timestamp of latest known message
       const lastMsg = currentMsgs[currentMsgs.length - 1]
       const afterTs = lastMsg?.created_at || ''
       if (!afterTs) return
-
       try {
         const newMsgs = await api.getNewMessages(currentSession.id, afterTs)
         if (newMsgs && newMsgs.length > 0) {
-          // Merge: only add messages with IDs we don't already have
           const existingIds = new Set(currentMsgs.map(m => m.id))
           const existingContents = new Set(currentMsgs.map(m => m.content))
           const uniqueNew = newMsgs.filter(m => !existingIds.has(m.id) && !existingContents.has(m.content))
           if (uniqueNew.length > 0) {
-            const merged = [...currentMsgs, ...uniqueNew]
-            useChatStore.getState().setMessages(merged)
-            // Refresh session list — but filter out sessions being deleted
-            api.listSessions().then((s) => {
-              const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-              setSessions(safe)
-            }).catch(() => {})
+            useChatStore.getState().setMessages([...currentMsgs, ...uniqueNew])
+            api.listSessions().then(s => { setSessions(s.filter(x => !deletingIdsRef.current.has(x.id))) }).catch(() => {})
           }
         }
-      } catch {
-        // Silent fail — polling is best-effort
-      }
+      } catch {}
     }
-
-    // Poll saat tab kembali aktif setelah lama di background
-    const onVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        pollNewMessages()
-      }
-    }
+    const onVisibilityChange = () => { if (document.visibilityState === 'visible') pollNewMessages() }
     document.addEventListener('visibilitychange', onVisibilityChange)
-
     const interval = setInterval(pollNewMessages, POLL_INTERVAL)
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
-    }
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisibilityChange) }
   }, [currentSession?.id])
 
-  // Cek apakah sesi aktif masih kosong (belum ada pesan)
   const isCurrentSessionEmpty = currentSession && messages.length === 0
 
   async function newSession() {
-    // Jika sesi aktif masih kosong, jangan buat sesi baru
-    if (isCurrentSessionEmpty) {
-      toast('Sesi ini masih kosong. Mulai chat dulu!', { icon: '💬', duration: 2000 })
-      inputRef.current?.focus()
-      return
-    }
+    if (isCurrentSessionEmpty) { toast('Sesi ini masih kosong. Mulai chat dulu!', { icon: '💬', duration: 2000 }); return }
     try {
       const s = await api.createSession('New Chat')
       const updated = await api.listSessions()
-      setSessions(updated)
-      setCurrentSession(s)
-      setMessages([])
-      navigate(`/chat/${s.id}`)
+      setSessions(updated); setCurrentSession(s); setMessages([]); navigate(`/chat/${s.id}`)
     } catch { toast.error('Gagal membuat sesi baru') }
   }
 
-  // Auto-reset when changing channel
-  // Hanya navigate ke sesi pertama di channel baru — JANGAN buat sesi baru otomatis
-  // (mencegah loop: channel mismatch → newSession → clearMessages → chat hilang)
   useEffect(() => {
     if (!currentSession?.id) return
-    // Hanya lakukan auto-switch jika platform BENAR-BENAR berbeda dan sudah ada di DB
-    // (bukan stub minimal yang dibuat path-4)
     if (currentSession.platform && currentSession.platform !== channelType) {
-      if (filteredSessions.length > 0) {
-        navigate(`/chat/${filteredSessions[0].id}`)
-      }
-      // Jika tidak ada sesi di channel ini, biarkan saja — jangan buat sesi baru otomatis
+      if (filteredSessions.length > 0) navigate(`/chat/${filteredSessions[0].id}`)
     }
   }, [channelType])
 
   async function deleteSession(id) {
-    // 1. Tandai sebagai sedang dihapus (cegah polling mengembalikannya)
     deletingIdsRef.current.add(id)
-
-    // 2. Optimistic removal — hapus dari UI sebelum API response
     const prevSessions = useChatStore.getState().sessions
     const filtered = prevSessions.filter(s => s.id !== id)
     setSessions(filtered)
-
-    // Jika session yang dihapus adalah session aktif, clear dan navigate
     const wasActive = currentSession?.id === id
-    if (wasActive) {
-      setCurrentSession(null)
-      clearMessages()
-      navigate('/chat')
-    }
-
+    if (wasActive) { setCurrentSession(null); clearMessages(); navigate('/chat') }
     try {
       await api.deleteSession(id)
-      // Setelah berhasil, refresh dari server untuk memastikan konsistensi
       const updated = await api.listSessions()
-      // Tetap filter: jangan tampilkan yang sedang dihapus
-      const safe = updated.filter(s => !deletingIdsRef.current.has(s.id))
-      setSessions(safe)
+      setSessions(updated.filter(s => !deletingIdsRef.current.has(s.id)))
       toast.success('Chat dihapus', { duration: 1500 })
     } catch (err) {
-      // Rollback jika gagal
       deletingIdsRef.current.delete(id)
-      setSessions(prevSessions) // kembalikan state sebelumnya
-      if (wasActive) {
-        setCurrentSession(prevSessions.find(s => s.id === id) || null)
-      }
-      // Pesan error yang lebih informatif
+      setSessions(prevSessions)
+      if (wasActive) setCurrentSession(prevSessions.find(s => s.id === id) || null)
       const status = err?.status || err?.response?.status
-      if (status === 404) {
-        // Session sudah tidak ada — anggap berhasil dihapus
-        deletingIdsRef.current.add(id)
-        setSessions(filtered)
-        if (wasActive) { setCurrentSession(null); setMessages([]) }
-        return
-      } else if (status === 401 || status === 403) {
-        toast.error('Tidak punya akses untuk menghapus sesi ini')
-      } else if (!navigator.onLine) {
-        toast.error('Tidak ada koneksi internet. Chat akan dihapus saat online kembali.')
-      } else {
-        toast.error('Gagal menghapus chat. Silakan coba lagi.')
-      }
-    } finally {
-      // Setelah 10 detik, unlock dari guard agar tidak leak
-      setTimeout(() => deletingIdsRef.current.delete(id), 10000)
-    }
+      if (status === 404) { deletingIdsRef.current.add(id); setSessions(filtered); if (wasActive) { setCurrentSession(null); setMessages([]) }; return }
+      toast.error('Gagal menghapus chat')
+    } finally { setTimeout(() => deletingIdsRef.current.delete(id), 10000) }
   }
 
-  // ── STOP streaming ────────────────────────────────────────
+  // ── STOP streaming ─────────────────────────────────────────
   function stopStreaming() {
     const abortFn = useChatStore.getState().abortRequest
-    if (abortFn && typeof abortFn === 'function') {
-      abortFn()
-      useChatStore.getState().setAbortRequest(null)
-    }
+    if (abortFn && typeof abortFn === 'function') { abortFn(); useChatStore.getState().setAbortRequest(null) }
     const partial = useChatStore.getState().streamingText
     if (partial.trim()) {
-      addMessage({
-        id: Date.now() + 1,
-        role: 'assistant',
-        content: partial + '\n\n*[Dihentikan oleh pengguna]*',
-        model: selectedOrchestrator,
-        created_at: new Date().toISOString(),
-      })
+      addMessage({ id: Date.now() + 1, role: 'assistant', content: partial + '\n\n*[Dihentikan oleh pengguna]*', model: selectedOrchestrator, created_at: new Date().toISOString() })
     }
-    clearStreaming()
-    setStatusText('')
-    useChatStore.getState().finalizeProcessSteps()  // Keep steps visible after stop
-    
-    // Auto-hide timer
+    clearStreaming(); setStatusText(''); useChatStore.getState().finalizeProcessSteps()
     setShowLastSteps(true)
     if (hideStepsTimerRef.current) clearTimeout(hideStepsTimerRef.current)
-    hideStepsTimerRef.current = setTimeout(() => {
-      setFadingOut(true)
-      setTimeout(() => {
-        setShowLastSteps(false)
-        setFadingOut(false)
-      }, 400)
-    }, 3600)
-
+    hideStepsTimerRef.current = setTimeout(() => { setFadingOut(true); setTimeout(() => { setShowLastSteps(false); setFadingOut(false) }, 400) }, 3600)
     toast('⏹ Respons dihentikan', { icon: '⏹', duration: 1500 })
   }
 
-  // ── SEND message ─────────────────────────────────────────
+  // ── SEND message ───────────────────────────────────────────
   async function sendMessage(overrideText) {
     const text = typeof overrideText === 'string' ? overrideText : input.trim()
     let imageToSend = pendingImage
     if (!text && !imageToSend && attachedFiles.length === 0) return
 
     if (typeof overrideText !== 'string' && text) {
-      if (agentMode) {
-        const shouldProceed = await classifyAndHandle(text)
-        if (!shouldProceed) return
-      }
+      if (agentMode) { const shouldProceed = await classifyAndHandle(text); if (!shouldProceed) return }
     }
-    
+
     let activeSession = currentSession
-    if (!activeSession) { 
+    if (!activeSession) {
       try {
         activeSession = await api.createSession('New Chat')
         const updated = await api.listSessions()
-        setSessions(updated)
-        setCurrentSession(activeSession)
-        setMessages([])
-        navigate(`/chat/${activeSession.id}`, { replace: true })
-      } catch { 
-        toast.error('Gagal membuat sesi baru')
-        return
-      }
+        setSessions(updated); setCurrentSession(activeSession); setMessages([]); navigate(`/chat/${activeSession.id}`, { replace: true })
+      } catch { toast.error('Gagal membuat sesi baru'); return }
     }
 
-    // If agent is currently streaming, interrupt it first then send new message
-    // This allows the user to answer agent questions mid-stream
+    // Interrupt streaming if user sends while AI is responding
     if (streaming) {
       const abortFn = useChatStore.getState().abortRequest
-      if (abortFn && typeof abortFn === 'function') {
-        abortFn()
-        useChatStore.getState().setAbortRequest(null)
-      }
+      if (abortFn && typeof abortFn === 'function') { abortFn(); useChatStore.getState().setAbortRequest(null) }
       const partial = useChatStore.getState().streamingText
-      if (partial.trim()) {
-        addMessage({
-          id: Date.now() - 1,
-          role: 'assistant',
-          content: partial,
-          model: useChatStore.getState().actualModel || selectedOrchestrator,
-          created_at: new Date().toISOString(),
-        })
-      }
-      clearStreaming()
-      useChatStore.getState().setStatusText('')
-      useChatStore.getState().finalizeProcessSteps()
-      // Small delay to let state settle before sending new message
+      if (partial.trim()) addMessage({ id: Date.now() - 1, role: 'assistant', content: partial, model: useChatStore.getState().actualModel || selectedOrchestrator, created_at: new Date().toISOString() })
+      clearStreaming(); useChatStore.getState().setStatusText(''); useChatStore.getState().finalizeProcessSteps()
       await new Promise(r => setTimeout(r, 80))
     }
 
-    clearActiveRouting()
-    clearDrivePrompt()
+    clearActiveRouting(); clearDrivePrompt()
 
-    // Proses attached files
-    const currentFiles = [...attachedFiles]
-    clearFiles()
+    // Process attached files
+    const currentFiles = [...attachedFiles]; clearFiles()
     let combinedText = text
-
     if (currentFiles.length > 0) {
       toast.loading("Mengekstrak file...", { id: "extract-file" })
       for (const file of currentFiles) {
         try {
           const extracted = await extractFileContent(file)
-          if (extracted.type === 'image' && !imageToSend) {
-            imageToSend = {
-               base64: extracted.base64,
-               mime_type: extracted.mime_type,
-               preview: extracted.dataUrl,
-               filename: extracted.name
-            }
-          } else if (extracted.type === 'text') {
-            combinedText += `\n\n[FILE: ${extracted.name}]\n${extracted.text}\n[/FILE]`
-          } else if (extracted.type === 'error') {
-            combinedText += `\n\n[ERROR MEMBACA FILE: ${extracted.name}]\n${extracted.text}`
-          }
-        } catch(err) {
-           combinedText += `\n\n[ERROR MEMBACA FILE: ${file.name}]\n${err.message}`
-        }
+          if (extracted.type === 'image' && !imageToSend) imageToSend = { base64: extracted.base64, mime_type: extracted.mime_type, preview: extracted.dataUrl, filename: extracted.name }
+          else if (extracted.type === 'text') combinedText += `\n\n[FILE: ${extracted.name}]\n${extracted.text}\n[/FILE]`
+          else if (extracted.type === 'error') combinedText += `\n\n[ERROR MEMBACA FILE: ${extracted.name}]\n${extracted.text}`
+        } catch(err) { combinedText += `\n\n[ERROR MEMBACA FILE: ${file.name}]\n${err.message}` }
       }
       toast.dismiss("extract-file")
     }
 
     const sessionId = activeSession.id
-
-    setInput('')
-    setActualModel(null)
-    useChatStore.getState().setActualModel(null)
-    // Reset textarea height
-    if (inputRef.current) inputRef.current.style.height = 'auto'
+    setInput(''); setActualModel(null); useChatStore.getState().setActualModel(null)
 
     const tempUserMsg = {
-      id: Date.now(),
-      role: 'user',
-      content: combinedText,
-      original_content: text,
-      attachedFiles: currentFiles,
-      model: selectedOrchestrator,
-      created_at: new Date().toISOString(),
+      id: Date.now(), role: 'user', content: combinedText, original_content: text,
+      attachedFiles: currentFiles, model: selectedOrchestrator, created_at: new Date().toISOString(),
       _image_preview: imageToSend?.preview || pendingImage?.preview || null,
     }
-    addMessage(tempUserMsg)
-
-    setPendingImage(null)  // clear preview
+    addMessage(tempUserMsg); setPendingImage(null)
     executeChatStream(combinedText, imageToSend, sessionId)
   }
 
+  // ── Stream execution core ──────────────────────────────────
   const executeChatStream = (combinedText, imageToSend, sessionId) => {
-    setStreaming(true)
-    useChatStore.getState().setStatusText('')
-    clearProcessSteps()  // Reset process steps for new task
+    setStreaming(true); useChatStore.getState().setStatusText(''); clearProcessSteps()
 
-    // Helper: add structured process step from onProcess SSE event.
-    // If event has code payload (Written action), also auto-opens artifact panel.
     const handleAddProcessStep = (data) => {
-      console.log(`Step "${data.action}" hasContent:`, !!(data.code || data.result), 'data:', data)
+      if (data.type === 'loop_step') { useChatStore.getState().addAgentLoopEvent(data); useChatStore.getState().setAgentLoopActive(true); return }
+      if (data.type === 'loop_done') { useChatStore.getState().setAgentLoopResult(data); useChatStore.getState().setAgentLoopActive(false); return }
       const currentOffset = useChatStore.getState().streamingText.length
       const steps = useChatStore.getState().processSteps
-
-      // ── Real-time thinking delta: append text to existing Thinking step ──
       if (data.action === 'thinking_delta' && data.delta) {
         const lastStep = steps[steps.length - 1]
         if (lastStep && lastStep.action === 'Thinking' && lastStep._isLiveThinking) {
-          // Append delta to existing live thinking step
-          useChatStore.getState().updateLastProcessStep({
-            liveContent: (lastStep.liveContent || '') + data.delta,
-          })
+          useChatStore.getState().updateLastProcessStep({ liveContent: (lastStep.liveContent || '') + data.delta })
         } else {
-          // Create new live thinking step
-          useChatStore.getState().addProcessStep({
-            action: 'Thinking',
-            detail: 'Reasoning...',
-            ts: Date.now(),
-            _textOffset: currentOffset,
-            liveContent: data.delta,
-            _isLiveThinking: true,
-          })
+          useChatStore.getState().addProcessStep({ action: 'Thinking', detail: 'Reasoning...', ts: Date.now(), _textOffset: currentOffset, liveContent: data.delta, _isLiveThinking: true })
         }
         return
       }
-
-      // ── Thinking done: finalize the thinking step with word count ──
       if (data.action === 'thinking_done') {
         const lastStep = steps[steps.length - 1]
         if (lastStep && lastStep.action === 'Thinking' && lastStep._isLiveThinking) {
-          // Update existing step with final content and detail
-          useChatStore.getState().updateLastProcessStep({
-            detail: data.detail || 'Reasoning complete',
-            result: data.result || lastStep.liveContent || '',
-            _isLiveThinking: false,
-          })
+          useChatStore.getState().updateLastProcessStep({ detail: data.detail || 'Reasoning complete', result: data.result || lastStep.liveContent || '', _isLiveThinking: false })
         } else {
-          // Fallback: add as a regular step (thinking block was too short for deltas)
-          useChatStore.getState().addProcessStep({
-            action: 'Thinking',
-            detail: data.detail || 'Reasoning',
-            ts: data.ts || Date.now(),
-            _textOffset: currentOffset,
-            liveContent: data.result || null,
-            result: data.result || null,
-          })
+          useChatStore.getState().addProcessStep({ action: 'Thinking', detail: data.detail || 'Reasoning', ts: data.ts || Date.now(), _textOffset: currentOffset, liveContent: data.result || null, result: data.result || null })
         }
         return
       }
-
-      // Finalize liveContent untuk step sebelumnya
       if (steps.length > 0) {
         const lastStep = steps[steps.length - 1]
         if (lastStep._textOffset != null && lastStep.liveContent == null) {
           const endContent = useChatStore.getState().streamingText.substring(lastStep._textOffset)
-          const updatedSteps = steps.map((s, i) =>
-            i === steps.length - 1 ? { ...s, liveContent: endContent } : s
-          )
-          useChatStore.getState().setProcessSteps(updatedSteps)
+          useChatStore.getState().setProcessSteps(steps.map((s, i) => i === steps.length - 1 ? { ...s, liveContent: endContent } : s))
         }
       }
-
-      // Destructure semua field, simpan sisanya di rest
       const { action, detail, count, ts, type, ...rest } = data
-
-      // Tentukan konten yang akan ditampilkan di toggle
-      // Prioritas: code (Written) > result (tool output) > liveContent (streaming)
       const previewContent = rest.code || rest.result || null
-
-      useChatStore.getState().addProcessStep({
-        action: action || 'Worked',
-        detail: detail || '',
-        count: count ?? null,
-        ts: ts || Date.now(),
-        _textOffset: currentOffset,
-        liveContent: previewContent,  // langsung isi jika ada konten
-        // spread semua field extra: code, language, result, truncated, dll
-        ...rest,
-      })
-
-      // Auto-open artifact panel untuk Written action
+      useChatStore.getState().addProcessStep({ action: action || 'Worked', detail: detail || '', count: count ?? null, ts: ts || Date.now(), _textOffset: currentOffset, liveContent: previewContent, ...rest })
       if (action === 'Written' && rest.code && detail) {
         const lang = (rest.language || detail.split('.').pop() || 'txt').toLowerCase()
         const filename = detail.split('/').pop() || detail
-        openArtifactCard(
-          rest.code + (rest.truncated ? '\n\n// [konten dipotong]' : ''),
-          lang,
-          `✍️ ${filename}`,
-          false
-        )
+        openArtifactCard(rest.code + (rest.truncated ? '\n\n// [konten dipotong]' : ''), lang, `✍️ ${filename}`, false)
       }
     }
 
-    // Chunk handler: append text
-    const handleChunk = (chunk) => {
-      appendStreamingText(chunk)
-    }
+    const handleChunk = (chunk) => { appendStreamingText(chunk) }
 
-    // Auto-open artifact panel when APP_PREVIEW detected in completed response
     const autoOpenAppPreview = (fullText) => {
       const m = /%%APP_PREVIEW%%\s*(https?:\/\/[^\s]+)\s*%%END_PREVIEW%%/i.exec(fullText)
-      if (m) {
-        const url = m[1].trim()
-        // Small delay so the message bubble renders first
-        setTimeout(() => {
-          openArtifactCard(url, 'preview', '🚀 App Preview — Jalankan Aplikasi', true)
-          toast.success('🚀 Aplikasi berhasil dibuat! Klik Preview untuk melihat.', { duration: 5000 })
-        }, 400)
-      }
+      if (m) { const url = m[1].trim(); setTimeout(() => { openArtifactCard(url, 'preview', '🚀 App Preview — Jalankan Aplikasi', true); toast.success('🚀 Aplikasi berhasil dibuat!', { duration: 5000 }) }, 400) }
     }
 
-    // Use different endpoints based on whether image is present
+    const onDone = async (done) => {
+      const fullText = useChatStore.getState().streamingText
+      clearStreaming(); setImplPlan(null); useChatStore.getState().setStatusText('')
+      if (done.drive_prompt) setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
+      if (done.model_used) setActiveModel(done.model_used)
+      if (done.capability_used) setActiveCapability(done.capability_used)
+      addMessage({ id: Date.now() + 1, role: 'assistant', content: fullText, model: useChatStore.getState().actualModel || selectedOrchestrator, rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null, thinking_process: done.thinking_process || null, created_at: new Date().toISOString() })
+      setTimeout(() => { api.listSessions().then(s => { const safe = s.filter(x => !deletingIdsRef.current.has(x.id)); const cur = useChatStore.getState().sessions; setSessions((cur.length > 0 && safe.length === 0) ? cur : safe) }).catch(() => {}) }, 800)
+      useChatStore.getState().finalizeProcessSteps()
+      setShowLastSteps(true)
+      if (hideStepsTimerRef.current) clearTimeout(hideStepsTimerRef.current)
+      hideStepsTimerRef.current = setTimeout(() => { setFadingOut(true); setTimeout(() => { setShowLastSteps(false); setFadingOut(false) }, 400) }, 3600)
+      useChatStore.getState().setActualModel(null); useChatStore.getState().setAbortRequest(null)
+      autoOpenAppPreview(fullText)
+    }
+
+    const onSession = (sessionData) => {
+      if (sessionData?.model) useChatStore.getState().setActualModel(sessionData.model)
+      if (sessionData?.session_id && (!currentSession || !currentSession.id)) setCurrentSession({ id: sessionData.session_id })
+    }
+
+    const onRequireProject = () => {
+      clearStreaming(); useChatStore.getState().setStatusText('')
+      setPendingResend({ text: combinedText, image: imageToSend })
+      openProjectLocationPopup(sessionId)
+    }
+
     if (imageToSend) {
-      // chatStreamMultimodal(payload, imageData, onChunk, onDone, onSession, onStatus, onProcess)
       const abortFn = api.chatStreamMultimodal(
-        {
-          session_id: sessionId,
-          message: combinedText,
-          model: selectedOrchestrator,
-          use_rag: useRAG,
-          channel: channelType,
-          agent_mode: agentMode,
-        },
-        imageToSend,
-        (chunk) => handleChunk(chunk),
-        async (done) => {
-          const fullText = useChatStore.getState().streamingText
-          clearStreaming()
-          setImplPlan(null)  // dismiss plan card when execution completes
-          useChatStore.getState().setStatusText('')
-
-
-          if (done.drive_prompt) {
-            setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
-          }
-          if (done.model_used) setActiveModel(done.model_used)
-          if (done.capability_used) setActiveCapability(done.capability_used)
-
-          addMessage({
-            id: Date.now() + 1,
-            role: 'assistant',
-            content: fullText,
-            model: useChatStore.getState().actualModel || selectedOrchestrator,
-            rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
-            thinking_process: done.thinking_process || null,
-            created_at: new Date().toISOString(),
-          })
-          // Delay refresh slightly to ensure backend commit is fully visible (SQLite multi-worker safety)
-          setTimeout(() => {
-            api.listSessions().then((s) => {
-              const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-              const currentSessions = useChatStore.getState().sessions
-              setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
-            }).catch(() => {})
-          }, 800)
-          useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
-          
-          // Auto-hide timer
-          setShowLastSteps(true)
-          if (hideStepsTimerRef.current) clearTimeout(hideStepsTimerRef.current)
-          hideStepsTimerRef.current = setTimeout(() => {
-            setFadingOut(true)
-            setTimeout(() => {
-              setShowLastSteps(false)
-              setFadingOut(false)
-            }, 400)
-          }, 3600)
-
-          useChatStore.getState().setActualModel(null)
-          useChatStore.getState().setAbortRequest(null)
-          autoOpenAppPreview(fullText)  // Auto-open preview if app was built
-          setTimeout(() => { inputRef.current?.focus() }, 50)
-        },
-        (sessionData) => {
-          if (sessionData && sessionData.model) {
-            useChatStore.getState().setActualModel(sessionData.model)
-          }
-          if (sessionData && sessionData.session_id && (!currentSession || !currentSession.id)) {
-            setCurrentSession({ id: sessionData.session_id })
-          }
-        },
+        { session_id: sessionId, message: combinedText, model: selectedOrchestrator, use_rag: useRAG, channel: channelType, agent_mode: agentMode },
+        imageToSend, handleChunk, onDone, onSession,
         (status) => useChatStore.getState().setStatusText(status),
-        (procData) => handleAddProcessStep(procData),
-        (reqProjData) => {
-          clearStreaming()
-          useChatStore.getState().setStatusText('')
-          setPendingResend({ text: combinedText, image: imageToSend })
-          openProjectLocationPopup(sessionId)
-        }
+        (procData) => handleAddProcessStep(procData), onRequireProject
       )
       useChatStore.getState().setAbortRequest(abortFn)
     } else {
-      // chatStream(payload, onChunk, onDone, onSession, onPending, onStatus, onProcess, onPlan)
       const abortFn = api.chatStream(
-        {
-          session_id: sessionId,
-          message: combinedText,
-          model: selectedOrchestrator,
-          use_rag: useRAG,
-          channel: channelType,
-          agent_mode: agentMode,
-        },
-        (chunk) => handleChunk(chunk),
-        async (done) => {
-          const fullText = useChatStore.getState().streamingText
-          clearStreaming()
-          useChatStore.getState().setStatusText('')
-
-          if (done.drive_prompt) {
-            setDrivePromptContent(done.drive_prompt.content, done.drive_prompt.title)
-          }
-          if (done.model_used) setActiveModel(done.model_used)
-          if (done.capability_used) setActiveCapability(done.capability_used)
-
-          addMessage({
-            id: Date.now() + 1,
-            role: 'assistant',
-            content: fullText,
-            model: useChatStore.getState().actualModel || selectedOrchestrator,
-            rag_sources: done.sources?.length ? JSON.stringify(done.sources) : null,
-            thinking_process: done.thinking_process || null,
-            created_at: new Date().toISOString(),
-          })
-          // Delay refresh slightly to ensure backend commit is fully visible (SQLite multi-worker safety)
-          setTimeout(() => {
-            api.listSessions().then((s) => {
-              const safe = s.filter(x => !deletingIdsRef.current.has(x.id))
-              const currentSessions = useChatStore.getState().sessions
-              setSessions((currentSessions.length > 0 && safe.length === 0) ? currentSessions : safe)
-            }).catch(() => {})
-          }, 800)
-          useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
-          
-          // Auto-hide timer
-          setShowLastSteps(true)
-          if (hideStepsTimerRef.current) clearTimeout(hideStepsTimerRef.current)
-          hideStepsTimerRef.current = setTimeout(() => {
-            setFadingOut(true)
-            setTimeout(() => {
-              setShowLastSteps(false)
-              setFadingOut(false)
-            }, 400)
-          }, 3600)
-
-          useChatStore.getState().setActualModel(null)
-          useChatStore.getState().setAbortRequest(null)
-          autoOpenAppPreview(fullText)  // Auto-open preview if app was built
-          setTimeout(() => { inputRef.current?.focus() }, 50)
-        },
-        (sessionData) => {
-          if (sessionData && sessionData.model) {
-            useChatStore.getState().setActualModel(sessionData.model)
-          }
-          if (sessionData && sessionData.session_id && (!currentSession || !currentSession.id)) {
-            setCurrentSession({ id: sessionData.session_id })
-          }
-        },
-        (pendingData) => {
-          clearStreaming()
-          useChatStore.getState().setStatusText('')
-          setPendingConfirmation(pendingData)
-        },
+        { session_id: sessionId, message: combinedText, model: selectedOrchestrator, use_rag: useRAG, channel: channelType, agent_mode: agentMode },
+        handleChunk, onDone, onSession,
+        (pendingData) => { clearStreaming(); useChatStore.getState().setStatusText(''); setPendingConfirmation(pendingData) },
         (status) => useChatStore.getState().setStatusText(status),
         (procData) => handleAddProcessStep(procData),
-        // onPlan — plan now shown as status by orchestrator, no user confirmation needed
-        (_planData) => {
-          // Intentionally no-op: plan is displayed via status events
-        },
-        // onRequireProject — orchestrator now asks for path ONLY for new project creations
-        (_reqProjData) => {
-          clearStreaming()
-          useChatStore.getState().setStatusText('')
-          setPendingResend({ text: combinedText, image: imageToSend })
-          openProjectLocationPopup(sessionId)
-        },
-        // onImplPlan — Implementation plan (VS Code Copilot style)
-        (planData) => {
-          setImplPlan({
-            text: planData.content,
-            intent: planData.intent,
-            complexity: planData.complexity,
-            ts: Date.now(),
-          })
-        }
+        (_planData) => {},
+        onRequireProject,
+        (planData) => { setImplPlan({ text: planData.content, intent: planData.intent, complexity: planData.complexity, ts: Date.now() }) }
       )
       useChatStore.getState().setAbortRequest(abortFn)
     }
-    
-    // Auto-focus input after sending
-    setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus()
-      }
-    }, 100)
   }
 
-  function approveExecution(pendingData) {
-    setPendingConfirmation(null)
-    setStreaming(true)
-
-    const abortFn = api.executePending(
-      {
-        session_id: pendingData.session_id,
-        command: pendingData.command,
-        model: selectedOrchestrator,
-      },
-      (chunk) => handleChunk(chunk),
-      async (done) => {
-        const fullText = useChatStore.getState().streamingText
-        clearStreaming()
-        useChatStore.getState().setStatusText('')
-        useChatStore.getState().finalizeProcessSteps()  // Keep visible for review
-        useChatStore.getState().setActualModel(null)
-        useChatStore.getState().setAbortRequest(null)
-        addMessage({
-          id: Date.now() + 1,
-          role: 'assistant',
-          content: fullText,
-          model: useChatStore.getState().actualModel || selectedOrchestrator,
-          created_at: new Date().toISOString(),
-        })
-      }
-    )
-    useChatStore.getState().setAbortRequest(abortFn)
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === 'Escape' && streaming) {
-      e.preventDefault()
-      stopStreaming()
-      return
-    }
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
-
-  // ── Handle gambar dari picker ─────────────────────────────
-  async function handleImagePick(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      toast.loading('Menyiapkan gambar...')
-      const result = await api.uploadImage(file)
-      toast.dismiss()
-      setPendingImage({
-        base64: result.base64,
-        mime_type: result.mime_type,
-        preview: `data:${result.mime_type};base64,${result.base64}`,
-        filename: result.filename,
-      })
-      toast.success('Gambar siap dikirim!')
-    } catch (err) {
-      toast.dismiss()
-      toast.error('Gagal memuat gambar')
-    }
-    e.target.value = ''
-  }
-
-  // ── Handle voice recording ────────────────────────────────
-  async function startRecording() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-      const chunks = []
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data) }
-      mr.onstop = async () => {
-        setIsRecording(false)
-        setIsTranscribing(true)
-        stream.getTracks().forEach(t => t.stop())
-        const blob = new Blob(chunks, { type: 'audio/webm' })
-        try {
-          const result = await api.transcribeAudio(blob, 'voice.webm')
-          if (result.status === 'ok' && result.text) {
-            setInput(prev => prev ? prev + ' ' + result.text : result.text)
-            toast.success('🎙️ Suara ditranskrip!')
-          } else {
-            toast('Tidak ada suara yang terdeteksi', { icon: '🎤' })
-          }
-        } catch {
-          toast.error('Gagal mentranskrip suara')
-        } finally {
-          setIsTranscribing(false)
-        }
-      }
-      mr.start()
-      mediaRecorderRef.current = mr
-      setIsRecording(true)
-      toast('🔴 Merekam... Klik lagi untuk berhenti', { duration: 60000 })
-    } catch {
-      toast.error('Tidak bisa mengakses mikrofon')
-    }
-  }
-
-  function stopRecording() {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
-      toast.dismiss()
-    }
-  }
-
-  async function handleFileUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    try {
-      toast.loading('Mengupload file ke Knowledge Base...')
-      await api.uploadDoc(file)
-      toast.dismiss()
-      toast.success(`${file.name} berhasil diupload!`)
-    } catch {
-      toast.dismiss()
-      toast.error('Upload gagal')
-    }
-    e.target.value = ''
-  }
-
-
-
-  // ── Handler Export Chat ─────────────────────────────────────
+  // ── Export ──────────────────────────────────────────────────
   const handleExportChat = async (format, msgId) => {
     if (!currentSession?.id) return toast.error('Sesi aktif tidak ditemukan')
     const loadId = toast.loading(`Mengekspor sesi ke ${format.toUpperCase()}...`)
     try {
       const blob = await api.exportChat(currentSession.id, format, msgId)
       const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.style.display = 'none'
-      a.href = url
-      // Backend headers content-disposition already brings filename, but downloading blob requires setting download attr if needed,
-      // it's fine just naming it natively here too.
+      const a = document.createElement('a'); a.style.display = 'none'; a.href = url
       a.download = `Export_Chat_${new Date().getTime()}.${format}`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url); document.body.removeChild(a)
       toast.success('Berhasil mendownload!', { id: loadId })
-    } catch (e) {
-      toast.error(e.message, { id: loadId })
-    }
+    } catch (e) { toast.error(e.message, { id: loadId }) }
   }
 
-  // ── Quick-action cards for the welcome screen ──────────────
+  // ── Quick actions for welcome ──────────────────────────────
   const quickActions = [
     { icon: Sparkles, label: 'Chat Biasa', desc: 'Tanya jawab dengan AI', color: 'from-accent to-accent-2' },
     { icon: Zap, label: 'Perintah', desc: 'Jalankan otomasi/perintah', color: 'from-amber-500 to-orange-500' },
     { icon: FileText, label: 'Analisa Dokumen', desc: 'Upload & analisa file', color: 'from-emerald-500 to-teal-500' },
   ]
 
+  // ═══════════════════════════════════════════════════════════
+  // ── RENDER ─────────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════
   return (
     <div className="flex w-full h-full relative">
-      
+
       {/* Chat area */}
-      <div 
-        className={clsx(
-          'flex flex-col min-w-0 transition-all duration-300 relative bg-bg',
-          artifact.open ? 'w-1/2 flex-1' : 'w-full flex-1'
-        )}
+      <div
+        className={clsx('flex flex-col min-w-0 transition-all duration-300 relative bg-bg', artifact.open ? 'w-1/2 flex-1' : 'w-full flex-1')}
         {...dragHandlers}
       >
         <DragOverlay isVisible={isDragOver} />
 
         {/* Topbar */}
         <div className="h-12 border-b-[0.5px] border-border flex items-center px-6 gap-3 flex-shrink-0 bg-bg">
-          
           <span className="text-sm font-medium text-ink truncate flex-1">
             {currentSession?.title || t('select_or_create_session')}
           </span>
-
-          {/* RAG toggle */}
           <button
             onClick={() => setUseRAG(!useRAG)}
-            className={clsx(
-              'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border flex items-center gap-1.5',
-              useRAG
-                ? 'bg-success/15 border-success/50 text-success shadow-[0_0_12px_rgba(74,222,128,0.3)]'
-                : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5'
-            )}
+            className={clsx('px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border flex items-center gap-1.5', useRAG ? 'bg-success/15 border-success/50 text-success shadow-[0_0_12px_rgba(74,222,128,0.3)]' : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5')}
             title="Toggle RAG (Knowledge Base)"
           >
             📚 RAG
             {useRAG && <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"/>}
           </button>
-
-          {/* Agent Mode Toggle */}
           <button
             onClick={() => setAgentMode(!agentMode)}
-            className={clsx(
-              'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border flex items-center gap-1.5',
-              agentMode
-                ? 'bg-accent/15 border-accent/50 text-accent shadow-[0_0_12px_rgba(168,85,247,0.3)]'
-                : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5 hover:text-ink-2'
-            )}
-            title={agentMode
-              ? 'Agent Mode AKTIF — Orchestrator penuh: tool use, eksekusi kode, analisis mendalam. Klik untuk menonaktifkan.'
-              : 'Agent Mode NONAKTIF — Jawaban cepat & langsung. Aktifkan untuk task teknis, coding, atau eksekusi perintah.'}
+            className={clsx('px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 border flex items-center gap-1.5', agentMode ? 'bg-accent/15 border-accent/50 text-accent shadow-[0_0_12px_rgba(168,85,247,0.3)]' : 'bg-bg-4 border-border text-ink-3 hover:bg-bg-5 hover:text-ink-2')}
+            title={agentMode ? 'Agent Mode AKTIF' : 'Agent Mode NONAKTIF'}
           >
             🤖 Agent
-            <span className={clsx(
-              'text-[10px] font-bold px-1 py-0.5 rounded',
-              agentMode ? 'bg-accent/20 text-accent' : 'bg-bg-5 text-ink-4'
-            )}>
-              {agentMode ? 'ON' : 'OFF'}
-            </span>
+            <span className={clsx('text-[10px] font-bold px-1 py-0.5 rounded', agentMode ? 'bg-accent/20 text-accent' : 'bg-bg-5 text-ink-4')}>{agentMode ? 'ON' : 'OFF'}</span>
             {agentMode && <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse"/>}
           </button>
         </div>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto px-6 py-6 md:px-10 md:py-8 space-y-6">
+          {/* Welcome screen */}
           {!currentSession && (
             <div className="flex flex-col items-center justify-center h-full text-center">
-              {/* Animated brain icon */}
               <div className="relative mb-6">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center shadow-2xl shadow-accent/30">
-                  <span className="text-4xl">🧠</span>
-                </div>
-                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-success border border-bg flex items-center justify-center">
-                  <span className="w-2 h-2 rounded-full bg-white animate-pulse2" />
-                </div>
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-accent to-accent-2 flex items-center justify-center shadow-2xl shadow-accent/30"><span className="text-4xl">🧠</span></div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-success border border-bg flex items-center justify-center"><span className="w-2 h-2 rounded-full bg-white animate-pulse2" /></div>
               </div>
-
-              {/* Dynamic greeting using appName from global state */}
-              <h2 className="text-xl font-semibold text-ink mb-2">
-                {t('chat_greeting')} <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">{appName}</span>
-              </h2>
-              <p className="text-sm text-ink-3 mb-8 max-w-md leading-relaxed">
-                {t('chat_desc')}
-              </p>
-
-              {/* Quick action cards */}
+              <h2 className="text-xl font-semibold text-ink mb-2">{t('chat_greeting')} <span className="bg-gradient-to-r from-accent to-accent-2 bg-clip-text text-transparent">{appName}</span></h2>
+              <p className="text-sm text-ink-3 mb-8 max-w-md leading-relaxed">{t('chat_desc')}</p>
               <div className="flex gap-3 mb-8">
                 {quickActions.map(({ icon: Icon, label, desc, color }) => (
-                  <button
-                    key={label}
-                    onClick={newSession}
-                    className="flex flex-col items-center gap-2.5 px-5 py-4 bg-bg-2 border border-border rounded-xl hover:border-accent/40 hover:bg-bg-3 transition-all group w-40"
-                  >
-                    <div className={clsx('w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform', color)}>
-                      <Icon size={18} className="text-white" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-ink group-hover:text-accent-2 transition-colors">{label}</div>
-                      <div className="text-[11px] text-ink-3 mt-0.5">{desc}</div>
-                    </div>
+                  <button key={label} onClick={newSession} className="flex flex-col items-center gap-2.5 px-5 py-4 bg-bg-2 border border-border rounded-xl hover:border-accent/40 hover:bg-bg-3 transition-all group w-40">
+                    <div className={clsx('w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform', color)}><Icon size={18} className="text-white" /></div>
+                    <div><div className="text-sm font-semibold text-ink group-hover:text-accent-2 transition-colors">{label}</div><div className="text-[11px] text-ink-3 mt-0.5">{desc}</div></div>
                   </button>
                 ))}
               </div>
-
-              <button
-                onClick={newSession}
-                className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent/80 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-accent/25 hover:shadow-xl hover:shadow-accent/30"
-              >
-                <Plus size={15} /> Mulai Chat Baru
-              </button>
-
+              <button onClick={newSession} className="flex items-center gap-2 px-5 py-2.5 bg-accent hover:bg-accent/80 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-accent/25"><Plus size={15} /> Mulai Chat Baru</button>
               {models.length === 0 && (
                 <div className="mt-6 p-3 bg-warn/10 border border-warn/20 rounded-xl text-xs text-warn max-w-sm">
                   ⚠️ Belum ada model aktif. Buka <span className="font-mono">Integrasi</span> untuk menambahkan API key atau install Ollama.
@@ -3024,226 +528,96 @@ export default function Chat() {
             </div>
           )}
 
-          {loadingMsgs && (
-            <div className="flex items-center gap-2 text-ink-3 text-sm">
-              <Loader2 size={14} className="animate-spin" /> Memuat pesan...
-            </div>
-          )}
+          {loadingMsgs && (<div className="flex items-center gap-2 text-ink-3 text-sm"><Loader2 size={14} className="animate-spin" /> Memuat pesan...</div>)}
 
           {messages.map((msg) => (
-            <Bubble 
-              key={msg.id} 
-              msg={msg} 
-              isStreaming={false} 
-              onExport={handleExportChat}
-              onSpeak={handleSpeak}
-              speakingId={speakingId}
-              onOpenArtifact={openArtifact}
-              onOpenArtifactCard={openArtifactCard}
+            <Bubble
+              key={msg.id} msg={msg} isStreaming={false}
+              onExport={handleExportChat} onSpeak={handleSpeak} speakingId={speakingId}
+              onOpenArtifact={openArtifact} onOpenArtifactCard={openArtifactCard}
+              ProcessStepsPanel={ProcessStepsPanel}
             />
           ))}
 
-          {/* ── PROCESS STEPS PANEL — selalu di atas jawaban ── */}
-          {/* Live: tampil saat streaming */}
+          {/* Live Process Steps */}
           {streaming && processSteps.length > 0 && (
-            <div>
-              <ProcessStepsPanel
-                steps={processSteps}
-                isStreaming={streaming}
-                onStop={stopStreaming}
-                streamingText={streamingText}
-                onOpenArtifactCard={openArtifactCard}
-              />
-            </div>
+            <div><ProcessStepsPanel steps={processSteps} isStreaming={streaming} onStop={stopStreaming} streamingText={streamingText} onOpenArtifactCard={openArtifactCard} /></div>
           )}
 
-          {/* After done: tampil singkat lalu hilang otomatis */}
+          {/* Post-done Process Steps (auto-hide) */}
           {!streaming && showLastSteps && lastProcessSteps && lastProcessSteps.length > 0 &&
             lastProcessSteps.some(s => s.action && s.action !== 'Thinking' && s.action !== 'Thought') && (
             <div className={clsx("relative", fadingOut && "process-panel-fadeout")}>
-              <ProcessStepsPanel
-                steps={lastProcessSteps}
-                isStreaming={false}
-                onStop={null}
-                streamingText=""
-                onOpenArtifactCard={openArtifactCard}
-              />
+              <ProcessStepsPanel steps={lastProcessSteps} isStreaming={false} onStop={null} streamingText="" onOpenArtifactCard={openArtifactCard} />
               <div className="flex items-center justify-end px-10 pb-1 gap-2 animate-fade">
-                <span className="text-[10px] text-ink-3 opacity-50">
-                  Otomatis hilang dalam beberapa detik
-                </span>
-                <button
-                  onClick={() => setShowLastSteps(false)}
-                  className="text-[10px] text-ink-3 hover:text-danger transition-colors underline"
-                >
-                  Tutup
-                </button>
+                <span className="text-[10px] text-ink-3 opacity-50">Otomatis hilang dalam beberapa detik</span>
+                <button onClick={() => setShowLastSteps(false)} className="text-[10px] text-ink-3 hover:text-danger transition-colors underline">Tutup</button>
               </div>
             </div>
           )}
 
-          {/* ── STREAMING BUBBLE — jawaban di bawah thinking ── */}
+          {/* Agent Loop */}
+          {(agentLoopActive || agentLoopEvents.length > 0) && (
+            <div className="mb-4 w-full max-w-3xl pr-4"><AgentLoopVisualizer events={agentLoopEvents} isActive={agentLoopActive} isDone={agentLoopResult !== null} result={agentLoopResult} /></div>
+          )}
+
+          {/* Streaming Bubble */}
           {streaming && streamingText && (
-            <Bubble
-              msg={{ role: 'assistant', content: streamingText, model: actualModel || selectedOrchestrator, created_at: new Date().toISOString() }}
-              isStreaming={true}
-              onStop={stopStreaming}
-              onSpeak={handleSpeak}
-              speakingId={speakingId}
-              onOpenArtifact={openArtifact}
-              onOpenArtifactCard={openArtifactCard}
-            />
+            <Bubble msg={{ role: 'assistant', content: streamingText, model: actualModel || selectedOrchestrator, created_at: new Date().toISOString() }} isStreaming={true} onStop={stopStreaming} onSpeak={handleSpeak} speakingId={speakingId} onOpenArtifact={openArtifact} onOpenArtifactCard={openArtifactCard} ProcessStepsPanel={ProcessStepsPanel} />
           )}
 
-
-          {/* Real-time Routing Badge / Capability Indicator (HIDDEN) */}
-          {false && (activeModel || activeCapability) && !streaming && !pendingConfirmation && (
-            <div className="flex justify-center my-4 animate-fade">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-bg-2 border border-border rounded-full shadow-sm">
-                <Sparkles size={12} className="text-accent-2" />
-                <span className="text-[10px] text-ink-3">Dirutekan ke:</span>
-                {activeModel && (
-                  <span className="text-[10px] font-medium text-ink-2 bg-bg-3 px-2 py-0.5 rounded-full border border-border">
-                    {activeModel}
-                  </span>
-                )}
-                {activeCapability && (
-                  <span className="text-[10px] font-semibold text-accent-2 tracking-widest uppercase bg-accent-2/10 px-2 py-0.5 rounded-full">
-                    {activeCapability}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Implementation Plan Card (VS Code Copilot Style) ─────────── */}
+          {/* Implementation Plan Card */}
           {implPlan && streaming && (
             <div className="flex justify-start mb-4 w-full max-w-3xl pr-4 animate-fade-in-up">
               <div className="flex gap-3 w-full">
-                {/* Icon */}
-                <div className="w-7 h-7 mt-0.5 flex-shrink-0 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 border border-violet-500/40 flex items-center justify-center shadow-lg shadow-violet-500/10">
-                  <span className="text-sm">📋</span>
-                </div>
-                {/* Card body */}
+                <div className="w-7 h-7 mt-0.5 flex-shrink-0 rounded-lg bg-gradient-to-br from-violet-500/30 to-indigo-500/30 border border-violet-500/40 flex items-center justify-center shadow-lg shadow-violet-500/10"><span className="text-sm">📋</span></div>
                 <div className="flex-1 min-w-0 rounded-2xl rounded-tl-sm border border-violet-500/25 bg-gradient-to-br from-bg-2 to-bg-3 shadow-lg overflow-hidden">
-                  {/* Header */}
                   <div className="flex items-center gap-2 px-4 py-2.5 border-b border-violet-500/20 bg-violet-500/5">
                     <span className="text-[11px] font-semibold text-violet-300 tracking-wide uppercase">Rencana Implementasi</span>
-                    <span className="ml-auto flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
-                      <span className="text-[10px] text-violet-400/70">Eksekusi berjalan otomatis</span>
-                    </span>
+                    <span className="ml-auto flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" /><span className="text-[10px] text-violet-400/70">Eksekusi berjalan otomatis</span></span>
                   </div>
-                  {/* Plan content */}
                   <div className="px-4 py-3">
                     <div className="text-[12.5px] text-ink-2 leading-relaxed whitespace-pre-wrap font-mono plan-content">
-                      {/* Render plan text with basic markdown highlights */}
                       {implPlan.text.split('\n').map((line, i) => {
-                        if (line.startsWith('## ')) {
-                          return <div key={i} className="text-[13px] font-bold text-ink mb-1.5 mt-0.5 font-sans">{line.replace('## ', '')}</div>
-                        }
-                        if (line.startsWith('**') && line.endsWith('**')) {
-                          return <div key={i} className="text-[11px] font-semibold text-ink-2 mb-0.5 font-sans">{line.replace(/\*\*/g, '')}</div>
-                        }
-                        if (/^\d+\./.test(line)) {
-                          const num = line.match(/^(\d+)\.\s*/)[1]
-                          const rest = line.replace(/^\d+\.\s*/, '')
-                          return (
-                            <div key={i} className="flex gap-2 mb-0.5 items-baseline">
-                              <span className="text-[10px] font-bold text-violet-400 tabular-nums w-4 flex-shrink-0">{num}.</span>
-                              <span className="text-[12px] text-ink-2">{rest}</span>
-                            </div>
-                          )
-                        }
-                        if (line.startsWith('- `') || line.startsWith('- ')) {
-                          const content = line.replace(/^- /, '')
-                          return (
-                            <div key={i} className="flex gap-1.5 mb-0.5 items-baseline">
-                              <span className="text-violet-400/60 text-[10px] flex-shrink-0">▸</span>
-                              <span className="text-[12px] text-ink-3">
-                                {content.includes('`') 
-                                  ? content.split('`').map((part, pi) =>
-                                      pi % 2 === 1
-                                        ? <code key={pi} className="text-emerald-400 bg-bg-4 px-1 rounded text-[11px]">{part}</code>
-                                        : <span key={pi}>{part}</span>
-                                    )
-                                  : content
-                                }
-                              </span>
-                            </div>
-                          )
-                        }
-                        if (line.startsWith('**')) {
-                          return <div key={i} className="text-[11px] font-semibold text-accent-2 mb-0.5 font-sans mt-1">{line.replace(/\*\*/g, '')}</div>
-                        }
+                        if (line.startsWith('## ')) return <div key={i} className="text-[13px] font-bold text-ink mb-1.5 mt-0.5 font-sans">{line.replace('## ', '')}</div>
+                        if (line.startsWith('**') && line.endsWith('**')) return <div key={i} className="text-[11px] font-semibold text-ink-2 mb-0.5 font-sans">{line.replace(/\*\*/g, '')}</div>
+                        if (/^\d+\./.test(line)) { const num = line.match(/^(\d+)\.\s*/)[1]; const rest = line.replace(/^\d+\.\s*/, ''); return (<div key={i} className="flex gap-2 mb-0.5 items-baseline"><span className="text-[10px] font-bold text-violet-400 tabular-nums w-4 flex-shrink-0">{num}.</span><span className="text-[12px] text-ink-2">{rest}</span></div>) }
+                        if (line.startsWith('- ')) { const content = line.replace(/^- /, ''); return (<div key={i} className="flex gap-1.5 mb-0.5 items-baseline"><span className="text-violet-400/60 text-[10px] flex-shrink-0">▸</span><span className="text-[12px] text-ink-3">{content.includes('`') ? content.split('`').map((part, pi) => pi % 2 === 1 ? <code key={pi} className="text-emerald-400 bg-bg-4 px-1 rounded text-[11px]">{part}</code> : <span key={pi}>{part}</span>) : content}</span></div>) }
+                        if (line.startsWith('**')) return <div key={i} className="text-[11px] font-semibold text-accent-2 mb-0.5 font-sans mt-1">{line.replace(/\*\*/g, '')}</div>
                         if (!line.trim()) return <div key={i} className="h-1.5" />
                         return <div key={i} className="text-[12px] text-ink-3 mb-0.5">{line}</div>
                       })}
                     </div>
                   </div>
-                  {/* Footer */}
                   <div className="flex items-center gap-2 px-4 py-2 border-t border-border/50 bg-bg-4/50">
-                    <div className="flex gap-1">
-                      {[0,1,2,3,4].map(i => (
-                        <div key={i} className="w-1 h-1 rounded-full bg-violet-400/40 animate-pulse" style={{animationDelay: i * 0.15 + 's'}} />
-                      ))}
-                    </div>
+                    <div className="flex gap-1">{[0,1,2,3,4].map(i => <div key={i} className="w-1 h-1 rounded-full bg-violet-400/40 animate-pulse" style={{animationDelay: i * 0.15 + 's'}} />)}</div>
                     <span className="text-[10px] text-ink-3">Mengeksekusi rencana di atas...</span>
-                    <button
-                      onClick={() => setImplPlan(null)}
-                      className="ml-auto text-[10px] text-ink-3/50 hover:text-ink-3 transition-colors"
-                    >sembunyikan</button>
+                    <button onClick={() => setImplPlan(null)} className="ml-auto text-[10px] text-ink-3/50 hover:text-ink-3 transition-colors">sembunyikan</button>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Drive Upload Prompt UI */}
+          {/* Drive Upload Prompt */}
           {drivePromptContent && !streaming && !pendingConfirmation && (
-             <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
-               <div className="flex gap-4">
-                 <div className="w-8 h-8 flex-shrink-0 bg-blue-500/20 border border-blue-500/50 rounded-lg flex items-center justify-center">
-                   <CloudUpload size={16} className="text-blue-500" />
-                 </div>
-                 <div className="flex-1 min-w-0 bg-bg-2 border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-md">
-                   <div className="flex items-center justify-between mb-2">
-                     <span className="text-sm font-semibold text-ink">Google Drive Upload Ready</span>
-                   </div>
-                   <div className="text-xs text-ink-2 mb-3">
-                     <p>Pilih metadata berikut untuk di-upload:</p>
-                   </div>
-                   <div className="bg-bg-3 p-2.5 rounded border border-border font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap max-h-32">
-                     {drivePromptTitle && <div className="font-semibold border-b border-border pb-1 mb-1">{drivePromptTitle}</div>}
-                     {drivePromptContent}
-                   </div>
-                   <div className="flex gap-3">
-                     <button
-                       onClick={() => {
-                          addMessage({
-                            id: Date.now() + 1,
-                            role: 'user',
-                            content: `Teruskan metadata ini dan lakukan upload ke gdrive: ${drivePromptTitle || ''}\n\n${drivePromptContent}`,
-                            model: selectedOrchestrator,
-                            created_at: new Date().toISOString(),
-                          })
-                          setInput(`Tolong upload metadata tadi`)
-                          clearDrivePrompt()
-                       }}
-                       className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-lg text-xs shadow-md transition-all"
-                     >
-                       Ya, upload sekarang!
-                     </button>
-                     <button
-                       onClick={() => clearDrivePrompt()}
-                       className="flex-1 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink font-medium py-2 border border-border rounded-lg text-xs transition-all"
-                     >
-                       Batal
-                     </button>
-                   </div>
-                 </div>
-               </div>
-             </div>
+            <div className="flex justify-start mb-6 w-full max-w-3xl pr-4 animate-fade-in-up">
+              <div className="flex gap-4">
+                <div className="w-8 h-8 flex-shrink-0 bg-blue-500/20 border border-blue-500/50 rounded-lg flex items-center justify-center"><CloudUpload size={16} className="text-blue-500" /></div>
+                <div className="flex-1 min-w-0 bg-bg-2 border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-md">
+                  <div className="flex items-center justify-between mb-2"><span className="text-sm font-semibold text-ink">Google Drive Upload Ready</span></div>
+                  <div className="text-xs text-ink-2 mb-3"><p>Pilih metadata berikut untuk di-upload:</p></div>
+                  <div className="bg-bg-3 p-2.5 rounded border border-border font-mono text-[11px] text-ink mb-4 overflow-x-auto whitespace-pre-wrap max-h-32">
+                    {drivePromptTitle && <div className="font-semibold border-b border-border pb-1 mb-1">{drivePromptTitle}</div>}
+                    {drivePromptContent}
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => { addMessage({ id: Date.now() + 1, role: 'user', content: `Teruskan metadata ini dan lakukan upload ke gdrive: ${drivePromptTitle || ''}\n\n${drivePromptContent}`, model: selectedOrchestrator, created_at: new Date().toISOString() }); setInput('Tolong upload metadata tadi'); clearDrivePrompt() }} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-lg text-xs shadow-md transition-all">Ya, upload sekarang!</button>
+                    <button onClick={() => clearDrivePrompt()} className="flex-1 bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink font-medium py-2 border border-border rounded-lg text-xs transition-all">Batal</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
           <div ref={messagesEndRef} className="h-4" />
@@ -3251,318 +625,48 @@ export default function Chat() {
 
         {/* Input area */}
         {currentSession && (
-          <div className="p-4 border-t-[0.5px] border-border bg-bg flex-shrink-0">
-
-            {/* Streaming status bar */}
-            {streaming && (
-              <div className="flex items-center justify-between mb-2 px-1">
-                <div className="flex items-center gap-1.5 text-xs text-ink-3">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse2" />
-                  AI sedang merespons...
-                  <span className="text-ink-3 font-mono">
-                    {streamingText.length} karakter
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-ink-3">
-                  <kbd className="px-1.5 py-0.5 bg-bg-4 border border-border rounded font-mono">Esc</kbd>
-                  <span>untuk stop</span>
-                </div>
-              </div>
-            )}
-
-            {/* Preview gambar yang akan dikirim */}
-            {pendingImage && (
-              <div className="flex items-center gap-2 mb-2 px-1 animate-fade">
-                <div className="relative">
-                  <img
-                    src={pendingImage.preview}
-                    alt="Preview gambar"
-                    className="h-14 w-14 object-cover rounded-lg border border-border"
-                  />
-                  <button
-                    onClick={() => setPendingImage(null)}
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-danger flex items-center justify-center"
-                  >
-                    <X size={9} className="text-white" />
-                  </button>
-                </div>
-                <span className="text-[11px] text-ink-3">Gambar siap dikirim</span>
-              </div>
-            )}
-
-            {/* Lampiran file context chat */}
-            {attachedFiles.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2 px-1 animate-fade">
-                {attachedFiles.map((f) => (
-                  <FileChip key={f.id} file={f} onRemove={removeFile} />
-                ))}
-              </div>
-            )}
-
-            {fileError && (
-              <div className="text-[11px] text-danger mb-2 px-1 animate-fade">⚠️ {fileError}</div>
-            )}
-
-            <div className="flex gap-2 items-end">
-              {/* Upload dokumen (paperclip) */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                accept=".pdf,.docx,.txt,.csv,.md"
-              />
-              {/* Lampiran Context Chat */}
-              <input
-                ref={chatContextFileRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files) addFiles(e.target.files);
-                  e.target.value = '';
-                }}
-                accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.md,.png,.jpg,.jpeg,.webp"
-              />
-              {/* Image picker hidden input */}
-              <input
-                ref={imagePickerRef}
-                type="file"
-                className="hidden"
-                onChange={handleImagePick}
-                accept="image/*"
-              />
-
-              {/* Attachment Toggle & Menu */}
-              <div className="relative flex items-end gap-2">
-                {/* Toggle Button for Mobile */}
-                <button
-                  onClick={() => setShowMobileAttachMenu(!showMobileAttachMenu)}
-                  className="md:hidden w-11 h-11 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
-                  disabled={streaming}
-                >
-                  <Plus size={18} className={clsx("transition-transform duration-200", showMobileAttachMenu && "rotate-45")} />
-                </button>
-
-                {/* The Buttons Container (Popup di mobile, Inline di desktop) */}
-                <div className={clsx(
-                  "flex md:flex-row gap-2 transition-all duration-200",
-                  "absolute md:relative bottom-[110%] md:bottom-auto left-0 md:left-auto flex-col-reverse bg-bg-3 md:bg-transparent border border-border md:border-none p-2 md:p-0 rounded-2xl shadow-2xl md:shadow-none z-50",
-                  showMobileAttachMenu 
-                    ? "opacity-100 pointer-events-auto translate-y-0 scale-100" 
-                    : "opacity-0 pointer-events-none translate-y-2 scale-95 md:opacity-100 md:pointer-events-auto md:translate-y-0 md:scale-100"
-                )}>
-                  {/* Tombol Lampirkan File ke Chat */}
-                  <button
-                    onClick={() => { chatContextFileRef.current?.click(); setShowMobileAttachMenu(false); }}
-                    disabled={streaming}
-                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
-                    title="Lampirkan file (PDF, Excel, Word) ke chat"
-                  >
-                    <FilePlus size={16} className="md:w-[15px] md:h-[15px]" />
-                  </button>
-
-                  <button
-                    onClick={() => { fileInputRef.current?.click(); setShowMobileAttachMenu(false); }}
-                    disabled={streaming}
-                    className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-ink transition-all disabled:opacity-40"
-                    title="Upload file ke Knowledge Base"
-                  >
-                    <Paperclip size={16} className="md:w-[15px] md:h-[15px]" />
-                  </button>
-
-                  {/* Kamera */}
-                  <button
-                    onClick={() => { imagePickerRef.current?.click(); setShowMobileAttachMenu(false); }}
-                    disabled={streaming}
-                    className={clsx(
-                      'w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border transition-all disabled:opacity-40',
-                      pendingImage
-                        ? 'border-accent bg-accent/20 text-accent'
-                        : 'border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
-                    )}
-                    title="Kirim gambar ke AI"
-                  >
-                    <ImagePlus size={16} className="md:w-[15px] md:h-[15px]" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Mikrofon (STT ke teks) */}
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                disabled={streaming || isTranscribing}
-                className={clsx(
-                  'w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border transition-all disabled:opacity-40',
-                  isRecording
-                    ? 'border-danger bg-danger/20 text-danger animate-pulse'
-                    : isTranscribing
-                      ? 'border-warn bg-warn/20 text-warn'
-                      : 'border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-accent'
-                )}
-                title={isRecording ? 'Berhenti merekam' : isTranscribing ? 'Mentranskripsi...' : 'Rekam suara ke teks'}
-              >
-                {isRecording ? <MicOff size={16} className="md:w-[15px] md:h-[15px]" /> : isTranscribing ? <Loader2 size={16} className="animate-spin md:w-[15px] md:h-[15px]" /> : <Mic size={16} className="md:w-[15px] md:h-[15px]" />}
-              </button>
-
-              {/* Voice Mode (percakapan suara dua arah) */}
-              <button
-                onClick={() => setVoiceModeOpen(true)}
-                disabled={streaming}
-                className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg border border-border bg-bg-4 hover:bg-bg-5 text-ink-2 hover:text-purple-400 transition-all disabled:opacity-40"
-                title="Voice Mode — ngobrol dengan AI via suara"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <ellipse cx="12" cy="12" rx="10" ry="10"/>
-                  <path d="M12 7a3 3 0 0 0-3 3v4a3 3 0 0 0 6 0v-4a3 3 0 0 0-3-3z"/>
-                  <path d="M9 20h6"/><path d="M12 17v3"/>
-                </svg>
-              </button>
-
-              {/* Text input */}
-              <div 
-                className="flex-1 relative"
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.add('ring-2', 'ring-accent', 'bg-accent/5')
-                }}
-                onDragLeave={(e) => {
-                  e.currentTarget.classList.remove('ring-2', 'ring-accent', 'bg-accent/5')
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  e.currentTarget.classList.remove('ring-2', 'ring-accent', 'bg-accent/5')
-                  const files = e.dataTransfer.files
-                  if (files.length > 0) {
-                    const file = files[0]
-                    if (file.type.startsWith('image/')) {
-                      handleImagePick({ target: { files } })
-                    }
-                  }
-                }}
-              >
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => {
-                    setInput(e.target.value)
-                    e.target.style.height = 'auto'
-                    e.target.style.height = Math.min(e.target.scrollHeight, 160) + 'px'
-                  }}
-                  onKeyDown={handleKeyDown}
-                  onPaste={(e) => {
-                    const items = e.clipboardData?.items;
-                    if (items) {
-                      const filesToAttach = [];
-                      for (let i = 0; i < items.length; i++) {
-                        if (items[i].kind === 'file') {
-                          const file = items[i].getAsFile();
-                          if (file) filesToAttach.push(file);
-                        }
-                      }
-                      if (filesToAttach.length > 0) {
-                        e.preventDefault();
-                        addFiles(filesToAttach);
-                      }
-                    }
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.parentElement?.classList.remove('ring-2', 'ring-accent', 'bg-accent/5')
-                  }}
-                  placeholder={
-                    streaming
-                      ? 'Ketik jawaban atau pesan baru... (Enter untuk kirim)'
-                      : 'Ketik pesan, perintah, atau analisa data...'
-                  }
-                  rows={1}
-                  className="w-full bg-bg-2 border-[0.5px] border-border rounded-2xl md:rounded-2xl px-4 md:px-4 py-3 md:py-3 text-[15px] md:text-[15px] text-ink placeholder-ink-3 outline-none focus:border-accent transition-colors resize-none shadow-sm"
-                />
-              </div>
-
-              {/* Action button — Stop (always visible during streaming), Send (when has text) */}
-              {streaming && !input.trim() ? (
-                // Pure stop button — no input typed
-                <button
-                  onClick={stopStreaming}
-                  className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg bg-danger hover:bg-danger/80 text-white transition-all shadow-lg shadow-danger/20"
-                  title="Stop (Esc)"
-                >
-                  <Square size={17} className="md:w-[16px] md:h-[16px]" fill="white" />
-                </button>
-              ) : streaming && input.trim() ? (
-                // Interrupt + Send button — user typed a reply while streaming
-                <button
-                  onClick={sendMessage}
-                  className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg bg-accent hover:bg-accent/80 text-white transition-all shadow-lg shadow-accent/20 relative"
-                  title="Interrupt & Kirim jawaban"
-                >
-                  <Send size={16} className="md:w-[15px] md:h-[15px] translate-x-[-1px] translate-y-[1px]" />
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-danger border border-bg-2" />
-                </button>
-              ) : (
-                /* SEND button — normal */
-                <button
-                  onClick={sendMessage}
-                  disabled={!input.trim() || !currentSession}
-                  className="w-11 h-11 md:w-9 md:h-9 active:scale-95 flex-shrink-0 flex items-center justify-center rounded-xl md:rounded-lg bg-accent hover:bg-accent/80 disabled:opacity-40 text-white transition-all"
-                  title="Kirim (Enter)"
-                >
-                  <Send size={16} className="md:w-[15px] md:h-[15px] translate-x-[-1px] translate-y-[1px]" />
-                </button>
-              )}
-            </div>
-          </div>
+          <ChatInput
+            input={input}
+            setInput={setInput}
+            streaming={streaming}
+            streamingText={streamingText}
+            currentSession={currentSession}
+            onSend={sendMessage}
+            onStop={stopStreaming}
+            attachedFiles={attachedFiles}
+            removeFile={removeFile}
+            addFiles={addFiles}
+            fileError={fileError}
+            pendingImage={pendingImage}
+            setPendingImage={setPendingImage}
+            selectedOrchestrator={selectedOrchestrator}
+          />
         )}
       </div>
 
-      {/* Artifacts Panel — slideout dari kanan */}
+      {/* Artifacts Panel */}
       {artifact.open && (
-        <ArtifactsPanel
-          code={artifact.code}
-          language={artifact.language}
-          title={artifact.title}
-          isPreviewUrl={artifact.isPreviewUrl}
-          onClose={closeArtifact}
-        />
+        <ArtifactsPanel code={artifact.code} language={artifact.language} title={artifact.title} isPreviewUrl={artifact.isPreviewUrl} onClose={closeArtifact} />
       )}
-      
+
       {/* Project Location Popup */}
       {projectLocationPopup.open && (
         <ProjectLocationPopup
           isOpen={projectLocationPopup.open}
           sessionId={projectLocationPopup.sessionId}
-          onClose={() => {
-            closeProjectLocationPopup()
-            setPendingResend(null) // clear if canceled
-          }}
+          onClose={() => { closeProjectLocationPopup(); setPendingResend(null) }}
           onLocationSet={(projectPath) => {
-            // Store project path in session and notify user
             toast.success(`📁 Lokasi proyek disimpan: ${projectPath}`)
-            if (pendingResend) {
-              executeChatStream(pendingResend.text, pendingResend.image, projectLocationPopup.sessionId)
-              setPendingResend(null)
-            }
+            if (pendingResend) { executeChatStream(pendingResend.text, pendingResend.image, projectLocationPopup.sessionId); setPendingResend(null) }
           }}
         />
       )}
 
       {/* File Manager Popup */}
-      <FileManagerPopup
-        isOpen={fileManagerState.isOpen}
-        mode={fileManagerState.mode}
-        intent={fileManagerState.intent}
-        pendingMessage={fileManagerState.pendingMessage}
-        onConfirm={handleFileManagerConfirm}
-        onClose={closeFileManager}
-      />
+      <FileManagerPopup isOpen={fileManagerState.isOpen} mode={fileManagerState.mode} intent={fileManagerState.intent} pendingMessage={fileManagerState.pendingMessage} onConfirm={handleFileManagerConfirm} onClose={closeFileManager} />
 
-      {/* Voice Mode Overlay */}
-      <VoiceMode
-        isOpen={voiceModeOpen}
-        onClose={() => setVoiceModeOpen(false)}
-        sessionId={currentSession?.id}
-        selectedModel={selectedOrchestrator}
-      />
+      {/* Voice Mode */}
+      <VoiceMode isOpen={voiceModeOpen} onClose={() => setVoiceModeOpen(false)} sessionId={currentSession?.id} selectedModel={selectedOrchestrator} />
     </div>
   )
 }

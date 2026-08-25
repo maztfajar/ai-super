@@ -1,47 +1,28 @@
 {
-  "sumopod/gpt-5-mini": [
-    "vision",
-    "coding",
+  "sumopod/deepseek-v4-pro": [
     "reasoning",
+    "analysis",
+    "coding"
+  ],
+  "sumopod/gemini/gemini-3.1-flash-lite": [
+    "text",
+    "free",
     "speed"
   ],
-  "sumopod/deepseek-v4-pro": [
-    "analysis",
+  "sumopod/qwen3.7-plus": [
+    "reasoning",
+    "writing"
+  ],
+  "sumopod/text-embedding-3-small": [
+    "embedding"
+  ],
+  "sumopod/glm-5.2": [
+    "text"
+  ],
+  "sumopod/gpt-5-mini": [
+    "reasoning",
+    "vision",
     "coding",
-    "reasoning"
-  ],
-  "sumopod/minimax/speech-2.8-hd": [
-    "tts",
-    "speed",
-    "audio"
-  ],
-  "sumopod/gemini/gemini-2.5-flash": [
-    "vision",
-    "reasoning",
-    "speed",
-    "text"
-  ],
-  "pollinations/auto": [
-    "image_gen",
-    "text"
-  ],
-  "pollinations/flux": [
-    "image_gen",
-    "text"
-  ],
-  "pollinations/turbo": [
-    "image_gen",
-    "speed",
-    "text"
-  ],
-  "pollinations/midjourney": [
-    "image_gen",
-    "text"
-  ],
-  "gemini-2.5-flash": [
-    "reasoning",
-    "text",
-    "vision",
     "speed"
   ],
   "ollama/llama3.1": [
@@ -71,158 +52,41 @@
   "ollama/dolphin-mistral:latest": [
     "text"
   ],
-  "sumopod/gemini/gemini-3.1-flash-lite": [
+  "pollinations/auto": [
     "text",
-    "free",
-    "speed"
+    "image_gen"
   ],
-  "sumopod/gemini/gemini-3.5-flash": [
+  "pollinations/flux": [
     "text",
+    "image_gen"
+  ],
+  "pollinations/turbo": [
+    "text",
+    "image_gen",
     "speed"
   ],
-  "sumopod/gemini/gemini-3.1-pro-preview": [
-    "analysis",
-    "reasoning",
-    "speed"
+  "pollinations/midjourney": [
+    "text",
+    "image_gen"
   ],
-  "sumopod/gemini/gemini-embedding-001": [
-    "embedding",
-    "speed"
-  ],
-  "sumopod/gpt-4.1": [
-    "text"
-  ],
-  "sumopod/gpt-4.1-mini": [
-    "speed"
-  ],
-  "sumopod/gpt-4.1-nano": [
+  "ollama/ghifidanukusumo/tantular:lite": [
     "free",
     "speed"
   ],
-  "sumopod/gpt-5": [
+  "ollama/qwen3.5:latest": [
     "text"
   ],
-  "sumopod/gpt-5-nano": [
-    "free",
-    "speed"
-  ],
-  "sumopod/gpt-5.4-nano": [
-    "free",
-    "speed"
-  ],
-  "sumopod/gpt-5.4-mini": [
-    "speed"
-  ],
-  "sumopod/gpt-5.4": [
-    "text"
-  ],
-  "sumopod/claude-sonnet-4-6": [
-    "text"
-  ],
-  "sumopod/claude-haiku-4-5": [
-    "creative",
-    "writing",
+  "sumopod/gemini/gemini-3.5-flash-lite": [
     "speed",
-    "formatting"
-  ],
-  "sumopod/claude-opus-4-7": [
+    "free",
     "text"
   ],
-  "sumopod/claude-opus-4-8": [
+  "sumopod/deepseek-v4-flash-vision-exp": [
+    "vision",
+    "speed",
     "text"
   ],
   "sumopod/kimi-k2.6": [
     "text"
-  ],
-  "sumopod/MiniMax-M2.7-highspeed": [
-    "speed"
-  ],
-  "sumopod/mimo-v2.5": [
-    "text"
-  ],
-  "sumopod/glm-5.1": [
-    "text"
-  ],
-  "sumopod/glm-5-turbo": [
-    "speed"
-  ],
-  "sumopod/text-embedding-3-large": [
-    "embedding",
-    "reasoning",
-    "analysis"
-  ],
-  "sumopod/text-embedding-3-small": [
-    "embedding"
-  ],
-  "sumopod/qwen3.7-max": [
-    "text"
-  ],
-  "sumopod/glm-5": [
-    "text"
-  ],
-  "sumopod/qwen3.6-flash": [
-    "text",
-    "speed"
-  ],
-  "sumopod/qwen3.6-plus": [
-    "vision",
-    "reasoning",
-    "coding",
-    "writing",
-    "speed"
-  ],
-  "sumopod/seed-2-0-mini": [
-    "speed"
-  ],
-  "sumopod/seed-2-0-pro": [
-    "reasoning",
-    "analysis"
-  ],
-  "sumopod/seed-2-0-code": [
-    "text"
-  ],
-  "sumopod/seed-2-0-lite": [
-    "free",
-    "speed"
-  ],
-  "sumopod/qwen3.7-plus": [
-    "writing",
-    "reasoning"
-  ],
-  "sumopod/gemini/gemini-3-flash-preview": [
-    "text",
-    "speed"
-  ],
-  "sumopod/kimi-k2.7": [
-    "text"
-  ],
-  "sumopod/MiniMax-M3": [
-    "speed"
-  ],
-  "sumopod/deepseek-v4-flash": [
-    "text",
-    "speed"
-  ],
-  "sumopod/gpt-4o-mini": [
-    "speed"
-  ],
-  "sumopod/gpt-4o": [
-    "text"
-  ],
-  "sumopod/glm-5v-turbo": [
-    "speed"
-  ],
-  "sumopod/claude-fable-5": [
-    "text"
-  ],
-  "sumopod/claude-sonnet-5": [
-    "text"
-  ],
-  "sumopod/glm-5.2": [
-    "text"
-  ],
-  "sumopod/mimo-v2.5-pro": [
-    "reasoning",
-    "analysis"
   ]
 }

@@ -956,3 +956,742 @@ async def schedule_task(
         log.error("Failed to schedule task", error=str(e))
         return f"Error menjadwalkan task: {str(e)}"
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OFFICE & COMPUTER USE TOOLS (v5.0)
+# Menggunakan library yang sudah ada: openpyxl, python-docx, python-pptx
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Excel Tools ───────────────────────────────────────────────────────────────
+
+async def excel_read(path: str, sheet: str = None, max_rows: int = 100) -> str:
+    """
+    Baca file Excel (.xlsx) dan kembalikan sebagai teks tabel.
+
+    Args:
+        path: Path ke file Excel
+        sheet: Nama sheet (default: sheet pertama)
+        max_rows: Maksimal baris yang dibaca (default: 100)
+
+    Returns:
+        Isi Excel sebagai teks tabel
+    """
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(path, data_only=True)
+        ws = wb[sheet] if sheet else wb.active
+        rows = []
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i >= max_rows:
+                rows.append(f"... (dan {ws.max_row - max_rows} baris lagi)")
+                break
+            row_str = " | ".join(str(c) if c is not None else "" for c in row)
+            rows.append(row_str)
+        wb.close()
+        sheet_name = ws.title
+        return f"📊 Excel: {path} [Sheet: {sheet_name}] ({ws.max_row} baris, {ws.max_column} kolom)\n\n" + "\n".join(rows)
+    except ImportError:
+        return "Error: openpyxl tidak terinstall. Jalankan: pip install openpyxl"
+    except Exception as e:
+        return f"Error membaca Excel: {e}"
+
+
+async def excel_write(
+    path: str,
+    data: list,
+    sheet: str = "Sheet1",
+    headers: list = None,
+    overwrite: bool = False
+) -> str:
+    """
+    Tulis data ke file Excel (.xlsx).
+
+    Args:
+        path: Path output file Excel
+        data: List of lists (baris data), contoh: [["Alice", 25], ["Bob", 30]]
+        sheet: Nama sheet
+        headers: Nama kolom, contoh: ["Nama", "Umur"]
+        overwrite: True untuk menimpa file yang ada
+
+    Returns:
+        Konfirmasi penulisan
+    """
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+
+        if os.path.exists(path) and not overwrite:
+            return f"File {path} sudah ada. Set overwrite=true untuk menimpa."
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = sheet
+
+        # Tulis headers dengan styling
+        if headers:
+            ws.append(headers)
+            header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
+            header_font = Font(bold=True, color="FFFFFF")
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center")
+
+        # Tulis data
+        row_count = 0
+        if isinstance(data, list):
+            for row in data:
+                if isinstance(row, list):
+                    ws.append(row)
+                elif isinstance(row, dict):
+                    ws.append(list(row.values()))
+                row_count += 1
+
+        # Auto-fit kolom
+        for col in ws.columns:
+            max_len = max((len(str(c.value)) for c in col if c.value), default=10)
+            ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 50)
+
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        wb.save(path)
+        wb.close()
+        return f"✅ Excel berhasil dibuat: {path}\n📊 Sheet: {sheet} | {row_count} baris data" + (f" | {len(headers)} kolom" if headers else "")
+    except Exception as e:
+        return f"Error menulis Excel: {e}"
+
+
+async def excel_formula(path: str, cell: str, formula: str, sheet: str = None) -> str:
+    """
+    Masukkan formula ke sel Excel tertentu.
+
+    Args:
+        path: Path ke file Excel
+        cell: Sel target, contoh: "D2" atau "SUM_ROW" untuk auto-sum
+        formula: Formula Excel, contoh: "=SUM(B2:B10)" atau "=AVERAGE(C2:C10)"
+        sheet: Nama sheet (default: aktif)
+
+    Returns:
+        Konfirmasi
+    """
+    try:
+        import openpyxl
+        wb = openpyxl.load_workbook(path)
+        ws = wb[sheet] if sheet else wb.active
+        ws[cell] = formula
+        wb.save(path)
+        wb.close()
+        return f"✅ Formula '{formula}' dimasukkan ke sel {cell} pada {path}"
+    except Exception as e:
+        return f"Error: {e}"
+
+
+# ── Word Tools ────────────────────────────────────────────────────────────────
+
+async def word_read(path: str) -> str:
+    """
+    Baca file Word (.docx) dan kembalikan isinya sebagai teks.
+
+    Args:
+        path: Path ke file .docx
+
+    Returns:
+        Isi dokumen Word sebagai teks
+    """
+    try:
+        from docx import Document
+        doc = Document(path)
+        sections = []
+
+        # Baca paragraf
+        for para in doc.paragraphs:
+            if para.style.name.startswith("Heading"):
+                level = para.style.name.replace("Heading ", "")
+                prefix = "#" * int(level) if level.isdigit() else "#"
+                sections.append(f"{prefix} {para.text}")
+            elif para.text.strip():
+                sections.append(para.text)
+
+        # Baca tabel jika ada
+        for i, table in enumerate(doc.tables):
+            sections.append(f"\n[Tabel {i+1}]")
+            for row in table.rows:
+                sections.append(" | ".join(cell.text for cell in row.cells))
+
+        return f"📄 Word: {path}\n\n" + "\n".join(sections)
+    except ImportError:
+        return "Error: python-docx tidak terinstall. Jalankan: pip install python-docx"
+    except Exception as e:
+        return f"Error membaca Word: {e}"
+
+
+async def word_write(
+    path: str,
+    content: str,
+    title: str = None,
+    author: str = "AI ORCHESTRATOR",
+    overwrite: bool = False
+) -> str:
+    """
+    Buat file Word (.docx) dari teks markdown-style.
+
+    Args:
+        path: Path output file .docx
+        content: Konten dokumen. Gunakan # untuk Heading 1, ## untuk Heading 2, dsb.
+        title: Judul dokumen (opsional)
+        author: Nama penulis
+        overwrite: True untuk menimpa file yang ada
+
+    Returns:
+        Konfirmasi pembuatan
+    """
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+        if os.path.exists(path) and not overwrite:
+            return f"File {path} sudah ada. Set overwrite=true untuk menimpa."
+
+        doc = Document()
+
+        # Set properties
+        doc.core_properties.author = author
+        if title:
+            doc.core_properties.title = title
+            heading = doc.add_heading(title, level=0)
+            heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Parse konten markdown-style
+        lines = content.split("\n")
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            if line.startswith("### "):
+                doc.add_heading(line[4:], level=3)
+            elif line.startswith("## "):
+                doc.add_heading(line[3:], level=2)
+            elif line.startswith("# "):
+                doc.add_heading(line[2:], level=1)
+            elif line.startswith("- ") or line.startswith("* "):
+                # Bullet list
+                para = doc.add_paragraph(line[2:], style="List Bullet")
+            elif line.startswith("1. ") or (len(line) > 2 and line[0].isdigit() and line[1] == "."):
+                # Numbered list
+                text = line.split(". ", 1)[1] if ". " in line else line
+                doc.add_paragraph(text, style="List Number")
+            elif line.strip() == "---" or line.strip() == "===":
+                doc.add_page_break()
+            elif line.strip():
+                doc.add_paragraph(line)
+            else:
+                # Baris kosong → spasi
+                pass
+            i += 1
+
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        doc.save(path)
+        word_count = len(content.split())
+        return f"✅ Word berhasil dibuat: {path}\n📄 {word_count} kata | {len(lines)} baris"
+    except Exception as e:
+        return f"Error membuat Word: {e}"
+
+
+# ── PowerPoint Tools ──────────────────────────────────────────────────────────
+
+async def ppt_create(
+    path: str,
+    title: str,
+    subtitle: str = "",
+    theme: str = "dark",
+    overwrite: bool = False
+) -> str:
+    """
+    Buat file PowerPoint (.pptx) baru dengan slide judul.
+
+    Args:
+        path: Path output file .pptx
+        title: Judul presentasi
+        subtitle: Sub-judul (opsional)
+        theme: "dark" atau "light"
+        overwrite: True untuk menimpa
+
+    Returns:
+        Konfirmasi pembuatan
+    """
+    try:
+        from pptx import Presentation
+        from pptx.util import Inches, Pt, Emu
+        from pptx.dml.color import RGBColor
+        from pptx.enum.text import PP_ALIGN
+
+        if os.path.exists(path) and not overwrite:
+            return f"File {path} sudah ada. Set overwrite=true untuk menimpa."
+
+        prs = Presentation()
+        prs.slide_width = Inches(13.33)
+        prs.slide_height = Inches(7.5)
+
+        # Slide judul
+        slide_layout = prs.slide_layouts[0]
+        slide = prs.slides.add_slide(slide_layout)
+
+        # Background color
+        bg_color = RGBColor(0x0F, 0x17, 0x2A) if theme == "dark" else RGBColor(0xFF, 0xFF, 0xFF)
+        fill = slide.background.fill
+        fill.solid()
+        fill.fore_color.rgb = bg_color
+
+        title_shape = slide.shapes.title
+        subtitle_shape = slide.placeholders[1]
+
+        title_shape.text = title
+        tf = title_shape.text_frame
+        tf.paragraphs[0].alignment = PP_ALIGN.CENTER
+        title_run = tf.paragraphs[0].runs[0]
+        title_run.font.size = Pt(44)
+        title_run.font.bold = True
+        title_run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF) if theme == "dark" else RGBColor(0x0F, 0x17, 0x2A)
+
+        if subtitle:
+            subtitle_shape.text = subtitle
+            sub_tf = subtitle_shape.text_frame
+            sub_tf.paragraphs[0].alignment = PP_ALIGN.CENTER
+            sub_run = sub_tf.paragraphs[0].runs[0]
+            sub_run.font.size = Pt(24)
+            sub_run.font.color.rgb = RGBColor(0x94, 0xA3, 0xB8) if theme == "dark" else RGBColor(0x64, 0x74, 0x8B)
+
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        prs.save(path)
+        return f"✅ PowerPoint dibuat: {path}\n📊 Judul: '{title}' | Theme: {theme}"
+    except Exception as e:
+        return f"Error membuat PowerPoint: {e}"
+
+
+async def ppt_add_slide(
+    path: str,
+    title: str,
+    content: str,
+    layout: str = "content",
+    slide_number: int = None
+) -> str:
+    """
+    Tambah slide baru ke file PowerPoint yang ada.
+
+    Args:
+        path: Path file .pptx yang sudah ada
+        title: Judul slide
+        content: Konten slide (teks, bisa berisi bullet poin dengan -)
+        layout: "content" (judul+konten), "blank", "title_only"
+        slide_number: Posisi slide (default: di akhir)
+
+    Returns:
+        Konfirmasi penambahan slide
+    """
+    try:
+        from pptx import Presentation
+        from pptx.util import Inches, Pt
+        from pptx.dml.color import RGBColor
+
+        if not os.path.exists(path):
+            return f"File {path} tidak ditemukan. Buat dulu dengan ppt_create."
+
+        prs = Presentation(path)
+
+        layout_map = {"content": 1, "blank": 6, "title_only": 5}
+        layout_idx = layout_map.get(layout, 1)
+        slide_layout = prs.slide_layouts[min(layout_idx, len(prs.slide_layouts) - 1)]
+        slide = prs.slides.add_slide(slide_layout)
+
+        # Tambah judul
+        if slide.shapes.title:
+            slide.shapes.title.text = title
+            run = slide.shapes.title.text_frame.paragraphs[0].runs
+            if run:
+                run[0].font.size = Pt(32)
+                run[0].font.bold = True
+
+        # Tambah konten
+        if len(slide.placeholders) > 1 and content:
+            tf = slide.placeholders[1].text_frame
+            tf.clear()
+            lines = content.strip().split("\n")
+            for j, line in enumerate(lines):
+                if j == 0:
+                    para = tf.paragraphs[0]
+                else:
+                    para = tf.add_paragraph()
+
+                line = line.strip()
+                if line.startswith("- ") or line.startswith("* "):
+                    para.text = line[2:]
+                    para.level = 1
+                else:
+                    para.text = line
+                    para.level = 0
+
+                if para.runs:
+                    para.runs[0].font.size = Pt(18)
+
+        prs.save(path)
+        slide_count = len(prs.slides)
+        return f"✅ Slide '{title}' ditambahkan ke {path}\n📊 Total slides: {slide_count}"
+    except Exception as e:
+        return f"Error menambah slide: {e}"
+
+
+# ── SQL Tools ─────────────────────────────────────────────────────────────────
+
+async def sql_query(database_path: str, query: str, max_rows: int = 50) -> str:
+    """
+    Jalankan query SELECT ke database SQLite.
+
+    Args:
+        database_path: Path ke file .db SQLite
+        query: Query SQL (hanya SELECT yang diizinkan)
+        max_rows: Maksimal baris yang dikembalikan
+
+    Returns:
+        Hasil query sebagai tabel teks
+    """
+    try:
+        import aiosqlite
+        import re as _re
+
+        # Safety: hanya izinkan SELECT
+        stripped = query.strip().upper()
+        if not stripped.startswith("SELECT") and not stripped.startswith("PRAGMA") and not stripped.startswith("WITH"):
+            return "Error: Hanya query SELECT/PRAGMA/WITH yang diizinkan di sql_query. Gunakan sql_execute untuk DDL/DML."
+
+        async with aiosqlite.connect(database_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(query) as cursor:
+                rows = await cursor.fetchmany(max_rows)
+                if not rows:
+                    return f"Query berhasil tapi tidak ada hasil.\nQuery: {query}"
+
+                # Format sebagai tabel
+                headers = rows[0].keys()
+                header_line = " | ".join(str(h) for h in headers)
+                separator = "-+-".join("-" * min(len(str(h)), 20) for h in headers)
+                data_lines = []
+                for row in rows:
+                    data_lines.append(" | ".join(str(v)[:20] if v is not None else "NULL" for v in row))
+
+                total = len(rows)
+                result = f"🗄️ Database: {database_path}\nQuery: {query}\n\n"
+                result += header_line + "\n" + separator + "\n"
+                result += "\n".join(data_lines)
+                if total >= max_rows:
+                    result += f"\n\n... (ditampilkan {max_rows} baris pertama)"
+                return result
+    except Exception as e:
+        return f"Error SQL query: {e}"
+
+
+async def sql_execute(database_path: str, statement: str) -> str:
+    """
+    Jalankan statement DDL/DML ke database SQLite (CREATE, INSERT, UPDATE, DELETE, DROP).
+
+    Args:
+        database_path: Path ke file .db SQLite (akan dibuat jika belum ada)
+        statement: SQL statement
+
+    Returns:
+        Konfirmasi eksekusi dan jumlah baris yang terpengaruh
+    """
+    try:
+        import aiosqlite
+
+        async with aiosqlite.connect(database_path) as db:
+            async with db.execute(statement) as cursor:
+                await db.commit()
+                rows_affected = cursor.rowcount
+                lastrowid = cursor.lastrowid
+
+        result = f"✅ SQL dieksekusi pada {database_path}\n"
+        result += f"Statement: {statement[:100]}...\n" if len(statement) > 100 else f"Statement: {statement}\n"
+        if rows_affected and rows_affected > 0:
+            result += f"Baris terpengaruh: {rows_affected}"
+        if lastrowid:
+            result += f"\nID terakhir yang disisipkan: {lastrowid}"
+        return result
+    except Exception as e:
+        return f"Error SQL execute: {e}"
+
+
+# ── Screenshot Tool ───────────────────────────────────────────────────────────
+
+async def screenshot_screen(output_path: str = None, region: str = "full") -> str:
+    """
+    Ambil screenshot layar desktop.
+
+    Args:
+        output_path: Path untuk menyimpan screenshot (default: /tmp/screenshot_<ts>.png)
+        region: "full" untuk layar penuh, atau "active" untuk jendela aktif
+
+    Returns:
+        Path file screenshot yang disimpan
+    """
+    try:
+        import subprocess
+        import tempfile
+
+        if not output_path:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output_path = f"/tmp/screenshot_{ts}.png"
+
+        os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else "/tmp", exist_ok=True)
+
+        # Coba berbagai tool screenshot yang tersedia di Linux
+        tools_tried = []
+
+        # 1. scrot (ringan, banyak tersedia)
+        try:
+            result = subprocess.run(
+                ["scrot", output_path],
+                capture_output=True, timeout=10
+            )
+            if result.returncode == 0:
+                size = os.path.getsize(output_path) if os.path.exists(output_path) else 0
+                return f"✅ Screenshot disimpan: {output_path} ({size // 1024}KB)"
+            tools_tried.append("scrot")
+        except FileNotFoundError:
+            tools_tried.append("scrot (tidak ada)")
+        except Exception:
+            pass
+
+        # 2. gnome-screenshot
+        try:
+            result = subprocess.run(
+                ["gnome-screenshot", "-f", output_path],
+                capture_output=True, timeout=10
+            )
+            if result.returncode == 0:
+                return f"✅ Screenshot disimpan: {output_path}"
+            tools_tried.append("gnome-screenshot")
+        except FileNotFoundError:
+            tools_tried.append("gnome-screenshot (tidak ada)")
+        except Exception:
+            pass
+
+        # 3. import (ImageMagick)
+        try:
+            result = subprocess.run(
+                ["import", "-window", "root", output_path],
+                capture_output=True, timeout=10
+            )
+            if result.returncode == 0:
+                return f"✅ Screenshot disimpan: {output_path}"
+            tools_tried.append("import/ImageMagick")
+        except FileNotFoundError:
+            tools_tried.append("import/ImageMagick (tidak ada)")
+        except Exception:
+            pass
+
+        # 4. xwd + convert
+        try:
+            xwd_path = output_path.replace(".png", ".xwd")
+            r1 = subprocess.run(["xwd", "-root", "-out", xwd_path], capture_output=True, timeout=10)
+            if r1.returncode == 0:
+                r2 = subprocess.run(["convert", xwd_path, output_path], capture_output=True, timeout=10)
+                os.remove(xwd_path)
+                if r2.returncode == 0:
+                    return f"✅ Screenshot disimpan: {output_path}"
+        except Exception:
+            pass
+
+        return f"⚠️ Screenshot gagal. Tools dicoba: {', '.join(tools_tried)}\nInstall dengan: sudo apt install scrot"
+
+    except Exception as e:
+        return f"Error screenshot: {e}"
+
+
+# ── App Plan Generator ─────────────────────────────────────────────────────────
+
+async def app_plan_generate(
+    description: str,
+    app_type: str = "web",
+    output_path: str = None
+) -> str:
+    """
+    Generate rencana aplikasi terstruktur dari deskripsi natural language.
+
+    Args:
+        description: Deskripsi aplikasi yang ingin dibuat
+        app_type: "web", "mobile", "desktop", "api", "cli"
+        output_path: Path untuk menyimpan plan JSON (opsional)
+
+    Returns:
+        Rencana aplikasi dalam format terstruktur
+    """
+    try:
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # Template rencana berdasarkan app_type
+        templates = {
+            "web": {
+                "tech_stack": {
+                    "frontend": "React + Vite + TailwindCSS",
+                    "backend": "FastAPI (Python)",
+                    "database": "SQLite / PostgreSQL",
+                    "deployment": "Docker + nginx"
+                },
+                "folder_structure": [
+                    "frontend/src/components/",
+                    "frontend/src/pages/",
+                    "frontend/src/hooks/",
+                    "frontend/src/utils/",
+                    "backend/api/",
+                    "backend/core/",
+                    "backend/models/",
+                    "docker-compose.yml",
+                    ".env.example",
+                    "README.md"
+                ]
+            },
+            "mobile": {
+                "tech_stack": {
+                    "framework": "Flutter (Dart)",
+                    "state_management": "Riverpod / Bloc",
+                    "backend": "FastAPI (Python)",
+                    "database": "SQLite (lokal) / Supabase (cloud)"
+                },
+                "folder_structure": [
+                    "lib/screens/",
+                    "lib/widgets/",
+                    "lib/providers/",
+                    "lib/models/",
+                    "lib/services/",
+                    "assets/",
+                    "pubspec.yaml"
+                ]
+            },
+            "api": {
+                "tech_stack": {
+                    "framework": "FastAPI (Python)",
+                    "database": "PostgreSQL + SQLAlchemy",
+                    "auth": "JWT",
+                    "docs": "OpenAPI (Swagger)"
+                },
+                "folder_structure": [
+                    "app/api/v1/endpoints/",
+                    "app/core/",
+                    "app/models/",
+                    "app/schemas/",
+                    "app/services/",
+                    "tests/",
+                    "Dockerfile",
+                    "requirements.txt"
+                ]
+            },
+            "cli": {
+                "tech_stack": {
+                    "language": "Python",
+                    "cli_framework": "Click / Typer",
+                    "packaging": "pip / PyInstaller"
+                },
+                "folder_structure": [
+                    "src/commands/",
+                    "src/utils/",
+                    "src/config/",
+                    "tests/",
+                    "setup.py",
+                    "README.md"
+                ]
+            }
+        }
+
+        template = templates.get(app_type, templates["web"])
+
+        plan = {
+            "meta": {
+                "generated_at": ts,
+                "app_type": app_type,
+                "description": description,
+                "generated_by": "AI ORCHESTRATOR v5.0"
+            },
+            "tech_stack": template["tech_stack"],
+            "folder_structure": template["folder_structure"],
+            "development_phases": [
+                {
+                    "phase": 1,
+                    "name": "Setup & Foundation",
+                    "tasks": [
+                        "Inisialisasi project dan dependencies",
+                        "Setup database dan model",
+                        "Konfigurasi environment (.env)"
+                    ]
+                },
+                {
+                    "phase": 2,
+                    "name": "Core Features",
+                    "tasks": [
+                        "Implementasi fitur utama berdasarkan deskripsi",
+                        "API endpoints / route utama",
+                        "Business logic layer"
+                    ]
+                },
+                {
+                    "phase": 3,
+                    "name": "UI/UX",
+                    "tasks": [
+                        "Design sistem (warna, typography)",
+                        "Komponen UI",
+                        "Halaman utama dan navigasi"
+                    ]
+                },
+                {
+                    "phase": 4,
+                    "name": "Integration & Testing",
+                    "tasks": [
+                        "Integrasi frontend-backend",
+                        "Unit tests",
+                        "Error handling"
+                    ]
+                },
+                {
+                    "phase": 5,
+                    "name": "Deploy",
+                    "tasks": [
+                        "Dockerization",
+                        "CI/CD setup",
+                        "Dokumentasi README"
+                    ]
+                }
+            ]
+        }
+
+        # Simpan ke file jika diminta
+        if output_path:
+            os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(plan, f, indent=2, ensure_ascii=False)
+
+        # Format output
+        output_lines = [
+            f"📋 APP PLAN: {description}",
+            f"Type: {app_type.upper()} | Generated: {ts}",
+            "",
+            "🛠️ TECH STACK:",
+        ]
+        for k, v in template["tech_stack"].items():
+            output_lines.append(f"  {k}: {v}")
+
+        output_lines.append("\n📁 FOLDER STRUCTURE:")
+        for folder in template["folder_structure"]:
+            output_lines.append(f"  {folder}")
+
+        output_lines.append("\n🚀 DEVELOPMENT PHASES:")
+        for phase in plan["development_phases"]:
+            output_lines.append(f"\n  Phase {phase['phase']}: {phase['name']}")
+            for task in phase["tasks"]:
+                output_lines.append(f"    - {task}")
+
+        if output_path:
+            output_lines.append(f"\n💾 Plan disimpan ke: {output_path}")
+
+        return "\n".join(output_lines)
+
+    except Exception as e:
+        return f"Error generating app plan: {e}"

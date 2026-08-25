@@ -14,6 +14,13 @@ export default function ChatHistorySidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [search, setSearch] = useState('')
+  const [now, setNow] = useState(Date.now())
+
+  // Tick every 30s so relative timestamps stay accurate
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   const sessions     = useChatStore(s => s.sessions || [])
   const currentSession = useChatStore(s => s.currentSession)
@@ -65,10 +72,10 @@ export default function ChatHistorySidebar() {
     }
   }
 
-  // Relative time helper
+  // Relative time helper — depends on `now` so it re-renders on each tick
   const relativeTime = (ts) => {
     if (!ts) return ''
-    const diff = Date.now() - new Date(ts).getTime()
+    const diff = now - new Date(ts).getTime()
     const m = Math.floor(diff / 60000)
     if (m < 1)  return 'Just now'
     if (m < 60) return `${m}m ago`

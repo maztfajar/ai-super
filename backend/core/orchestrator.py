@@ -487,7 +487,7 @@ class Orchestrator:
         # Jika user meminta membuat aplikasi/project baru dan project_path kosong,
         # kita hentikan sementara dan minta user menentukan foldernya (muncul popup).
         import re
-        CREATE_PROJECT_PATTERN = r"\b(buat|bikin|create|build|buatkan|bikinkan|bangun)\s+(aplikasi|web|website|project|program|sistem|bot|script)\b"
+        CREATE_PROJECT_PATTERN = r"(\/(buat|build|create|project|app)\b|\b(buat|bikin|create|build|buatkan|bikinkan|bangun)\s+(aplikasi|web|website|project|proyek|program|sistem|bot|script|app)\b)"
         is_create_project = bool(re.search(CREATE_PROJECT_PATTERN, message.lower()))
         
         # Kesadaran mirip manusia (Human-like awareness):
@@ -697,6 +697,58 @@ class Orchestrator:
                 # Fall through to decomposition below
             else:
                 return
+
+        # ─── AGENT LOOP PATH (v5.0) ──────────────────────────────────
+        # Ketika mode agent dihidupkan (force_simple = False), gunakan
+        # ReAct agent_loop yang lebih token-efficient dan tangguh.
+        if not force_simple:
+            from core.agent_loop import AgentLoop
+            from agents.executor import agent_executor
+            
+            yield OrchestratorEvent("status", "🔄 Memulai Agent Loop (ReAct)...")
+            
+            task_exec_id = await self._create_task_execution(
+                session_id, user_id, message, spec, [], None
+            )
+            
+            # AgentLoop
+            loop = AgentLoop(
+                tool_executor=agent_executor.execute_tool, # Re-use existing tool executor
+                session_id=session_id
+            )
+            
+            async def _model_caller(p, t):
+                return await model_manager.generate(
+                    messages=p,
+                    model=user_model_choice or "claude-3-5-sonnet-20241022",
+                    temperature=0.4,
+                    tools=t,
+                    session_id=session_id
+                )
+            
+            try:
+                full_response = ""
+                async for event in loop.run(query=message, messages=history, model_caller=_model_caller, tools=agent_executor.get_tools_schema()):
+                    yield OrchestratorEvent(event["type"], "", event)
+                    if event["type"] == "loop_done":
+                        full_response = event.get("answer", "")
+                
+                # Selesai
+                if task_exec_id:
+                    from db.models import AggregatedResult
+                    await self._update_task_execution(
+                        task_exec_id, 
+                        AggregatedResult(final_response=full_response, overall_confidence=1.0), 
+                        int((time.time() - start_time) * 1000), 
+                        []
+                    )
+                # Pastikan yield 'done' dengan final full_response yang diambil oleh q.put
+                yield OrchestratorEvent("done", full_response, {"agent_loop_used": True})
+                return
+            except Exception as e:
+                log.error("AgentLoop failed", error=str(e))
+                yield OrchestratorEvent("status", f"⚠️ Agent Loop gagal: {str(e)}. Fallback ke eksekusi normal.")
+                # Lanjut ke Phase 2 (Decomposition)
 
         # ─── PHASE 2: TASK DECOMPOSITION ─────────────────────────
 

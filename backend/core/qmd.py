@@ -1,15 +1,26 @@
 """
-QMD — The Token Killer (v1.0)
+QMD — The Token Killer (v2.0)
 ==============================
 Query-aware Message Distiller. Menghemat biaya API dengan cara:
   1. Memotong history chat yang panjang — hanya ambil yang relevan
   2. Mengompres pesan yang verbose — hilangkan whitespace & redundansi
   3. Memfilter RAG context — hanya sisipkan chunk yang benar-benar cocok
   4. Mengestimasi token count sebelum kirim — warn jika terlalu besar
+  5. Recency scoring — pesan lebih baru mendapat bobot lebih tinggi
+  6. Code block preservation — tidak memotong kode di tengah
+
+Changelog v2.0:
+  - DEFAULT_MAX_TOKENS: 6000 → 3500 (efisiensi lebih agresif)
+  - RELEVANCE_THRESHOLD: 0.15 → 0.25 (lebih selektif)
+  - MAX_SINGLE_MESSAGE_TOKENS: 1500 → 800 (trim lebih agresif)
+  - MIN_KEEP_MESSAGES: 4 → 3 (cukup 3 pesan terakhir)
+  - Tambah recency_weight scoring
+  - Tambah _is_code_heavy() untuk deteksi code block
+  - Trim lebih cerdas: pertahankan code block, potong narasi
 
 Cara kerja:
   - Terima (messages, query, max_budget) → kembalikan messages yang sudah di-distill
-  - Scoring tiap message berdasarkan kecocokan semantik/keyword dgn query terkini
+  - Scoring tiap message berdasarkan kecocokan semantik/keyword + recency dgn query
   - Prioritaskan: system prompt (selalu keep) → user query (selalu keep) →
     recent history → relevant old history → drop sisanya
 
@@ -17,9 +28,9 @@ Integrasi:
   - Dipanggil oleh orchestrator sebelum mengirim messages ke model
   - Transparan: jika query pendek/history sedikit, QMD tidak mengubah apapun
 
-Penghematan tipikal:
-  - History 30 pesan × 500 token → diringkas jadi ~5000 token (dari ~15000)
-  - RAG context 10 chunk × 200 token → difilter jadi ~3 chunk × 200 = ~600 token
+Penghematan tipikal v2.0:
+  - History 30 pesan × 500 token → ~3500 token (dari ~15000) ≈ 77% hemat
+  - RAG context 10 chunk × 200 token → ~2 chunk × 200 = ~400 token
 """
 
 import re
@@ -32,13 +43,14 @@ import structlog
 
 log = structlog.get_logger()
 
-# ── Token Budget Defaults ─────────────────────────────────────────────────────
-# Estimasi: 1 token ≈ 4 chars (Bahasa Indonesia sedikit lebih banyak)
+# ── Token Budget Defaults (v2.0 — lebih agresif) ────────────────────────────
+# Estimasi: 1 token ≈ 3.5 chars (Bahasa Indonesia sedikit lebih banyak)
 CHARS_PER_TOKEN = 3.5
-DEFAULT_MAX_TOKENS = 6000       # budget untuk history+context (bukan total)
-MIN_KEEP_MESSAGES = 4            # minimal message yang selalu dipertahankan
-RELEVANCE_THRESHOLD = 0.15      # minimum skor relevansi agar message dipertahankan
-MAX_SINGLE_MESSAGE_TOKENS = 1500 # single message terlalu panjang → trim
+DEFAULT_MAX_TOKENS = 3500       # v2: 6000 → 3500 untuk efisiensi lebih baik
+MIN_KEEP_MESSAGES = 3            # v2: 4 → 3, cukup 3 pesan terakhir
+RELEVANCE_THRESHOLD = 0.25      # v2: 0.15 → 0.25 (lebih selektif)
+MAX_SINGLE_MESSAGE_TOKENS = 800 # v2: 1500 → 800 (trim lebih agresif)
+RECENCY_DECAY = 0.85            # Faktor decay per posisi dari akhir (recency bonus)
 
 
 @dataclass
@@ -116,14 +128,19 @@ class QueryMessageDistiller:
             if messages[-1] not in recent:
                 user_query.append(messages[-1])
 
-        # ── Phase 2: Scoring relevansi ────────────────────────────
+        # ── Phase 2: Scoring relevansi + recency ─────────────────
         query_keywords = self._extract_keywords(query)
+        total_msgs = len(messages)
         scored = []
         for idx, msg in candidates:
-            score = self._relevance_score(msg["content"], query_keywords, query)
+            sem_score = self._relevance_score(msg["content"], query_keywords, query)
+            # Recency bonus: pesan lebih baru dapat skor lebih tinggi
+            # idx dekat total_msgs → recency_bonus mendekati 0.2
+            recency_bonus = 0.2 * (RECENCY_DECAY ** (total_msgs - idx))
+            score = min(1.0, sem_score + recency_bonus)
             scored.append((score, idx, msg))
 
-        # Sort by relevance (tinggi → rendah)
+        # Sort by combined score (tinggi → rendah)
         scored.sort(key=lambda x: x[0], reverse=True)
 
         # ── Phase 3: Budget allocation ────────────────────────────
@@ -283,11 +300,11 @@ class QueryMessageDistiller:
         else:
             bigram_score = 0.0
 
-        # 3. Recency bonus (0–0.2) — messages yang dekat ke akhir lebih relevan
-        # (ini ditangani oleh caller melalui posisi index, bukan di sini)
-        position_score = 0.0
+        # 3. Tool call bonus — pesan yang berisi tool call / result lebih relevan
+        tool_bonus = 0.1 if ("tool_call" in content_lower or "function" in content_lower
+                             or "execute" in content_lower) else 0.0
 
-        return keyword_score + bigram_score + position_score
+        return min(1.0, keyword_score + bigram_score + tool_bonus)
 
     def _bigrams(self, text: str) -> set:
         words = text.split()
@@ -297,11 +314,18 @@ class QueryMessageDistiller:
 
     # ── Message trimming ──────────────────────────────────────────────────────
 
+    def _is_code_heavy(self, content: str) -> bool:
+        """Deteksi apakah message mengandung banyak source code / JSON."""
+        code_markers = content.count("```") + content.count("    ") + content.count("\t")
+        json_markers = content.count("{") + content.count("[")
+        return code_markers > 4 or json_markers > 10
+
     def _trim_message(
         self, msg: Dict[str, str], keywords: List[str], max_tokens: int
     ) -> Dict[str, str]:
         """
-        Trim message panjang — pertahankan isi tanpa merusak struktur data (JSON/Code).
+        Trim message panjang — pertahankan code block, potong narasi.
+        v2.0: Jika code-heavy, pertahankan code blocks, potong teks prose saja.
         """
         content = msg["content"]
         max_chars = int(max_tokens * CHARS_PER_TOKEN)
@@ -309,9 +333,28 @@ class QueryMessageDistiller:
         if len(content) <= max_chars:
             return msg
 
-        # Hindari memotong paragraf secara acak karena akan merusak JSON atau Source Code.
-        # Jika konten terlalu panjang, potong karakter dari belakang secara aman.
-        trimmed = content[:max_chars] + "\n\n...[dipotong oleh QMD karena melebihi batas token]"
+        # Jika konten adalah code-heavy, jangan trim — skip (akan di-drop jika tidak muat)
+        if self._is_code_heavy(content):
+            return msg  # Kembalikan apa adanya, biarkan budget logic yang handle
+
+        # Untuk teks prosa: cari paragraf yang relevan dengan keyword
+        paragraphs = content.split("\n\n")
+        relevant = []
+        remaining_chars = max_chars
+
+        for para in paragraphs:
+            if any(kw in para.lower() for kw in keywords[:5]):
+                if len(para) <= remaining_chars:
+                    relevant.append(para)
+                    remaining_chars -= len(para)
+
+        # Jika relevan cukup, pakai itu
+        if relevant and sum(len(p) for p in relevant) > max_chars * 0.3:
+            trimmed = "\n\n".join(relevant) + "\n...[QMD: dipotong]"
+        else:
+            # Fallback: potong karakter biasa
+            trimmed = content[:max_chars] + "\n...[QMD: dipotong]"
+
         return {"role": msg["role"], "content": trimmed}
 
     # ── Text compression ──────────────────────────────────────────────────────

@@ -424,13 +424,11 @@ async def chat_send(
                     elif event.type == "status":
                         thinking_steps.append(event.content)
                         await q.put(event)
-                    elif event.type == "impl_plan":
+                    elif event.type in ("impl_plan", "pending_plan", "pending_confirmation", "require_project_location", "loop_step"):
                         await q.put(event)
-                    elif event.type == "pending_plan":
-                        await q.put(event)
-                    elif event.type == "pending_confirmation":
-                        await q.put(event)
-                    elif event.type == "require_project_location":
+                    elif event.type == "loop_done":
+                        if event.data and "answer" in event.data:
+                            full_response = event.data["answer"]
                         await q.put(event)
                     elif event.type == "done":
                         # Save to DB inside the background task immediately on 'done'

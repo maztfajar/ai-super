@@ -207,32 +207,37 @@ Sistem menggunakan **Native Function Calling** untuk eksekusi tanpa batas dan to
 
 ---
 
-## ⚡ Instalasi
+## ⚡ Instalasi (Mode Lokal / Native)
+
+AI-SUPER v5.0 kini difokuskan untuk berjalan secara lokal langsung di mesin Host Anda agar memiliki akses tanpa batas (untuk operasi berkas, eksekusi kode, dll).
 
 ### 1. Prasyarat Sistem
-Pastikan sistem Anda (Linux/VPS) telah memiliki:
-*   **Docker** (versi 24.0+) & **Docker Compose**
-*   Port **7860** (Web UI & Orchestrator API) tidak terblokir oleh Firewall (UFW).
+Pastikan sistem Anda (Linux/VPS/Mac) telah memiliki:
+*   **Python 3.10+** dan `venv`
+*   **Node.js 18+** & `npm`
+*   Port **7860** tidak terblokir oleh Firewall (UFW).
 
 ### 2. Kloning Repositori & Konfigurasi
 ```bash
 git clone https://github.com/maztfajarwahyudi/ai-super.git
 cd ai-super
 
-# 1. Salin file environment
+# Salin file environment (wajib)
 cp .env.example .env
 
-# 2. Buka file .env dan atur kredensial Admin Anda (WAJIB)
+# Edit .env dan atur kredensial ADMIN_USERNAME dan ADMIN_PASSWORD Anda
 # nano .env
-# Ubah bagian ADMIN_USERNAME dan ADMIN_PASSWORD sesuai keinginan Anda
 ```
 
 ### 3. Build & Jalankan
-Cukup satu perintah untuk membangkitkan seluruh arsitektur *Microservices*:
+Cukup jalankan script *update* yang akan meng-install seluruh dependensi Frontend dan Backend:
 ```bash
-docker compose up -d --build
+./update.sh
 ```
-Sistem akan mulai merakit *container* backend, frontend, basis data vektor, dan lapisan *cache*.
+
+Aplikasi secara otomatis akan dijalankan di latar belakang *(background)*.
+- Untuk mematikan aplikasi: `./stop.sh`
+- Untuk menyalakan kembali: `./start.sh`
 
 ---
 

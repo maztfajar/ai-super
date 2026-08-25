@@ -64,6 +64,15 @@ export const useChatStore = create(
       setStatusText: (t) => set({ statusText: t }),
       setActualModel: (m) => set({ actualModel: m }),
       setAbortRequest: (fn) => set({ abortRequest: fn }),
+
+      // Agent Loop Visualizer states
+      agentLoopEvents: [],
+      agentLoopActive: false,
+      agentLoopResult: null,
+      setAgentLoopActive: (active) => set({ agentLoopActive: active }),
+      addAgentLoopEvent: (event) => set((s) => ({ agentLoopEvents: [...s.agentLoopEvents, event] })),
+      setAgentLoopResult: (result) => set({ agentLoopResult: result }),
+      clearAgentLoop: () => set({ agentLoopEvents: [], agentLoopActive: false, agentLoopResult: null }),
     }),
     {
       name: 'ai-orchestrator-chat',
@@ -83,6 +92,9 @@ export const useChatStore = create(
           state.abortRequest  = null
           state.statusText    = ''
           state.processSteps  = []
+          state.agentLoopActive = false
+          state.agentLoopEvents = []
+          state.agentLoopResult = null
         }
       },
     }
