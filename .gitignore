@@ -46,6 +46,7 @@ build/
 .next/
 out/
 frontend/dist/
+frontend/dist_root*/
 frontend/build/
 
 # ── Log Files ────────────────────────────────────────────────
