@@ -155,7 +155,7 @@ class Settings(BaseSettings):
 
     # Admin
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "admin123"
+    ADMIN_PASSWORD: str = "12345678"
     ADMIN_EMAIL: str = "admin@ai-orchestrator.local"
 
     # Files
@@ -254,9 +254,9 @@ _DANGEROUS_DEFAULTS = {
                    "Ganti dengan string acak 32+ karakter di file .env Anda. "
                    "Contoh: python3 -c \"import secrets; print(secrets.token_hex(32))\""),
     # CATATAN: ADMIN_PASSWORD sengaja dihapus dari daftar ini.
-    # Default password adalah 'admin123' (bukan 'admin'), yang cukup aman untuk
-    # first-run. User wajib menggantinya setelah login, tapi tidak boleh
-    # mencegah container dari startup sama sekali.
+    # Default password adalah '12345678' untuk first-run agar pengguna bisa
+    # langsung login. User disarankan menggantinya setelah login, tapi tidak
+    # boleh mencegah container dari startup sama sekali.
 }
 
 

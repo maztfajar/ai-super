@@ -62,7 +62,7 @@ echo -e "  ┌──────────────────────
 echo -e "  │           KREDENSIAL LOGIN DEFAULT               │"
 echo -e "  │                                                   │"
 echo -e "  │   Username : ${YELLOW}admin${NC}                              │"
-echo -e "  │   Password : ${YELLOW}admin123${NC}                           │"
+echo -e "  │   Password : ${YELLOW}12345678${NC}                           │"
 echo -e "  │                                                   │"
 echo -e "  │   ⚠️  Segera ganti password setelah login!       │"
 echo -e "  └─────────────────────────────────────────────────┘"

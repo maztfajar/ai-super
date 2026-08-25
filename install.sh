@@ -65,18 +65,20 @@ echo -e "\n2. Kredensial Login Aplikasi AI"
 read -p "   Username Login [Default: admin]: " WZ_ADMIN_USER
 WZ_ADMIN_USER=${WZ_ADMIN_USER:-admin}
 
-# Password admin wajib diisi dan tidak boleh "admin"
-while true; do
-    read -s -p "   Password Login (wajib diisi, min 8 karakter, bukan 'admin'): " WZ_ADMIN_PASS
-    echo ""
+echo -e "   ${CYAN}Default password: 12345678 (tekan ENTER untuk gunakan default)${NC}"
+read -s -p "   Password Login [Default: 12345678]: " WZ_ADMIN_PASS
+echo ""
+if [ -z "$WZ_ADMIN_PASS" ]; then
+    WZ_ADMIN_PASS="12345678"
+    log "Menggunakan password default: 12345678"
+else
     if [ ${#WZ_ADMIN_PASS} -lt 8 ]; then
-        warn "Password minimal 8 karakter. Coba lagi."
-    elif [ "$WZ_ADMIN_PASS" = "admin" ] || [ "$WZ_ADMIN_PASS" = "password" ] || [ "$WZ_ADMIN_PASS" = "123456" ]; then
-        warn "Password terlalu lemah. Gunakan password yang lebih kuat."
+        warn "Password minimal 8 karakter. Menggunakan default: 12345678"
+        WZ_ADMIN_PASS="12345678"
     else
-        break
+        log "Password kustom diterima."
     fi
-done
+fi
 
 echo -e "\n3. Integrasi & Model AI (Tekan ENTER untuk melewati)"
 read -p "   OpenAI API Key    : " WZ_OPENAI
@@ -391,12 +393,20 @@ cat << 'EOF'
 ╚═════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
+echo -e " ${CYAN}Kredensial Login:${NC}"
+echo -e "  ┌─────────────────────────────────────────────┐"
+echo -e "  │  Username : ${YELLOW}${BOLD}$WZ_ADMIN_USER${NC}                       │"
+echo -e "  │  Password : ${YELLOW}${BOLD}$WZ_ADMIN_PASS${NC}                       │"
+echo -e "  └─────────────────────────────────────────────┘"
+echo ""
 echo -e " ${CYAN}Langkah berikutnya:${NC}"
 echo -e "  1. Tambahkan API key (opsional) : ${YELLOW}nano $APP_DIR/.env${NC}"
 echo -e "  2. Jalankan server              : ${YELLOW}bash $APP_DIR/scripts/dev.sh${NC}"
 echo -e "     atau update & restart        : ${YELLOW}bash $APP_DIR/update_and_restart.sh${NC}"
 echo -e "  3. Buka browser                 : ${YELLOW}http://localhost:7860${NC}"
-echo -e "  4. Login dengan username        : ${YELLOW}$WZ_ADMIN_USER${NC}"
+echo -e "  4. Login dengan kredensial di atas"
 echo -e "\n ${CYAN}RAG/LangChain (opsional):${NC}"
 echo -e "  bash $APP_DIR/scripts/install-rag.sh"
+echo ""
+echo -e " ${YELLOW}⚠  Disarankan: ganti password setelah login pertama via menu Profile.${NC}"
 echo ""

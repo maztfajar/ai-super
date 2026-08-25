@@ -81,7 +81,7 @@ async def ensure_admin_exists(db: AsyncSession):
     existing = result.scalar_one_or_none()
 
     if not existing:
-        # Buat admin baru
+        # Buat admin baru (first-run)
         admin = User(
             username=settings.ADMIN_USERNAME,
             email=settings.ADMIN_EMAIL,
@@ -91,11 +91,21 @@ async def ensure_admin_exists(db: AsyncSession):
         )
         db.add(admin)
         await db.commit()
+
+        # Tampilkan kredensial default di log server agar pengguna tahu
+        is_default = (
+            settings.ADMIN_USERNAME == "admin"
+            and settings.ADMIN_PASSWORD == "12345678"
+        )
         log.info(
             "✅ Admin user DIBUAT",
             username=settings.ADMIN_USERNAME,
-            password_source="ADMIN_PASSWORD dari .env",
+            password_source="DEFAULT" if is_default else "dari .env",
         )
+        if is_default:
+            log.info(
+                "🔑 Kredensial default — Username: admin | Password: 12345678"
+            )
     else:
         # Sync password & role dari .env — penting agar perubahan .env
         # langsung berlaku tanpa harus hapus database.

@@ -29,7 +29,7 @@ fi
 ACTIVE_USER=$(grep -m1 "^ADMIN_USERNAME=" "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'")
 ACTIVE_PASS=$(grep -m1 "^ADMIN_PASSWORD=" "$ENV_FILE" | cut -d= -f2 | tr -d '"' | tr -d "'")
 ACTIVE_USER="${ACTIVE_USER:-admin}"
-ACTIVE_PASS="${ACTIVE_PASS:-admin123}"
+ACTIVE_PASS="${ACTIVE_PASS:-12345678}"
 
 echo ""
 echo "  ┌─────────────────────────────────────────┐"

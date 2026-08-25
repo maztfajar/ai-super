@@ -31,7 +31,7 @@ async def ensure_admin_exists():
     
     is_default_password = False
     if not raw_admin_password or raw_admin_password == "GANTI-INI-DENGAN-PASSWORD-KUAT":
-        admin_password = "admin123"
+        admin_password = "12345678"
         is_default_password = True
     else:
         admin_password = raw_admin_password
