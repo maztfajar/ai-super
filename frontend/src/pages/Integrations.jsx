@@ -20,6 +20,7 @@ const intApi = {
   testTelegram:    () => api.post('/integrations/telegram/test'),
   testOllama:      () => api.post('/integrations/ollama/test'),
   testSumopod:     () => api.post('/integrations/sumopod/test'),
+  testOpenRouter:  () => api.post('/integrations/openrouter/test'),
   pollingStatus:   () => api.get('/integrations/telegram/polling-status'),
   startPolling:    () => api.post('/integrations/telegram/start-polling'),
   stopPolling:     () => api.post('/integrations/telegram/stop-polling'),
@@ -90,6 +91,190 @@ function TextInput({ label, value, onChange, placeholder, hint, mono, disabled }
         placeholder={placeholder} disabled={disabled}
         className={clsx('w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink placeholder-ink-3 outline-none focus:border-accent disabled:opacity-50 shadow-inner transition-all', mono && 'font-mono')}/>
       {hint && <p className="text-[11px] text-ink-3 mt-1.5 font-semibold uppercase tracking-tight opacity-70">{hint}</p>}
+    </div>
+  )
+}
+
+// ── ModelBadgeSelector ─────────────────────────────────────────
+function ModelBadgeSelector({ provider, apiEndpoint, models, setModels, configured, apiKey, host, onSave, saving, saveFields }) {
+  const [modelList, setModelList] = useState([])
+  const [fetching, setFetching] = useState(false)
+  const [fetchError, setFetchError] = useState('')
+  const [search, setSearch] = useState('')
+
+  const fetchModels = async (keyOverride) => {
+    setFetching(true)
+    setFetchError('')
+    try {
+      let url = `/integrations/${apiEndpoint}`
+      const params = []
+      if (keyOverride) params.push(`key=${encodeURIComponent(keyOverride)}`)
+      if (host) params.push(`host=${encodeURIComponent(host)}`)
+      if (params.length) url += '?' + params.join('&')
+      const res = await api.get(url)
+      if (res.error) {
+        setFetchError(res.error)
+        setModelList([])
+      } else if (res.models) {
+        setModelList(res.models)
+      }
+    } catch (err) {
+      const msg = err?.message || err?.detail || 'Gagal memuat model.'
+      setFetchError(msg)
+      setModelList([])
+    } finally {
+      setFetching(false)
+    }
+  }
+
+  useEffect(() => {
+    if (configured || (apiKey && apiKey.length > 10) || (provider === 'Ollama' && host)) {
+      fetchModels(apiKey || null)
+    }
+  }, [configured])
+
+  useEffect(() => {
+    if (apiKey && apiKey.length > 10) {
+      const timer = setTimeout(() => fetchModels(apiKey), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [apiKey, host])
+
+  useEffect(() => {
+    if (provider === 'Ollama' && host) {
+      const timer = setTimeout(() => fetchModels(null), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [host])
+
+  const selectedList = models ? models.split(',').map(x => x.trim()).filter(Boolean) : []
+
+  const toggleModel = (id) => {
+    let updated
+    if (selectedList.includes(id)) {
+      updated = selectedList.filter(x => x !== id)
+    } else {
+      updated = [...selectedList, id]
+    }
+    setModels(updated.join(', '))
+  }
+
+  if (!configured && !apiKey && !host) return null
+
+  return (
+    <div className="mt-4 border-t border-border pt-4 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <Label>Model AI yang Aktif</Label>
+        <div className="flex items-center gap-2">
+          {fetching && (
+            <div className="flex items-center gap-1.5 text-[10px] text-accent font-semibold">
+              <span className="inline-block w-3 h-3 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+              Memuat model...
+            </div>
+          )}
+          <button onClick={() => fetchModels(apiKey || null)} className="text-[10px] text-ink-3 hover:text-accent font-semibold flex items-center gap-1 transition-colors">
+            <RefreshCw size={10} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Selected Models Display Field (Blocks with comma & space) */}
+      <div className="space-y-1">
+        <div className="relative min-h-[50px] p-2.5 bg-bg-2 border border-border rounded-xl shadow-inner flex flex-wrap items-center gap-2">
+          {selectedList.length === 0 ? (
+            <span className="text-xs text-ink-3 italic p-1">
+              Belum ada model dipilih. Klik badge model di bawah untuk memilih.
+            </span>
+          ) : (
+            selectedList.map((modelId, idx) => (
+              <span key={modelId} className="inline-flex items-center">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-bg-4 border border-border text-ink shadow-sm hover:border-accent/40 transition-all">
+                  <span className="truncate max-w-[220px]">{modelId}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleModel(modelId)}
+                    className="text-ink-3 hover:text-red-400 p-0.5 rounded transition-colors text-xs font-bold leading-none ml-1"
+                    title={`Hapus ${modelId}`}
+                  >
+                    ✕
+                  </button>
+                </span>
+                {idx < selectedList.length - 1 && (
+                  <span className="text-ink-3 font-mono font-bold text-xs ml-1.5 mr-0.5">,</span>
+                )}
+              </span>
+            ))
+          )}
+          {selectedList.length > 0 && (
+            <span className="ml-auto text-[10px] text-accent font-bold bg-accent/10 px-2.5 py-1 rounded-full self-center">
+              {selectedList.length} model
+            </span>
+          )}
+        </div>
+      </div>
+
+      {fetchError && (
+        <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs font-semibold">
+          ⚠️ {fetchError}
+        </div>
+      )}
+
+      {!fetching && !fetchError && modelList.length > 0 && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            placeholder={`Cari model ${provider}...`}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full px-3 py-2 text-xs bg-bg-4 border border-border rounded-xl text-ink focus:outline-none focus:border-accent/40 shadow-inner"
+          />
+          <div className="flex flex-wrap gap-2 max-h-[180px] overflow-y-auto p-2 bg-bg-3 border border-border rounded-xl shadow-inner scrollbar-thin">
+            {modelList
+              .filter(m => (m.name || m.id).toLowerCase().includes(search.toLowerCase()) || m.id.toLowerCase().includes(search.toLowerCase()))
+              .map(model => {
+                const isSelected = selectedList.includes(model.id)
+                return (
+                  <button
+                    key={model.id}
+                    type="button"
+                    onClick={() => toggleModel(model.id)}
+                    title={model.id}
+                    className={clsx(
+                      "px-3 py-2 rounded-lg text-xs font-semibold font-mono border transition-all duration-200 shadow-sm active:scale-95 text-left flex flex-col min-w-[120px] max-w-[200px] flex-grow",
+                      isSelected
+                        ? "bg-accent/15 text-accent border-accent/40 shadow-inner"
+                        : "bg-bg-4 text-ink-3 border-border hover:border-accent/30 hover:text-ink-2"
+                    )}
+                  >
+                    <span className="truncate font-bold">{model.name || model.id}</span>
+                    {model.name !== model.id && <span className="text-[9px] opacity-60 truncate mt-0.5">{model.id}</span>}
+                  </button>
+                )
+              })}
+          </div>
+          <div className="text-[10px] text-ink-3">
+            Klik badge di atas untuk memilih/membatalkan model.
+          </div>
+        </div>
+      )}
+
+      {!fetching && !fetchError && modelList.length === 0 && (
+        <div className="text-xs text-ink-3 italic p-2 bg-bg-4 rounded-xl border border-border text-center">
+          Masukkan API Key untuk memuat daftar model otomatis.
+        </div>
+      )}
+
+      {configured && modelList.length > 0 && onSave && (
+        <div className="flex justify-end pt-2">
+          <Btn
+            label="Simpan Pilihan Model"
+            onClick={() => onSave(saveFields || {})}
+            loading={saving}
+            variant="primary"
+            icon={Save}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -431,7 +616,7 @@ function CustomModelSection() {
       setTestResult({ status: 'ok', message: r.message, models: r.available_models })
       toast.success(r.message)
       if (!form.models.trim() && r.available_models?.length > 0) {
-        setF('models', r.available_models.slice(0, 5).join(','))
+        setF('models', r.available_models.slice(0, 5).join(', '))
       }
     } catch (e) {
       setTestResult({ status: 'error', message: e.message })
@@ -1303,6 +1488,9 @@ export default function Integrations() {
   const [sumopodModels,  setSumopodModels]  = useState('')
   const [ollamaHost,     setOllamaHost]     = useState('')
   const [ollamaModels,   setOllamaModels]   = useState('')
+  const [openrouterKey,  setOpenrouterKey]  = useState('')
+  const [openrouterHost, setOpenrouterHost] = useState('')
+  const [openrouterModels,setOpenrouterModels]= useState('')
   const [waToken,        setWaToken]        = useState('')
   const [waPhoneId,      setWaPhoneId]      = useState('')
   const [tavilyKey,      setTavilyKey]      = useState('')
@@ -1330,6 +1518,8 @@ export default function Integrations() {
       if (s.sumopod?.models) setSumopodModels(s.sumopod.models)
       if (s.ollama?.host)    setOllamaHost(s.ollama.host)
       if (s.ollama?.models)  setOllamaModels(s.ollama.models)
+      if (s.openrouter?.host)   setOpenrouterHost(s.openrouter.host)
+      if (s.openrouter?.models) setOpenrouterModels(s.openrouter.models)
     } catch {} finally { setLoading(false) }
   }
 
@@ -1465,19 +1655,31 @@ export default function Integrations() {
             <Card icon="🧠" title="OpenAI" subtitle="GPT-4o, GPT-4o Mini" configured={status?.openai?.configured}>
               <div className="mt-3 space-y-2.5">
                 <MaskedField masked={status?.openai?.key_masked} label="API Key" value={openaiKey} onChange={setOpenaiKey} onSave={() => save('openai', { OPENAI_API_KEY: openaiKey, OPENAI_AVAILABLE_MODELS: openaiModels })} onDelete={() => save('openai', { OPENAI_API_KEY: '', OPENAI_AVAILABLE_MODELS: '' })} saving={saving.openai}/>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={openaiModels} onChange={setOpenaiModels} placeholder="contoh: o1, o1-mini" mono/></div>
-                  {status?.openai?.configured && <Btn label="Simpan" onClick={() => save('openai', { OPENAI_AVAILABLE_MODELS: openaiModels })} loading={saving.openai} variant="default" icon={Save}/>}
-                </div>
+                <ModelBadgeSelector
+                  provider="OpenAI"
+                  apiEndpoint="openai/models"
+                  models={openaiModels}
+                  setModels={setOpenaiModels}
+                  configured={status?.openai?.configured}
+                  apiKey={openaiKey}
+                  onSave={() => save('openai', { OPENAI_AVAILABLE_MODELS: openaiModels })}
+                  saving={saving.openai}
+                />
               </div>
             </Card>
             <Card icon="✨" title="Anthropic Claude" subtitle="Claude 3.5" configured={status?.anthropic?.configured}>
               <div className="mt-3 space-y-2.5">
                 <MaskedField masked={status?.anthropic?.key_masked} label="API Key" value={anthropicKey} onChange={setAnthropicKey} onSave={() => save('anthropic', { ANTHROPIC_API_KEY: anthropicKey, ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} onDelete={() => save('anthropic', { ANTHROPIC_API_KEY: '', ANTHROPIC_AVAILABLE_MODELS: '' })} saving={saving.anthropic}/>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={anthropicModels} onChange={setAnthropicModels} placeholder="contoh: claude-haiku-4-5" mono/></div>
-                  {status?.anthropic?.configured && <Btn label="Simpan" onClick={() => save('anthropic', { ANTHROPIC_AVAILABLE_MODELS: anthropicModels })} loading={saving.anthropic} variant="default" icon={Save}/>}
-                </div>
+                <ModelBadgeSelector
+                  provider="Anthropic"
+                  apiEndpoint="anthropic/models"
+                  models={anthropicModels}
+                  setModels={setAnthropicModels}
+                  configured={status?.anthropic?.configured}
+                  apiKey={anthropicKey}
+                  onSave={() => save('anthropic', { ANTHROPIC_AVAILABLE_MODELS: anthropicModels })}
+                  saving={saving.anthropic}
+                />
               </div>
             </Card>
             <Card icon="💎" title="Google Gemini" subtitle="Gemini 1.5" configured={status?.google?.configured}>
@@ -1495,6 +1697,50 @@ export default function Integrations() {
                           Memuat model...
                         </div>
                       )}
+                    </div>
+
+                    {/* Selected Models Display Field (Blocks with comma & space) */}
+                    <div className="space-y-1">
+                      <div className="relative min-h-[50px] p-2.5 bg-bg-2 border border-border rounded-xl shadow-inner flex flex-wrap items-center gap-2">
+                        {(() => {
+                          const gList = googleModels ? googleModels.split(',').map(x => x.trim()).filter(Boolean) : []
+                          if (gList.length === 0) {
+                            return (
+                              <span className="text-xs text-ink-3 italic p-1">
+                                Belum ada model dipilih. Klik badge model di bawah untuk memilih.
+                              </span>
+                            )
+                          }
+                          return (
+                            <>
+                              {gList.map((modelId, idx) => (
+                                <span key={modelId} className="inline-flex items-center">
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-bg-4 border border-border text-ink shadow-sm hover:border-accent/40 transition-all">
+                                    <span className="truncate max-w-[220px]">{modelId}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = gList.filter(x => x !== modelId)
+                                        setGoogleModels(updated.join(', '))
+                                      }}
+                                      className="text-ink-3 hover:text-red-400 p-0.5 rounded transition-colors text-xs font-bold leading-none ml-1"
+                                      title={`Hapus ${modelId}`}
+                                    >
+                                      ✕
+                                    </button>
+                                  </span>
+                                  {idx < gList.length - 1 && (
+                                    <span className="text-ink-3 font-mono font-bold text-xs ml-1.5 mr-0.5">,</span>
+                                  )}
+                                </span>
+                              ))}
+                              <span className="ml-auto text-[10px] text-accent font-bold bg-accent/10 px-2.5 py-1 rounded-full self-center">
+                                {gList.length} model
+                              </span>
+                            </>
+                          )
+                        })()}
+                      </div>
                     </div>
 
                     {googleModelsError && (
@@ -1552,7 +1798,7 @@ export default function Integrations() {
                             })}
                         </div>
                         <div className="text-[10px] text-ink-3">
-                          Klik badge di atas untuk memilih model yang ingin digunakan. Model terpilih saat ini: <strong className="text-accent font-mono">{googleModels || 'Tidak ada'}</strong>
+                          Klik badge di atas untuk memilih/membatalkan model.
                         </div>
                       </div>
                     )}
@@ -1582,20 +1828,63 @@ export default function Integrations() {
               <div className="mt-3 space-y-2.5">
                 <MaskedField masked={status?.sumopod?.key_masked} label="API Key" value={sumopodKey} onChange={setSumopodKey} onSave={() => save('sumopod', { SUMOPOD_API_KEY: sumopodKey, SUMOPOD_HOST: sumopodHost, SUMOPOD_AVAILABLE_MODELS: sumopodModels })} onDelete={() => save('sumopod', { SUMOPOD_API_KEY: '', SUMOPOD_AVAILABLE_MODELS: '' })} saving={saving.sumopod}/>
                 <TextInput label="API Host" value={sumopodHost} onChange={setSumopodHost} placeholder="https://ai.sumopod.com/v1" mono/>
-                <div className="flex gap-2 items-end">
-                  <div className="flex-1"><TextInput label="Model AI (opsional, pisahkan koma)" value={sumopodModels} onChange={setSumopodModels} placeholder="contoh: meta-llama/Llama-3-70b" mono/></div>
-                  {status?.sumopod?.configured && <Btn label="Simpan" onClick={() => save('sumopod', { SUMOPOD_HOST: sumopodHost, SUMOPOD_AVAILABLE_MODELS: sumopodModels })} loading={saving.sumopod} variant="default" icon={Save}/>}
-                </div>
+                {status?.sumopod?.configured && (
+                  <div className="flex gap-2">
+                    <Btn label="Test Koneksi" onClick={() => testConn('sumopod', intApi.testSumopod)} loading={testing.sumopod} variant="success" icon={Send}/>
+                  </div>
+                )}
+                <ModelBadgeSelector
+                  provider="Sumopod"
+                  apiEndpoint="sumopod/models"
+                  models={sumopodModels}
+                  setModels={setSumopodModels}
+                  configured={status?.sumopod?.configured}
+                  apiKey={sumopodKey}
+                  host={sumopodHost}
+                  onSave={() => save('sumopod', { SUMOPOD_HOST: sumopodHost, SUMOPOD_AVAILABLE_MODELS: sumopodModels })}
+                  saving={saving.sumopod}
+                />
+              </div>
+            </Card>
+            <Card icon="🌐" title="OpenRouter" subtitle="Multi-provider Gateway" configured={status?.openrouter?.configured}>
+              <div className="mt-3 space-y-2.5">
+                <MaskedField masked={status?.openrouter?.key_masked} label="API Key" value={openrouterKey} onChange={setOpenrouterKey} onSave={() => save('openrouter', { OPENROUTER_API_KEY: openrouterKey, OPENROUTER_HOST: openrouterHost, OPENROUTER_AVAILABLE_MODELS: openrouterModels })} onDelete={() => save('openrouter', { OPENROUTER_API_KEY: '', OPENROUTER_AVAILABLE_MODELS: '' })} saving={saving.openrouter}/>
+                <TextInput label="URL Base" value={openrouterHost} onChange={setOpenrouterHost} placeholder="https://openrouter.ai/api/v1" mono/>
+                {status?.openrouter?.configured && (
+                  <div className="flex gap-2">
+                    <Btn label="Test Koneksi" onClick={() => testConn('openrouter', intApi.testOpenRouter)} loading={testing.openrouter} variant="success" icon={Send}/>
+                  </div>
+                )}
+                <ModelBadgeSelector
+                  provider="OpenRouter"
+                  apiEndpoint="openrouter/models"
+                  models={openrouterModels}
+                  setModels={setOpenrouterModels}
+                  configured={status?.openrouter?.configured}
+                  apiKey={openrouterKey}
+                  host={openrouterHost}
+                  onSave={() => save('openrouter', { OPENROUTER_HOST: openrouterHost, OPENROUTER_AVAILABLE_MODELS: openrouterModels })}
+                  saving={saving.openrouter}
+                />
               </div>
             </Card>
             <Card icon="🦙" title="Ollama" subtitle="Lokal" configured={status?.ollama?.configured}>
               <div className="mt-3 space-y-2.5">
                 <TextInput label="Host" value={ollamaHost} onChange={setOllamaHost} placeholder="http://localhost:11434" mono/>
-                <TextInput label="Model AI (opsional, pisahkan koma)" value={ollamaModels} onChange={setOllamaModels} placeholder="contoh: llama3.1, mistral" mono/>
                 <div className="flex gap-2 mt-2">
                   <Btn label="Simpan" onClick={() => save('ollama', { OLLAMA_HOST: ollamaHost, OLLAMA_AVAILABLE_MODELS: ollamaModels })} loading={saving.ollama} variant="primary" icon={Save}/>
                   <Btn label="Test" onClick={() => testConn('ollama', intApi.testOllama)} loading={testing.ollama} variant="success" icon={Send}/>
                 </div>
+                <ModelBadgeSelector
+                  provider="Ollama"
+                  apiEndpoint="ollama/models"
+                  models={ollamaModels}
+                  setModels={setOllamaModels}
+                  configured={status?.ollama?.configured}
+                  host={ollamaHost}
+                  onSave={() => save('ollama', { OLLAMA_HOST: ollamaHost, OLLAMA_AVAILABLE_MODELS: ollamaModels })}
+                  saving={saving.ollama}
+                />
               </div>
             </Card>
           </div>

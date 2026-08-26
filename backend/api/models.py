@@ -29,6 +29,8 @@ def _get_saved_model_providers() -> dict:
         saved["google"] = True
     if settings.SUMOPOD_API_KEY and not settings.SUMOPOD_API_KEY.startswith("sk-..."):
         saved["sumopod"] = True
+    if settings.OPENROUTER_API_KEY and not settings.OPENROUTER_API_KEY.startswith("sk-..."):
+        saved["openrouter"] = True
     # Ollama is always considered available (local)
     saved["ollama"] = True
     # Custom providers

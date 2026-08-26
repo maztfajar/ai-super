@@ -137,6 +137,21 @@ class ModelManager:
         ollama_models = await self._check_ollama()
         self.available_models.update(ollama_models)
 
+        # ── OpenRouter ────────────────────────────────────────
+        if settings.OPENROUTER_API_KEY:
+            env_models_str = settings.OPENROUTER_AVAILABLE_MODELS or ""
+            env_models = [m.strip() for m in env_models_str.split(",") if m.strip()]
+            for model_id in env_models:
+                key = f"openrouter/{model_id}"
+                self.available_models[key] = {
+                    "provider":  "openrouter",
+                    "display":   f"{model_id} (OpenRouter)",
+                    "status":    "online",
+                    "model_id":  model_id,
+                }
+            if env_models:
+                log.info(f"OpenRouter models registered: {env_models}")
+
         # ── Custom providers (dari UI) ────────────────────────
         custom_models = self._load_custom_models()
         self.available_models.update(custom_models)
@@ -177,17 +192,19 @@ class ModelManager:
         """Check Ollama and list installed models"""
         models = {}
 
-        # Jika user set OLLAMA_AVAILABLE_MODELS di .env, pakai itu dulu
-        for m in settings.ollama_models_list:
-            clean = m.strip()
-            if clean:
-                models[f"ollama/{clean}"] = {
-                    "provider": "ollama",
-                    "display":  f"{clean} (Local)",
-                    "status":   "online",
-                }
+        # Jika user set OLLAMA_AVAILABLE_MODELS di .env, pakai itu SAJA (jangan campur dengan auto-detect)
+        if settings.ollama_models_list:
+            for m in settings.ollama_models_list:
+                clean = m.strip()
+                if clean:
+                    models[f"ollama/{clean}"] = {
+                        "provider": "ollama",
+                        "display":  f"{clean} (Local)",
+                        "status":   "online",
+                    }
+            return models
 
-        # Auto-detect dari Ollama API
+        # Auto-detect dari Ollama API hanya jika tidak diset manual
         try:
             async with httpx.AsyncClient(timeout=3) as client:
                 resp = await client.get(f"{settings.OLLAMA_HOST}/api/tags")

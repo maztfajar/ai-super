@@ -154,6 +154,9 @@ async def integrations_status(user: User = Depends(get_current_user)):
                       "models": env.get("SUMOPOD_AVAILABLE_MODELS", "")},
         "ollama":    {"configured": ollama_available, "host": env.get("OLLAMA_HOST", "http://localhost:11434"),
                       "models": env.get("OLLAMA_AVAILABLE_MODELS", "")},
+        "openrouter": {"configured": is_set("OPENROUTER_API_KEY"),  "key_masked": mask(env.get("OPENROUTER_API_KEY", "")),
+                       "host": env.get("OPENROUTER_HOST", "https://openrouter.ai/api/v1"),
+                       "models": env.get("OPENROUTER_AVAILABLE_MODELS", "")},
         "google_drive": {
             "configured": is_set("GOOGLE_DRIVE_CREDENTIALS"),
             "folder_id": env.get("GDRIVE_UPLOAD_FOLDER_ID", ""),
@@ -180,7 +183,7 @@ async def _perform_model_reload():
 @router.post("/save-key")
 async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
     """Simpan API key ke file .env"""
-    MODEL_PROVIDERS = ["openai", "anthropic", "google", "sumopod", "ollama"]
+    MODEL_PROVIDERS = ["openai", "anthropic", "google", "sumopod", "ollama", "openrouter"]
     ALLOWED_KEYS = {
         "openai":    ["OPENAI_API_KEY", "OPENAI_AVAILABLE_MODELS"],
         "anthropic": ["ANTHROPIC_API_KEY", "ANTHROPIC_AVAILABLE_MODELS"],
@@ -188,6 +191,7 @@ async def save_key(req: SaveKeyRequest, user: User = Depends(get_current_user)):
         "tavily":    ["TAVILY_API_KEY"],
         "sumopod":   ["SUMOPOD_API_KEY", "SUMOPOD_HOST", "SUMOPOD_AVAILABLE_MODELS", "SUMOPOD_DEFAULT_MODEL"],
         "ollama":    ["OLLAMA_HOST", "OLLAMA_DEFAULT_MODEL", "OLLAMA_AVAILABLE_MODELS"],
+        "openrouter":["OPENROUTER_API_KEY", "OPENROUTER_HOST", "OPENROUTER_AVAILABLE_MODELS"],
         "telegram":  ["TELEGRAM_BOT_TOKEN", "TELEGRAM_WEBHOOK_URL"],
         "whatsapp":  ["WHATSAPP_ACCESS_TOKEN", "WHATSAPP_PHONE_NUMBER_ID", "WHATSAPP_VERIFY_TOKEN"],
         "admin":     ["ADMIN_USERNAME", "ADMIN_PASSWORD"],
@@ -317,6 +321,187 @@ async def get_google_models(key: Optional[str] = None, user: User = Depends(get_
     except Exception as e:
         log.error("Error fetching Google models", error=str(e))
         return {"models": [], "error": str(e)}
+
+
+@router.get("/openai/models")
+async def get_openai_models(key: Optional[str] = None, user: User = Depends(get_current_user)):
+    """Fetch available models from OpenAI API"""
+    api_key = key or os.environ.get("OPENAI_API_KEY", "")
+    if not api_key or api_key.startswith("sk-..."):
+        return {"models": []}
+    import httpx
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            resp = await client.get(
+                "https://api.openai.com/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.status_code != 200:
+                return {"models": [], "error": f"HTTP {resp.status_code}"}
+            data = resp.json()
+            seen = set()
+            filtered = []
+            for m in data.get("data", []):
+                mid = m.get("id", "")
+                # Only include chat-capable models
+                if mid and mid not in seen and not mid.startswith("ft:") and not mid.endswith("-instruct"):
+                    if any(p in mid for p in ["gpt-", "o1", "o3", "o4", "chatgpt"]):
+                        seen.add(mid)
+                        filtered.append({"id": mid, "name": mid})
+            filtered.sort(key=lambda x: x["id"])
+            return {"models": filtered}
+    except Exception as e:
+        log.error("Error fetching OpenAI models", error=str(e))
+        return {"models": [], "error": str(e)}
+
+
+@router.get("/anthropic/models")
+async def get_anthropic_models(key: Optional[str] = None, user: User = Depends(get_current_user)):
+    """Fetch available models from Anthropic API"""
+    api_key = key or os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key or api_key.startswith("sk-ant-..."):
+        return {"models": []}
+    import httpx
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            resp = await client.get(
+                "https://api.anthropic.com/v1/models",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+            )
+            if resp.status_code != 200:
+                # Anthropic may not have /models endpoint, return known models
+                return {"models": [
+                    {"id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4"},
+                    {"id": "claude-haiku-4-5-20250514", "name": "Claude Haiku 4.5"},
+                    {"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet"},
+                    {"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku"},
+                    {"id": "claude-3-opus-20240229", "name": "Claude 3 Opus"},
+                ]}
+            data = resp.json()
+            filtered = []
+            for m in data.get("data", []):
+                mid = m.get("id", "")
+                name = m.get("display_name", mid)
+                if mid:
+                    filtered.append({"id": mid, "name": name})
+            filtered.sort(key=lambda x: x["id"])
+            return {"models": filtered}
+    except Exception as e:
+        log.error("Error fetching Anthropic models", error=str(e))
+        return {"models": [], "error": str(e)}
+
+
+@router.get("/sumopod/models")
+async def get_sumopod_models(key: Optional[str] = None, host: Optional[str] = None, user: User = Depends(get_current_user)):
+    """Fetch available models from Sumopod/OpenAI-compatible API"""
+    api_key = key or os.environ.get("SUMOPOD_API_KEY", "")
+    api_host = host or os.environ.get("SUMOPOD_HOST", "https://ai.sumopod.com/v1")
+    if not api_key:
+        return {"models": []}
+    api_host = api_host.rstrip("/")
+    import httpx
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            resp = await client.get(
+                f"{api_host}/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.status_code != 200:
+                return {"models": [], "error": f"HTTP {resp.status_code}"}
+            data = resp.json()
+            filtered = []
+            for m in data.get("data", data.get("models", [])):
+                mid = m.get("id", m.get("name", ""))
+                if mid:
+                    filtered.append({"id": mid, "name": mid})
+            filtered.sort(key=lambda x: x["id"])
+            return {"models": filtered}
+    except Exception as e:
+        log.error("Error fetching Sumopod models", error=str(e))
+        return {"models": [], "error": str(e)}
+
+
+@router.get("/ollama/models")
+async def get_ollama_models(host: Optional[str] = None, user: User = Depends(get_current_user)):
+    """Fetch available models from Ollama local server"""
+    api_host = host or os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    api_host = api_host.rstrip("/")
+    import httpx
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=10.0) as client:
+            resp = await client.get(f"{api_host}/api/tags")
+            if resp.status_code != 200:
+                return {"models": [], "error": f"HTTP {resp.status_code}"}
+            data = resp.json()
+            filtered = []
+            for m in data.get("models", []):
+                name = m.get("name", "")
+                if name:
+                    filtered.append({"id": name, "name": name})
+            filtered.sort(key=lambda x: x["id"])
+            return {"models": filtered}
+    except httpx.ConnectError:
+        return {"models": [], "error": f"Tidak bisa konek ke {api_host} — pastikan Ollama berjalan"}
+    except Exception as e:
+        log.error("Error fetching Ollama models", error=str(e))
+        return {"models": [], "error": str(e)}
+
+
+@router.get("/openrouter/models")
+async def get_openrouter_models(key: Optional[str] = None, host: Optional[str] = None, user: User = Depends(get_current_user)):
+    """Fetch available models from OpenRouter API"""
+    api_key = key or os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        return {"models": []}
+    import httpx
+    try:
+        api_host = (host or os.environ.get("OPENROUTER_HOST", "https://openrouter.ai/api/v1")).rstrip("/")
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
+            resp = await client.get(
+                f"{api_host}/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if resp.status_code != 200:
+                return {"models": [], "error": f"HTTP {resp.status_code}"}
+            data = resp.json()
+            filtered = []
+            for m in data.get("data", []):
+                mid = m.get("id", "")
+                name = m.get("name", mid)
+                if mid:
+                    filtered.append({"id": mid, "name": name})
+            filtered.sort(key=lambda x: x["name"])
+            return {"models": filtered}
+    except Exception as e:
+        log.error("Error fetching OpenRouter models", error=str(e))
+        return {"models": [], "error": str(e)}
+
+
+@router.post("/openrouter/test")
+async def test_openrouter(user: User = Depends(get_current_user)):
+    key = os.environ.get("OPENROUTER_API_KEY", "")
+    host = os.environ.get("OPENROUTER_HOST", "https://openrouter.ai/api/v1").rstrip("/")
+    if not key:
+        raise HTTPException(400, "OPENROUTER_API_KEY belum diset")
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{host}/models",
+                headers={"Authorization": f"Bearer {key}"},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                models = [m.get("id", "") for m in data.get("data", [])[:10]]
+                return {"status": "ok", "host": host, "models": models}
+            raise HTTPException(resp.status_code, f"OpenRouter error: {resp.text[:200]}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(500, str(e))
 
 
 

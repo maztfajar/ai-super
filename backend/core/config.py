@@ -124,6 +124,11 @@ class Settings(BaseSettings):
     SUMOPOD_AVAILABLE_MODELS: str = ""
     SUMOPOD_EMBEDDING_MODEL: str = "text-embedding-3-small"
 
+    # ── OPENROUTER ────────────────────────────────────────────
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_HOST: str = "https://openrouter.ai/api/v1"
+    OPENROUTER_AVAILABLE_MODELS: str = ""
+
     # Default model
     DEFAULT_MODEL: str = "ollama/llama3.1"
 

@@ -88,5 +88,13 @@
   ],
   "sumopod/kimi-k2.6": [
     "text"
+  ],
+  "openrouter/~deepseek/deepseek-v4-flash-latest": [
+    "text",
+    "speed"
+  ],
+  "openrouter/qwen/qwen3.7-flash": [
+    "text",
+    "speed"
   ]
 }

@@ -79,7 +79,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-1.5 w-72 bg-bg-2 border border-border rounded-xl shadow-2xl shadow-black/20 z-[100] overflow-hidden animate-fade">
+        <div className="absolute right-0 top-full mt-1.5 w-80 md:w-88 bg-bg-2 border border-border rounded-xl shadow-2xl shadow-black/20 z-[100] overflow-hidden animate-fade">
           {/* ═══ AUTO ═══ */}
           <div className="px-3 pt-3 pb-2 border-b border-border/20 mb-1">
             <div className="text-xs font-bold tracking-widest uppercase text-ink-3 flex items-center gap-2">
@@ -113,7 +113,7 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
               {t('workflows')}
             </div>
           </div>
-          <div className="px-2 pb-1 max-h-36 overflow-y-auto scrollbar-hide">
+          <div className="px-2 pb-1 max-h-36 overflow-y-auto scrollbar-thin">
             {savedWorkflows.length === 0 ? (
               <div className="px-2.5 py-2 text-xs text-ink-3 italic">{t('no_workflows')}</div>
             ) : (
@@ -163,13 +163,18 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
           <div className="border-t border-border mx-3 my-1" />
 
           {/* ═══ SINGLE MODELS (dynamic from Zustand store) ═══ */}
-          <div className="px-3 pt-2 pb-2 border-b border-border/20 mb-1">
+          <div className="px-3 pt-2 pb-2 border-b border-border/20 mb-1 flex items-center justify-between">
             <div className="text-xs font-bold tracking-widest uppercase text-ink-3 flex items-center gap-2">
               <Brain size={12} className="text-accent-2" />
               {t('single_models')}
             </div>
+            {activeConfiguredModels.length > 0 && (
+              <span className="text-[10px] text-accent font-bold bg-accent/10 px-2 py-0.5 rounded-full">
+                {activeConfiguredModels.length} model
+              </span>
+            )}
           </div>
-          <div className="px-2 pb-2 max-h-44 overflow-y-auto scrollbar-hide">
+          <div className="px-2 pb-2 max-h-56 overflow-y-auto scrollbar-thin space-y-0.5">
             {activeConfiguredModels.length === 0 ? (
               /* Empty state — no models configured */
               <div className="px-3 py-3 flex flex-col gap-2">
@@ -192,15 +197,15 @@ export default function OrchestratorDropdown({ value, onChange, compact = false 
                   key={m.id}
                   onClick={() => handleSelect(m.id)}
                   className={clsx(
-                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all text-sm group',
+                    'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-all text-xs group',
                     selected === m.id
-                      ? 'bg-accent/10 text-accent-2 font-semibold shadow-sm'
+                      ? 'bg-accent/10 text-accent font-semibold shadow-sm'
                       : 'text-ink hover:bg-bg-4 font-medium'
                   )}
                 >
-                  <span className="flex-1 truncate">{m.name}</span>
-                  {selected === m.id && <Check size={14} className="text-accent-2" />}
-                  <span className="text-[11px] text-ink-3 opacity-0 group-hover:opacity-100 transition-opacity font-semibold uppercase tracking-tight">{m.provider}</span>
+                  <span className="flex-1 truncate font-mono">{m.name}</span>
+                  {selected === m.id && <Check size={13} className="text-accent flex-shrink-0" />}
+                  <span className="text-[10px] text-ink-3 bg-bg-5 border border-border px-1.5 py-0.5 rounded font-bold uppercase tracking-tight flex-shrink-0">{m.provider}</span>
                 </button>
               ))
             )}
