@@ -1123,7 +1123,6 @@ class Orchestrator:
             if not spec.is_simple and aggregated.overall_confidence >= 0.7:
                 try:
                     from core.skill_registry import skill_registry
-                    from core.model_manager import model_manager
                     import asyncio as _asyncio
                     _asyncio.create_task(
                         skill_registry.auto_extract_skill(
