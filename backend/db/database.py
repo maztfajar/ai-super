@@ -135,3 +135,42 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Concurrency & WAL Management
+# ══════════════════════════════════════════════════════════════════════════════
+
+async def wal_checkpoint():
+    """
+    Periodic WAL checkpoint untuk mencegah WAL file bloat.
+    Dipanggil secara berkala (misal tiap 30 menit) dari scheduler.
+    """
+    if not is_sqlite:
+        return
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(sa.text("PRAGMA wal_checkpoint(TRUNCATE)"))
+        print("  ✓ WAL checkpoint completed")
+    except Exception as e:
+        print(f"  ✗ WAL checkpoint failed: {e}")
+
+
+async def start_db_services():
+    """Initialize database services — dipanggil saat app startup."""
+    try:
+        from core.concurrency import db_write_queue
+        await db_write_queue.start()
+        print("  ✓ DatabaseWriteQueue started")
+    except ImportError:
+        pass
+
+
+async def stop_db_services():
+    """Graceful shutdown database services."""
+    try:
+        from core.concurrency import db_write_queue
+        await db_write_queue.stop()
+        print("  ✓ DatabaseWriteQueue stopped")
+    except ImportError:
+        pass

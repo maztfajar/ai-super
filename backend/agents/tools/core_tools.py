@@ -10,6 +10,23 @@ from datetime import datetime
 
 log = structlog.get_logger()
 
+# ── Sandbox integration (graceful — no error if unavailable) ─────────────────
+try:
+    from core.sandbox_executor import sandbox_executor, SandboxProfile
+    _SANDBOX_AVAILABLE = True
+except ImportError:
+    _SANDBOX_AVAILABLE = False
+    sandbox_executor = None
+
+# ── Concurrency & File Locking ──────────────────────────────────────────────
+try:
+    from core.concurrency import FileLock, resource_semaphore
+    _CONCURRENCY_AVAILABLE = True
+except ImportError:
+    _CONCURRENCY_AVAILABLE = False
+    FileLock = None
+    resource_semaphore = None
+
 
 # ─── Foreground Server Detection ────────────────────────────────────────────
 FOREGROUND_SERVER_PATTERNS = [
@@ -241,6 +258,12 @@ async def execute_bash(command: str, session_id: str = None) -> str:
 
         # FIX: Log command dengan %s bukan f-string untuk hindari format specifier error
         log.info("execute_bash running", cmd=command[:120], cwd=cwd, timeout=timeout)
+
+        # ── Sandbox audit: log profile detection (non-blocking) ──────────
+        if _SANDBOX_AVAILABLE and sandbox_executor:
+            detected_profile = sandbox_executor.detect_profile(command)
+            log.debug("Sandbox profile detected",
+                      profile=detected_profile.value, cmd=command[:60])
 
         proc = await asyncio.create_subprocess_shell(
             command,
@@ -488,8 +511,14 @@ async def write_file(path: str, content: str, session_id: str = None, confirm: b
         os.makedirs(os.path.dirname(abs_path), exist_ok=True)
 
         async def _write():
-            async with aiofiles.open(abs_path, "w", encoding="utf-8") as f:
-                await f.write(content)
+            if _CONCURRENCY_AVAILABLE and FileLock and resource_semaphore:
+                async with resource_semaphore.acquire("filesystem", max_concurrent=5):
+                    async with FileLock(abs_path, timeout=15.0):
+                        async with aiofiles.open(abs_path, "w", encoding="utf-8") as f:
+                            await f.write(content)
+            else:
+                async with aiofiles.open(abs_path, "w", encoding="utf-8") as f:
+                    await f.write(content)
 
         await asyncio.wait_for(_write(), timeout=30.0)
 

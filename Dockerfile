@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
     python3-dev \
     curl \
     git \
+    bubblewrap \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Playwright and its dependencies

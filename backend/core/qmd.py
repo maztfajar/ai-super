@@ -316,6 +316,8 @@ class QueryMessageDistiller:
 
     def _is_code_heavy(self, content: str) -> bool:
         """Deteksi apakah message mengandung banyak source code / JSON."""
+        if content.count("```") >= 2:
+            return True
         code_markers = content.count("```") + content.count("    ") + content.count("\t")
         json_markers = content.count("{") + content.count("[")
         return code_markers > 4 or json_markers > 10

@@ -228,8 +228,39 @@ class SkillRegistry:
     def get_skill(self, skill_id: str) -> Optional[Skill]:
         return self._skills.get(skill_id)
 
+    # ── Safety Validation ───────────────────────────────────────────────────
+
+    DANGEROUS_SKILL_PATTERNS = [
+        r"\brm\s+-rf\s+[/~]",
+        r"\bmkfs\b",
+        r"\bdd\s+if=",
+        r":\(\)\s*\{",
+        r"\b(shutdown|reboot|halt|poweroff)\b",
+        r"nc\s+.*-e\s+/bin",
+        r"chmod\s+[0-7]*[67][0-7]\s+/(etc|bin|usr)",
+    ]
+
+    def validate_safety(self, skill: Skill) -> tuple[bool, str]:
+        """
+        Validasi apakah skill mengandung instruksi/command berbahaya.
+        Returns: (is_safe, error_reason)
+        """
+        all_text = " ".join([
+            skill.name,
+            skill.description,
+            " ".join(skill.steps),
+            " ".join(skill.examples),
+            skill.content,
+        ])
+
+        for pattern in self.DANGEROUS_SKILL_PATTERNS:
+            if re.search(pattern, all_text, re.IGNORECASE):
+                return False, f"Dangerous command pattern detected: {pattern}"
+
+        return True, ""
+
     def create_skill(self, data: dict) -> Skill:
-        """Buat skill baru. Tolak jika duplikat ditemukan."""
+        """Buat skill baru. Tolak jika duplikat ditemukan atau tidak aman."""
         now = _now_iso()
         skill = Skill(
             id=str(uuid.uuid4())[:8],
@@ -246,6 +277,12 @@ class SkillRegistry:
             use_count=0,
             success_rate=1.0,
         )
+
+        # Cek safety
+        is_safe, reason = self.validate_safety(skill)
+        if not is_safe:
+            raise ValueError(f"Skill creation blocked by safety engine: {reason}")
+
         # Cek duplikat
         dup = self._find_duplicate(skill)
         if dup:

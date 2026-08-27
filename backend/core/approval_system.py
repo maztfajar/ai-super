@@ -55,6 +55,39 @@ RISKY_FILE_PATHS = [
     "/.ssh/",
 ]
 
+# ── Sandbox Integration ──────────────────────────────────────────────────────
+# Commands yang boleh bypass sandbox sepenuhnya (read-only, no side effects)
+SANDBOX_BYPASS_PATTERNS = [
+    r"^(echo|cat|ls|pwd|whoami|date|uname|head|tail|wc|grep|find|which|type)\b",
+    r"^(env|printenv|hostname|id|df|du|free|uptime)\b",
+]
+
+def detect_sandbox_profile(command: str) -> str:
+    """
+    Detect sandbox profile yang sesuai untuk command.
+    Returns: 'bypass' | 'read_only' | 'write_safe' | 'full_access'
+    """
+    cmd = command.strip().lower()
+
+    # Check bypass
+    for pattern in SANDBOX_BYPASS_PATTERNS:
+        if re.search(pattern, cmd):
+            return "bypass"
+
+    # Network-requiring commands → full_access
+    network_patterns = ["npm install", "pip install", "apt install", "curl ",
+                        "wget ", "git clone", "git pull", "docker pull"]
+    if any(p in cmd for p in network_patterns):
+        return "full_access"
+
+    # Write commands → write_safe
+    write_patterns = ["mkdir", "touch", "cp ", "mv ", "tee ", "sed -i",
+                      "npm run", "python ", "python3", "node ", "make", "cargo build"]
+    if any(p in cmd for p in write_patterns):
+        return "write_safe"
+
+    return "read_only"
+
 
 @dataclass
 class ApprovalRequest:
@@ -128,17 +161,17 @@ class ApprovalSystem:
         
         path_lower = path.lower()
         
+        # Check for attempt to overwrite critical files first
+        critical_files = ["/etc/passwd", "/etc/shadow", "/etc/sudoers", "/.bashrc", "/.bash_profile"]
+        if path_lower in critical_files:
+            reason = f"Attempting to modify critical file: {path}"
+            return RiskLevel.CRITICAL, reason
+
         # Check if path is in risky locations
         for risky_prefix in RISKY_FILE_PATHS:
             if path_lower.startswith(risky_prefix):
                 reason = f"Writing to protected system path: {risky_prefix}"
                 return RiskLevel.HIGH, reason
-        
-        # Check for attempt to overwrite critical files
-        critical_files = ["/etc/passwd", "/etc/shadow", "/etc/sudoers", "/.bashrc", "/.bash_profile"]
-        if path_lower in critical_files:
-            reason = f"Attempting to modify critical file: {path}"
-            return RiskLevel.CRITICAL, reason
         
         return RiskLevel.LOW, ""
 

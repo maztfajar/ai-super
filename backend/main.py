@@ -190,6 +190,8 @@ async def lifespan(app: FastAPI):
 
     # Init database tables
     await init_db()
+    from db.database import start_db_services
+    await start_db_services()
     log.info("Database ready")
 
 
@@ -330,12 +332,58 @@ async def lifespan(app: FastAPI):
         except Exception:
             pass
 
+    # Stop database services
+    from db.database import stop_db_services
+    await stop_db_services()
+
+
+OPENAPI_TAGS = [
+    {"name": "Auth", "description": "Authentication and authorization endpoints (JWT tokens, password management)"},
+    {"name": "Chat", "description": "Conversational orchestration, task execution streaming (SSE), and session history"},
+    {"name": "Export", "description": "Export chat sessions to Markdown, PDF, or JSON format"},
+    {"name": "RAG", "description": "Retrieval-Augmented Generation document ingestion, embedding, and semantic search"},
+    {"name": "Memory", "description": "Episodic and long-term memory retrieval and management"},
+    {"name": "Models", "description": "Model capability introspection, status checks, and dynamic routing settings"},
+    {"name": "Workflow", "description": "Asynchronous DAG execution pipelines and Celery task management"},
+    {"name": "Analytics", "description": "System performance telemetry, token usage breakdown, and cost tracking"},
+    {"name": "Integrations", "description": "Third-party connector configurations (Telegram, Cloudflare, Webhooks)"},
+    {"name": "WebSocket", "description": "Bi-directional real-time communication channel"},
+    {"name": "Settings", "description": "Application configuration and environment variable overrides"},
+    {"name": "Cloudflare Wizard", "description": "Cloudflare Tunnel automated provisioning and management"},
+    {"name": "Security", "description": "Automated dependency CVE scanning and auto-patching engine"},
+    {"name": "Auth2FA", "description": "Time-based One-Time Password (TOTP) two-factor authentication"},
+    {"name": "Public Update", "description": "Software update checks and self-updater status"},
+    {"name": "Monitoring", "description": "Live host health, memory, disk, and CPU resource utilization"},
+    {"name": "Media", "description": "Image generation and multimedia processing endpoints"},
+    {"name": "TTS", "description": "Text-to-Speech voice synthesis engine"},
+    {"name": "Capability", "description": "Dynamic tool capability mapping and availability"},
+    {"name": "Compliance & Security", "description": "Audit logging trail, human approval requests, and policy enforcement"},
+    {"name": "Evolver", "description": "Autonomous self-evolution and system prompt optimization"},
+    {"name": "QMD Token Killer", "description": "Query-aware Message Distiller token compression metrics"},
+    {"name": "File Manager", "description": "Sandboxed project file explorer and workspace manager"},
+    {"name": "Skills", "description": "Self-learning procedural skill registry (Markdown + YAML format)"},
+]
 
 app = FastAPI(
     title="AI ORCHESTRATOR API",
-    description="AI Orchestrator — Personal Orchestrator",
+    description="""
+# AI Orchestrator — Autonomous Multi-Agent Orchestration Platform
+
+AI Orchestrator is a production-grade multi-agent autonomous execution platform featuring:
+- **DAG-based Task Orchestration**: Atomic task decomposition with Kahn's topological grouping and critical path scheduling.
+- **Self-Learning Skill Registry**: Markdown + YAML procedural memory with semantic deduplication and safety verification.
+- **Bubblewrap Sandbox**: Kernel namespace filesystem and network isolation for secure agent terminal operations.
+- **Multi-Model Consensus Engine**: Parallel execution across diverse LLM providers with multi-criteria judge evaluation.
+- **Query-aware Message Distiller (QMD)**: Context compression saving up to 77% tokens while preserving code blocks.
+- **Anti-AI Slop Humanizer**: Linguistic de-roboticization and dynamic styling.
+- **Advisory FileLock & Serialized Database Queue**: Multi-agent race-condition and write-conflict prevention.
+    """,
     version=settings.APP_VERSION,
+    openapi_tags=OPENAPI_TAGS,
     lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 # Add middlewares
