@@ -1,8 +1,8 @@
-# 🧠 AI ORCHESTRATOR v4.2.0
+# 🧠 AI ORCHESTRATOR v4.2.3
 ### *High-Autonomy Multi-Agent Execution, Real-Time Voice Interaction, Autonomous Skill Learning & Server Operations*
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v4.2.0-blueviolet?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v4.2.3-blueviolet?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Arch-Multi--Agent--DAG-blue?style=for-the-badge" alt="Architecture">
   <img src="https://img.shields.io/badge/Skills-Self--Learning-magenta?style=for-the-badge" alt="Skills">
@@ -238,6 +238,23 @@ Aplikasi dapat dikontrol dengan skrip berikut:
 
 Akses dashboard web melalui browser di: `http://localhost:7860` (atau IP server Anda).
 
+### 5. Menjalankan via Docker (Recommended)
+AI Orchestrator juga didistribusikan melalui Docker Hub sehingga siap dijalankan di platform mana pun tanpa perlu setup manual:
+
+```bash
+# Pull image dari Docker Hub
+docker pull maztfajar/ai-super:latest
+
+# Jalankan container
+docker run -d \
+  --name ai-super \
+  -p 7860:7860 \
+  -v $(pwd)/data:/app/data \
+  --cap-add=SYS_ADMIN \
+  maztfajar/ai-super:latest
+```
+*(Catatan: flag `--cap-add=SYS_ADMIN` diperlukan agar `bubblewrap` dapat berjalan untuk sandbox system).*
+
 ---
 
 ## 🎮 Quick Start Guide
@@ -257,5 +274,5 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 <br>
 <p align="center">
   <i>Built for High-Autonomy Engineering, Server Operations & Intelligent Automation.</i><br>
-  <b>AI ORCHESTRATOR v4.2.0</b>
+  <b>AI ORCHESTRATOR v4.2.3</b>
 </p>
