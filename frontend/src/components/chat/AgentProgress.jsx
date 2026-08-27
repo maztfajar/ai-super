@@ -327,6 +327,20 @@ function _Step({ step, isActive, isLast, isStreaming, streamingText, onOpenArtif
 }
 
 // ── ProcessStepsPanel ─────────────────────────────────────────
+const isCodeWritingStep = (s) => {
+  if (!s) return false
+  const action = (s.action || '').toLowerCase()
+  const detail = (s.detail || '').toLowerCase()
+  return (
+    action.includes('writ') ||
+    action.includes('edit') ||
+    action.includes('code') ||
+    action.includes('modifying') ||
+    action.includes('creating') ||
+    /\.(py|js|jsx|ts|tsx|html|css|json|sql|sh|php|rs|go|cpp|c|java|rb|vue|svelte|md)\b/i.test(detail)
+  )
+}
+
 const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
   steps, isStreaming, onStop, streamingText, onOpenArtifactCard, defaultOpen = true
 }) {
@@ -347,13 +361,17 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
 
   if (!steps || steps.length === 0) return null
 
-  const latest = steps[steps.length - 1]
-  const doneCount = isStreaming ? steps.length - 1 : steps.length
-  const hasError = steps.some(s => s.action === 'Error')
+  // User preference: Hanya tampilkan box proses saat sedang menulis / mengedit kode
+  const codeSteps = steps.filter(isCodeWritingStep)
+  if (codeSteps.length === 0) return null
+
+  const latest = codeSteps[codeSteps.length - 1]
+  const doneCount = isStreaming ? codeSteps.length - 1 : codeSteps.length
+  const hasError = codeSteps.some(s => s.action === 'Error')
 
   const headerLabel = isStreaming
-    ? `⚡ ${latest?.action}${latest?.detail ? ` · ${latest.detail}` : '...'}`
-    : `✓ Eksekusi selesai (${steps.length} langkah)`
+    ? `⚡ Menulis Kode: ${latest?.action}${latest?.detail ? ` · ${latest.detail}` : '...'}`
+    : `✓ Kode selesai dibuat (${codeSteps.length} berkas)`
 
   return (
     <>
@@ -387,7 +405,7 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
             {headerLabel}
           </span>
           <span className="text-[10px] px-3 py-1 rounded-full bg-bg-3 border border-border text-ink-3 font-bold uppercase tracking-widest shadow-sm">
-            {doneCount} / {steps.length} langkah
+            {doneCount} / {codeSteps.length} berkas
           </span>
           <_ElapsedBadge active={isStreaming} />
           {isStreaming && (
@@ -398,13 +416,13 @@ const ProcessStepsPanel = React.memo(function ProcessStepsPanel({
         {open && (
           <div className="ml-2 pl-6 border-l-2 border-border/50">
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {steps.map((step, i) => (
+              {codeSteps.map((step, i) => (
                 <_Step
                   key={i}
                   step={step}
                   idx={i}
-                  isActive={i === steps.length - 1 && isStreaming}
-                  isLast={i === steps.length - 1}
+                  isActive={i === codeSteps.length - 1 && isStreaming}
+                  isLast={i === codeSteps.length - 1}
                   isStreaming={isStreaming}
                   streamingText={streamingText}
                   onOpenArtifactCard={onOpenArtifactCard}

@@ -246,12 +246,13 @@ class AgentLoop:
                 tc = response["tool_calls"][0]
                 return {
                     "name": tc["function"]["name"],
-                    "arguments": json.loads(tc["function"]["arguments"]),
+                    "arguments": json.loads(tc["function"]["arguments"]) if isinstance(tc["function"]["arguments"], str) else tc["function"]["arguments"],
                 }
             except Exception:
                 pass
 
         if isinstance(response, str):
+            # Format 1: [TOOL: name] {args}
             pattern = r'\[TOOL:\s*(\w+)\]\s*(\{.*?\})'
             match = re.search(pattern, response, re.DOTALL)
             if match:
@@ -260,6 +261,28 @@ class AgentLoop:
                         "name": match.group(1),
                         "arguments": json.loads(match.group(2)),
                     }
+                except json.JSONDecodeError:
+                    pass
+
+            # Format 2: <tool>{"name": "...", "arguments": {...}}</tool>
+            tool_tag = re.search(r'<tool>\s*(\{.*?\})\s*</tool>', response, re.DOTALL)
+            if tool_tag:
+                try:
+                    data = json.loads(tool_tag.group(1))
+                    if "name" in data:
+                        args = data.get("arguments", data.get("args", {}))
+                        return {"name": data["name"], "arguments": args}
+                except json.JSONDecodeError:
+                    pass
+
+            # Format 3: ```json with tool call
+            json_block = re.search(r'```(?:json)?\s*(\{[^`]*"name"\s*:[^`]*\})\s*```', response, re.DOTALL)
+            if json_block:
+                try:
+                    data = json.loads(json_block.group(1))
+                    if "name" in data:
+                        args = data.get("arguments", data.get("args", {}))
+                        return {"name": data["name"], "arguments": args}
                 except json.JSONDecodeError:
                     pass
 

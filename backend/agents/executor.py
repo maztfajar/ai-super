@@ -541,6 +541,207 @@ class AgentExecutor:
         "browser_screenshot":    ("Screenshot", lambda a: a.get("filename", "screenshot")),
     }
 
+    def get_tools_schema(self) -> list:
+        """Return the OpenAI-style tools schema for use with AgentLoop."""
+        from agents.tools.schema import NATIVE_TOOLS_SCHEMA
+        return NATIVE_TOOLS_SCHEMA
+
+    async def execute_tool(self, tool_name: str, args: dict) -> str:
+        """
+        Standalone tool dispatcher for AgentLoop.
+        Maps tool_name + args to the actual tool function and returns the result.
+        """
+        try:
+            if tool_name == "execute_bash":
+                return await execute_bash(args.get("command", ""), "agent_loop")
+            elif tool_name == "read_file":
+                return await read_file(args.get("path", ""), "agent_loop")
+            elif tool_name == "write_file":
+                return await write_file(
+                    args.get("path", ""), args.get("content", ""), "agent_loop",
+                    args.get("confirm", False)
+                )
+            elif tool_name == "write_multiple_files":
+                from agents.tools import write_multiple_files
+                return await write_multiple_files(
+                    args.get("files", []), "agent_loop",
+                    args.get("confirm", False)
+                )
+            elif tool_name == "ask_model":
+                raw_model = args.get("model_id", "")
+                resolved = self._resolve_model_id(raw_model)
+                return await ask_model(resolved, args.get("prompt", ""))
+            elif tool_name == "web_search":
+                return await web_search(args.get("query", ""))
+            elif tool_name == "find_safe_port":
+                return await find_safe_port(args.get("preferred", 0))
+            elif tool_name == "list_directory":
+                return await list_directory(
+                    args.get("path", args.get("directory", ".")), "agent_loop"
+                )
+            elif tool_name == "file_tree":
+                return await file_tree(
+                    args.get("path", "."), args.get("max_depth", 4), "agent_loop"
+                )
+            elif tool_name == "find_files":
+                return await find_files(
+                    args.get("pattern", "*"),
+                    args.get("search_path", "."),
+                    args.get("file_type", "any"),
+                    "agent_loop"
+                )
+            elif tool_name == "search_in_files":
+                return await search_in_files(
+                    args.get("keyword", ""),
+                    args.get("search_path", "."),
+                    args.get("extensions", ""),
+                    "agent_loop"
+                )
+            elif tool_name == "make_directory":
+                return await make_directory(args.get("path", ""), "agent_loop")
+            elif tool_name == "move_file":
+                return await move_file(
+                    args.get("source", ""), args.get("destination", ""), "agent_loop"
+                )
+            elif tool_name == "copy_file":
+                return await copy_file(
+                    args.get("source", ""), args.get("destination", ""), "agent_loop"
+                )
+            elif tool_name == "delete_file":
+                return await delete_file(
+                    args.get("path", ""), args.get("confirm", False), "agent_loop"
+                )
+            elif tool_name == "get_project_path":
+                return await get_project_path("agent_loop")
+            elif tool_name == "set_project_path":
+                return await set_project_path(args.get("path", ""), "agent_loop")
+            elif tool_name == "list_all_projects":
+                return await list_all_projects("agent_loop")
+            elif tool_name == "get_file_info":
+                return await get_file_info(args.get("path", ""), "agent_loop")
+            elif tool_name == "read_document":
+                from agents.tools.core_tools import read_document
+                return await read_document(args.get("path", ""), "agent_loop")
+            elif tool_name == "replace_in_file":
+                from agents.tools.core_tools import replace_in_file
+                return await replace_in_file(
+                    args.get("path", ""), args.get("old_string", ""),
+                    args.get("new_string", ""), "agent_loop"
+                )
+            elif tool_name == "schedule_task":
+                from agents.tools.core_tools import schedule_task
+                return await schedule_task(
+                    title=args.get("title", "Scheduled Task"),
+                    description=args.get("description", ""),
+                    due_in_minutes=int(args.get("due_in_minutes", 60)),
+                    recurrence=args.get("recurrence"),
+                    session_id="agent_loop", user_id=None,
+                )
+            elif tool_name == "system_info":
+                from agents.tools.system_tools import system_info
+                return await system_info(args.get("category", "all"))
+            elif tool_name == "process_manager":
+                from agents.tools.system_tools import process_manager
+                return await process_manager(args.get("action", "list"), args.get("target"))
+            elif tool_name == "generate_image":
+                from agents.tools.media import generate_image
+                return await generate_image(
+                    prompt=args.get("prompt", ""),
+                    size=args.get("size", "1024x1024"),
+                    quality=args.get("quality", "standard"),
+                )
+            elif tool_name == "browser_navigate":
+                from agents.tools.browser_automation import browser_navigate
+                return await browser_navigate(args.get("url", ""), "agent_loop")
+            elif tool_name == "browser_click":
+                from agents.tools.browser_automation import browser_click
+                return await browser_click(args.get("selector", ""), "agent_loop")
+            elif tool_name == "browser_type":
+                from agents.tools.browser_automation import browser_type
+                return await browser_type(
+                    args.get("selector", ""), args.get("text", ""), "agent_loop"
+                )
+            elif tool_name == "browser_extract_text":
+                from agents.tools.browser_automation import browser_extract_text
+                return await browser_extract_text("agent_loop")
+            elif tool_name == "browser_screenshot":
+                from agents.tools.browser_automation import browser_screenshot
+                return await browser_screenshot(args.get("filename", "screenshot"), "agent_loop")
+            elif tool_name == "excel_read":
+                from agents.tools.core_tools import excel_read
+                return await excel_read(
+                    path=args.get("path", ""), sheet=args.get("sheet"),
+                    max_rows=int(args.get("max_rows", 100))
+                )
+            elif tool_name == "excel_write":
+                from agents.tools.core_tools import excel_write
+                return await excel_write(
+                    path=args.get("path", ""), data=args.get("data", []),
+                    sheet=args.get("sheet", "Sheet1"), headers=args.get("headers"),
+                    overwrite=args.get("overwrite", False)
+                )
+            elif tool_name == "excel_formula":
+                from agents.tools.core_tools import excel_formula
+                return await excel_formula(
+                    path=args.get("path", ""), cell=args.get("cell", ""),
+                    formula=args.get("formula", ""), sheet=args.get("sheet")
+                )
+            elif tool_name == "word_read":
+                from agents.tools.core_tools import word_read
+                return await word_read(path=args.get("path", ""))
+            elif tool_name == "word_write":
+                from agents.tools.core_tools import word_write
+                return await word_write(
+                    path=args.get("path", ""), content=args.get("content", ""),
+                    title=args.get("title"), author=args.get("author", "AI ORCHESTRATOR"),
+                    overwrite=args.get("overwrite", False)
+                )
+            elif tool_name == "ppt_create":
+                from agents.tools.core_tools import ppt_create
+                return await ppt_create(
+                    path=args.get("path", ""), title=args.get("title", ""),
+                    subtitle=args.get("subtitle", ""), theme=args.get("theme", "dark"),
+                    overwrite=args.get("overwrite", False)
+                )
+            elif tool_name == "ppt_add_slide":
+                from agents.tools.core_tools import ppt_add_slide
+                return await ppt_add_slide(
+                    path=args.get("path", ""), title=args.get("title", ""),
+                    content=args.get("content", ""), layout=args.get("layout", "content"),
+                    slide_number=args.get("slide_number")
+                )
+            elif tool_name == "sql_query":
+                from agents.tools.core_tools import sql_query
+                return await sql_query(
+                    database_path=args.get("database_path", ""),
+                    query=args.get("query", ""),
+                    max_rows=int(args.get("max_rows", 50))
+                )
+            elif tool_name == "sql_execute":
+                from agents.tools.core_tools import sql_execute
+                return await sql_execute(
+                    database_path=args.get("database_path", ""),
+                    statement=args.get("statement", "")
+                )
+            elif tool_name == "screenshot_screen":
+                from agents.tools.core_tools import screenshot_screen
+                return await screenshot_screen(
+                    output_path=args.get("output_path"),
+                    region=args.get("region", "full")
+                )
+            elif tool_name == "app_plan_generate":
+                from agents.tools.core_tools import app_plan_generate
+                return await app_plan_generate(
+                    description=args.get("description", ""),
+                    app_type=args.get("app_type", "web"),
+                    output_path=args.get("output_path")
+                )
+            else:
+                return f"Unknown tool: '{tool_name}'. Use execute_bash for system commands."
+        except Exception as e:
+            log.error("execute_tool failed", tool=tool_name, error=str(e)[:200])
+            return f"[ERROR] Tool '{tool_name}' failed: {str(e)[:300]}"
+
     def _prune_agent_messages(self, messages: list, max_messages: int = 20) -> list:
         for msg in messages:
             if msg["role"] == "assistant":

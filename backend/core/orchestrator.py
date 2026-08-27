@@ -737,13 +737,32 @@ class Orchestrator:
             )
             
             async def _model_caller(p, t):
-                return await model_manager.generate(
+                """Collect streaming response into a single string for AgentLoop."""
+                # Resolve best available model
+                best_model = user_model_choice
+                if not best_model or best_model not in model_manager.available_models:
+                    best_model = agent_registry.resolve_model_for_agent("general", user_model_choice)
+                
+                chunks = []
+                tool_calls_data = None
+                async for chunk in model_manager.stream_chat_completion(
+                    model=best_model,
                     messages=p,
-                    model=user_model_choice or "claude-3-5-sonnet-20241022",
                     temperature=0.4,
+                    max_tokens=4096,
                     tools=t,
-                    session_id=session_id
-                )
+                ):
+                    if isinstance(chunk, dict):
+                        # Tool call response from provider
+                        tool_calls_data = chunk
+                    elif isinstance(chunk, str):
+                        chunks.append(chunk)
+                
+                # If provider returned native tool_calls, return as dict for _extract_tool_call
+                if tool_calls_data and "tool_calls" in tool_calls_data:
+                    return tool_calls_data
+                
+                return "".join(chunks)
             
             try:
                 full_response = ""
