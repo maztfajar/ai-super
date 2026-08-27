@@ -438,10 +438,73 @@ export const api = {
 
   // ── TTS Text-to-Speech ─────────────────────────────────────
   getTTSUrl: (text, lang) => {
-    // We use a public-ish URL or include token in query if backend supports it
     const params = new URLSearchParams({ text, lang: lang || 'id' })
     const token = getToken()
     if (token) params.append('token', token)
     return `/api/media/tts?${params.toString()}`
+  },
+
+  // ── Skills ────────────────────────────────────────────────
+  listSkills: (params = {}) => {
+    const q = new URLSearchParams()
+    if (params.category) q.set('category', params.category)
+    if (params.search)   q.set('search',   params.search)
+    return req('GET', `/skills?${q}`)
+  },
+  getSkill:    (id)   => req('GET',    `/skills/${id}`),
+  createSkill: (data) => req('POST',   `/skills`, data),
+  updateSkill: (id, data) => req('PUT', `/skills/${id}`, data),
+  deleteSkill: (id)   => req('DELETE', `/skills/${id}`),
+  skillStats:  ()     => req('GET',    `/skills/stats/summary`),
+  matchSkills: (q, topK = 3) => req('GET', `/skills/match/query?q=${encodeURIComponent(q)}&top_k=${topK}`),
+
+  importSkillsJson: async (file) => {
+    const token = getToken()
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch('/api/skills/import/json', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: form,
+    })
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Import failed') }
+    return res.json()
+  },
+
+  importSkillsMarkdown: async (file) => {
+    const token = getToken()
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch('/api/skills/import/markdown', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: form,
+    })
+    if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.detail || 'Import failed') }
+    return res.json()
+  },
+
+  exportSkillsJson: async () => {
+    const token = getToken()
+    const res = await fetch('/api/skills/export/json', {
+      headers: { Authorization: 'Bearer ' + token },
+    })
+    if (!res.ok) throw new Error('Export failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'skills_export.json'; a.click()
+    URL.revokeObjectURL(url)
+  },
+
+  exportSkillsMarkdown: async () => {
+    const token = getToken()
+    const res = await fetch('/api/skills/export/markdown', {
+      headers: { Authorization: 'Bearer ' + token },
+    })
+    if (!res.ok) throw new Error('Export failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a'); a.href = url; a.download = 'skills_export.md'; a.click()
+    URL.revokeObjectURL(url)
   },
 }

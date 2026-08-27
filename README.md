@@ -1,10 +1,11 @@
-# 🧠 AI ORCHESTRATOR v4.1.52
-### *High-Autonomy Multi-Agent Execution, Real-Time Voice Interaction & Resilient Orchestration*
+# 🧠 AI ORCHESTRATOR v4.1.54
+### *High-Autonomy Multi-Agent Execution, Real-Time Voice Interaction, Autonomous Skill Learning & Server Operations*
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v4.1.52-blueviolet?style=for-the-badge" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v4.1.54-blueviolet?style=for-the-badge" alt="Version">
   <img src="https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/Arch-Multi--Agent--DAG-blue?style=for-the-badge" alt="Architecture">
+  <img src="https://img.shields.io/badge/Skills-Self--Learning-magenta?style=for-the-badge" alt="Skills">
   <img src="https://img.shields.io/badge/Routing-Zero--Hardcode-orange?style=for-the-badge" alt="Routing">
   <img src="https://img.shields.io/badge/Voice-Realtime--VAD-cyan?style=for-the-badge" alt="Voice">
   <img src="https://img.shields.io/badge/Memory-Semantic--Procedural-blueviolet?style=for-the-badge" alt="Memory">
@@ -17,40 +18,46 @@
 
 **AI ORCHESTRATOR** adalah platform orkestrasi AI otonom mandiri (*Self-Hosted*) yang dirancang untuk mengeksekusi tugas-tugas rekayasa dan operasional skala kompleks melalui sistem multi-agent yang terkoordinasi. 
 
-Berbeda dengan antarmuka percakapan konvensional, AI ORCHESTRATOR mengedepankan **Full Autonomy & Native Tool Calling**, didukung arsitektur **Directed Acyclic Graph (DAG)**, memori prosedural cerdas, pemrosesan suara dua arah (*Voice-to-Voice with VAD*), serta **Dynamic Model Routing** yang memilih model AI paling efisien dan kompeten secara otomatis tanpa konfigurasi kaku (*Zero-Hardcode*).
+Berbeda dengan antarmuka percakapan konvensional, AI ORCHESTRATOR mengedepankan **Full Autonomy & Native Tool Calling**, kapabilitas **Autonomous Server & PC Operations** (manajemen file, proses, terminal, dokumen office, SQL), **Autonomous Skill Registry & Self-Learning** (AI belajar secara mandiri dari solusi baru), didukung arsitektur **Directed Acyclic Graph (DAG)**, pemrosesan suara dua arah (*Voice-to-Voice with VAD*), serta **Dynamic Model Routing** (*Zero-Hardcode*).
 
 ---
 
 ## 🌟 Core Features & Capabilities
 
-### 1. ⚡ High-Autonomy Execution & Native Tools
-* **Native Function Calling:** Orkestrasi terintegrasi langsung dengan standar JSON Schema bawaan dari provider model (OpenAI, Anthropic Claude, Google Gemini, Groq, DeepSeek, Ollama, dll.), menghasilkan akurasi pemanggilan alat (*tool calls*) tinggi dan bebas kegagalan sintaks regex.
-* **Modular Chat Engine & Agent Progress:** Antarmuka percakapan modular (`ChatInput`, `MessageList`, `AgentProgress`) dengan visualisasi proses berpikir agen (*Thinking Process*), status langkah demi langkah, dan *live step-by-step telemetry*.
-* **Browser Automation Tools:** Agen memiliki kapabilitas navigasi web otonom (`browser_navigate`), interaksi elemen (`browser_click`, `browser_type`), ekstraksi konten teks (`browser_extract_text`), dan penangkapan visual halaman (`browser_screenshot`).
-* **AI Image Generation:** Integrasi pembuatan gambar (`generate_image`) teks-ke-gambar berbasis Pollinations AI (100% gratis, tanpa API key) dan provider kustom dengan opsi rasio dinamis (square, landscape, portrait).
-* **Infinite Sub-Task Decomposition:** Pemecahan instruksi skala besar (*Fullstack App*, *Refactoring*, *DevOps*, *Database Migration*) menjadi langkah-langkah operasional yang dieksekusi secara terstruktur tanpa terpotong limit token.
-* **True Parallel Execution (DAG):** Agen-agen beroperasi secara simultan (*non-blocking*) melalui graph eksekusi terkoordinasi di `Command Center`.
+### 1. ⚡ Autonomous Skill Registry & Self-Learning (NEW!)
+* **Self-Improving Autonomous Learning:** Ketika AI Super menyelesaikan tugas baru atau kompleks dengan sukses, sistem secara otomatis mengevaluasi dan mengekstrak langkah-langkah prosedural (*Auto-Extraction*) menjadi **Skill** baru.
+* **Instant Procedural Recall:** Pada permintaan serupa di masa depan, AI secara otomatis mencocokkan kata kunci (*Trigger Keywords*) dan memuat resep baku langkah-langkah solusi ke dalam prompt eksekusi, mencegah pengulangan proses *trial-and-error*.
+* **Markdown + YAML Frontmatter Storage:** Setiap skill disimpan persisten sebagai file Markdown (`.md`) dengan metadata terstruktur (ID, nama, deskripsi, kategori, tag, trigger keywords, daftar langkah bernomor, contoh pemakaian, catatan).
+* **Skill Management Dashboard:** Antarmuka dedicated di menu **Skill** untuk membuat skill manual, mengedit, memfilter kategori, serta melakukan **Import & Export** (format JSON dan Markdown).
+* **Deduplication Engine:** Sistem pencegah duplikasi otomatis berbasis *text similarity* dan *hash* agar registry skill tetap bersih dan relevan.
 
-### 2. 🎙️ Voice-to-Voice Realtime Mode (NEW!)
+### 2. 🖥️ Autonomous Server & PC Operations
+* **Filesystem & Directory Management:** Membaca struktur direktori, membuat, mengedit, memindahkan, dan menghapus file/folder secara aman dengan perlindungan path sistem (*Protected Paths Safety*).
+* **System & Process Automation:** Memeriksa metrik CPU/RAM/Disk, memonitor status layanan (`system_info`), mengelola dan mematikan proses berjalan (`process_manager`), serta mengeksekusi perintah terminal terisolasi.
+* **Office & Database Operations:** Membaca dan membuat file dokumen (Word `.docx`, Excel `.xlsx`, PowerPoint `.pptx`) serta menjalankan query SQLite lokal secara langsung.
+* **Native Function Calling:** Orkestrasi terintegrasi langsung dengan standar JSON Schema bawaan dari provider model (OpenAI, Anthropic Claude, Google Gemini, Groq, DeepSeek, Ollama, dll.), menghasilkan akurasi pemanggilan alat (*tool calls*) tinggi dan bebas kegagalan sintaks regex.
+* **AI Image Generation:** Integrasi pembuatan gambar (`generate_image`) teks-ke-gambar berbasis Pollinations AI (mode Free tanpa API key dan mode Berbayar via API key) dengan dukungan prompt cerdas dan rasio fleksibel.
+* **Infinite Sub-Task Decomposition:** Pemecahan instruksi skala besar (*Fullstack App*, *Refactoring*, *DevOps*, *Database Migration*) menjadi langkah-langkah operasional yang dieksekusi secara terstruktur melalui graph eksekusi DAG.
+
+### 3. 🎙️ Voice-to-Voice Realtime Mode
 * **Interactive Voice Overlay (`VoiceMode`):** Antarmuka percakapan suara interaktif layar penuh dengan animasi visualizer dinamis, status indikator (Listening, Processing, Speaking), dan Voice Activity Detection (VAD).
 * **Realtime Speech Recognition & Edge-TTS:** Transkripsi suara pengguna secara instan (Web Speech API / Whisper) dipadukan dengan sintesis suara *edge-tts* multi-bahasa (Indonesia, English, Arabic, Japanese, Jawa) dengan latensi ultra-rendah dan tanpa biaya.
 * **Smart Audio Interruption & Privacy-First:** Deteksi interupsi otomatis saat pengguna berbicara kembali serta pemrosesan audio efemeral tanpa penyimpanan rekaman sensitif di server.
 
-### 3. 🧠 Intelligence, Reasoning & Memory Systems
+### 4. 🧠 Intelligence, Reasoning & Memory Systems
 * **5-Stage ReAct Reasoning:** Setiap eksekusi didahului penalaran kognitif bertahap: *Intent Inference* → *Context Exploration* → *Plan* → *Execute* → *Verify*.
 * **Intent Classifier & Emotional State Engine:** Analisis niat (*intent*) dan kondisi emosional pengguna (urgensi, nada, kepuasan, kebutuhan validasi) untuk menyesuaikan prioritas eksekusi dan gaya bahasa model secara otomatis.
 * **Humanizer Engine:** Modul pemoles bahasa yang menyaring frasa-frasa klise mesin yang kaku agar komunikasi lebih luwes, asimetris, dan natural.
 * **QMD (Query Memory Distillation):** Algoritma kompresi konteks percakapan yang membuang redundansi tanpa merusak struktur kode atau token penting, menghemat hingga **63% token**.
 * **Vector RAG & Knowledge Base:** Integrasi ChromaDB lokal untuk pengindeksan dokumen, pencarian semantik berkecepatan tinggi, dan *project context loading*.
-* **Procedural Memory & Learned Skills:** Kristalisasi graf eksekusi yang sukses ≥5 kali menjadi skill permanen baru untuk akselerasi eksekusi tugas serupa di masa depan.
 * **Multi-Model Consensus / Voting Engine:** Menjalankan beberapa LLM secara paralel untuk tugas kritis (skor kompleksitas ≥ 0.8) guna menyatukan hasil terbaik.
 
-### 4. 🔀 Dynamic Model Routing (Zero-Hardcode)
+### 5. 🔀 Dynamic Model Routing (Zero-Hardcode)
 * **Self-Learning Performance Routing:** Analisis otomatis performa model berdasarkan latensi, akurasi, dan jenis tugas (Coding, Research, Creative, Multimodal) untuk mengarahkan prompt ke model terbaik.
 * **AI Roles Mapping:** Pemetaan peran fleksibel di mana pengguna dapat menetapkan model spesifik untuk tugas tertentu (*Coding Agent*, *Research Agent*, *Vision Agent*, dll.) atau membiarkan sistem melakukan *Auto-Routing*.
 * **Latest Model Capabilities Support:** Kompatibel dengan model generasi terbaru (Gemini 2.5/3.1, Claude 3.5/3.7 Sonnet, GPT-4o, DeepSeek-V3/R1, Qwen 2.5 Coder, Ollama lokal, dsb).
 
-### 5. 🛡️ Hardened Resilience & Security
+### 6. 🛡️ Hardened Resilience & Security
 * **State Checkpointing & Watchdog:** Penyimpanan status eksekusi persisten dengan pemulihan otomatis jika terjadi *freeze* atau anomali jaringan.
 * **Actionable Error Translator & Circuit Breaker:** Penerjemahan error teknis menjadi langkah koreksi nyata (misal: penanganan konflik port otomatis) dan isolasi alat bermasalah.
 * **Truncation Auto-Recovery:** Penyambungan otomatis kode atau respons teks yang terpotong akibat limit *max_tokens*.
@@ -153,19 +160,21 @@ graph TB
 ```text
 ai-super/
 ├── backend/
-│   ├── agents/             # Agent definitions, tools (bash, browser, filesystem), voting engine
-│   ├── api/                # FastAPI endpoints (chat, voice/tts, auth, integrations, qmd, rag)
-│   ├── core/               # Orchestrator, intent classifier, DAG builder, QMD, model manager
+│   ├── agents/             # Agent definitions, tools (bash, system, filesystem, office, SQL)
+│   ├── api/                # FastAPI endpoints (chat, voice/tts, auth, integrations, qmd, rag, skills)
+│   ├── core/               # Orchestrator, skill registry, intent classifier, DAG builder, QMD
+│   ├── data/
+│   │   └── skills/         # Markdown skills storage with YAML frontmatter (*.md)
 │   ├── db/                 # Database models, SQLite WAL session management
 │   ├── memory/             # Procedural & episodic memory management
 │   ├── rag/                # ChromaDB vector engine and document indexer
 │   └── main.py             # FastAPI entrypoint and concurrent startup lifecycle
 ├── frontend/
 │   ├── src/
-│   │   ├── components/     # UI components (VoiceMode, CloudflareWizard, File Manager)
+│   │   ├── components/     # UI components (VoiceMode, MinimalSidebar, CloudflareWizard)
 │   │   │   └── chat/       # Modular Chat (ChatInput, MessageList, AgentProgress)
-│   │   ├── pages/          # App views (Chat, Dashboard, Integrations, Security, Models)
-│   │   ├── hooks/          # Custom React hooks (speech, audio, telemetry)
+│   │   ├── pages/          # App views (Chat, Dashboard, Skills, Integrations, Security, Models)
+│   │   ├── hooks/          # Custom React hooks (useApi, speech, audio, telemetry)
 │   │   └── App.jsx         # App router and global context providers
 │   ├── package.json        # Frontend dependencies & Vite configuration
 │   └── vite.config.js      # Vite build setup with aggressive asset bundling
@@ -234,8 +243,9 @@ Akses dashboard web melalui browser di: `http://localhost:7860` (atau IP server 
 1. **Login:** Masuk dengan `ADMIN_USERNAME` dan `ADMIN_PASSWORD` dari file `.env`.
 2. **Setup Integrasi:** Buka menu ⚙️ **Integrations**, masukkan API Key provider LLM Anda, dan klik **Simpan**.
 3. **Uji Kompatibilitas:** Klik tombol **⚡ Zap Test** pada model yang aktif untuk memastikan fungsi *Native Tools* aktif.
-4. **Gunakan Mode Suara (VoiceMode):** Klik ikon mikrofon pada halaman Chat untuk membuka *VoiceMode* dan berbicara langsung dengan AI.
-5. **Jalankan Perintah Otonom:** Ketik perintah rekayasa lengkap di halaman Chat, aktifkan mode **🤖 Agent**, dan pantau agen bekerja menyelesaikan DAG secara transparan.
+4. **Kelola Skill AI:** Buka menu ⚡ **Skill** untuk melihat daftar kemampuan yang dipelajari AI, menambahkan skill baru secara manual, atau melakukan Import/Export file Markdown/JSON.
+5. **Gunakan Mode Suara (VoiceMode):** Klik ikon mikrofon pada halaman Chat untuk membuka *VoiceMode* dan berbicara langsung dengan AI.
+6. **Jalankan Perintah Otonom:** Ketik perintah rekayasa lengkap di halaman Chat, aktifkan mode **🤖 Agent**, dan pantau AI bekerja mengeksekusi tugas serta menyimpan skill baru secara otomatis.
 
 ---
 
@@ -244,6 +254,6 @@ Copyright (c) 2026 **maztfajarwahyudi**. Proprietary - View Only.
 
 <br>
 <p align="center">
-  <i>Built for High-Autonomy Engineering & Intelligent Automation.</i><br>
-  <b>AI ORCHESTRATOR v4.1.52</b>
+  <i>Built for High-Autonomy Engineering, Server Operations & Intelligent Automation.</i><br>
+  <b>AI ORCHESTRATOR v4.1.54</b>
 </p>

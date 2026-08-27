@@ -225,7 +225,22 @@ async def proxy_image(url: str):
     No authentication required as it is embedded in public markdown image tags.
     Includes retry logic for transient failures (Pollinations generates on-demand).
     """
-    if not url.startswith("https://image.pollinations.ai/") and not url.startswith("https://pollinations.ai/"):
+    allowed = (
+        url.startswith("https://image.pollinations.ai/")
+        or url.startswith("https://pollinations.ai/")
+        or url.startswith("https://gen.pollinations.ai/")
+    )
+    if not allowed:
+        try:
+            from api.settings_api import read_env
+            env = read_env()
+            custom_url = env.get("POLLINATIONS_API_URL", "").strip().rstrip("/")
+            if custom_url and url.startswith(custom_url):
+                allowed = True
+        except Exception:
+            pass
+
+    if not allowed:
         raise HTTPException(400, "URL tidak diizinkan untuk di-proxy.")
 
     import httpx

@@ -4,6 +4,7 @@ export default {
   chat: "Obrolan",
   models: "Model AI",
   knowledge: "Pengetahuan",
+  skill: "Skill",
   memory: "Memori",
   workflow: "Alur Kerja",
   integrations: "Integrasi",
@@ -203,6 +204,7 @@ export default {
   documents: "Dokumen",
   no_documents: "Tidak ada dokumen",
   search_knowledge: "Cari Pengetahuan",
+  skill: "Skill",
   delete_document: "Hapus Dokumen",
 
   // Memory

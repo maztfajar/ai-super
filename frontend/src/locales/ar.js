@@ -4,6 +4,7 @@ export default {
   chat: "الدردشة",
   models: "نماذج الذكاء الاصطناعي",
   knowledge: "المعرفة",
+  skill: "Skill",
   memory: "الذاكرة",
   workflow: "سير العمل",
   integrations: "التكاملات",
@@ -203,6 +204,7 @@ export default {
   documents: "المستندات",
   no_documents: "لا توجد مستندات",
   search_knowledge: "البحث في المعرفة",
+  skill: "Skill",
   delete_document: "حذف المستند",
 
   // Memory

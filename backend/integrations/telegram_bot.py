@@ -93,7 +93,7 @@ async def _send_photo(token: str, chat_id: int, photo_url: str, caption: str = "
                     log.debug("Extracted direct URL from proxy for Telegram fallback", url=direct_url)
             except Exception:
                 pass
-    elif photo_url.startswith("https://image.pollinations.ai/") or photo_url.startswith("https://pollinations.ai/"):
+    elif photo_url.startswith("https://image.pollinations.ai/") or photo_url.startswith("https://pollinations.ai/") or photo_url.startswith("https://gen.pollinations.ai/"):
         # Direct Pollinations URL — route through local proxy to bypass ISP blocks
         safe = urllib.parse.quote(photo_url, safe="")
         proxy_path = f"/api/media/proxy?url={safe}"

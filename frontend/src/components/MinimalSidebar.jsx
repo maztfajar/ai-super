@@ -3,7 +3,7 @@ import {
   LayoutDashboard, MessageSquare, Bot, BookOpen, Brain,
   Repeat2, BarChart3, Plug, FlaskConical, ScrollText,
   Settings, Shield, Users, Activity, LogOut, Sun, Moon,
-  User
+  User, Zap
 } from 'lucide-react'
 import { useAuthStore, useThemeStore } from '../store'
 import { useState, useRef } from 'react'
@@ -24,6 +24,7 @@ const NAV_GROUPS = [
     title: 'section_data_ai',
     items: [
       { to: '/knowledge',   icon: BookOpen,        label: 'knowledge' },
+      { to: '/skills',      icon: Zap,             label: 'skill', adminOnly: true },
       { to: '/memory',      icon: Brain,           label: 'memory' },
     ]
   },

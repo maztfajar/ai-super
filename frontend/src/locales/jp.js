@@ -4,6 +4,7 @@ export default {
   chat: "チャット",
   models: "AIモデル",
   knowledge: "知識",
+  skill: "Skill",
   memory: "メモリ",
   workflow: "ワークフロー",
   integrations: "統合",
@@ -203,6 +204,7 @@ export default {
   documents: "ドキュメント",
   no_documents: "ドキュメントなし",
   search_knowledge: "ナレッジを検索",
+  skill: "Skill",
   delete_document: "ドキュメントを削除",
 
   // メモリ

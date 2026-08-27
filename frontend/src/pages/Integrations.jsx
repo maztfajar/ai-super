@@ -903,11 +903,16 @@ function WebhookSection() {
   )
 }
 
-// ── PollinationsCard ──────────────────────────────────────────
+// ── PollinationsCard ──────────────────────────────────────────────
 function PollinationsCard() {
   const [open, setOpen] = useState(false)
   const [enabled, setEnabled] = useState(false)
+  const [mode, setMode] = useState('free') // 'free' | 'api_key'
   const [model, setModel] = useState('auto')
+  const [apiUrl, setApiUrl] = useState('')
+  const [apiKey, setApiKey] = useState('')
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -916,6 +921,16 @@ function PollinationsCard() {
       const res = await api.get('/integrations/pollinations/status')
       setEnabled(res.enabled)
       setModel(res.model || 'auto')
+      setApiUrl(res.api_url || '')
+      setApiKey(res.api_key || '')
+      if (res.api_key && res.api_key.trim()) {
+        setMode('api_key')
+      } else {
+        setMode('free')
+      }
+      if (res.api_url && res.api_url !== 'https://image.pollinations.ai' && res.api_url !== 'https://gen.pollinations.ai') {
+        setShowAdvanced(true)
+      }
     } catch (e) {
       console.error(e)
     } finally {
@@ -927,24 +942,82 @@ function PollinationsCard() {
     loadStatus()
   }, [])
 
-  const handleSave = async (newEnabled, newModel) => {
+  const freeModelOptions = [
+    { value: 'auto', label: '🤖 Auto (Rekomendasi)' },
+    { value: 'flux', label: '✨ Flux' },
+    { value: 'turbo', label: '⚡ SDXL Turbo (Cepat)' },
+    { value: 'midjourney', label: '🎨 Midjourney Style' },
+  ]
+
+  const authModelOptions = [
+    { value: 'flux', label: '✨ Flux (Photorealistic)' },
+    { value: 'krea', label: '🎯 Krea' },
+    { value: 'dreamshaper', label: '🌙 Dreamshaper' },
+    { value: 'kontext', label: '🔍 Kontext' },
+    { value: 'gptimage', label: '🤖 GPT Image' },
+    { value: 'gptimage-large', label: '🤖 GPT Image Large' },
+    { value: 'gpt-image-2', label: '🤖 GPT Image 2' },
+    { value: 'ideogram-v4-turbo', label: '⚡ Ideogram v4 Turbo' },
+    { value: 'ideogram-v4-quality', label: '✅ Ideogram v4 Quality' },
+    { value: 'seedream5-pro', label: '🌱 SeeDream 5 Pro' },
+    { value: 'qwen-image', label: '🐉 Qwen Image' },
+    { value: 'nova-canvas', label: '🌌 Nova Canvas' },
+  ]
+
+  const currentModelOptions = mode === 'api_key' ? authModelOptions : freeModelOptions
+
+  const handleModeChange = (newMode) => {
+    setMode(newMode)
+    if (newMode === 'free') {
+      if (!freeModelOptions.find(o => o.value === model)) {
+        setModel('auto')
+      }
+    } else {
+      if (!authModelOptions.find(o => o.value === model)) {
+        setModel('flux')
+      }
+    }
+  }
+
+  const handleSave = async (newEnabled, newModel, newMode, newApiKey, newApiUrl) => {
     setSaving(true)
     try {
-      await api.post('/integrations/pollinations/save', {
-        enabled: newEnabled,
-        model: newModel
-      })
-      setEnabled(newEnabled)
-      setModel(newModel)
+      const targetEnabled = newEnabled !== undefined ? newEnabled : enabled
+      const targetMode = newMode !== undefined ? newMode : mode
+      const targetModel = newModel !== undefined ? newModel : model
       
+      let targetApiKey = ''
+      let targetApiUrl = ''
+
+      if (targetMode === 'api_key') {
+        targetApiKey = (newApiKey !== undefined ? newApiKey : apiKey).trim()
+        targetApiUrl = (newApiUrl !== undefined ? newApiUrl : apiUrl).trim() || 'https://gen.pollinations.ai'
+      } else {
+        targetApiKey = ''
+        targetApiUrl = (newApiUrl !== undefined ? newApiUrl : apiUrl).trim() || 'https://image.pollinations.ai'
+      }
+
+      await api.post('/integrations/pollinations/save', {
+        enabled: targetEnabled,
+        model: targetModel,
+        api_url: targetApiUrl,
+        api_key: targetApiKey,
+      })
+
+      setEnabled(targetEnabled)
+      setModel(targetModel)
+      setMode(targetMode)
+      setApiKey(targetApiKey)
+      setApiUrl(targetApiUrl)
+
       // Tell models store to reload models so it updates globally
       const r = await intApi.reloadModels()
       if (r.models) {
         useModelsStore.setState({ models: r.models })
         syncModelsToOrchestrator(r.models)
       }
-      
-      toast.success('Pengaturan Pollinations AI disimpan')
+
+      toast.success('Pengaturan Pollinations AI berhasil disimpan')
     } catch (e) {
       toast.error('Gagal menyimpan: ' + e.message)
     } finally {
@@ -952,21 +1025,35 @@ function PollinationsCard() {
     }
   }
 
-  const modelOptions = [
-    { value: 'auto', label: '🤖 Auto (Rekomendasi)' },
-    { value: 'flux', label: '✨ Flux (Photorealistic)' },
-    { value: 'turbo', label: '⚡ SDXL Turbo (Cepat)' },
-    { value: 'midjourney', label: '🎨 Midjourney Style' },
-  ]
+  const isAuth = mode === 'api_key'
 
   return (
     <div className="bg-bg-3 border border-border shadow-lg rounded-2xl overflow-hidden mt-0 transition-all duration-300">
-      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all">
+      {/* Header Accordion Button */}
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-bg-4 transition-all"
+      >
         <div className="flex items-center gap-4 text-left">
-          <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">🎨</div>
+          <div className="w-10 h-10 rounded-xl bg-bg-4 border border-border flex items-center justify-center text-xl flex-shrink-0 shadow-inner">
+            🎨
+          </div>
           <div>
-            <div className="text-lg font-bold text-ink uppercase tracking-tight">Pollinations AI</div>
-            <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">Generator Gambar Gratis (Tanpa API Key)</div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold text-ink uppercase tracking-tight">Pollinations AI</span>
+              <span className={clsx(
+                "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border",
+                isAuth
+                  ? "bg-accent/15 text-accent-2 border-accent/30"
+                  : "bg-success/15 text-success border-success/30"
+              )}>
+                {isAuth ? '🔑 Mode API Key' : '🆓 Mode Gratis'}
+              </span>
+            </div>
+            <div className="text-xs text-ink-3 font-semibold uppercase tracking-widest opacity-60">
+              {loading ? 'Memuat pengaturan...' : (isAuth ? 'gen.pollinations.ai (Model Lengkap & Prioritas)' : 'image.pollinations.ai (Tanpa API Key)')}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -975,67 +1062,250 @@ function PollinationsCard() {
         </div>
       </button>
 
+      {/* Accordion Content */}
       <div className={clsx("grid transition-all duration-500 ease-in-out", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div className="overflow-hidden">
-          <div className="p-6 space-y-5 border-t-2 border-border/40">
+          <div className="p-6 space-y-6 border-t-2 border-border/40">
             {loading ? (
               <div className="text-xs text-ink-3">Memuat pengaturan...</div>
             ) : (
-              <div className="flex flex-col md:flex-row gap-6">
-                
-                {/* Left side: Controls */}
-                <div className="flex-1 space-y-4">
-                  {/* Enable Toggle */}
-                  <div className="flex items-center justify-between p-4 bg-bg-4 rounded-xl border border-border shadow-inner">
-                    <div>
-                      <div className="text-sm font-bold text-ink uppercase tracking-tight">Aktifkan Pollinations</div>
-                      <div className="text-xs text-ink-3 font-semibold mt-1">Jadikan pembuat gambar prioritas</div>
-                    </div>
-                    <label className={clsx("flex items-center gap-3", saving ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}>
-                      <span className="text-[10px] font-bold text-ink-3 uppercase tracking-widest">
-                        {saving ? 'Loading' : (enabled ? 'On' : 'Off')}
-                      </span>
-                      <div onClick={() => !saving && handleSave(!enabled, model)}
-                        className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border', enabled ? 'bg-success border-success/30' : 'bg-bg-5 border-border')}>
-                        <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-lg transition-transform', enabled ? 'translate-x-4.5' : 'translate-x-0.5')}/>
-                      </div>
-                    </label>
+              <div className="flex flex-col gap-6">
+
+                {/* ── Toggle Aktifkan ─────────────────────────── */}
+                <div className="flex items-center justify-between p-4 bg-bg-4 rounded-xl border border-border shadow-inner">
+                  <div>
+                    <div className="text-sm font-bold text-ink uppercase tracking-tight">Aktifkan Pollinations</div>
+                    <div className="text-xs text-ink-3 font-semibold mt-1">Jadikan pembuat gambar prioritas pada sistem</div>
                   </div>
-                  
-                  {/* Model Dropdown */}
-                  <div className={clsx("transition-all duration-300", !enabled && "opacity-50 pointer-events-none")}>
-                    <Label>Pilih Model Gambar</Label>
-                    <div className="relative mt-2">
-                      <select
-                        value={model}
-                        onChange={(e) => handleSave(enabled, e.target.value)}
-                        disabled={saving}
-                        className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-10 shadow-inner transition-all"
-                      >
-                        {modelOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
-                        <ChevronDown size={16}/>
+                  <label className={clsx("flex items-center gap-3", saving ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}>
+                    <span className="text-[10px] font-bold text-ink-3 uppercase tracking-widest">
+                      {saving ? 'Loading' : (enabled ? 'On' : 'Off')}
+                    </span>
+                    <div
+                      onClick={() => !saving && handleSave(!enabled, model, mode, apiKey, apiUrl)}
+                      className={clsx('w-10 h-6 rounded-full relative transition-all shadow-inner border', enabled ? 'bg-success border-success/30' : 'bg-bg-5 border-border')}
+                    >
+                      <div className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-lg transition-transform', enabled ? 'translate-x-4.5' : 'translate-x-0.5')}/>
+                    </div>
+                  </label>
+                </div>
+
+                {/* ── Mode Selection Switch ────────────────────── */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-ink font-bold">Pilih Mode Penggunaan</Label>
+                    <span className="text-[10px] text-ink-3 font-semibold uppercase tracking-wider">
+                      {isAuth ? '🔑 Menggunakan Akun / Key' : '🆓 Tanpa Kunci / Free'}
+                    </span>
+                  </div>
+
+                  {/* Segmented Switch Buttons */}
+                  <div className="bg-bg-2 p-1.5 rounded-xl border border-border flex items-center gap-1.5 shadow-inner">
+                    <button
+                      type="button"
+                      id="pollinations-switch-free"
+                      onClick={() => handleModeChange('free')}
+                      className={clsx(
+                        "flex-1 py-3 px-4 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer",
+                        !isAuth
+                          ? "bg-success text-bg shadow-md shadow-success/20 scale-[1.01]"
+                          : "text-ink-3 hover:text-ink hover:bg-bg-3"
+                      )}
+                    >
+                      <span className="text-base">🆓</span>
+                      <span>Mode Gratis (Tanpa API Key)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      id="pollinations-switch-api"
+                      onClick={() => handleModeChange('api_key')}
+                      className={clsx(
+                        "flex-1 py-3 px-4 rounded-lg font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer",
+                        isAuth
+                          ? "bg-accent text-bg shadow-md shadow-accent/20 scale-[1.01]"
+                          : "text-ink-3 hover:text-ink hover:bg-bg-3"
+                      )}
+                    >
+                      <span className="text-base">🔑</span>
+                      <span>Mode API Key (Akun Pribadi)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── Mode Info & Forms ────────────────────────── */}
+                {isAuth ? (
+                  /* ── Form Mode API Key (Selalu Muncul Saat Mode API Key Aktif) ── */
+                  <div className="p-5 bg-bg-4 rounded-xl border-2 border-accent/40 shadow-inner space-y-4 animate-in fade-in duration-300">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border/50">
+                      <div>
+                        <div className="text-sm font-bold text-ink uppercase tracking-tight flex items-center gap-2">
+                          <span>🔑 Masukkan Pollinations API Key</span>
+                          <span className="text-[10px] bg-accent/20 text-accent-2 px-2 py-0.5 rounded font-mono font-bold">sk_...</span>
+                        </div>
+                        <div className="text-xs text-ink-3 mt-0.5">
+                          Base URL Resmi Otomatis: <code className="text-accent-2 font-mono bg-bg-2 px-1.5 py-0.5 rounded">https://gen.pollinations.ai</code>
+                        </div>
                       </div>
+                      <a
+                        href="https://enter.pollinations.ai/keys"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-2 hover:text-accent bg-accent/10 hover:bg-accent/20 px-3 py-1.5 rounded-lg border border-accent/30 transition-all uppercase tracking-wider whitespace-nowrap self-start sm:self-auto"
+                      >
+                        <span>Dapatkan Key</span>
+                        <span>↗</span>
+                      </a>
+                    </div>
+
+                    {/* Input Field API Key */}
+                    <div>
+                      <Label htmlFor="pollinations-api-key-input" className="text-ink font-semibold">
+                        Kunci API (API Key)
+                      </Label>
+                      <div className="relative mt-1.5">
+                        <input
+                          id="pollinations-api-key-input"
+                          type={showApiKey ? 'text' : 'password'}
+                          value={apiKey}
+                          onChange={(e) => setApiKey(e.target.value)}
+                          placeholder="Paste API Key sk_xxxxxxxxxxxxxxxxxxxxxxxx disini..."
+                          disabled={saving}
+                          className="w-full bg-bg-2 border border-border focus:border-accent rounded-xl px-4 py-3 pr-28 text-sm font-mono text-ink outline-none placeholder:text-ink-3/40 shadow-inner transition-all disabled:opacity-50"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-ink-3 hover:text-ink uppercase tracking-widest transition-colors px-2.5 py-1.5 rounded-lg bg-bg-3 border border-border"
+                        >
+                          {showApiKey ? 'Sembunyikan' : 'Tampilkan'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Fitur / Keuntungan Mode API Key */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs text-ink-3">
+                      <div className="flex items-center gap-1.5 bg-bg-2/60 p-2 rounded-lg border border-border/40">
+                        <span className="text-success font-bold">✓</span> Akses 12+ Model Premium
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-bg-2/60 p-2 rounded-lg border border-border/40">
+                        <span className="text-success font-bold">✓</span> Jalur Prioritas / Cepat
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-bg-2/60 p-2 rounded-lg border border-border/40">
+                        <span className="text-success font-bold">✓</span> Tanpa Antrean Publik
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* ── Banner Info Mode Gratis ── */
+                  <div className="p-4 bg-success/8 rounded-xl border-2 border-success/30 shadow-inner space-y-2 animate-in fade-in duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-bold text-success uppercase tracking-tight flex items-center gap-2">
+                        <span>🆓 Mode Gratis Aktif (image.pollinations.ai)</span>
+                      </div>
+                      <span className="text-[10px] bg-success text-bg font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        100% Gratis
+                      </span>
+                    </div>
+                    <p className="text-xs text-ink-2 font-medium">
+                      Mode gratis langsung terhubung ke <code className="text-success font-mono bg-bg-2 px-1.5 py-0.5 rounded">https://image.pollinations.ai</code> tanpa perlu registrasi atau API key.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 text-xs text-ink-3">
+                      <div className="flex items-center gap-1.5 bg-bg-2/60 p-2 rounded-lg border border-border/40">
+                        <span className="text-success font-bold">✓</span> Tanpa Registrasi / Login
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-bg-2/60 p-2 rounded-lg border border-border/40">
+                        <span className="text-success font-bold">✓</span> Tanpa Kuota Token
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-bg-2/60 p-2 rounded-lg border border-border/40">
+                        <span className="text-warning font-bold">~</span> 4 Model Populer (Flux, SDXL, Midjourney)
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Dropdown Pilihan Model ────────────────────── */}
+                <div className={clsx("transition-all duration-300", !enabled && "opacity-50 pointer-events-none")}>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-ink font-semibold">Pilih Model Gambar AI</Label>
+                    <span className="text-[10px] text-ink-3 font-semibold uppercase tracking-wider">
+                      {isAuth ? '12 Pilihan Model Premium' : '4 Pilihan Model Gratis'}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      disabled={saving}
+                      className="w-full bg-bg-2 border border-border rounded-xl px-4 py-3 text-sm font-bold text-ink outline-none focus:border-accent appearance-none cursor-pointer pr-10 shadow-inner transition-all"
+                    >
+                      {currentModelOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-ink-3">
+                      <ChevronDown size={16}/>
                     </div>
                   </div>
                 </div>
 
-                {/* Right side: Info */}
-                <div className="flex-1 p-4 bg-accent/8 border border-accent/20 rounded-2xl text-xs text-ink-2 font-semibold shadow-sm leading-relaxed">
-                  <strong className="text-ink-2 block mb-2 text-sm font-bold uppercase tracking-widest opacity-80">💡 Keuntungan Pollinations:</strong>
-                  <ul className="space-y-2 list-disc pl-4 text-ink-3 opacity-90">
-                    <li><strong className="text-ink-2">100% Gratis:</strong> Tidak memotong token dari layanan lain.</li>
-                    <li><strong className="text-ink-2">Tanpa Registrasi:</strong> Langsung bisa dipakai tanpa API Key.</li>
-                    <li><strong className="text-ink-2">Bypass Filter:</strong> Berguna saat model API utama sedang error atau membatasi pembuatan gambar.</li>
-                  </ul>
-                  <div className="mt-4 pt-3 border-t border-accent/20 text-[10px] text-accent-2 font-bold uppercase tracking-widest">
-                    * Otomatis terdaftar di AI Roles Mapping saat diaktifkan
-                  </div>
+                {/* ── Advanced: Custom Base URL (Opsional) ───────── */}
+                <div className="border-t border-border/50 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="text-xs font-bold text-ink-3 hover:text-ink flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <span>⚙️ Pengaturan Lanjutan (Custom Base URL / Mirror Endpoint)</span>
+                    <span className="text-[10px]">{showAdvanced ? '▲' : '▼'}</span>
+                  </button>
+
+                  {showAdvanced && (
+                    <div className="mt-3 space-y-2 p-3 bg-bg-4/50 rounded-xl border border-border animate-in fade-in duration-200">
+                      <Label className="text-xs">Custom Base URL <span className="text-[10px] text-ink-3 font-normal">(opsional)</span></Label>
+                      <div className="relative">
+                        <input
+                          type="url"
+                          value={apiUrl}
+                          onChange={(e) => setApiUrl(e.target.value)}
+                          placeholder={isAuth ? "https://gen.pollinations.ai" : "https://image.pollinations.ai"}
+                          disabled={saving}
+                          className="w-full bg-bg-2 border border-border rounded-xl px-3 py-2 text-xs font-mono text-ink outline-none focus:border-accent placeholder:text-ink-3/40"
+                        />
+                        {apiUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setApiUrl('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink text-xs font-bold"
+                            title="Reset ke default"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-ink-3">
+                        Kosongkan untuk otomatis menggunakan URL resmi Pollinations AI ({isAuth ? 'gen.pollinations.ai' : 'image.pollinations.ai'}).
+                      </p>
+                    </div>
+                  )}
                 </div>
-                
+
+                {/* ── Tombol Simpan ────────────────────────────── */}
+                <button
+                  type="button"
+                  id="pollinations-save-btn"
+                  onClick={() => handleSave(enabled, model, mode, apiKey, apiUrl)}
+                  disabled={saving}
+                  className={clsx(
+                    'w-full py-3.5 px-4 rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-md cursor-pointer',
+                    saving
+                      ? 'bg-bg-5 text-ink-3 cursor-not-allowed'
+                      : 'bg-accent text-bg hover:bg-accent/90 shadow-accent/20 hover:shadow-accent/30 active:scale-[0.99]'
+                  )}
+                >
+                  {saving ? 'Menyimpan...' : '💾 Simpan Pengaturan Pollinations'}
+                </button>
+
               </div>
             )}
           </div>

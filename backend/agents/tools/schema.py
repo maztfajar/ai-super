@@ -391,6 +391,229 @@ NATIVE_TOOLS_SCHEMA = [
                 "required": ["title", "description"]
             }
         }
-    }
+    },
+    # ── Office & Computer Use Tools ──────────────────────────────────────
+    {
+        "type": "function",
+        "function": {
+            "name": "excel_read",
+            "description": "Baca file Excel (.xlsx) dan kembalikan isinya sebagai tabel teks terstruktur.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path ke file Excel (.xlsx)."},
+                    "sheet": {"type": "string", "description": "Nama sheet yang akan dibaca (default: sheet pertama)."},
+                    "max_rows": {"type": "integer", "description": "Maksimal baris yang dibaca (default: 100)."}
+                },
+                "required": ["path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "excel_write",
+            "description": "Buat file Excel (.xlsx) baru dari data yang diberikan, lengkap dengan header dan styling profesional.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path output file Excel."},
+                    "data": {"type": "array", "description": "List of lists (baris data), contoh: [[\"Alice\", 25], [\"Bob\", 30]].", "items": {"type": "array"}},
+                    "sheet": {"type": "string", "description": "Nama sheet (default: 'Sheet1')."},
+                    "headers": {"type": "array", "description": "Nama kolom, contoh: [\"Nama\", \"Umur\"].", "items": {"type": "string"}},
+                    "overwrite": {"type": "boolean", "description": "True untuk menimpa file yang ada."}
+                },
+                "required": ["path", "data"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "excel_formula",
+            "description": "Masukkan formula ke sel Excel tertentu (misal: =SUM, =AVERAGE, =VLOOKUP).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path ke file Excel."},
+                    "cell": {"type": "string", "description": "Sel target, contoh: 'D2'."},
+                    "formula": {"type": "string", "description": "Formula Excel, contoh: '=SUM(B2:B10)'."},
+                    "sheet": {"type": "string", "description": "Nama sheet (default: aktif)."}
+                },
+                "required": ["path", "cell", "formula"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "word_read",
+            "description": "Baca file Word (.docx) dan kembalikan isinya sebagai teks markdown dengan heading dan tabel.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path ke file .docx."}
+                },
+                "required": ["path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "word_write",
+            "description": "Buat file Word (.docx) dari teks markdown-style, dengan heading, bullet list, dan formatting profesional.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path output file .docx."},
+                    "content": {"type": "string", "description": "Konten dokumen. Gunakan # untuk Heading 1, ## untuk Heading 2, - untuk bullet, 1. untuk numbered list."},
+                    "title": {"type": "string", "description": "Judul dokumen (opsional)."},
+                    "author": {"type": "string", "description": "Nama penulis (default: 'AI ORCHESTRATOR')."},
+                    "overwrite": {"type": "boolean", "description": "True untuk menimpa file yang ada."}
+                },
+                "required": ["path", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ppt_create",
+            "description": "Buat file PowerPoint (.pptx) baru dengan slide judul, tema dark/light, dan resolusi widescreen.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path output file .pptx."},
+                    "title": {"type": "string", "description": "Judul presentasi."},
+                    "subtitle": {"type": "string", "description": "Sub-judul presentasi (opsional)."},
+                    "theme": {"type": "string", "description": "'dark' atau 'light' (default: 'dark')."},
+                    "overwrite": {"type": "boolean", "description": "True untuk menimpa file yang ada."}
+                },
+                "required": ["path", "title"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ppt_add_slide",
+            "description": "Tambah slide baru ke file PowerPoint yang sudah ada.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path file .pptx yang sudah ada."},
+                    "title": {"type": "string", "description": "Judul slide."},
+                    "content": {"type": "string", "description": "Konten slide (teks, bullet poin dengan -)."},
+                    "layout": {"type": "string", "description": "'content', 'blank', atau 'title_only' (default: 'content')."},
+                    "slide_number": {"type": "integer", "description": "Posisi slide (default: di akhir)."}
+                },
+                "required": ["path", "title", "content"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sql_query",
+            "description": "Jalankan query SELECT ke database SQLite dan kembalikan hasilnya sebagai tabel.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "database_path": {"type": "string", "description": "Path ke file .db SQLite."},
+                    "query": {"type": "string", "description": "SQL SELECT query."},
+                    "max_rows": {"type": "integer", "description": "Maksimal baris yang dikembalikan (default: 50)."}
+                },
+                "required": ["database_path", "query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "sql_execute",
+            "description": "Jalankan DDL/DML SQL ke database SQLite (CREATE, INSERT, UPDATE, DELETE, DROP).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "database_path": {"type": "string", "description": "Path ke file .db SQLite (akan dibuat jika belum ada)."},
+                    "statement": {"type": "string", "description": "SQL statement (DDL/DML)."}
+                },
+                "required": ["database_path", "statement"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "screenshot_screen",
+            "description": "Ambil screenshot layar desktop saat ini dan simpan sebagai file PNG.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "output_path": {"type": "string", "description": "Path file output screenshot (default: /tmp/screenshot_<timestamp>.png)."},
+                    "region": {"type": "string", "description": "'full' untuk layar penuh, 'active' untuk jendela aktif."}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "app_plan_generate",
+            "description": "Generate rencana aplikasi terstruktur (tech stack, folder structure, phases) dari deskripsi natural language.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string", "description": "Deskripsi aplikasi yang ingin dibuat."},
+                    "app_type": {"type": "string", "description": "'web', 'mobile', 'desktop', 'api', atau 'cli' (default: 'web')."},
+                    "output_path": {"type": "string", "description": "Path untuk menyimpan plan JSON (opsional)."}
+                },
+                "required": ["description"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "write_multiple_files",
+            "description": "Tulis beberapa file sekaligus dalam satu operasi atomik. Lebih efisien daripada write_file berulang kali.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "files": {"type": "array", "description": "Array objek file [{\"path\": \"...\", \"content\": \"...\"}].", "items": {"type": "object"}},
+                },
+                "required": ["files"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "system_info",
+            "description": "Kumpulkan informasi sistem server secara komprehensif: OS, CPU, RAM, Disk, Network, Proses aktif, uptime, dan lainnya.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "Kategori info: 'all' (semua), 'cpu', 'memory', 'disk', 'network', 'processes', 'os' (default: 'all')."}
+                }
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "process_manager",
+            "description": "Kelola proses yang berjalan di server: list, kill, restart, cek status service.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "description": "'list' (semua proses), 'find' (cari proses), 'kill' (matikan PID), 'ports' (lihat port yang dipakai), 'services' (lihat systemd services)."},
+                    "target": {"type": "string", "description": "PID untuk kill, nama untuk find, port number untuk ports."}
+                },
+                "required": ["action"]
+            }
+        }
+    },
 ]
 

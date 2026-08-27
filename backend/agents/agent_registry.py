@@ -255,15 +255,63 @@ AGENT_REGISTRY: Dict[str, AgentCapability] = {
     "system": AgentCapability(
         agent_type="system",
         display_name="🖥️ System Agent",
-        description="Manajemen VPS, admin server, perintah terminal, networking, DevOps",
+        description="Manajemen VPS/Server/PC, admin server, proses, terminal, networking, DevOps",
         skills=["bash", "linux", "docker", "nginx", "systemd", "networking",
-                "monitoring", "deployment", "ssh", "cron"],
+                "monitoring", "deployment", "ssh", "cron", "process_management"],
         required_capabilities=["coding", "reasoning"],
-        tools_allowed=["execute_bash", "read_file", "write_file", "write_multiple_files"],
+        tools_allowed=[
+            "execute_bash", "read_file", "write_file", "write_multiple_files",
+            "list_directory", "file_tree", "find_files", "search_in_files",
+            "make_directory", "move_file", "copy_file", "delete_file",
+            "get_file_info", "system_info", "process_manager", "find_safe_port",
+            "schedule_task", "screenshot_screen", "sql_query", "sql_execute"
+        ],
         default_temperature=0.2,
         system_prompt_addon=(
-            "Prioritaskan keamanan. Selalu jelaskan apa yang dilakukan perintah. "
-            "Gunakan sudo hanya jika diperlukan."
+            "Anda adalah autonomous system agent dengan akses penuh ke server dan sistem operasi. "
+            "Eksekusi perintah secara mandiri dan berikan laporan hasil yang rapi dan terstruktur."
+        ),
+    ),
+
+    "file_operation": AgentCapability(
+        agent_type="file_operation",
+        display_name="📂 Filesystem & Automation Agent",
+        description="Operasi file, direktori, dokumen Office, manipulasi data lokal, otomasi PC/Server",
+        skills=["filesystem", "file_management", "office_documents", "excel", "word",
+                "powerpoint", "automation", "bash", "python_scripting"],
+        required_capabilities=["coding", "reasoning"],
+        tools_allowed=[
+            "execute_bash", "read_file", "write_file", "write_multiple_files",
+            "list_directory", "file_tree", "find_files", "search_in_files",
+            "make_directory", "move_file", "copy_file", "delete_file",
+            "get_file_info", "get_project_path", "set_project_path", "list_all_projects",
+            "read_document", "replace_in_file", "excel_read", "excel_write", "excel_formula",
+            "word_read", "word_write", "ppt_create", "ppt_add_slide",
+            "sql_query", "sql_execute", "system_info", "process_manager", "screenshot_screen"
+        ],
+        default_temperature=0.2,
+        system_prompt_addon=(
+            "Kelola file dan direktori dengan presisi tinggi. Pastikan struktur folder dan data tersimpan dengan benar."
+        ),
+    ),
+
+    "web_development": AgentCapability(
+        agent_type="web_development",
+        display_name="🌐 Web Dev Agent",
+        description="Pengembangan aplikasi web full-stack, frontend, backend, UI/UX",
+        skills=["html", "css", "javascript", "typescript", "react", "vue", "fastapi", "nodejs"],
+        required_capabilities=["coding"],
+        tools_allowed=[
+            "execute_bash", "read_file", "write_file", "write_multiple_files",
+            "list_directory", "file_tree", "find_files", "search_in_files",
+            "make_directory", "move_file", "copy_file", "delete_file",
+            "get_file_info", "get_project_path", "set_project_path",
+            "find_safe_port", "app_plan_generate"
+        ],
+        default_temperature=0.2,
+        default_max_tokens=8192,
+        system_prompt_addon=(
+            "Bangun aplikasi web yang fungsional, modern, dan bebas bug."
         ),
     ),
 
@@ -526,8 +574,14 @@ class AgentRegistryManager:
                           model=cap_model, agent=agent_type, caps=agent.required_capabilities)
                 return cap_model
 
-        # Priority 6: Model pertama yang tersedia (exclude audio-only untuk non-audio agents)
+        # Priority 6: Model pertama yang sesuai untuk agent_type
         if available:
+            if agent_type == "image_gen":
+                for m in available:
+                    if m.startswith("pollinations/") or "image" in m.lower() or "dall" in m.lower():
+                        log.debug("resolve_model: image model match for image_gen", model=m)
+                        return m
+
             non_audio_agents = {"reasoning", "coding", "writing", "research",
                                  "system", "creative", "validation", "general",
                                  "vision", "multimodal", "image_gen"}

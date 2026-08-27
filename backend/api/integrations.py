@@ -1396,17 +1396,23 @@ async def get_pollinations_status(user: User = Depends(get_current_user)):
     env = read_env()
     return {
         "enabled": env.get("POLLINATIONS_ENABLED", "false").lower() == "true",
-        "model": env.get("POLLINATIONS_MODEL", "auto")
+        "model": env.get("POLLINATIONS_MODEL", "auto"),
+        "api_url": env.get("POLLINATIONS_API_URL", ""),
+        "api_key": env.get("POLLINATIONS_API_KEY", ""),
     }
 
 class PollinationsPayload(BaseModel):
     enabled: bool
     model: str
+    api_url: str = ""
+    api_key: str = ""
 
 @router.post("/pollinations/save")
 async def save_pollinations_status(payload: PollinationsPayload, user: User = Depends(get_current_user)):
     write_env_key("POLLINATIONS_ENABLED", str(payload.enabled).lower())
     write_env_key("POLLINATIONS_MODEL", payload.model)
+    write_env_key("POLLINATIONS_API_URL", payload.api_url.strip())
+    write_env_key("POLLINATIONS_API_KEY", payload.api_key.strip())
     
     # Reload model manager to register models immediately
     from core.model_manager import model_manager

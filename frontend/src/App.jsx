@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard'
 import Chat from './pages/Chat'
 import Models from './pages/Models'
 import Knowledge from './pages/Knowledge'
+import Skills from './pages/Skills'
 import Memory from './pages/Memory'
 import Workflow from './pages/Workflow'
 import Analytics from './pages/Analytics'
@@ -119,6 +120,7 @@ export default function App() {
             {/* Admin-only routes */}
             <Route path="models"       element={<AdminOnly><Models/></AdminOnly>}/>
             <Route path="knowledge"    element={<AdminOnly><Knowledge/></AdminOnly>}/>
+            <Route path="skills"       element={<AdminOnly><Skills/></AdminOnly>}/>
             <Route path="memory"       element={<AdminOnly><Memory/></AdminOnly>}/>
             <Route path="workflow"     element={<AdminOnly><Workflow/></AdminOnly>}/>
             <Route path="integrations" element={<AdminOnly><Integrations/></AdminOnly>}/>

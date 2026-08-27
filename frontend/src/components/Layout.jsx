@@ -9,7 +9,7 @@ import {
   LayoutDashboard, MessageSquare, Bot, BookOpen, Brain, Repeat2,
   BarChart3, Plug, FlaskConical, ScrollText, Menu, LogOut, Settings,
   UserCircle, ShieldCheck, Users, Shield, ShieldAlert, Activity,
-  Moon, Sun, X, ChevronLeft, Wrench
+  Moon, Sun, X, ChevronLeft, Wrench, Zap
 } from 'lucide-react'
 import clsx from 'clsx'
 import OrchestratorDropdown from './OrchestratorDropdown'
@@ -86,6 +86,7 @@ export default function Layout() {
     { label: t('chat'),             to: '/chat',         icon: MessageSquare,   section: 'Utama' },
     { label: t('models'),           to: '/models',       icon: Bot,             section: 'Utama' },
     { label: t('knowledge'),        to: '/knowledge',    icon: BookOpen,        section: 'Data & AI' },
+    { label: t('skill'),            to: '/skills',       icon: Zap,             section: 'Data & AI' },
     { label: t('memory'),           to: '/memory',       icon: Brain,           section: 'Data & AI' },
     { label: 'App Builder',         to: '/app-builder',  icon: Wrench,          section: 'Otomasi' },
     { label: t('workflow'),         to: '/workflow',     icon: Repeat2,         section: 'Otomasi' },

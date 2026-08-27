@@ -4,6 +4,7 @@ export default {
   chat: "Pambiwara",
   models: "Model Cerdas Buatan",
   knowledge: "Kaweruhan",
+  skill: "Skill",
   memory: "Eling-elingo",
   workflow: "Alur Karya",
   integrations: "Sesambungan",
@@ -203,6 +204,7 @@ export default {
   documents: "Dokuemen",
   no_documents: "Ora ana dokuemen",
   search_knowledge: "Golek Kawruh",
+  skill: "Skill",
   delete_document: "Busak Dokuemen",
 
   // Eling-elingo

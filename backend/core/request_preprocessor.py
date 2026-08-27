@@ -567,9 +567,23 @@ class RequestPreprocessor:
 
         # ── User pilih model spesifik (bukan orchestrator) ───────────────────
         if user_model_choice and "orchestrator" not in user_model_choice.lower():
+            msg_lower = message.lower().strip()
+            is_image_model = (
+                user_model_choice.startswith("pollinations/")
+                or "dall-e" in user_model_choice.lower()
+                or "image" in user_model_choice.lower()
+            )
+            is_image_prompt = (
+                any(p in msg_lower for p in IMAGE_GEN_PATTERNS)
+                or bool(IMAGE_GEN_REGEX.search(msg_lower))
+            )
             spec.is_simple = True
-            spec.primary_intent = "general"
             spec.mentioned_models = [user_model_choice]
+            if is_image_model or is_image_prompt:
+                spec.primary_intent = "image_generation"
+                spec.intents = ["image_generation"]
+            else:
+                spec.primary_intent = "general"
             spec.preprocessing_time_ms = int((time.time() - start) * 1000)
             return spec
 
@@ -835,9 +849,13 @@ class RequestPreprocessor:
             "system": ["install", "sudo", "terminal", "server", "vps", "restart",
                         "deploy", "nginx", "systemctl", "docker", "linux", "bash",
                         "cek", "check", "status", "ram", "cpu", "disk", "memory",
-                        "proses", "port", "service", "log", "jalankan", "run"],
+                        "proses", "process", "port", "service", "log", "jalankan", "run",
+                        "kill", "top", "htop", "uptime", "network", "ip", "ping"],
             "file_operation": ["file", "baca", "read", "edit", "hapus", "delete",
-                                "folder", "direktori", "directory"],
+                                "folder", "direktori", "directory", "tree", "salin", "copy",
+                                "pindah", "move", "rename", "excel", "xlsx", "word", "docx",
+                                "powerpoint", "pptx", "sqlite", "database", "mkdir", "cat",
+                                "grep", "find"],
             "creative": ["desain", "design", "ide", "brainstorm", "kreatif"],
             "planning": ["rencana", "plan", "jadwal", "schedule", "strategy"],
             "image_generation": ["buatkan gambar", "bikin gambar", "generate image"],
@@ -1006,7 +1024,7 @@ def needs_clarification(prompt: str) -> bool:
     prompt_lower = prompt.lower()
     
     # Bypass jika terdeteksi intent generate gambar
-    if any(p in prompt_lower for p in IMAGE_GEN_PATTERNS):
+    if any(p in prompt_lower for p in IMAGE_GEN_PATTERNS) or bool(IMAGE_GEN_REGEX.search(prompt_lower)):
         return False
         
     has_build_intent = any(w in prompt_lower for w in [

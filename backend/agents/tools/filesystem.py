@@ -58,11 +58,30 @@ def _is_protected(path: str) -> bool:
 
 def _resolve_path(path: str, session_id: Optional[str] = None) -> str:
     """
-    Resolve path relatif terhadap project aktif dari session.
+    Resolve path relatif terhadap project aktif dari session atau current directory.
     Jika path sudah absolut, gunakan langsung.
     """
+    if not path or path == ".":
+        if session_id:
+            try:
+                from core.project_registry import project_registry
+                project_path = project_registry.get_sync(session_id)
+                if project_path and os.path.exists(project_path):
+                    return project_path
+            except Exception:
+                pass
+            safe_folder = session_id[:8]
+            base = os.path.expanduser(f"~/projects/{safe_folder}")
+            if os.path.exists(base):
+                return base
+        return os.path.abspath(".")
+
     if os.path.isabs(path):
         return path
+
+    # Cek apakah path relatif ada di current directory
+    if os.path.exists(path):
+        return os.path.abspath(path)
 
     # Coba ambil project path dari registry
     if session_id:
@@ -70,14 +89,19 @@ def _resolve_path(path: str, session_id: Optional[str] = None) -> str:
             from core.project_registry import project_registry
             project_path = project_registry.get_sync(session_id)
             if project_path:
-                return os.path.join(project_path, path)
+                cand = os.path.join(project_path, path)
+                return cand
         except Exception:
             pass
 
-    # Fallback ke ~/projects/SESSION
+    # Fallback ke ~/projects/SESSION jika ada
     safe_folder = session_id[:8] if session_id else "agent"
     base = os.path.expanduser(f"~/projects/{safe_folder}")
-    return os.path.join(base, path)
+    if os.path.exists(base):
+        return os.path.join(base, path)
+
+    # Default ke absolute path relatif dari cwd
+    return os.path.abspath(path)
 
 
 # ── 1. list_directory ────────────────────────────────────────────────────────
@@ -441,16 +465,14 @@ async def delete_file(
     try:
         resolved = _resolve_path(path, session_id)
 
-        # Safety: hanya izinkan hapus di dalam ~/projects/
-        projects_base = os.path.expanduser("~/projects")
-        if not resolved.startswith(projects_base):
-            return (
-                f"❌ Security: Hanya bisa hapus file di dalam ~/projects/\n"
-                f"   Path yang dicoba: {resolved}"
-            )
+        # Safety: Root directory / Home directory root tidak boleh dihapus
+        home_dir = os.path.realpath(os.path.expanduser("~"))
+        abs_resolved = os.path.realpath(os.path.abspath(resolved))
+        if abs_resolved in ("/", "/home", "/root", home_dir):
+            return f"❌ Security: Dilarang menghapus direktori root/home: {resolved}"
 
         if _is_protected(resolved):
-            return f"❌ Path protected, tidak bisa dihapus: {resolved}"
+            return f"❌ Path protected (system critical), tidak bisa dihapus: {resolved}"
 
         if not os.path.exists(resolved):
             return f"❌ Path tidak ditemukan: {resolved}"

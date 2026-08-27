@@ -4,6 +4,7 @@ export default {
   chat: "Chat",
   models: "AI Models",
   knowledge: "Knowledge",
+  skill: "Skill",
   memory: "Memory",
   workflow: "Workflow",
   integrations: "Integrations",
@@ -203,6 +204,7 @@ export default {
   documents: "Documents",
   no_documents: "No documents",
   search_knowledge: "Search Knowledge",
+  skill: "Skill",
   delete_document: "Delete Document",
 
   // Memory

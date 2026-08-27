@@ -229,6 +229,23 @@ Panggil find_safe_port SEBELUM start server apapun.
 Jika dalam pesan sistem terdapat `[DAG_MANAGER] KESELURUHAN RENCANA (DAG)`, Anda WAJIB memperhatikan rencana tersebut untuk memahami konteks gambar besar.
 Fokuslah menyelesaikan sub-task yang ditugaskan kepada Anda secara maksimal.
 
+**SERVER & PC AUTOMATION DIRECTIVES (HERMES / OPENCLAW AUTONOMOUS MODE):**
+- Anda memiliki akses penuh untuk mengoperasikan server/PC:
+  * Membaca struktur direktori (`list_directory`, `file_tree`, `find_files`)
+  * Mengakses, membaca, mengedit, dan menghapus file (`read_file`, `write_file`, `replace_in_file`, `delete_file`, `move_file`, `copy_file`)
+  * Memeriksa kondisi sistem, resource server, CPU, RAM, Disk, Jaringan (`system_info`)
+  * Mengelola dan mengontrol proses, port aktif, dan services (`process_manager`)
+  * Menjalankan perintah terminal/bash apapun (`execute_bash`)
+  * Mengolah dokumen Excel, Word, PowerPoint, dan SQLite (`excel_read`, `excel_write`, `word_read`, `word_write`, `ppt_create`, `sql_query`, `sql_execute`)
+- Selalu selesaikan instruksi secara mandiri hingga 100% tuntas tanpa menyuruh user melakukan langkah manual.
+
+**OUTPUT QUALITY & PRESENTATION STANDARDS:**
+- Format output hasil kerja dengan sangat rapi, profesional, dan berkelas tinggi (rich markdown).
+- Gunakan tabel markdown untuk data komparatif, daftar file, proses, atau metrik sistem.
+- Gunakan blok kode dengan syntax highlighting yang tepat (misal: ```bash, ```python, ```json, ```html).
+- Berikan ringkasan aksi yang jelas di akhir (Action Taken, Results, Next Steps jika relevan).
+- Dilarang bertele-tele atau menambahkan basa-basi yang tidak perlu.
+
 **PROJECT MEMORY — WAJIB DIBACA:**
 Orchestrator memiliki memori permanen untuk lokasi project.
 SELALU panggil `get_project_path` di awal jika tidak yakin dimana project tersimpan.
@@ -477,25 +494,51 @@ class ResponseFilter:
 class AgentExecutor:
 
     _TOOL_ACTION_MAP = {
-        "execute_bash":         ("Ran",      lambda a: a.get("command", "")[:60]),
-        "read_file":            ("Reading",  lambda a: a.get("path", "").split("/")[-1]),
-        "write_file":           ("Writing",  lambda a: a.get("path", "").split("/")[-1]),
-        "ask_model":            ("Analyzed", lambda a: a.get("model_id", "")),
-        "web_search":           ("Searched", lambda a: a.get("query", "")[:60]),
-        "find_safe_port":       ("Checked",  lambda a: "available port"),
+        "execute_bash":          ("Ran",        lambda a: a.get("command", "")[:60]),
+        "read_file":             ("Reading",    lambda a: a.get("path", "").split("/")[-1]),
+        "write_file":            ("Writing",    lambda a: a.get("path", "").split("/")[-1]),
+        "write_multiple_files":  ("Writing",    lambda a: f"{len(a.get('files', []))} files"),
+        "ask_model":             ("Analyzed",   lambda a: a.get("model_id", "")),
+        "web_search":            ("Searched",   lambda a: a.get("query", "")[:60]),
+        "find_safe_port":        ("Checked",    lambda a: "available port"),
+        "schedule_task":         ("Scheduling", lambda a: a.get("title", "Task")[:40]),
+        "read_document":         ("Reading Doc",lambda a: a.get("path", "").split("/")[-1]),
+        "replace_in_file":       ("Editing",    lambda a: a.get("path", "").split("/")[-1]),
+        "generate_image":        ("Generating", lambda a: a.get("prompt", "")[:50]),
         # Filesystem tools
-        "list_directory":        ("Browsing",  lambda a: a.get("path", ".")),
-        "file_tree":             ("Mapping",   lambda a: a.get("path", ".")),
-        "find_files":            ("Searching", lambda a: a.get("pattern", "")),
-        "search_in_files":       ("Grepping",  lambda a: a.get("keyword", "")[:50]),
-        "make_directory":        ("Creating",  lambda a: a.get("path", "")),
-        "move_file":             ("Moving",    lambda a: f"{a.get('source','')} → {a.get('destination','')}"[:60]),
-        "copy_file":             ("Copying",   lambda a: a.get("source", "")),
-        "delete_file":           ("Deleting",  lambda a: a.get("path", "")),
-        "get_project_path":      ("Locating",  lambda a: "project path"),
-        "set_project_path":      ("Saving",    lambda a: a.get("path", "")),
-        "list_all_projects":     ("Listing",   lambda a: "all projects"),
-        "get_file_info":         ("Inspecting",lambda a: a.get("path", "")),
+        "list_directory":        ("Browsing",   lambda a: a.get("path", ".")),
+        "file_tree":             ("Mapping",    lambda a: a.get("path", ".")),
+        "find_files":            ("Searching",  lambda a: a.get("pattern", "")),
+        "search_in_files":       ("Grepping",   lambda a: a.get("keyword", "")[:50]),
+        "make_directory":        ("Creating",   lambda a: a.get("path", "")),
+        "move_file":             ("Moving",     lambda a: f"{a.get('source','')} → {a.get('destination','')}"[:60]),
+        "copy_file":             ("Copying",    lambda a: a.get("source", "")),
+        "delete_file":           ("Deleting",   lambda a: a.get("path", "")),
+        "get_project_path":      ("Locating",   lambda a: "project path"),
+        "set_project_path":      ("Saving",     lambda a: a.get("path", "")),
+        "list_all_projects":     ("Listing",    lambda a: "all projects"),
+        "get_file_info":         ("Inspecting", lambda a: a.get("path", "")),
+        # System & OS tools (Hermes/OpenClaw level)
+        "system_info":           ("Diagnosing", lambda a: f"System ({a.get('category', 'all')})"),
+        "process_manager":       ("Managing",   lambda a: f"Process {a.get('action', '')} {a.get('target', '')}".strip()),
+        # Office & Database tools
+        "excel_read":            ("Reading",    lambda a: f"Excel: {a.get('path', '').split('/')[-1]}"),
+        "excel_write":           ("Writing",    lambda a: f"Excel: {a.get('path', '').split('/')[-1]}"),
+        "excel_formula":         ("Formula",    lambda a: f"Excel {a.get('cell', '')}"),
+        "word_read":             ("Reading",    lambda a: f"Word: {a.get('path', '').split('/')[-1]}"),
+        "word_write":            ("Writing",    lambda a: f"Word: {a.get('path', '').split('/')[-1]}"),
+        "ppt_create":            ("Creating",   lambda a: f"PPT: {a.get('path', '').split('/')[-1]}"),
+        "ppt_add_slide":         ("Slide",      lambda a: f"Slide: {a.get('title', '')[:30]}"),
+        "sql_query":             ("Querying",   lambda a: f"SQL: {a.get('query', '')[:40]}"),
+        "sql_execute":           ("Executing",  lambda a: f"SQL DDL/DML: {a.get('statement', '')[:40]}"),
+        "screenshot_screen":     ("Capturing",  lambda a: "Desktop Screenshot"),
+        "app_plan_generate":     ("Planning",   lambda a: f"App Plan: {a.get('description', '')[:40]}"),
+        # Browser Automation tools
+        "browser_navigate":      ("Navigating", lambda a: a.get("url", "")[:50]),
+        "browser_click":         ("Clicking",   lambda a: a.get("selector", "")[:40]),
+        "browser_type":          ("Typing",     lambda a: a.get("selector", "")[:40]),
+        "browser_extract_text":  ("Extracting", lambda a: "Browser Text"),
+        "browser_screenshot":    ("Screenshot", lambda a: a.get("filename", "screenshot")),
     }
 
     def _prune_agent_messages(self, messages: list, max_messages: int = 20) -> list:
@@ -884,7 +927,7 @@ User Request: {user_msg}
                 from agents.agent_registry import agent_registry
                 
                 agent_def = agent_registry.get_agent(agent_type) if agent_type else None
-                if agent_type in ("coding", "system") or agent_type is None:
+                if agent_type in ("coding", "system", "file_operation", "web_development") or agent_type is None:
                     allowed_tools = NATIVE_TOOLS_SCHEMA
                 elif agent_def:
                     allowed_names = set(agent_def.tools_allowed)
@@ -893,7 +936,7 @@ User Request: {user_msg}
                         if t.get("type") == "function" and t.get("function", {}).get("name") in allowed_names
                     ]
                 else:
-                    allowed_tools = []
+                    allowed_tools = NATIVE_TOOLS_SCHEMA
                 
                 tools_to_pass = allowed_tools if allowed_tools else None
                 
@@ -1408,16 +1451,118 @@ User Request: {user_msg}
                                 quality=args.get("quality", "standard"),
                             )
 
+                        elif cmd == "system_info":
+                            from agents.tools.system_tools import system_info
+                            return await system_info(args.get("category", "all"))
+
+                        elif cmd == "process_manager":
+                            from agents.tools.system_tools import process_manager
+                            return await process_manager(args.get("action", "list"), args.get("target"))
+
+                        elif cmd == "excel_read":
+                            from agents.tools.core_tools import excel_read
+                            return await excel_read(
+                                path=args.get("path", ""),
+                                sheet=args.get("sheet"),
+                                max_rows=int(args.get("max_rows", 100))
+                            )
+
+                        elif cmd == "excel_write":
+                            from agents.tools.core_tools import excel_write
+                            return await excel_write(
+                                path=args.get("path", ""),
+                                data=args.get("data", []),
+                                sheet=args.get("sheet", "Sheet1"),
+                                headers=args.get("headers"),
+                                overwrite=args.get("overwrite", False)
+                            )
+
+                        elif cmd == "excel_formula":
+                            from agents.tools.core_tools import excel_formula
+                            return await excel_formula(
+                                path=args.get("path", ""),
+                                cell=args.get("cell", ""),
+                                formula=args.get("formula", ""),
+                                sheet=args.get("sheet")
+                            )
+
+                        elif cmd == "word_read":
+                            from agents.tools.core_tools import word_read
+                            return await word_read(path=args.get("path", ""))
+
+                        elif cmd == "word_write":
+                            from agents.tools.core_tools import word_write
+                            return await word_write(
+                                path=args.get("path", ""),
+                                content=args.get("content", ""),
+                                title=args.get("title"),
+                                author=args.get("author", "AI ORCHESTRATOR"),
+                                overwrite=args.get("overwrite", False)
+                            )
+
+                        elif cmd == "ppt_create":
+                            from agents.tools.core_tools import ppt_create
+                            return await ppt_create(
+                                path=args.get("path", ""),
+                                title=args.get("title", ""),
+                                subtitle=args.get("subtitle", ""),
+                                theme=args.get("theme", "dark"),
+                                overwrite=args.get("overwrite", False)
+                            )
+
+                        elif cmd == "ppt_add_slide":
+                            from agents.tools.core_tools import ppt_add_slide
+                            return await ppt_add_slide(
+                                path=args.get("path", ""),
+                                title=args.get("title", ""),
+                                content=args.get("content", ""),
+                                layout=args.get("layout", "content"),
+                                slide_number=args.get("slide_number")
+                            )
+
+                        elif cmd == "sql_query":
+                            from agents.tools.core_tools import sql_query
+                            return await sql_query(
+                                database_path=args.get("database_path", ""),
+                                query=args.get("query", ""),
+                                max_rows=int(args.get("max_rows", 50))
+                            )
+
+                        elif cmd == "sql_execute":
+                            from agents.tools.core_tools import sql_execute
+                            return await sql_execute(
+                                database_path=args.get("database_path", ""),
+                                statement=args.get("statement", "")
+                            )
+
+                        elif cmd == "screenshot_screen":
+                            from agents.tools.core_tools import screenshot_screen
+                            return await screenshot_screen(
+                                output_path=args.get("output_path"),
+                                region=args.get("region", "full")
+                            )
+
+                        elif cmd == "app_plan_generate":
+                            from agents.tools.core_tools import app_plan_generate
+                            return await app_plan_generate(
+                                description=args.get("description", ""),
+                                app_type=args.get("app_type", "web"),
+                                output_path=args.get("output_path")
+                            )
+
                         else:
                             return (
                                 "Unknown tool: '" + cmd + "'. "
-                                "Available: execute_bash, read_file, write_file, "
+                                "Available: execute_bash, read_file, write_file, write_multiple_files, "
                                 "ask_model, web_search, find_safe_port, read_document, replace_in_file, "
                                 "schedule_task, browser_navigate, browser_click, browser_type, "
                                 "browser_extract_text, browser_screenshot, generate_image, "
                                 "list_directory, file_tree, find_files, search_in_files, "
                                 "make_directory, move_file, copy_file, delete_file, "
-                                "get_project_path, set_project_path, list_all_projects, get_file_info"
+                                "get_project_path, set_project_path, list_all_projects, get_file_info, "
+                                "system_info, process_manager, excel_read, excel_write, excel_formula, "
+                                "word_read, word_write, ppt_create, ppt_add_slide, sql_query, sql_execute, "
+                                "screenshot_screen, app_plan_generate"
                             )
 
 

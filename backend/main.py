@@ -44,6 +44,7 @@ from api.capability import router as capability_router
 from api.compliance import router as compliance_router
 from api.evolver import router as evolver_router
 from api.qmd import router as qmd_router
+from api.skills import router as skills_router
 
 # Import new systems (untuk initialization di lifespan)
 from core.cost_tracking import cost_engine
@@ -219,6 +220,11 @@ async def lifespan(app: FastAPI):
     log.info("✅ Self-Correction Engine initialized")
     log.info("✅ Procedural Memory Engine initialized")
     log.info("✅ Project Indexer (Project-Wide Awareness) initialized")
+
+    # Init Skill Registry
+    from core.skill_registry import skill_registry as _skill_registry
+    loaded_skills = _skill_registry.load_all()
+    log.info(f"✅ Skill Registry initialized: {loaded_skills} skill(s) loaded")
 
     # ── Singleton Daemons — hanya boleh berjalan di 1 worker ────────────────
     # Jika Uvicorn dijalankan dengan --workers N, semua lifespan dipanggil N kali.
@@ -424,6 +430,7 @@ app.include_router(compliance_router,    prefix="/api/compliance",   tags=["Comp
 app.include_router(evolver_router,       prefix="/api/evolver",      tags=["Evolver"])
 app.include_router(qmd_router,           prefix="/api/qmd",          tags=["QMD Token Killer"])
 app.include_router(file_manager_router,  prefix="/api/file-manager", tags=["File Manager"])
+app.include_router(skills_router,        tags=["Skills"])
 
 
 @app.get("/api/health")

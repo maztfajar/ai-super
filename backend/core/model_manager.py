@@ -169,14 +169,21 @@ class ModelManager:
 
         if env.get("POLLINATIONS_ENABLED", "false").lower() == "true":
             pol_models = ["auto", "flux", "turbo", "midjourney"]
+            has_api_key = bool(env.get("POLLINATIONS_API_KEY", "").strip())
+            if has_api_key:
+                pol_models.extend([
+                    "krea", "dreamshaper", "kontext", "gptimage", "gptimage-large",
+                    "gpt-image-2", "ideogram-v4-turbo", "ideogram-v4-quality",
+                    "seedream5-pro", "qwen-image", "nova-canvas"
+                ])
             for m in pol_models:
                 self.available_models[f"pollinations/{m}"] = {
                     "provider": "pollinations",
-                    "display": f"{m.capitalize()} (Pollinations AI)",
+                    "display": f"{m.replace('-', ' ').title()} (Pollinations AI)",
                     "status": "online",
                     "model_id": m,
                 }
-            log.info("Pollinations AI models registered")
+            log.info("Pollinations AI models registered", count=len(pol_models), auth=has_api_key)
 
         log.info(f"Total models detected: {len(self.available_models)}", models=list(self.available_models.keys()))
 
@@ -390,14 +397,55 @@ class ModelManager:
             else:
                 yield f"[Error: Custom provider config tidak lengkap. Cek konfigurasi di Integrasi.]"
         elif provider == "pollinations":
-            # Route text requests to the free Pollinations AI text endpoint
-            async for chunk in self._stream_openai_compatible(
-                "openai", messages, temperature, max_tokens,
-                base_url="https://gen.pollinations.ai/v1",
-                api_key="keyless",
-                provider_name="Pollinations AI",
-            ):
-                yield chunk
+            from api.settings_api import read_env
+            env = read_env() if callable(read_env) else {}
+            pol_key = env.get("POLLINATIONS_API_KEY", "").strip()
+
+            # Periksa apakah pesan terakhir pengguna adalah permintaan gambar
+            last_user_msg = ""
+            for m in reversed(messages):
+                if m.get("role") == "user":
+                    last_user_msg = m.get("content", "")
+                    break
+
+            msg_l = last_user_msg.lower()
+            is_img = any(k in msg_l for k in ["gambar", "foto", "ilustrasi", "image", "picture", "draw", "lukis", "sketch", "visual"])
+
+            if is_img and last_user_msg:
+                try:
+                    img_url = await self.generate_image(last_user_msg, model=model)
+                    if img_url:
+                        yield f"✅ **Gambar berhasil dibuat!**\n\n![Hasil Gambar]({img_url})\n\nModel: `{model}`"
+                        return
+                except Exception as e:
+                    log.warning("Pollinations image generation in chat_stream failed", error=str(e))
+
+            if pol_key:
+                async for chunk in self._stream_openai_compatible(
+                    "openai", messages, temperature, max_tokens,
+                    base_url="https://gen.pollinations.ai/v1",
+                    api_key=pol_key,
+                    provider_name="Pollinations AI",
+                ):
+                    yield chunk
+            else:
+                # Cari model teks yang tersedia selain pollinations
+                fallback_model = None
+                for m_id, m_info in self.available_models.items():
+                    if not m_id.startswith("pollinations/"):
+                        fallback_model = m_id
+                        break
+                if not fallback_model:
+                    fallback_model = getattr(settings, "DEFAULT_MODEL", "gpt-4o")
+
+                log.info("Pollinations is an image model, routing text chat to fallback", fallback=fallback_model)
+                async for chunk in self.chat_stream(
+                    model=fallback_model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                ):
+                    yield chunk
         else:
             yield f"[Error: Model '{model}' tidak dikenali. Cek .env kamu.]"
 
@@ -946,19 +994,38 @@ class ModelManager:
             try:
                 safe_prompt = urllib.parse.quote(prompt)
                 model_param = f"&model={pol_model}" if pol_model else ""
-                # Free, keyless API that directly returns an image buffer/URL, wrapped in backend proxy to bypass ISP block
-                direct_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?nologo=true{model_param}"
+                # Determine base URL and authentication
+                custom_base = env.get("POLLINATIONS_API_URL", "").strip().rstrip("/")
+                pol_api_key = env.get("POLLINATIONS_API_KEY", "").strip()
+
+                if custom_base:
+                    pol_base = custom_base
+                elif pol_api_key:
+                    pol_base = "https://gen.pollinations.ai"
+                else:
+                    pol_base = "https://image.pollinations.ai"
+
+                # Path endpoint & auth params
+                path_name = "image" if "gen.pollinations.ai" in pol_base else "prompt"
+                key_param = f"&key={pol_api_key}" if pol_api_key else ""
+                direct_url = f"{pol_base}/{path_name}/{safe_prompt}?nologo=true{model_param}{key_param}"
+
+                custom_headers = {}
+                if pol_api_key:
+                    custom_headers["Authorization"] = f"Bearer {pol_api_key}"
                 
                 # Pre-warm/pre-generate the image on pollinations to ensure it gets generated and cached
                 import httpx
                 import asyncio
+                success = False
                 log.info("generate_image: pre-warming Pollinations AI directly", url=direct_url)
-                async with httpx.AsyncClient(follow_redirects=True, timeout=60.0) as client:
+                async with httpx.AsyncClient(follow_redirects=True, timeout=60.0, headers=custom_headers) as client:
                     for attempt in range(3):
                         try:
                             resp = await client.get(direct_url)
                             if resp.status_code == 200:
                                 log.info("generate_image: Pollinations pre-warm success", status=resp.status_code)
+                                success = True
                                 break
                             elif resp.status_code in (402, 429) and attempt < 2:
                                 wait_time = 3 * (attempt + 1)
@@ -973,10 +1040,12 @@ class ModelManager:
                             else:
                                 log.warning("generate_image: Pollinations pre-warm error", error=str(e))
 
-                return f"/api/media/proxy?url={urllib.parse.quote(direct_url, safe='')}"
+                if success:
+                    return f"/api/media/proxy?url={urllib.parse.quote(direct_url, safe='')}"
+                else:
+                    log.warning("generate_image: Pollinations tidak berhasil (non-200), beralih ke provider gambar alternatif...")
             except Exception as e:
-                log.error("generate_image: Pollinations failed", error=str(e))
-                # Let it fall through if it errors, though urllib quoting rarely fails
+                log.error("generate_image: Pollinations failed, beralih ke provider gambar alternatif...", error=str(e))
 
         # 1. Try OpenAI DALL-E
         if settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith("sk-..."):
@@ -1110,13 +1179,35 @@ class ModelManager:
         try:
             import urllib.parse
             safe_prompt = urllib.parse.quote(prompt)
-            pollinations_url = f"https://image.pollinations.ai/prompt/{safe_prompt}?nologo=true"
+            # Support custom API URL/mirror (user-configurable)
+            try:
+                from api.settings_api import read_env as _read_env
+                _env = _read_env()
+            except Exception:
+                _env = {}
+            _custom_base = _env.get("POLLINATIONS_API_URL", "").strip().rstrip("/")
+            _pol_api_key = _env.get("POLLINATIONS_API_KEY", "").strip()
+
+            if _custom_base:
+                _pol_base = _custom_base
+            elif _pol_api_key:
+                _pol_base = "https://gen.pollinations.ai"
+            else:
+                _pol_base = "https://image.pollinations.ai"
+
+            _path_name = "image" if "gen.pollinations.ai" in _pol_base else "prompt"
+            _key_param = f"&key={_pol_api_key}" if _pol_api_key else ""
+            pollinations_url = f"{_pol_base}/{_path_name}/{safe_prompt}?nologo=true{_key_param}"
+
+            _fallback_headers = {}
+            if _pol_api_key:
+                _fallback_headers["Authorization"] = f"Bearer {_pol_api_key}"
             
             # Pre-warm/pre-generate the image on pollinations to ensure it gets generated and cached
             import httpx
             import asyncio
             log.info("generate_image: pre-warming Pollinations AI fallback", url=pollinations_url)
-            async with httpx.AsyncClient(follow_redirects=True, timeout=60.0) as client:
+            async with httpx.AsyncClient(follow_redirects=True, timeout=60.0, headers=_fallback_headers) as client:
                 for attempt in range(3):
                     try:
                         resp = await client.get(pollinations_url)

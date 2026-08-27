@@ -421,9 +421,28 @@ class Orchestrator:
         except Exception as e:
             log.debug("Frontend design injection skipped", error=str(e)[:80])
 
-        # ─── PHASE 1.6: SKILL LOOKUP — cek apakah ada skill permanen ──
-        # Skill = kristalisasi dari ProceduralMemory yang sudah terbukti N kali
+        # ─── PHASE 1.6: SKILL LOOKUP — cek apakah ada skill terdaftar ──
         skill_context = ""
+        try:
+            from core.skill_registry import skill_registry
+            matches = skill_registry.find_matching_skill(message, top_k=2)
+            if matches and matches[0][1] >= 1.5:
+                top_skill, score = matches[0]
+                steps_text = "\n".join(f"{i+1}. {s}" for i, s in enumerate(top_skill.steps)) if top_skill.steps else ""
+                skill_ctx = f"\n\n[PANDUAN SKILL PROSEDURAL: {top_skill.name}]\n"
+                if top_skill.description:
+                    skill_ctx += f"Deskripsi: {top_skill.description}\n"
+                if steps_text:
+                    skill_ctx += f"Langkah Prosedural:\n{steps_text}\n"
+                if top_skill.content:
+                    skill_ctx += f"Catatan: {top_skill.content}\n"
+                skill_ctx += "[AKHIR PANDUAN SKILL]\n\n"
+                system_prompt = system_prompt + skill_ctx
+                skill_registry.record_usage(top_skill.id, success=True)
+                yield OrchestratorEvent("status", f"⚡ Skill terdaftar aktif: '{top_skill.name}'")
+        except Exception as e:
+            log.debug("Skill registry lookup skipped", error=str(e)[:80])
+
         try:
             from core.skill_evolution import skill_evolution
             matched_skill = await skill_evolution.find_matching_skill(
@@ -735,7 +754,6 @@ class Orchestrator:
                 
                 # Selesai
                 if task_exec_id:
-                    from db.models import AggregatedResult
                     await self._update_task_execution(
                         task_exec_id, 
                         AggregatedResult(final_response=full_response, overall_confidence=1.0), 
@@ -1100,6 +1118,22 @@ class Orchestrator:
                 )
             except Exception as e:
                 log.debug("Procedural memory save skipped", error=str(e)[:80])
+
+            # Auto-extract ke Skill Registry jika kompleks dan sukses
+            if not spec.is_simple and aggregated.overall_confidence >= 0.7:
+                try:
+                    from core.skill_registry import skill_registry
+                    from core.model_manager import model_manager
+                    import asyncio as _asyncio
+                    _asyncio.create_task(
+                        skill_registry.auto_extract_skill(
+                            task_description=message,
+                            task_result=aggregated.final_response,
+                            model_manager=model_manager,
+                        )
+                    )
+                except Exception as e:
+                    log.debug("Skill registry auto-extract launch skipped", error=str(e)[:80])
 
         # ─── PHASE 8.6: CAPABILITY EVOLVER — record outcome ──────────
         # Beri feedback ke evolver tentang apakah assignment model berhasil
@@ -1525,11 +1559,20 @@ class Orchestrator:
     ) -> AsyncGenerator[OrchestratorEvent, None]:
         """Handle image generation requests with capability-aware model selection."""
 
-        # Find best model for image generation
-        image_model = capability_map.find_best_model({"image_gen"})
+        # 1. Jika pengguna memilih model spesifik di dropdown (misal: pollinations/flux, dall-e-3):
+        image_model = None
+        if spec.mentioned_models and spec.mentioned_models[0]:
+            chosen = spec.mentioned_models[0]
+            if chosen.startswith("pollinations/") or "image" in chosen.lower() or "dall" in chosen.lower():
+                image_model = chosen
+
+        # 2. Jika Auto Orchestrator: routing pertama menggunakan Pollinations AI
         if not image_model:
-            # Fall back to mimo-v2-omni as the most capable multimodal model
-            image_model = agent_registry.resolve_model_for_agent("image_gen", None)
+            role_model = agent_registry.resolve_model_for_agent("image_gen", None)
+            if role_model and (role_model.startswith("pollinations/") or "image" in role_model.lower() or "dall" in role_model.lower()):
+                image_model = role_model
+            else:
+                image_model = "pollinations/auto"
 
         yield OrchestratorEvent("status",
             f"🖼️ Merutekan ke model image: {image_model}...")
