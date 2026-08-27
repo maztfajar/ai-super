@@ -19,6 +19,7 @@ import structlog
 from db.models import User
 from core.auth import get_current_user
 from api.cloudflare_wizard import get_cloudflared_path
+from core.model_manager import model_manager
 
 router = APIRouter()
 log = structlog.get_logger()
@@ -966,7 +967,6 @@ async def get_resolved_roles(user: User = Depends(get_current_user)):
     """
     try:
         from agents.agent_registry import agent_registry
-        from core.model_manager import model_manager
 
         available = model_manager.available_models  # { model_id → ModelInfo }
         resolved = {}
@@ -1010,7 +1010,6 @@ async def test_ai_tools(req: TestToolsRequest, user: User = Depends(get_current_
     if not user.is_admin:
         raise HTTPException(403, "Admin only")
     try:
-        from core.model_manager import model_manager
         result = await model_manager.test_model_tool_support(req.model_id)
         return result
     except Exception as e:
@@ -1037,7 +1036,6 @@ async def generate_ai_core(req: AiCoreGenerateRequest, user: User = Depends(get_
 
     try:
         from agents.agent_registry import agent_registry
-        from core.model_manager import model_manager
         import os
 
         # ── Kumpulkan stack model aktif (sama dengan get_resolved_roles) ────

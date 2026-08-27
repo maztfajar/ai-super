@@ -38,9 +38,15 @@ jobs:
       # File VERSION di-update lalu di-commit balik ke repo dan di-bake ke image
       - name: Auto bump version (patch)
         if: github.event_name != 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Ensure we are on the actual branch, not detached HEAD
+          BRANCH="${GITHUB_REF##refs/heads/}"
+          git checkout "$BRANCH" 2>/dev/null || true
 
           python3 bump_version.py patch
 
@@ -52,7 +58,10 @@ jobs:
           # Hanya commit jika ada perubahan (cegah loop jika [skip ci] diabaikan)
           if ! git diff --cached --quiet; then
             git commit -m "chore: auto-bump version to $NEW_VERSION [skip ci]"
-            git push
+            # Set remote URL with token for push access
+            git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+            git pull --rebase origin "$BRANCH" || true
+            git push origin "$BRANCH" || echo "⚠️ Version bump push failed (non-fatal)"
           fi
 
       # Install the cosign tool except on PR

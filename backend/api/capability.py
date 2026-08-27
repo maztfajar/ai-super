@@ -8,6 +8,7 @@ from core.auth import get_current_user
 from core.capability_map import capability_map
 from db.models import User
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 router = APIRouter()
@@ -58,7 +59,6 @@ async def get_best_model(
     required_caps = INTENT_TO_CAPS.get(intent or "general", {"text"})
     best = capability_map.find_best_model(required_caps)
 
-    from core.model_manager import model_manager
     available = list(model_manager.available_models.keys())
 
     # List all models with this capability

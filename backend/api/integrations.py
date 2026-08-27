@@ -1415,7 +1415,6 @@ async def save_pollinations_status(payload: PollinationsPayload, user: User = De
     write_env_key("POLLINATIONS_API_KEY", payload.api_key.strip())
     
     # Reload model manager to register models immediately
-    from core.model_manager import model_manager
     await model_manager._detect_models()
     
     return {"status": "success", "message": "Pengaturan Pollinations AI berhasil disimpan"}

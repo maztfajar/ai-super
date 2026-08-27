@@ -6,6 +6,7 @@ import json
 from typing import List, Dict, Optional, Any
 from datetime import datetime
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -102,7 +103,6 @@ class ContextManager:
             return ""
 
         try:
-            from core.model_manager import model_manager
 
             # Format pesan untuk summarization
             text_parts = []

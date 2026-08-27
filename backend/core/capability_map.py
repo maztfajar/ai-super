@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 from typing import Dict, Optional, Set
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -84,7 +85,6 @@ class CapabilityMapEngine:
         Find the model with the best capability match for the required capabilities.
         Returns model_id or None.
         """
-        from core.model_manager import model_manager
         available = available_models or model_manager.available_models
         if not available:
             return None
@@ -128,7 +128,6 @@ class CapabilityMapEngine:
         start = time.time()
 
         try:
-            from core.model_manager import model_manager
             all_models = model_manager.available_models
 
             # Step 1: Apply static hints as baseline
@@ -179,7 +178,6 @@ class CapabilityMapEngine:
         Returns True if successful.
         """
         try:
-            from core.model_manager import model_manager
             messages = [
                 {"role": "system", "content": INTERVIEW_PROMPT},
                 {"role": "user", "content": "What are your capabilities?"},

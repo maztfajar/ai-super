@@ -14,6 +14,7 @@ import os
 from typing import Optional
 from dataclasses import dataclass, field
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -302,7 +303,6 @@ class SelfCorrectionEngine:
     ) -> Optional[str]:
         """Minta model AI untuk memperbaiki kode berdasarkan error."""
         try:
-            from core.model_manager import model_manager
 
             fix_prompt = (
                 f"Fix the following {language} code that has a syntax error.\n\n"

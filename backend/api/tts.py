@@ -4,6 +4,7 @@ import edge_tts
 import io
 import structlog
 import anyio
+from core.model_manager import model_manager
 
 router = APIRouter()
 log = structlog.get_logger()
@@ -29,7 +30,6 @@ async def text_to_speech(
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
     try:
-        from core.model_manager import model_manager
         from agents.agent_registry import agent_registry
         
         # Resolve audio_gen model

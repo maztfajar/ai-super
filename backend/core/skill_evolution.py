@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timezone
 from typing import Optional
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -357,7 +358,6 @@ class SkillEvolutionEngine:
     async def _ai_generate_skill(self, mem) -> dict:
         """AI generate nama, deskripsi, dan template untuk skill baru."""
         try:
-            from core.model_manager import model_manager
             model = model_manager.get_default_model()
             if not model:
                 return self._fallback_skill_def(mem)
@@ -413,7 +413,6 @@ Jawab HANYA dengan JSON valid, tanpa teks lain."""
     async def _ai_improve_skill(self, skill, mem) -> Optional[dict]:
         """AI perbaiki skill berdasarkan pengalaman tambahan."""
         try:
-            from core.model_manager import model_manager
             model = model_manager.get_default_model()
             if not model:
                 return None

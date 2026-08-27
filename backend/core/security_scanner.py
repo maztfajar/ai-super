@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -346,7 +347,6 @@ class SecurityScanner:
         if not result.findings:
             return
         try:
-            from core.model_manager import model_manager
             model = model_manager.get_default_model()
             if not model:
                 log.debug("No model available for AI analysis, skipping")

@@ -30,6 +30,7 @@ import structlog
 from core.evolution_store import (
     evolution_store, EvolutionRule, RuleType, RuleStatus
 )
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -484,7 +485,6 @@ class CapabilityEvolver:
     async def _cleanup_stale_rules(self, groups: List[PerformanceGroup]) -> int:
         deprecated = 0
         try:
-            from core.model_manager import model_manager
             available = set(model_manager.available_models.keys())
             active_rules = await evolution_store.get_active_rules()
             for rule in active_rules:

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from db.database import get_db
 from db.models import User, WorkflowDef, WorkflowRun
 from core.auth import get_current_user
+from core.model_manager import model_manager
 
 router = APIRouter()
 
@@ -109,7 +110,6 @@ async def _execute_workflow(run_id: str, wf: WorkflowDef):
     
     try:
         # Run workflow logic via AI Agent
-        from core.model_manager import model_manager
         from agents.executor import agent_executor
         
         prompt = f"Eksekusi tugas workflow berikut secara autonomous:\nNama: {wf.name}\nDeskripsi: {wf.description or 'Tidak ada deskripsi'}\n\nLakukan analisis atau jalankan perintah yang diperlukan untuk menyelesaikan tugas ini."

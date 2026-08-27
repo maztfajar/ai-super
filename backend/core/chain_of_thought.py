@@ -37,6 +37,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import AsyncGenerator, Dict, List, Optional, Any
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -595,7 +596,6 @@ class ChainOfThoughtEngine:
         Panggil model menggunakan model_manager.chat_completion() — interface
         yang sama dengan yang dipakai di seluruh orchestrator.py.
         """
-        from core.model_manager import model_manager
 
         messages = [
             {"role": "system", "content": system},
@@ -915,7 +915,6 @@ class ChainOfThoughtEngine:
         Prioritas: override → model BRAIN/reasoning → default model.
         Menggunakan model_manager.available_models langsung.
         """
-        from core.model_manager import model_manager
 
         if override and override in model_manager.available_models:
             return override

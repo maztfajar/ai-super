@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Callable, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -540,7 +541,6 @@ class ErrorRecoveryEngine:
         """
         Pilih model alternatif berdasarkan task_type + capability.
         """
-        from core.model_manager import model_manager
         from agents.agent_registry import MODEL_CAPABILITY_MAP
 
         required_caps = set(_TASK_CAPABILITY_NEEDS.get(task_type, ["text"]))
@@ -582,7 +582,6 @@ class ErrorRecoveryEngine:
 
     def get_health_status(self) -> Dict:
         """Health status semua model + tools — untuk monitoring dashboard."""
-        from core.model_manager import model_manager
 
         models = {}
         for model_id in model_manager.available_models:

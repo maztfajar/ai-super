@@ -7,6 +7,7 @@ import socket
 import structlog
 import hashlib
 from datetime import datetime
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -687,7 +688,6 @@ async def write_file_chunk(path: str, content: str, chunk_index: int, total_chun
 
 async def ask_model(model_id: str, prompt: str) -> str:
     """Ask another AI model a question."""
-    from core.model_manager import model_manager
     try:
         if model_id not in model_manager.available_models:
             return "Error: Model '" + model_id + "' is not available."

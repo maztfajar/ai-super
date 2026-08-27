@@ -18,6 +18,7 @@ import json
 import asyncio
 import structlog
 from typing import Optional
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -100,7 +101,6 @@ async def generate_plan(
     Return: markdown string plan, atau None jika gagal/timeout.
     """
     try:
-        from core.model_manager import model_manager
         from agents.agent_registry import agent_registry
 
         # Pakai reasoning model untuk generate plan yang berkualitas

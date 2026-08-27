@@ -10,6 +10,7 @@ from typing import Optional
 import structlog
 import html
 import re
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -205,7 +206,6 @@ async def _send_voice(token: str, chat_id: int, text: str):
     """Generate TTS and send as voice note."""
     import httpx
     from core.config import settings
-    from core.model_manager import model_manager
     from agents.agent_registry import agent_registry
     try:
         audio_model = agent_registry.resolve_model_for_agent("audio_gen")
@@ -225,7 +225,6 @@ async def _send_voice_with_tts(token: str, chat_id: int, text: str):
     """Generate TTS dengan edge-tts / Model Manager dan kirim sebagai voice note ke Telegram."""
     import httpx
     from core.config import settings
-    from core.model_manager import model_manager
     from agents.agent_registry import agent_registry
     
     try:
@@ -366,7 +365,6 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
 
         # /model
         if text == "/model":
-            from core.model_manager import model_manager
             default_model = model_manager.get_default_model()
             models_list = ", ".join(list(model_manager.available_models.keys())[:5])
             await _send(token, chat_id, f"Model default: <code>{default_model}</code>\nModel tersedia: <code>{models_list}</code>")
@@ -464,7 +462,6 @@ async def _handle_message(chat_id: int, user_id: str, text: str,
         await _send_typing(token, chat_id)
 
         from core.orchestrator import orchestrator
-        from core.model_manager import model_manager
         from core.smart_router import smart_router
         from memory.manager import memory_manager
         from rag.engine import rag_engine
@@ -735,7 +732,6 @@ async def _handle_photo(chat_id: int, user_id: str, photo_list: list, caption: s
         mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
 
         # 4. Kirim ke vision model
-        from core.model_manager import model_manager
         from memory.manager import memory_manager
 
         system = await memory_manager.build_system_prompt(user_id, "tg_" + str(chat_id))
@@ -795,7 +791,6 @@ async def _handle_voice(chat_id: int, user_id: str, voice_obj: dict,
             audio_bytes = r.content
 
         # 3. Transkrip via model_manager
-        from core.model_manager import model_manager
         transcript = await model_manager.transcribe_audio(
             audio_bytes=audio_bytes,
             filename=file_path.split("/")[-1] or "voice.ogg",

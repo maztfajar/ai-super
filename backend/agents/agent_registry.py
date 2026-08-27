@@ -16,6 +16,7 @@ import time
 import asyncio
 import threading
 import structlog
+from core.model_manager import model_manager
 
 log = structlog.get_logger()
 
@@ -78,7 +79,6 @@ async def refresh_perf_cache():
         from db.database import AsyncSessionLocal
         from db.models import AgentPerformance
         from sqlmodel import select
-        from core.model_manager import model_manager
 
         available = set(model_manager.available_models.keys())
         if not available:
